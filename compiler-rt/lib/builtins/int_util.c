@@ -54,7 +54,7 @@ void __compilerrt_abort_impl(const char *file, int line, const char *function) {
 #else
 
 // Get the system definition of abort()
-#include <stdlib.h>
+extern void abort (void) __attribute__ ((__noreturn__));
 
 #ifndef _WIN32
 __attribute__((weak))
