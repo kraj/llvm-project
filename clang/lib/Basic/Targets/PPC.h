@@ -386,6 +386,10 @@ public:
       LongDoubleFormat = &llvm::APFloat::IEEEdouble();
     }
 
+    if (getTriple().isMusl()) {
+      LongDoubleWidth = LongDoubleAlign = 64;
+      LongDoubleFormat = &llvm::APFloat::IEEEdouble();
+    }
     // PPC32 supports atomics up to 4 bytes.
     MaxAtomicPromoteWidth = MaxAtomicInlineWidth = 32;
   }
