@@ -628,6 +628,12 @@ void tools::gnutools::Linker::ConstructJob(Compilation &C, const JobAction &JA,
       if (IsIAMCU)
         CmdArgs.push_back("-lgloss");
 
+      if (ToolChain.getTriple().isMusl() &&
+          (Args.hasArg(options::OPT_fstack_protector) ||
+          Args.hasArg(options::OPT_fstack_protector_strong) ||
+          Args.hasArg(options::OPT_fstack_protector_all))) {
+        CmdArgs.push_back("-lssp_nonshared");
+      }
       if (IsStatic || IsStaticPIE)
         CmdArgs.push_back("--end-group");
       else
