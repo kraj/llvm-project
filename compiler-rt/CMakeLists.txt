@@ -63,7 +63,16 @@ set(COMPILER_RT_BAREMETAL_BUILD OFF CACHE BOOLEAN
   "Build for a bare-metal target.")
 
 if (COMPILER_RT_STANDALONE_BUILD)
-  load_llvm_config()
+  find_package(LLVM REQUIRED)
+  list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+
+  # Variables that AddLLVM.cmake depends on (included by AddCompilerRT)
+  set(LLVM_TOOLS_BINARY_DIR "${LLVM_INSTALL_PREFIX}/bin")
+  set(LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
+
+  set(LLVM_LIBRARY_OUTPUT_INTDIR
+    ${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR}/lib${LLVM_LIBDIR_SUFFIX})
+
   if (TARGET intrinsics_gen)
     # Loading the llvm config causes this target to be imported so place it
     # under the appropriate folder in an IDE.
