@@ -566,12 +566,12 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
     Loader = "ld.so.1";
     break;
   case llvm::Triple::ppc64:
-    LibDir = "lib64";
+    LibDir = "lib";
     Loader =
         (tools::ppc::hasPPCAbiArg(Args, "elfv2")) ? "ld64.so.2" : "ld64.so.1";
     break;
   case llvm::Triple::ppc64le:
-    LibDir = "lib64";
+    LibDir = "lib";
     Loader =
         (tools::ppc::hasPPCAbiArg(Args, "elfv1")) ? "ld64.so.1" : "ld64.so.2";
     break;
@@ -593,7 +593,7 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
     Loader = "ld-linux.so.2";
     break;
   case llvm::Triple::sparcv9:
-    LibDir = "lib64";
+    LibDir = "lib";
     Loader = "ld-linux.so.2";
     break;
   case llvm::Triple::systemz:
@@ -607,7 +607,7 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
   case llvm::Triple::x86_64: {
     bool X32 = Triple.getEnvironment() == llvm::Triple::GNUX32;
 
-    LibDir = X32 ? "libx32" : "lib64";
+    LibDir = "lib";
     Loader = X32 ? "ld-linux-x32.so.2" : "ld-linux-x86-64.so.2";
     break;
   }
