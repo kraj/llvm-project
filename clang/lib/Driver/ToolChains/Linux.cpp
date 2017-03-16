@@ -238,7 +238,7 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
   loadMultilibsFromYAML(Args, D);
 
   llvm::Triple::ArchType Arch = Triple.getArch();
-  std::string SysRoot = computeSysRoot();
+  std::string SysRoot = computeSysRoot() + "/";
   ToolChain::path_list &PPaths = getProgramPaths();
 
   Generic_GCC::PushPPaths(PPaths);
