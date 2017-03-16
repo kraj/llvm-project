@@ -218,7 +218,7 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
   Multilibs = GCCInstallation.getMultilibs();
   SelectedMultilib = GCCInstallation.getMultilib();
   llvm::Triple::ArchType Arch = Triple.getArch();
-  std::string SysRoot = computeSysRoot();
+  std::string SysRoot = computeSysRoot() + "/";
   ToolChain::path_list &PPaths = getProgramPaths();
 
   Generic_GCC::PushPPaths(PPaths);
