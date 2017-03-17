@@ -13,6 +13,7 @@
 #include "ToolChains/Clang.h"
 #include "clang/Basic/ObjCRuntime.h"
 #include "clang/Basic/Sanitizers.h"
+#include "clang/Basic/Version.h"
 #include "clang/Basic/VirtualFileSystem.h"
 #include "clang/Config/config.h"
 #include "clang/Driver/Action.h"
@@ -343,7 +344,10 @@ StringRef ToolChain::getOSLibName() const {
 }
 
 std::string ToolChain::getCompilerRTPath() const {
-  SmallString<128> Path(getDriver().ResourceDir);
+  SmallString<128> Path(getDriver().SysRoot);
+  StringRef ClangLibdirSuffix(CLANG_LIBDIR_SUFFIX);
+  llvm::sys::path::append(Path, "/usr/", Twine("lib") + ClangLibdirSuffix, "clang",
+                            CLANG_VERSION_STRING);
   if (Triple.isOSUnknown()) {
     llvm::sys::path::append(Path, "lib");
   } else {
