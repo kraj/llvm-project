@@ -15,6 +15,7 @@
 #include "ToolChains/InterfaceStubs.h"
 #include "clang/Basic/ObjCRuntime.h"
 #include "clang/Basic/Sanitizers.h"
+#include "clang/Basic/Version.h"
 #include "clang/Config/config.h"
 #include "clang/Driver/Action.h"
 #include "clang/Driver/CommonArgs.h"
@@ -702,7 +703,10 @@ StringRef ToolChain::getOSLibName() const {
 }
 
 std::string ToolChain::getCompilerRTPath() const {
-  SmallString<128> Path(getDriver().ResourceDir);
+  SmallString<128> Path(getDriver().SysRoot);
+  StringRef ClangLibdirBasename(CLANG_INSTALL_LIBDIR_BASENAME);
+  llvm::sys::path::append(Path, "/usr/", ClangLibdirBasename, "clang",
+                            CLANG_VERSION_STRING);
   if (isBareMetal()) {
     llvm::sys::path::append(Path, "lib", getOSLibName());
     if (!SelectedMultilibs.empty()) {
