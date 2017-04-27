@@ -507,11 +507,19 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
     LibDir = "lib64";
     Loader =
         (tools::ppc::hasPPCAbiArg(Args, "elfv2")) ? "ld64.so.2" : "ld64.so.1";
+    if (!getVFS().exists(getDriver().SysRoot + "/" + LibDir + "/" + Loader) &&
+         getVFS().exists(getDriver().SysRoot + "/lib/" + Loader)) {
+        LibDir = "lib";
+    }
     break;
   case llvm::Triple::ppc64le:
     LibDir = "lib64";
     Loader =
         (tools::ppc::hasPPCAbiArg(Args, "elfv1")) ? "ld64.so.1" : "ld64.so.2";
+    if (!getVFS().exists(getDriver().SysRoot + "/" + LibDir + "/" + Loader) &&
+         getVFS().exists(getDriver().SysRoot + "/lib/" + Loader)) {
+        LibDir = "lib";
+    }
     break;
   case llvm::Triple::riscv32: {
     StringRef ABIName = tools::riscv::getRISCVABI(Args, Triple);
@@ -533,6 +541,10 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
   case llvm::Triple::sparcv9:
     LibDir = "lib64";
     Loader = "ld-linux.so.2";
+    if (!getVFS().exists(getDriver().SysRoot + "/" + LibDir + "/" + Loader) &&
+         getVFS().exists(getDriver().SysRoot + "/lib/" + Loader)) {
+        LibDir = "lib";
+    }
     break;
   case llvm::Triple::systemz:
     LibDir = "lib";
@@ -547,6 +559,10 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
 
     LibDir = X32 ? "libx32" : "lib64";
     Loader = X32 ? "ld-linux-x32.so.2" : "ld-linux-x86-64.so.2";
+    if (!getVFS().exists(getDriver().SysRoot + "/" + LibDir + "/" + Loader) &&
+         getVFS().exists(getDriver().SysRoot + "/lib/" + Loader)) {
+        LibDir = "lib";
+    }
     break;
   }
   case llvm::Triple::ve:
