@@ -226,6 +226,13 @@ Typical components:\n\
 
 /// Compute the path to the main executable.
 std::string GetExecutablePath(const char *Argv0) {
+  // Hack for Yocto: we need to override the root path when we are using
+  // llvm-config from within a target sysroot.
+  const char *Sysroot = std::getenv("YOCTO_ALTERNATE_EXE_PATH");
+  if (Sysroot != nullptr) {
+    return Sysroot;
+  }
+
   // This just needs to be some symbol in the binary; C++ doesn't
   // allow taking the address of ::main however.
   void *P = (void *)(intptr_t)GetExecutablePath;
