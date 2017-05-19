@@ -29,7 +29,7 @@
 #include <assert.h> // for assert
 #include <stdio.h>  // for size_t, NULL, snpr...
 #include <string.h> // for strcmp
-
+#include <limits.h> // for PATH_MAX
 using namespace lldb;
 using namespace lldb_private;
 
