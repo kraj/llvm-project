@@ -245,6 +245,13 @@ Typical components:\n\
 
 /// Compute the path to the main executable.
 std::string GetExecutablePath(const char *Argv0) {
+  // Hack for Yocto: we need to override the root path when we are using
+  // llvm-config from within a target sysroot.
+  const char *Sysroot = std::getenv("YOCTO_ALTERNATE_EXE_PATH");
+  if (Sysroot != nullptr) {
+    return Sysroot;
+  }
+
   // This just needs to be some symbol in the binary; C++ doesn't
   // allow taking the address of ::main however.
   void *P = (void *)(intptr_t)GetExecutablePath;
@@ -324,7 +331,7 @@ int main(int argc, char **argv) {
   // Compute various directory locations based on the derived location
   // information.
   std::string ActivePrefix, ActiveBinDir, ActiveIncludeDir, ActiveLibDir,
-              ActiveCMakeDir;
+              ActiveCMakeDir, BaseLibDir;
   std::string ActiveIncludeOption;
   if (IsInDevelopmentTree) {
     ActiveIncludeDir = std::string(LLVM_SRC_ROOT) + "/include";
@@ -365,12 +372,18 @@ int main(int argc, char **argv) {
       sys::fs::make_absolute(ActivePrefix, Path);
       ActiveBinDir = std::string(Path);
     }
-    ActiveLibDir = ActivePrefix + "/lib" + LLVM_LIBDIR_SUFFIX;
-    {
-      SmallString<256> Path(LLVM_INSTALL_PACKAGE_DIR);
-      sys::fs::make_absolute(ActivePrefix, Path);
-      ActiveCMakeDir = std::string(Path);
+    // Hack for Yocto: we need to override the lib path when we are using
+    // llvm-config from within a target sysroot since LLVM_LIBDIR_SUFFIX
+    // maybe different for host llvm vs target e.g. ppc64 Libdir=lib64 but
+    // x86_64 Libdir = lib
+    const char *YoctoLibDir = std::getenv("YOCTO_ALTERNATE_LIBDIR");
+    if (YoctoLibDir != nullptr) {
+      BaseLibDir = std::string(YoctoLibDir);
+    } else {
+      BaseLibDir = std::string("/lib") + LLVM_LIBDIR_SUFFIX;
     }
+    ActiveLibDir = ActivePrefix + BaseLibDir;
+    ActiveCMakeDir = ActiveLibDir + "/cmake/llvm";
     ActiveIncludeOption = "-I" + ActiveIncludeDir;
   }
 
