@@ -2190,6 +2190,9 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
       {"gcc-cross/" + CandidateTriple.str(), "../..",
        TargetTriple.getOS() != llvm::Triple::Solaris},
 
+      // OE cross-compilers path structures
+      {"/" + CandidateTriple.str(), "..", true},
+
       // The Freescale PPC SDK has the gcc libraries in
       // <sysroot>/usr/lib/<triple>/x.y.z so have a look there as well. Only do
       // this on Freescale triples, though, since some systems put a *lot* of
