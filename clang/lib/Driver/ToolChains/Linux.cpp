@@ -521,6 +521,7 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
   if (Triple.isMusl()) {
     std::string ArchName;
     bool IsArm = false;
+    bool isX32 = false;
 
     switch (Arch) {
     case llvm::Triple::arm:
@@ -532,6 +533,13 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
     case llvm::Triple::thumbeb:
       ArchName = "armeb";
       IsArm = true;
+      break;
+    case llvm::Triple::x86:
+      ArchName = "i386";
+      break;
+    case llvm::Triple::x86_64:
+      isX32 = Triple.getEnvironment() == llvm::Triple::GNUX32;
+      ArchName = isX32 ? "x32" : Triple.getArchName().str();
       break;
     default:
       ArchName = Triple.getArchName().str();
