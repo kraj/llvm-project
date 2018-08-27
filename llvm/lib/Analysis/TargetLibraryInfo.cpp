@@ -415,27 +415,28 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
 
   // The following functions are available on Linux,
   // but Android uses bionic instead of glibc.
-  if (!T.isOSLinux() || T.isAndroid()) {
+  if (!T.isOSLinux() || T.isAndroid() || T.isMusl()) {
     TLI.setUnavailable(LibFunc_dunder_strdup);
     TLI.setUnavailable(LibFunc_dunder_strtok_r);
     TLI.setUnavailable(LibFunc_dunder_isoc99_scanf);
     TLI.setUnavailable(LibFunc_dunder_isoc99_sscanf);
     TLI.setUnavailable(LibFunc_under_IO_getc);
     TLI.setUnavailable(LibFunc_under_IO_putc);
-    // But, Android has memalign.
-    if (!T.isAndroid())
+    // But, Android/Musl has memalign.
+    if (!T.isAndroid() || !T.isMusl() )
       TLI.setUnavailable(LibFunc_memalign);
-    TLI.setUnavailable(LibFunc_fopen64);
-    TLI.setUnavailable(LibFunc_fseeko64);
-    TLI.setUnavailable(LibFunc_fstat64);
-    TLI.setUnavailable(LibFunc_fstatvfs64);
-    TLI.setUnavailable(LibFunc_ftello64);
-    TLI.setUnavailable(LibFunc_lstat64);
-    TLI.setUnavailable(LibFunc_open64);
-    TLI.setUnavailable(LibFunc_stat64);
-    TLI.setUnavailable(LibFunc_statvfs64);
-    TLI.setUnavailable(LibFunc_tmpfile64);
-
+    if (!T.isMusl()) {
+      TLI.setUnavailable(LibFunc_fopen64);
+      TLI.setUnavailable(LibFunc_fseeko64);
+      TLI.setUnavailable(LibFunc_fstat64);
+      TLI.setUnavailable(LibFunc_fstatvfs64);
+      TLI.setUnavailable(LibFunc_ftello64);
+      TLI.setUnavailable(LibFunc_lstat64);
+      TLI.setUnavailable(LibFunc_open64);
+      TLI.setUnavailable(LibFunc_stat64);
+      TLI.setUnavailable(LibFunc_statvfs64);
+      TLI.setUnavailable(LibFunc_tmpfile64);
+    }
     // Relaxed math functions are included in math-finite.h on Linux (GLIBC).
     TLI.setUnavailable(LibFunc_acos_finite);
     TLI.setUnavailable(LibFunc_acosf_finite);
