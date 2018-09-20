@@ -39,6 +39,7 @@ public:
   CXXStdlibType GetDefaultCXXStdlibType() const override;
   bool isPIEDefault() const override;
   bool isNoExecStackDefault() const override;
+  unsigned GetDefaultStackProtectorLevel(bool KernelOrKext) const override;
   bool IsMathErrnoDefault() const override;
   SanitizerMask getSupportedSanitizers() const override;
   void addProfileRTLibs(const llvm::opt::ArgList &Args,
