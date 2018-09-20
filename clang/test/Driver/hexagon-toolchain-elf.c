@@ -457,7 +457,7 @@
 // RUN:   %s 2>&1 \
 // RUN:   | FileCheck -check-prefix=CHECK042 %s
 // CHECK042:      "-cc1"
-// CHECK042:      "-mrelocation-model" "static"
+// CHECK042:      "-mrelocation-model" "pic"
 // CHECK042:      "-mllvm" "-hexagon-small-data-threshold=8"
 // CHECK042-NEXT: llvm-mc
 // CHECK042:      "-gpsize=8"

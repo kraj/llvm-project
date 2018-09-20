@@ -911,8 +911,18 @@ void Linux::AddIAMCUIncludeArgs(const ArgList &DriverArgs,
 }
 
 bool Linux::isPIEDefault() const {
-  return (getTriple().isAndroid() && !getTriple().isAndroidVersionLT(16)) ||
-          getTriple().isMusl() || getSanitizerArgs().requiresPIE();
+  const bool IsMips = getTriple().isMIPS();
+  const bool IsAndroid = getTriple().isAndroid();
+
+  if (IsMips || IsAndroid)
+    return (getTriple().isAndroid() && !getTriple().isAndroidVersionLT(16)) ||
+            getTriple().isMusl() || getSanitizerArgs().requiresPIE();
+
+  return true;
+}
+
+unsigned Linux::GetDefaultStackProtectorLevel(bool KernelOrKext) const {
+  return 2;
 }
 
 SanitizerMask Linux::getSupportedSanitizers() const {
