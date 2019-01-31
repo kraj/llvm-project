@@ -244,10 +244,11 @@ public:
 
     // Alias .hword/.word/xword to the target-independent .2byte/.4byte/.8byte
     // directives as they have the same form and semantics:
-    ///  ::= (.hword | .word | .xword ) [ expression (, expression)* ]
+    ///  ::= (.hword | .word | .xword | .dword ) [ expression (, expression)* ]
     Parser.addAliasForDirective(".hword", ".2byte");
     Parser.addAliasForDirective(".word", ".4byte");
     Parser.addAliasForDirective(".xword", ".8byte");
+    Parser.addAliasForDirective(".dword", ".8byte");
 
     // Initialize the set of available features.
     setAvailableFeatures(ComputeAvailableFeatures(getSTI().getFeatureBits()));
