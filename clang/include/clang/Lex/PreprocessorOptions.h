@@ -170,6 +170,9 @@ public:
   /// build it again.
   std::shared_ptr<FailedModulesSet> FailedModules;
 
+  /// A prefix map for __FILE__ and __BASE_FILE__
+  std::map<std::string, std::string, std::greater<std::string>> MacroPrefixMap;
+
 public:
   PreprocessorOptions() : PrecompiledPreambleBytes(0, false) {}
 
