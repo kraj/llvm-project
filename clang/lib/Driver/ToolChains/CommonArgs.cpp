@@ -1537,6 +1537,8 @@ static void AddUnwindLibrary(const ToolChain &TC, const Driver &D,
         CmdArgs.push_back("-lunwind");
     } else if (LGT == LibGccType::StaticLibGcc) {
       CmdArgs.push_back("-l:libunwind.a");
+      CmdArgs.push_back("-lpthread");
+      CmdArgs.push_back("-ldl");
     } else if (LGT == LibGccType::SharedLibGcc) {
       if (TC.getTriple().isOSCygMing())
         CmdArgs.push_back("-l:libunwind.dll.a");
