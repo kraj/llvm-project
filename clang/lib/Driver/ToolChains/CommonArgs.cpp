@@ -1211,8 +1211,13 @@ static void AddUnwindLibrary(const ToolChain &TC, const Driver &D,
   case ToolChain::UNW_CompilerRT:
     if (LGT == LibGccType::StaticLibGcc)
       CmdArgs.push_back("-l:libunwind.a");
-    else
+    else {
       CmdArgs.push_back("-l:libunwind.so");
+      if (Args.hasArg(options::OPT_static)) {
+        CmdArgs.push_back("-lpthread");
+        CmdArgs.push_back("-ldl");
+      }
+    }
     break;
   }
 
