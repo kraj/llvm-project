@@ -1185,6 +1185,10 @@ static void AddUnwindLibrary(const ToolChain &TC, const Driver &D,
   }
   case ToolChain::UNW_CompilerRT:
     CmdArgs.push_back("-lunwind");
+    if (Args.hasArg(options::OPT_static)) {
+      CmdArgs.push_back("-lpthread");
+      CmdArgs.push_back("-ldl");
+    }
     break;
   }
 
