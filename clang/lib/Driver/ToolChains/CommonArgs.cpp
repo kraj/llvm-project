@@ -1280,8 +1280,13 @@ static void AddUnwindLibrary(const ToolChain &TC, const Driver &D,
         // Let the linker choose between libunwind.dll.a and libunwind.a
         // depending on what's available, and depending on the -static flag
         CmdArgs.push_back("-lunwind");
-    } else
+    } else {
       CmdArgs.push_back("-l:libunwind.so");
+      if (Args.hasArg(options::OPT_static)) {
+        CmdArgs.push_back("-lpthread");
+        CmdArgs.push_back("-ldl");
+      }
+    }
     break;
   }
 
