@@ -350,6 +350,13 @@ void riscv::getRISCVTargetFeatures(const Driver &D, const ArgList &Args,
 
     // Handle all other types of extensions.
     getExtensionFeatures(D, Args, Features, MArch, OtherExts);
+  } else {
+    // Default to imafdc aka gc
+    Features.push_back("+m");
+    Features.push_back("+a");
+    Features.push_back("+f");
+    Features.push_back("+d");
+    Features.push_back("+c");
   }
 
   // -mrelax is default, unless -mno-relax is specified.
@@ -375,5 +382,5 @@ StringRef riscv::getRISCVABI(const ArgList &Args, const llvm::Triple &Triple) {
   if (Arg *A = Args.getLastArg(options::OPT_mabi_EQ))
     return A->getValue();
 
-  return Triple.getArch() == llvm::Triple::riscv32 ? "ilp32" : "lp64";
+  return Triple.getArch() == llvm::Triple::riscv32 ? "ilp32" : "lp64d";
 }

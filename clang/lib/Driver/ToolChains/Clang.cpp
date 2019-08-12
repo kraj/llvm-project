@@ -1878,7 +1878,7 @@ void Clang::AddRISCVTargetArgs(const ArgList &Args,
   else if (Triple.getArch() == llvm::Triple::riscv32)
     ABIName = "ilp32";
   else if (Triple.getArch() == llvm::Triple::riscv64)
-    ABIName = "lp64";
+    ABIName = "lp64d";
   else
     llvm_unreachable("Unexpected triple!");
 
