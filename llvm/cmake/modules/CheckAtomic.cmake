@@ -30,10 +30,11 @@ function(check_working_cxx_atomics64 varname)
 #include <atomic>
 #include <cstdint>
 std::atomic<uint64_t> x (0);
+std::atomic<double> y (0);
 int main() {
   uint64_t i = x.load(std::memory_order_relaxed);
   (void)i;
-  return 0;
+  return int(y);
 }
 " ${varname})
   set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
