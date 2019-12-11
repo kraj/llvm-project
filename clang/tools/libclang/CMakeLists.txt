@@ -58,9 +58,8 @@ if (TARGET clangTidyPlugin)
   endif()
 endif ()
 
-find_library(DL_LIBRARY_PATH dl)
-if (DL_LIBRARY_PATH)
-  list(APPEND LIBS dl)
+if (HAVE_LIBDL)
+  list(APPEND LIBS ${CMAKE_DL_LIBS})
 endif()
 
 option(LIBCLANG_BUILD_STATIC
