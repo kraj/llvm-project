@@ -26,9 +26,9 @@
 
 // CHECK-ELFv1: "-mrelocation-model" "static"
 // CHECK-ELFv1: "-target-abi" "elfv1"
-// CHECK-ELFv1-LE: "-mrelocation-model" "static"
+// CHECK-ELFv1-LE: "-mrelocation-model" "pic" "-pic-level" "2"
 // CHECK-ELFv1-LE: "-target-abi" "elfv1"
-// CHECK-ELFv2: "-mrelocation-model" "static"
+// CHECK-ELFv2: "-mrelocation-model" "pic" "-pic-level" "2"
 // CHECK-ELFv2: "-target-abi" "elfv2"
 // CHECK-ELFv2-BE: "-mrelocation-model" "static"
 // CHECK-ELFv2-BE: "-target-abi" "elfv2"
