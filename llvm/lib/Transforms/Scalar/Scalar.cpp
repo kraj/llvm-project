@@ -91,6 +91,7 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializePartiallyInlineLibCallsLegacyPassPass(Registry);
   initializeReassociateLegacyPassPass(Registry);
   initializeRedundantDbgInstEliminationPass(Registry);
+  initializePureUndefDbgInstEliminationPass(Registry);
   initializeRegToMemPass(Registry);
   initializeRewriteStatepointsForGCLegacyPassPass(Registry);
   initializeSCCPLegacyPassPass(Registry);

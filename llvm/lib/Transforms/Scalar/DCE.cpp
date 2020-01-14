@@ -116,6 +116,36 @@ Pass *llvm::createRedundantDbgInstEliminationPass() {
 }
 
 //===--------------------------------------------------------------------===//
+// PureUndefDbgInstElimination pass implementation
+//
+
+namespace {
+struct PureUndefDbgInstElimination : public FunctionPass {
+  static char ID; // Pass identification, replacement for typeid
+  PureUndefDbgInstElimination() : FunctionPass(ID) {
+    initializePureUndefDbgInstEliminationPass(*PassRegistry::getPassRegistry());
+  }
+  bool runOnFunction(Function &F) override {
+    if (skipFunction(F))
+      return false;
+    return RemovePureUndefDbgInstrs(F);
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+  }
+};
+}
+
+char PureUndefDbgInstElimination::ID = 0;
+INITIALIZE_PASS(PureUndefDbgInstElimination, "pure-undef-dbg-inst-elim",
+                "Pure Undef Dbg Instruction Elimination", false, false)
+
+Pass *llvm::createPureUndefDbgInstEliminationPass() {
+  return new PureUndefDbgInstElimination();
+}
+
+//===--------------------------------------------------------------------===//
 // DeadCodeElimination pass implementation
 //
 

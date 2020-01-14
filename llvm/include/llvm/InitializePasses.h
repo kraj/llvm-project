@@ -347,6 +347,7 @@ void initializeRAGreedyPass(PassRegistry&);
 void initializeReachingDefAnalysisPass(PassRegistry&);
 void initializeReassociateLegacyPassPass(PassRegistry&);
 void initializeRedundantDbgInstEliminationPass(PassRegistry&);
+void initializePureUndefDbgInstEliminationPass(PassRegistry&);
 void initializeRegAllocFastPass(PassRegistry&);
 void initializeRegBankSelectPass(PassRegistry&);
 void initializeRegToMemPass(PassRegistry&);

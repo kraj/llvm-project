@@ -314,6 +314,40 @@ bool llvm::MergeBlockIntoPredecessor(BasicBlock *BB, DomTreeUpdater *DTU,
   return true;
 }
 
+bool llvm::RemovePureUndefDbgInstrs(Function &F) {
+  DenseMap<DebugVariable, SmallVector<DbgValueInst *, 8> > VariableMap;
+  DenseSet<DebugVariable> NonUndefVariables;
+
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      if (DbgValueInst *DVI = dyn_cast<DbgValueInst>(&I)) {
+        DebugVariable Key(DVI->getVariable(),
+                          DVI->getExpression(),
+                          DVI->getDebugLoc()->getInlinedAt());
+        if (NonUndefVariables.count(Key))
+          continue;
+        if (DVI->getValue() == UndefValue::get(DVI->getValue()->getType())) {
+          auto R = VariableMap.insert(
+            { Key, SmallVector<DbgValueInst *, 8>(1, DVI) });
+          if (!R.second) {
+            auto VMI = R.first;
+            VMI->second.push_back(DVI);
+          }
+        } else {
+          NonUndefVariables.insert(Key);
+          VariableMap.erase(Key);
+        }
+      }
+    }
+  }
+
+  for (auto VariableMapping : VariableMap)
+    for (auto &Instr : VariableMapping.second)
+      Instr->eraseFromParent();
+
+  return VariableMap.size() > 0;
+}
+
 /// Remove redundant instructions within sequences of consecutive dbg.value
 /// instructions. This is done using a backward scan to keep the last dbg.value
 /// describing a specific variable/fragment.

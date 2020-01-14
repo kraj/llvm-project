@@ -98,6 +98,8 @@ bool MergeBlockIntoPredecessor(BasicBlock *BB, DomTreeUpdater *DTU = nullptr,
 /// Returns true if at least one instruction was removed.
 bool RemoveRedundantDbgInstrs(BasicBlock *BB);
 
+bool RemovePureUndefDbgInstrs(Function &F);
+
 /// Replace all uses of an instruction (specified by BI) with a value, then
 /// remove and delete the original instruction.
 void ReplaceInstWithValue(BasicBlock::InstListType &BIL,
