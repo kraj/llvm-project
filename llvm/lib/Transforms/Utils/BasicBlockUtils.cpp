@@ -315,37 +315,37 @@ bool llvm::MergeBlockIntoPredecessor(BasicBlock *BB, DomTreeUpdater *DTU,
 }
 
 bool llvm::RemovePureUndefDbgInstrs(Function &F) {
-  DenseMap<DebugVariable, SmallVector<DbgValueInst *, 8> > VariableMap;
-  DenseSet<DebugVariable> NonUndefVariables;
+  SmallDenseMap<DebugVariable, SmallVector<DbgValueInst *, 8>, 8>
+      UndefVariableMap;
+  SmallDenseSet<DebugVariable, 8> NonUndefVariables;
 
   for (auto &BB : F) {
     for (auto &I : BB) {
       if (DbgValueInst *DVI = dyn_cast<DbgValueInst>(&I)) {
-        DebugVariable Key(DVI->getVariable(),
-                          DVI->getExpression(),
+        DebugVariable Key(DVI->getVariable(), DVI->getExpression(),
                           DVI->getDebugLoc()->getInlinedAt());
         if (NonUndefVariables.count(Key))
           continue;
         if (DVI->getValue() == UndefValue::get(DVI->getValue()->getType())) {
-          auto R = VariableMap.insert(
-            { Key, SmallVector<DbgValueInst *, 8>(1, DVI) });
+          auto R = UndefVariableMap.insert(
+              {Key, SmallVector<DbgValueInst *, 8>(1, DVI)});
           if (!R.second) {
             auto VMI = R.first;
             VMI->second.push_back(DVI);
           }
         } else {
           NonUndefVariables.insert(Key);
-          VariableMap.erase(Key);
+          UndefVariableMap.erase(Key);
         }
       }
     }
   }
 
-  for (auto VariableMapping : VariableMap)
-    for (auto &Instr : VariableMapping.second)
+  for (auto UndefVariableMapping : UndefVariableMap)
+    for (auto &Instr : UndefVariableMapping.second)
       Instr->eraseFromParent();
 
-  return VariableMap.size() > 0;
+  return UndefVariableMap.size() > 0;
 }
 
 /// Remove redundant instructions within sequences of consecutive dbg.value

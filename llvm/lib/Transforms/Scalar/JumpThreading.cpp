@@ -420,12 +420,13 @@ bool JumpThreadingPass::runImpl(Function &F, TargetLibraryInfo *TLI_,
       auto *BI = dyn_cast<BranchInst>(BB.getTerminator());
       if (BI && BI->isUnconditional()) {
         BasicBlock *Succ = BI->getSuccessor(0);
-        if(
+        if (
             // The terminator must be the only non-phi instruction in BB.
             BB.getFirstNonPHIOrDbg()->isTerminator() &&
             // Don't alter Loop headers and latches to ensure another pass can
             // detect and transform nested loops later.
-            !LoopHeaders.count(&BB) && !LoopHeaders.count(BI->getSuccessor(0)) &&
+            !LoopHeaders.count(&BB) &&
+            !LoopHeaders.count(BI->getSuccessor(0)) &&
             TryToSimplifyUncondBranchFromEmptyBlock(&BB, DTU)) {
           // BB is valid for cleanup here because we passed in DTU. F remains
           // BB's parent until a DTU->getDomTree() event.

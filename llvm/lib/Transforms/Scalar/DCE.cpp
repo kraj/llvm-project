@@ -135,7 +135,7 @@ struct PureUndefDbgInstElimination : public FunctionPass {
     AU.setPreservesCFG();
   }
 };
-}
+} // namespace
 
 char PureUndefDbgInstElimination::ID = 0;
 INITIALIZE_PASS(PureUndefDbgInstElimination, "pure-undef-dbg-inst-elim",
