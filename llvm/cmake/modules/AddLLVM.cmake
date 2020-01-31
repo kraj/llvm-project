@@ -1335,7 +1335,6 @@ macro(llvm_add_tool project name)
       if( LLVM_BUILD_TOOLS )
         get_target_export_arg(${name} LLVM export_to_llvmexports)
         install(TARGETS ${name}
-                ${export_to_llvmexports}
                 RUNTIME DESTINATION ${${project}_TOOLS_INSTALL_DIR}
                 COMPONENT ${name})
 
@@ -1345,9 +1344,6 @@ macro(llvm_add_tool project name)
                                   COMPONENT ${name})
         endif()
       endif()
-    endif()
-    if( LLVM_BUILD_TOOLS )
-      set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS ${name})
     endif()
     set_target_properties(${name} PROPERTIES FOLDER "Tools")
   endif()
@@ -1393,7 +1389,6 @@ macro(add_llvm_utility name)
     if (LLVM_INSTALL_UTILS AND LLVM_BUILD_UTILS)
       get_target_export_arg(${name} LLVM export_to_llvmexports)
       install(TARGETS ${name}
-              ${export_to_llvmexports}
               RUNTIME DESTINATION ${LLVM_UTILS_INSTALL_DIR}
               COMPONENT ${name})
 
@@ -1402,7 +1397,6 @@ macro(add_llvm_utility name)
                                  DEPENDS ${name}
                                  COMPONENT ${name})
       endif()
-      set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS ${name})
     elseif(LLVM_BUILD_UTILS)
       set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS_BUILDTREE_ONLY ${name})
     endif()
