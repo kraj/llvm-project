@@ -177,14 +177,8 @@ macro(add_tablegen target project)
   endif()
 
   if ((${project} STREQUAL LLVM OR ${project} STREQUAL MLIR) AND NOT LLVM_INSTALL_TOOLCHAIN_ONLY AND LLVM_BUILD_UTILS)
-    set(export_to_llvmexports)
-    if(${target} IN_LIST LLVM_DISTRIBUTION_COMPONENTS OR
-        NOT LLVM_DISTRIBUTION_COMPONENTS)
-      set(export_to_llvmexports EXPORT LLVMExports)
-    endif()
 
     install(TARGETS ${target}
-            ${export_to_llvmexports}
             COMPONENT ${target}
             RUNTIME DESTINATION ${LLVM_TOOLS_INSTALL_DIR})
     if(NOT LLVM_ENABLE_IDE)
@@ -193,5 +187,4 @@ macro(add_tablegen target project)
                                COMPONENT ${target})
     endif()
   endif()
-  set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS ${target})
 endmacro()
