@@ -161,15 +161,8 @@ macro(add_clang_tool name)
   add_dependencies(${name} clang-resource-headers)
 
   if (CLANG_BUILD_TOOLS)
-    set(export_to_clangtargets)
-    if(${name} IN_LIST LLVM_DISTRIBUTION_COMPONENTS OR
-        NOT LLVM_DISTRIBUTION_COMPONENTS)
-      set(export_to_clangtargets EXPORT ClangTargets)
-      set_property(GLOBAL PROPERTY CLANG_HAS_EXPORTS True)
-    endif()
 
     install(TARGETS ${name}
-      ${export_to_clangtargets}
       RUNTIME DESTINATION bin
       COMPONENT ${name})
 
@@ -178,7 +171,6 @@ macro(add_clang_tool name)
                                DEPENDS ${name}
                                COMPONENT ${name})
     endif()
-    set_property(GLOBAL APPEND PROPERTY CLANG_EXPORTS ${name})
   endif()
 endmacro()
 
