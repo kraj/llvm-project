@@ -232,12 +232,7 @@ macro(add_tablegen target project)
 
   if (ADD_TABLEGEN_DESTINATION AND NOT LLVM_INSTALL_TOOLCHAIN_ONLY AND
       (LLVM_BUILD_UTILS OR ${target} IN_LIST LLVM_DISTRIBUTION_COMPONENTS))
-    set(export_arg)
-    if(ADD_TABLEGEN_EXPORT)
-      get_target_export_arg(${target} ${ADD_TABLEGEN_EXPORT} export_arg)
-    endif()
     install(TARGETS ${target}
-            ${export_arg}
             COMPONENT ${target}
             RUNTIME DESTINATION "${ADD_TABLEGEN_DESTINATION}")
     if(NOT LLVM_ENABLE_IDE)
@@ -248,6 +243,5 @@ macro(add_tablegen target project)
   endif()
   if(ADD_TABLEGEN_EXPORT)
     string(TOUPPER ${ADD_TABLEGEN_EXPORT} export_upper)
-    set_property(GLOBAL APPEND PROPERTY ${export_upper}_EXPORTS ${target})
   endif()
 endmacro()
