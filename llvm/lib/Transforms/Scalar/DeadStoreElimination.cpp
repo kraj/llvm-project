@@ -88,6 +88,7 @@ STATISTIC(NumNoopStores, "Number of noop stores deleted");
 STATISTIC(NumCFGChecks, "Number of stores modified");
 STATISTIC(NumCFGTries, "Number of stores modified");
 STATISTIC(NumCFGSuccess, "Number of stores modified");
+STATISTIC(NumDomMemDefChecks, "Number of iterations in getDomMemoryDef");
 
 DEBUG_COUNTER(MemorySSACounter, "dse-memoryssa",
               "Controls which MemoryDefs are eliminated.");
@@ -1513,6 +1514,18 @@ struct DSEState {
   /// basic block.
   DenseMap<BasicBlock *, InstOverlapIntervalsTy> IOLs;
 
+  struct CheckCache {
+    SmallPtrSet<MemoryAccess *, 16> KnownNoReads;
+    SmallPtrSet<MemoryAccess *, 16> KnownReads;
+
+    bool isKnownNoRead(MemoryAccess *A) const {
+      return KnownNoReads.find(A) != KnownNoReads.end();
+    }
+    bool isKnownRead(MemoryAccess *A) const {
+      return KnownReads.find(A) != KnownReads.end();
+    }
+  };
+
   DSEState(Function &F, AliasAnalysis &AA, MemorySSA &MSSA, DominatorTree &DT,
            PostDominatorTree &PDT, const TargetLibraryInfo &TLI)
       : F(F), AA(AA), MSSA(MSSA), DT(DT), PDT(PDT), TLI(TLI) {}
@@ -1743,7 +1756,8 @@ struct DSEState {
   Optional<MemoryAccess *>
   getDomMemoryDef(MemoryDef *KillingDef, MemoryAccess *Current,
                   MemoryLocation DefLoc, bool DefVisibleToCallerBeforeRet,
-                  bool DefVisibleToCallerAfterRet, int &ScanLimit) const {
+                  bool DefVisibleToCallerAfterRet, CheckCache &Cache,
+                  int &ScanLimit) const {
     MemoryAccess *DomAccess;
     bool StepAgain;
     LLVM_DEBUG(dbgs() << "  trying to get dominating access for " << *Current
@@ -1798,15 +1812,31 @@ struct DSEState {
     };
     PushMemUses(DomAccess);
 
+    // Optimistically collect all accesses we for reads. If we do not find any
+    // read clobbers, add them to the cache.
+    SmallPtrSet<MemoryAccess *, 16> KnownNoReads;
     // Check if DomDef may be read.
     for (unsigned I = 0; I < WorkList.size(); I++) {
       MemoryAccess *UseAccess = WorkList[I];
-
-      LLVM_DEBUG(dbgs() << "   " << *UseAccess);
+      NumDomMemDefChecks++;
+      LLVM_DEBUG(dbgs() << "   Checking use " << *UseAccess);
       if (--ScanLimit == 0) {
         LLVM_DEBUG(dbgs() << "\n    ...  hit scan limit\n");
         return None;
       }
+
+      // Check if we already visited this access.
+      if (Cache.isKnownNoRead(UseAccess)) {
+        LLVM_DEBUG(dbgs() << " ... skip, discovered that " << *UseAccess
+                          << " is safe earlier.\n");
+        continue;
+      }
+      if (Cache.isKnownRead(UseAccess)) {
+        LLVM_DEBUG(dbgs() << " ... bail out, discovered that " << *UseAccess
+                          << " is has a read-clobber earlier.\n");
+        return None;
+      }
+      KnownNoReads.insert(UseAccess);
 
       if (isa<MemoryPhi>(UseAccess)) {
         LLVM_DEBUG(dbgs() << "\n    ... adding PHI uses\n");
@@ -1831,7 +1861,9 @@ struct DSEState {
       // Uses which may read the original MemoryDef mean we cannot eliminate the
       // original MD. Stop walk.
       if (isReadClobber(DefLoc, UseInst)) {
-        LLVM_DEBUG(dbgs() << "    ... found read clobber\n");
+        LLVM_DEBUG(dbgs() << "  ... found read clobber\n");
+        Cache.KnownReads.insert(UseAccess);
+        Cache.KnownReads.insert(Current);
         return None;
       }
 
@@ -1944,6 +1976,7 @@ struct DSEState {
       return None;
     }
 
+    Cache.KnownNoReads.insert(KnownNoReads.begin(), KnownNoReads.end());
     // No aliasing MemoryUses of DomAccess found, DomAccess is potentially dead.
     return {DomAccess};
   }
@@ -2159,6 +2192,7 @@ bool eliminateDeadStoresMemorySSA(Function &F, AliasAnalysis &AA,
     SetVector<MemoryAccess *> ToCheck;
     ToCheck.insert(KillingDef->getDefiningAccess());
 
+    DSEState::CheckCache Cache;
     // Check if MemoryAccesses in the worklist are killed by KillingDef.
     for (unsigned I = 0; I < ToCheck.size(); I++) {
       Current = ToCheck[I];
@@ -2167,7 +2201,7 @@ bool eliminateDeadStoresMemorySSA(Function &F, AliasAnalysis &AA,
 
       Optional<MemoryAccess *> Next = State.getDomMemoryDef(
           KillingDef, Current, SILoc, DefVisibleToCallerBeforeRet,
-          DefVisibleToCallerAfterRet, ScanLimit);
+          DefVisibleToCallerAfterRet, Cache, ScanLimit);
 
       if (!Next) {
         LLVM_DEBUG(dbgs() << "  finished walk\n");
