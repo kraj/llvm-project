@@ -119,7 +119,13 @@ std::string Driver::GetResourcesPath(StringRef BinaryPath,
     // With a static-library build of libclang, LibClangPath will contain the
     // path of the embedding binary, which for LLVM binaries will be in bin/.
     // ../lib gets us to lib/ in both cases.
-    P = llvm::sys::path::parent_path(Dir);
+    Dir = std::string(llvm::sys::path::parent_path(Dir));
+
+    // OE cross toolchains are installed, by default, in a subdir of bin.
+    if (llvm::sys::path::filename(Dir) == "bin") {
+      Dir = std::string(llvm::sys::path::parent_path(Dir));
+    }
+    P = Dir;
     llvm::sys::path::append(P, Twine("lib") + CLANG_LIBDIR_SUFFIX, "clang",
                             CLANG_VERSION_STRING);
   }
