@@ -115,7 +115,7 @@ foreach Index = 0-31 in {
 // SPE registers
 foreach Index = 0-31 in {
   def S#Index : SPE<!cast<GPR>("R"#Index), "r"#Index>,
-                    DwarfRegNum<[!add(Index, 1200), !add(Index, 1200)]>;
+                    DwarfRegNum<[!add(Index, 117), !add(Index, 117)]>;
 }
 
 // Floating-point registers
