@@ -2062,7 +2062,8 @@ PPCFrameLowering::addScavengingSpillSlot(MachineFunction &MF,
   unsigned StackSize = determineFrameLayout(MF, true);
   MachineFrameInfo &MFI = MF.getFrameInfo();
   if (MFI.hasVarSizedObjects() || spillsCR(MF) || spillsVRSAVE(MF) ||
-      hasNonRISpills(MF) || (hasSpills(MF) && !isInt<16>(StackSize))) {
+      hasNonRISpills(MF) || (hasSpills(MF) && !isInt<16>(StackSize)) ||
+      (Subtarget.hasSPE() && hasSpills(MF) && !isInt<8>(StackSize))) {
     const TargetRegisterClass &GPRC = PPC::GPRCRegClass;
     const TargetRegisterClass &G8RC = PPC::G8RCRegClass;
     const TargetRegisterClass &RC = Subtarget.isPPC64() ? G8RC : GPRC;
