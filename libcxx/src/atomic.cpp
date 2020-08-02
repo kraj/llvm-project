@@ -21,6 +21,16 @@
 #include <linux/futex.h>
 #include <sys/syscall.h>
 
+// libc++ uses SYS_futex, which it expects from system C library.
+// in glibc (/usr/include/bits/syscall.h defines it in terms of of NR_futex)
+// rv32 is using 64bit time_t from get go unlike other 32bit architectures
+// in glibc, therefore it wont have NR_futex defined but just NR_futex_time64
+// this aliases it to NR_futex so that SYS_futex is then defined for rv32
+
+#if !defined(SYS_futex) && defined(SYS_futex_time64)
+#define SYS_futex SYS_futex_time64
+#endif
+
 #else // <- Add other operating systems here
 
 // Baseline needs no new headers
