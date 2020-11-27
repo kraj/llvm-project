@@ -359,7 +359,10 @@ public:
     // name of a class shouldn't be significant. However, some of the backends
     // accidentally rely on this behaviour, so it will have to stay like this
     // until they are fixed.
-    return ValueName < RHS.ValueName;
+    if (ValueName != RHS.ValueName)
+        return ValueName < RHS.ValueName;
+    // All else being equal, we should sort by name, for source and binary reproducibility
+    return Name < RHS.Name;
   }
 };
 
