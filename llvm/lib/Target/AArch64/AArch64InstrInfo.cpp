@@ -2164,6 +2164,11 @@ bool AArch64InstrInfo::getMemOpInfo(unsigned Opcode, TypeSize &Scale,
   case AArch64::LDURDi:
   case AArch64::STURXi:
   case AArch64::STURDi:
+  case AArch64::StoreSwiftAsyncContext:
+#ifdef __IOS_DISCLOSED__
+  case AArch64::LDAPURXi:
+  case AArch64::STLURXi:
+#endif
     Width = 8;
     Scale = TypeSize::Fixed(1);
     MinOffset = -256;
