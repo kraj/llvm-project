@@ -2148,6 +2148,198 @@ ScriptInterpreterPythonImpl::CreateScriptCommandObject(const char *class_name) {
   return StructuredData::GenericSP(new StructuredPythonObject(ret_val));
 }
 
+#pragma mark ScriptedProcessInterface
+
+// StructuredData::GenericSP
+// ScriptInterpreterPythonImpl::ScriptedProcess_CreatePluginObject(
+//                                                         const char
+//                                                         *class_name,
+//                                                         lldb::ProcessSP
+//                                                         process_sp) {
+//  if (class_name == nullptr || class_name[0] == '\0')
+//    return StructuredData::GenericSP();
+//
+//  if (!process_sp)
+//    return StructuredData::GenericSP();
+//
+//  void *ret_val;
+//
+//  {
+//  Locker py_lock(this, Locker::AcquireLock | Locker::NoSTDIN,
+//                 Locker::FreeLock);
+//  ret_val = LLDBSWIGPythonCreateOSPlugin(
+//                                         class_name,
+//                                         m_dictionary_name.c_str(),
+//                                         process_sp);
+//  }
+//
+//  return StructuredData::GenericSP(new StructuredPythonObject(ret_val));
+//}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_Create(
+    StructuredData::ObjectSP scripted_process_object_sp, lldb::pid_t pid,
+    lldb::addr_t context) {
+  Locker py_lock(this, Locker::AcquireLock | Locker::NoSTDIN, Locker::FreeLock);
+
+  static char callee_name[] = "create_process";
+  std::string param_format;
+  param_format += GetPythonValueFormatString(pid);
+  param_format += GetPythonValueFormatString(context);
+
+  if (!scripted_process_object_sp)
+    return StructuredData::DictionarySP();
+
+  StructuredData::Generic *generic = scripted_process_object_sp->GetAsGeneric();
+  if (!generic)
+    return nullptr;
+
+  PythonObject implementor(PyRefType::Borrowed,
+                           (PyObject *)generic->GetValue());
+
+  if (!implementor.IsAllocated())
+    return StructuredData::DictionarySP();
+
+  PythonObject pmeth(PyRefType::Owned,
+                     PyObject_GetAttrString(implementor.get(), callee_name));
+
+  if (PyErr_Occurred())
+    PyErr_Clear();
+
+  if (!pmeth.IsAllocated())
+    return StructuredData::DictionarySP();
+
+  if (PyCallable_Check(pmeth.get()) == 0) {
+    if (PyErr_Occurred())
+      PyErr_Clear();
+    return StructuredData::DictionarySP();
+  }
+
+  if (PyErr_Occurred())
+    PyErr_Clear();
+
+  // right now we know this function exists and is callable..
+  PythonObject py_return(PyRefType::Owned,
+                         PyObject_CallMethod(implementor.get(), callee_name,
+                                             &param_format[0], pid, context));
+
+  // if it fails, print the error but otherwise go on
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+
+  if (py_return.get()) {
+    PythonDictionary result_dict(PyRefType::Borrowed, py_return.get());
+    return result_dict.CreateStructuredDictionary();
+  }
+  return StructuredData::DictionarySP();
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_GetNumMemoryRegions(
+    StructuredData::ObjectSP scripted_process_object_sp) {
+  Locker py_lock(this, Locker::AcquireLock | Locker::NoSTDIN, Locker::FreeLock);
+
+  static char callee_name[] = "get_num_memory_regions";
+
+  if (!scripted_process_object_sp)
+    return StructuredData::DictionarySP();
+
+  StructuredData::Generic *generic = scripted_process_object_sp->GetAsGeneric();
+  if (!generic)
+    return nullptr;
+  PythonObject implementor(PyRefType::Borrowed,
+                           (PyObject *)generic->GetValue());
+
+  if (!implementor.IsAllocated())
+    return StructuredData::DictionarySP();
+
+  PythonObject pmeth(PyRefType::Owned,
+                     PyObject_GetAttrString(implementor.get(), callee_name));
+
+  if (PyErr_Occurred())
+    PyErr_Clear();
+
+  if (!pmeth.IsAllocated())
+    return StructuredData::DictionarySP();
+
+  if (PyCallable_Check(pmeth.get()) == 0) {
+    if (PyErr_Occurred())
+      PyErr_Clear();
+    return StructuredData::DictionarySP();
+  }
+
+  if (PyErr_Occurred())
+    PyErr_Clear();
+
+  // right now we know this function exists and is callable..
+  PythonObject py_return(
+      PyRefType::Owned,
+      PyObject_CallMethod(implementor.get(), callee_name, nullptr));
+
+  // if it fails, print the error but otherwise go on
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+
+  if (py_return.get()) {
+    PythonDictionary result(PyRefType::Borrowed, py_return.get());
+    return result.CreateStructuredDictionary();
+  }
+  return StructuredData::DictionarySP();
+}
+
+lldb::MemoryRegionInfoSP
+ScriptInterpreterPythonImpl::ScriptedProcess_GetMemoryRegionAtIndex(
+    StructuredData::ObjectSP scripted_process_object_sp, size_t index) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_GetNumThreads(
+    StructuredData::ObjectSP scripted_process_object_sp) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_GetThreadAtIndex(
+    StructuredData::ObjectSP scripted_process_object_sp, size_t index) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_GetRegisterForThread(
+    StructuredData::ObjectSP scripted_process_object_sp) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_ReadMemoryAtAddress(
+    StructuredData::ObjectSP scripted_process_object_sp, lldb::addr_t address,
+    size_t size) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_GetLoadedImages(
+    StructuredData::ObjectSP scripted_process_object_sp) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_CanDebug(
+    StructuredData::ObjectSP scripted_process_object_sp) {
+  return nullptr;
+}
+
+StructuredData::DictionarySP
+ScriptInterpreterPythonImpl::ScriptedProcess_IsAlive(
+    StructuredData::ObjectSP scripted_process_object_sp) {
+  return nullptr;
+}
+
 bool ScriptInterpreterPythonImpl::GenerateTypeScriptFunction(
     const char *oneliner, std::string &output, const void *name_token) {
   StringList input;

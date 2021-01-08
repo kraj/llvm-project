@@ -340,6 +340,7 @@ typedef std::shared_ptr<lldb_private::LineTable> LineTableSP;
 typedef std::shared_ptr<lldb_private::Listener> ListenerSP;
 typedef std::weak_ptr<lldb_private::Listener> ListenerWP;
 typedef std::shared_ptr<lldb_private::MemoryHistory> MemoryHistorySP;
+typedef std::shared_ptr<lldb_private::MemoryRegionInfo> MemoryRegionInfoSP;
 typedef std::unique_ptr<lldb_private::MemoryRegionInfo> MemoryRegionInfoUP;
 typedef std::shared_ptr<lldb_private::Module> ModuleSP;
 typedef std::weak_ptr<lldb_private::Module> ModuleWP;

@@ -694,6 +694,12 @@ let Command = "process handle" in {
     Desc<"Whether or not the signal should be passed to the process.">;
 }
 
+let Command = "process scripted load" in {
+  def scripted_process_shlib : Option<"shlib", "S">, Arg<"ShlibName">,
+    Completion<"Module">,
+    Desc<"Name of the Python module that holds the scripted porcess.">;
+}
+
 let Command = "process status" in {
   def process_status_verbose : Option<"verbose", "v">, Group<1>,
     Desc<"Show verbose process status including extended crash information.">;

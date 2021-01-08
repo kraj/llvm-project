@@ -49,6 +49,8 @@ public:
     return m_name;
   }
 
+  bool IsClass() const { return m_is_class; }
+
 protected:
   std::string m_name;
   std::string m_current_key;

@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CommandObjectProcess.h"
+#include "CommandObjectProcessScripted.h"
 #include "lldb/Breakpoint/Breakpoint.h"
 #include "lldb/Breakpoint/BreakpointLocation.h"
 #include "lldb/Breakpoint/BreakpointSite.h"
@@ -1584,6 +1585,8 @@ CommandObjectMultiwordProcess::CommandObjectMultiwordProcess(
                  CommandObjectSP(new CommandObjectProcessSignal(interpreter)));
   LoadSubCommand("handle",
                  CommandObjectSP(new CommandObjectProcessHandle(interpreter)));
+  LoadSubCommand("scripted", CommandObjectSP(new CommandObjectProcessScripted(
+                                 interpreter)));
   LoadSubCommand("status",
                  CommandObjectSP(new CommandObjectProcessStatus(interpreter)));
   LoadSubCommand("interrupt", CommandObjectSP(new CommandObjectProcessInterrupt(

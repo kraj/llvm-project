@@ -126,6 +126,7 @@ using namespace lldb;
 %include "interfaces.swig"
 %include "python-extensions.swig"
 %include "python-wrapper.swig"
+%include "python-scripted-process.swig"
 
 %pythoncode%{
 _initialize = True

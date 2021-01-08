@@ -20,6 +20,7 @@ add_lldb_library(lldbCommands
   CommandObjectPlatform.cpp
   CommandObjectPlugin.cpp
   CommandObjectProcess.cpp
+  CommandObjectProcessScripted.cpp
   CommandObjectQuit.cpp
   CommandObjectRegexCommand.cpp
   CommandObjectRegister.cpp

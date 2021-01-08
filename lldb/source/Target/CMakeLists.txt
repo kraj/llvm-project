@@ -32,6 +32,7 @@ add_lldb_library(lldbTarget
   RegisterContextUnwind.cpp
   RegisterNumber.cpp
   RemoteAwarePlatform.cpp
+  ScriptedProcess.cpp
   SectionLoadHistory.cpp
   SectionLoadList.cpp
   StackFrame.cpp
@@ -55,6 +56,7 @@ add_lldb_library(lldbTarget
   ThreadPlanPython.cpp
   ThreadPlanRunToAddress.cpp
   ThreadPlanShouldStopHere.cpp
+  ThreadPlanStack.cpp
   ThreadPlanStepInRange.cpp
   ThreadPlanStepInstruction.cpp
   ThreadPlanStepOut.cpp
@@ -64,7 +66,6 @@ add_lldb_library(lldbTarget
   ThreadPlanStepThrough.cpp
   ThreadPlanStepUntil.cpp
   ThreadPlanTracer.cpp
-  ThreadPlanStack.cpp
   ThreadSpec.cpp
   ThreadTrace.cpp
   Trace.cpp

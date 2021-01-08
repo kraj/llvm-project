@@ -74,6 +74,44 @@ public:
   StructuredData::GenericSP
   CreateScriptCommandObject(const char *class_name) override;
 
+  StructuredData::DictionarySP ScriptedProcess_CreatePluginObject(
+      StructuredData::ObjectSP scripted_process_object_sp, lldb::pid_t pid,
+      lldb::addr_t context);
+
+  StructuredData::DictionarySP
+  ScriptedProcess_Create(StructuredData::ObjectSP scripted_process_object_sp,
+                         lldb::pid_t pid, lldb::addr_t context) override;
+
+  StructuredData::DictionarySP ScriptedProcess_GetNumMemoryRegions(
+      StructuredData::ObjectSP scripted_process_object_sp) override;
+
+  lldb::MemoryRegionInfoSP ScriptedProcess_GetMemoryRegionAtIndex(
+      StructuredData::ObjectSP scripted_process_object_sp,
+      size_t index) override;
+
+  StructuredData::DictionarySP ScriptedProcess_GetNumThreads(
+      StructuredData::ObjectSP scripted_process_object_sp) override;
+
+  StructuredData::DictionarySP ScriptedProcess_GetThreadAtIndex(
+      StructuredData::ObjectSP scripted_process_object_sp,
+      size_t index) override;
+
+  StructuredData::DictionarySP ScriptedProcess_GetRegisterForThread(
+      StructuredData::ObjectSP scripted_process_object_sp) override;
+
+  StructuredData::DictionarySP ScriptedProcess_ReadMemoryAtAddress(
+      StructuredData::ObjectSP scripted_process_object_sp, lldb::addr_t address,
+      size_t size) override;
+
+  StructuredData::DictionarySP ScriptedProcess_GetLoadedImages(
+      StructuredData::ObjectSP scripted_process_object_sp) override;
+
+  StructuredData::DictionarySP ScriptedProcess_CanDebug(
+      StructuredData::ObjectSP scripted_process_object_sp) override;
+
+  StructuredData::DictionarySP ScriptedProcess_IsAlive(
+      StructuredData::ObjectSP scripted_process_object_sp) override;
+
   StructuredData::ObjectSP
   CreateScriptedThreadPlan(const char *class_name,
                            StructuredDataImpl *args_data,

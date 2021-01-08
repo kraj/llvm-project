@@ -20,6 +20,7 @@
 #include "lldb/Host/PseudoTerminal.h"
 #include "lldb/Utility/FileSpec.h"
 #include "lldb/Utility/ProcessInfo.h"
+#include "lldb/Utility/StructuredData.h"
 
 namespace lldb_private {
 
@@ -161,6 +162,34 @@ protected:
                             // meaning to the upper levels of lldb.
   lldb::ListenerSP m_listener_sp;
   lldb::ListenerSP m_hijack_listener_sp;
+};
+
+// ScriptedProcessLaunchInfo
+//
+// Describes any information that is required to launch a scripted process
+// - Script file + Class name
+// - Key-Value dictionary
+
+class ScriptedProcessLaunchInfo {
+public:
+  ScriptedProcessLaunchInfo(const FileSpec &script, llvm::StringRef class_name)
+      : m_script_file(script), m_class_name(class_name), m_is_class(true),
+        m_dictionary_sp(nullptr) {}
+
+  ScriptedProcessLaunchInfo(const StructuredData::DictionarySP dictionary)
+      : m_script_file(), m_class_name(), m_is_class(false),
+        m_dictionary_sp(dictionary) {}
+
+  FileSpec GetScriptFileSpec() const { return m_script_file; }
+  llvm::StringRef GetClassName() const { return m_class_name; }
+  bool IsClass() const { return m_is_class; }
+  StructuredData::DictionarySP GetDictionary() const { return m_dictionary_sp; }
+
+private:
+  FileSpec m_script_file;
+  llvm::StringRef m_class_name;
+  bool m_is_class;
+  StructuredData::DictionarySP m_dictionary_sp;
 };
 }
 

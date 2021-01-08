@@ -528,6 +528,60 @@ public:
 
   lldb::ScriptLanguage GetLanguage() { return m_script_lang; }
 
+#pragma mark ScriptedProcessInterface
+
+  virtual StructuredData::DictionarySP
+  ScriptedProcess_Create(StructuredData::ObjectSP scripted_process_object_sp,
+                         lldb::pid_t pid, lldb::addr_t context) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_GetNumMemoryRegions(
+      StructuredData::ObjectSP scripted_process_object_sp) {
+    return nullptr;
+  }
+
+  virtual lldb::MemoryRegionInfoSP ScriptedProcess_GetMemoryRegionAtIndex(
+      StructuredData::ObjectSP scripted_process_object_sp, size_t index) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_GetNumThreads(
+      StructuredData::ObjectSP scripted_process_object_sp) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_GetThreadAtIndex(
+      StructuredData::ObjectSP scripted_process_object_sp, size_t index) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_GetRegisterForThread(
+      StructuredData::ObjectSP scripted_process_object_sp) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_ReadMemoryAtAddress(
+      StructuredData::ObjectSP scripted_process_object_sp, lldb::addr_t address,
+      size_t size) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_GetLoadedImages(
+      StructuredData::ObjectSP scripted_process_object_sp) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP ScriptedProcess_CanDebug(
+      StructuredData::ObjectSP scripted_process_object_sp) {
+    return nullptr;
+  }
+
+  virtual StructuredData::DictionarySP
+  ScriptedProcess_IsAlive(StructuredData::ObjectSP scripted_process_object_sp) {
+    return nullptr;
+  }
+
 protected:
   Debugger &m_debugger;
   lldb::ScriptLanguage m_script_lang;

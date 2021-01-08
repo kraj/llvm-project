@@ -27,8 +27,8 @@
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/State.h"
 
-#include "ProcessMachCore.h"
 #include "Plugins/Process/Utility/StopInfoMachException.h"
+#include "ProcessMachCore.h"
 #include "ThreadMachCore.h"
 
 // Needed for the plug-in names for the dynamic loaders.

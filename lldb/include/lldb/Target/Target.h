@@ -519,6 +519,20 @@ public:
 
   bool IsDummyTarget() const { return m_is_dummy_target; }
 
+  bool IsScriptable() const {
+    return m_scripted_process_launch_info.hasValue();
+  }
+
+  llvm::Optional<lldb_private::ScriptedProcessLaunchInfo>
+  GetScriptedProcessLaunchInfo() const {
+    return m_scripted_process_launch_info;
+  }
+
+  void
+  SetScriptedProcessLaunchInfo(const ScriptedProcessLaunchInfo &launch_info) {
+    m_scripted_process_launch_info = launch_info;
+  }
+
   /// Find a binary on the system and return its Module,
   /// or return an existing Module that is already in the Target.
   ///
@@ -1420,6 +1434,9 @@ protected:
   bool m_valid;
   bool m_suppress_stop_hooks;
   bool m_is_dummy_target;
+  bool m_is_scriptable;
+  llvm::Optional<lldb_private::ScriptedProcessLaunchInfo>
+      m_scripted_process_launch_info;
   unsigned m_next_persistent_variable_index = 0;
   /// An optional \a lldb_private::Trace object containing processor trace
   /// information of this target.
