@@ -702,7 +702,7 @@ static Triple::VendorType parseVendor(StringRef VendorName) {
       .Case("suse", Triple::SUSE)
       .Case("oe", Triple::OpenEmbedded)
       .Case("intel", Triple::Intel)
-      .Case("meta", Triple::Meta)
+      .Case("meta", Triple::Meta) //CLANG_EXTRA_OE_VENDORS_CASES
       .Default(Triple::UnknownVendor);
 }
 
