@@ -81,6 +81,7 @@ std::string Linux::getMultiarchTriple(const Driver &D,
       return "x86_64-linux-android";
     if (TargetEnvironment == llvm::Triple::GNUX32)
       return "x86_64-linux-gnux32";
+    //CLANG_EXTRA_OE_DISTRO_TRIPLE
     return "x86_64-linux-gnu";
   case llvm::Triple::aarch64:
     if (IsAndroid)
