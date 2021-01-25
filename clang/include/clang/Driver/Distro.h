@@ -45,6 +45,7 @@ public:
     RHEL10,
     Fedora,
     Gentoo,
+    //CLANG_EXTRA_OE_DISTRO_NAME
     OpenSUSE,
     UbuntuQuantal,
     UbuntuRaring,
@@ -134,6 +135,7 @@ public:
 
   bool IsGentoo() const { return DistroVal == Gentoo; }
 
+  //CLANG_EXTRA_OE_DISTRO_CHECK
   /// @}
 };
 
