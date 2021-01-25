@@ -43,6 +43,7 @@ static Distro::DistroType DetectOsRelease(llvm::vfs::FileSystem &VFS) {
                     .Case("sles", Distro::OpenSUSE)
                     .Case("opensuse", Distro::OpenSUSE)
                     .Case("exherbo", Distro::Exherbo)
+                    //CLANG_EXTRA_OE_DISTRO_CASE
                     .Default(Distro::UnknownDistro);
   return Version;
 }
