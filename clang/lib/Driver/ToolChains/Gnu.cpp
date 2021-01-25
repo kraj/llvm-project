@@ -2111,6 +2111,7 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       "x86_64-redhat-linux",    "x86_64-suse-linux",
       "x86_64-manbo-linux-gnu", "x86_64-linux-gnu",
       "x86_64-slackware-linux", "x86_64-unknown-linux",
+      "x86_64-oe-linux",//CLANG_EXTRA_OE_VENDORS_TRIPLES
       "x86_64-amazon-linux",    "x86_64-linux-android"};
   static const char *const X32Triples[] = {"x86_64-linux-gnux32",
                                            "x86_64-pc-linux-gnux32"};
