@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstddef> // for size_t
 #include <dlfcn.h> // for dlsym()
 
 static void *getFuncAddr(const char *name, uintptr_t wrapper_addr) {
