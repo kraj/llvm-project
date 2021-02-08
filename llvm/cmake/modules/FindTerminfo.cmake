@@ -11,7 +11,7 @@
 # Additionally, the following import target will be defined:
 # Terminfo::terminfo
 
-find_library(Terminfo_LIBRARIES NAMES terminfo tinfo curses ncurses ncursesw)
+find_library(Terminfo_LIBRARIES NAMES terminfo tinfo curses ncurses ncursesw NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 
 if(Terminfo_LIBRARIES)
   include(CMakePushCheckState)
