@@ -1521,8 +1521,8 @@ bool IndVarSimplify::optimizeLoopExits(Loop *L, SCEVExpander &Rewriter) {
 
     // Can we prove that some other exit must be taken strictly before this
     // one?
-    if (SE->isLoopEntryGuardedByCond(L, CmpInst::ICMP_ULT,
-                                     MaxExitCount, ExitCount)) {
+    if (SE->isLoopEntryGuardedByCond(L, CmpInst::ICMP_ULT, MaxExitCount,
+                                     ExitCount)) {
       foldExit(L, ExitingBB, false, DeadInsts);
       Changed = true;
       continue;

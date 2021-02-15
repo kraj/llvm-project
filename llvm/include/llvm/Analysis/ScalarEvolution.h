@@ -1876,6 +1876,11 @@ private:
   bool isKnownPredicateViaConstantRanges(ICmpInst::Predicate Pred,
                                          const SCEV *LHS, const SCEV *RHS);
 
+  /// Test if the given expression is known to satisfy the condition described
+  /// by Pred by decomposing a subtraction.
+  bool isKnownPredicateViaSubIdiom(ICmpInst::Predicate Pred, const SCEV *LHS,
+                                   const SCEV *RHS);
+
   /// Try to prove the condition described by "LHS Pred RHS" by ruling out
   /// integer overflow.
   ///

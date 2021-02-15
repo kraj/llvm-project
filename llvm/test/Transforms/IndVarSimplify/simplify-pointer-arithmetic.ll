@@ -20,10 +20,7 @@ define i1 @can_simplify_ult_i32_ptr_len_zext(i32* %p.base, i32 %len) {
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       header:
 ; CHECK-NEXT:    [[P:%.*]] = phi i32* [ [[P_INC:%.*]], [[LATCH:%.*]] ], [ [[P_BASE]], [[HEADER_PREHEADER]] ]
-; CHECK-NEXT:    [[I:%.*]] = phi i64 [ [[I_INC:%.*]], [[LATCH]] ], [ 0, [[HEADER_PREHEADER]] ]
-; CHECK-NEXT:    [[I_INC]] = add nuw nsw i64 [[I]], 1
-; CHECK-NEXT:    [[I_ULT_EXT:%.*]] = icmp ult i64 [[I]], [[EXT]]
-; CHECK-NEXT:    br i1 [[I_ULT_EXT]], label [[LATCH]], label [[TRAP_LOOPEXIT:%.*]]
+; CHECK-NEXT:    br i1 true, label [[LATCH]], label [[TRAP_LOOPEXIT:%.*]]
 ; CHECK:       latch:
 ; CHECK-NEXT:    [[P_INC]] = getelementptr inbounds i32, i32* [[P]], i64 1
 ; CHECK-NEXT:    [[C:%.*]] = icmp ne i32* [[P_INC]], [[P_END]]
@@ -179,10 +176,7 @@ define i1 @can_simplify_ule_i32_ptr_len_zext(i32* %p.base, i32 %len) {
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       header:
 ; CHECK-NEXT:    [[P:%.*]] = phi i32* [ [[P_INC:%.*]], [[LATCH:%.*]] ], [ [[P_BASE]], [[HEADER_PREHEADER]] ]
-; CHECK-NEXT:    [[I:%.*]] = phi i64 [ [[I_INC:%.*]], [[LATCH]] ], [ 1, [[HEADER_PREHEADER]] ]
-; CHECK-NEXT:    [[I_INC]] = add nuw nsw i64 [[I]], 1
-; CHECK-NEXT:    [[I_ULT_EXT:%.*]] = icmp ule i64 [[I]], [[EXT]]
-; CHECK-NEXT:    br i1 [[I_ULT_EXT]], label [[LATCH]], label [[TRAP_LOOPEXIT:%.*]]
+; CHECK-NEXT:    br i1 true, label [[LATCH]], label [[TRAP_LOOPEXIT:%.*]]
 ; CHECK:       latch:
 ; CHECK-NEXT:    [[P_INC]] = getelementptr inbounds i32, i32* [[P]], i64 1
 ; CHECK-NEXT:    [[C:%.*]] = icmp ne i32* [[P_INC]], [[P_END]]
@@ -234,10 +228,7 @@ define i1 @can_simplify_uge_i32_ptr_len_zext(i32* %p.base, i32 %len) {
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       header:
 ; CHECK-NEXT:    [[P:%.*]] = phi i32* [ [[P_INC:%.*]], [[LATCH:%.*]] ], [ [[P_BASE]], [[HEADER_PREHEADER]] ]
-; CHECK-NEXT:    [[I:%.*]] = phi i64 [ [[I_INC:%.*]], [[LATCH]] ], [ 0, [[HEADER_PREHEADER]] ]
-; CHECK-NEXT:    [[I_INC]] = add nuw nsw i64 [[I]], 1
-; CHECK-NEXT:    [[I_UGE_EXT:%.*]] = icmp uge i64 [[I]], [[EXT]]
-; CHECK-NEXT:    br i1 [[I_UGE_EXT]], label [[TRAP_LOOPEXIT:%.*]], label [[LATCH]]
+; CHECK-NEXT:    br i1 false, label [[TRAP_LOOPEXIT:%.*]], label [[LATCH]]
 ; CHECK:       latch:
 ; CHECK-NEXT:    [[P_INC]] = getelementptr inbounds i32, i32* [[P]], i64 1
 ; CHECK-NEXT:    [[C:%.*]] = icmp ne i32* [[P_INC]], [[P_END]]

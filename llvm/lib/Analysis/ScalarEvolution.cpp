@@ -1833,6 +1833,12 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
           }
   }
 
+  // zext (A umax B) --> (zext A) umax (zext B)
+  if (auto *SM = dyn_cast<SCEVUMaxExpr>(Op)) {
+    return getUMaxExpr(getZeroExtendExpr(SM->getOperand(0), Ty),
+                       getZeroExtendExpr(SM->getOperand(1), Ty));
+  }
+
   // The cast wasn't folded; create an explicit cast node.
   // Recompute the insert position, as it may have been invalidated.
   if (const SCEV *S = UniqueSCEVs.FindNodeOrInsertPos(ID, IP)) return S;
@@ -3103,6 +3109,34 @@ const SCEV *ScalarEvolution::getUDivExpr(const SCEV *LHS,
   assert(getEffectiveSCEVType(LHS->getType()) ==
          getEffectiveSCEVType(RHS->getType()) &&
          "SCEVUDivExpr operand types don't match!");
+
+  // Try to shift udiv across an addition even when no wrapping info is
+  // present, using the fact that (B - A)  will be in [0, B+1), if
+  // B s>= A and A s>= 0.
+  //
+  // (-C1 + X) /u C2 can be transformed to (C1 /u C3) + (X /u C2), if
+  //   * C1 % C2 == 0
+  //   * X % C3 == 0
+  //   * X s>= C1
+  //   * C1 s>= 0
+  //
+  // If C1 and C2 are constants, at least one of udiv expression can be
+  // eliminated. This pattern is commonly created for trip counts
+  // involving pointer IVs, where a multiple of the element width
+  // is subtracted.
+  const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(LHS);
+  const SCEVConstant *C = dyn_cast<SCEVConstant>(RHS);
+  if (Add && C && Add->getNumOperands() == 2) {
+    unsigned MultTrailing = C->getAPInt().countTrailingZeros();
+    auto *NegOp0 = getNegativeSCEV(Add->getOperand(0));
+    if (GetMinTrailingZeros(Add->getOperand(0)) >= MultTrailing &&
+        GetMinTrailingZeros(Add->getOperand(1)) >= MultTrailing &&
+        isKnownNonNegative(NegOp0) &&
+        isKnownPredicate(CmpInst::ICMP_SGE, Add->getOperand(1), NegOp0)) {
+      return getMinusSCEV(getUDivExactExpr(Add->getOperand(1), RHS),
+                          getUDivExactExpr(NegOp0, RHS));
+    }
+  }
 
   FoldingSetNodeID ID;
   ID.AddInteger(scUDivExpr);
@@ -9113,7 +9147,6 @@ ScalarEvolution::howFarToZero(const SCEV *V, const Loop *L, bool ControlsExit,
   // First compute the unsigned distance from zero in the direction of Step.
   bool CountDown = StepC->getAPInt().isNegative();
   const SCEV *Distance = CountDown ? Start : getNegativeSCEV(Start);
-
   // Handle unitary steps, which cannot wraparound.
   // 1*N = -Start; -1*N = Start (mod 2^BW), so:
   //   N = Distance (as unsigned)
@@ -10095,7 +10128,10 @@ bool ScalarEvolution::isLoopEntryGuardedByCond(const Loop *L,
          "LHS is not available at Loop Entry");
   assert(isAvailableAtLoopEntry(RHS, L) &&
          "RHS is not available at Loop Entry");
-  return isBasicBlockEntryGuardedByCond(L->getHeader(), Pred, LHS, RHS);
+  if (isBasicBlockEntryGuardedByCond(L->getHeader(), Pred, LHS, RHS))
+    return true;
+  return isBasicBlockEntryGuardedByCond(
+      L->getHeader(), Pred, applyLoopGuards(LHS, L), applyLoopGuards(RHS, L));
 }
 
 bool ScalarEvolution::isImpliedCond(ICmpInst::Predicate Pred, const SCEV *LHS,
@@ -10934,10 +10970,28 @@ static bool isKnownPredicateExtendIdiom(ICmpInst::Predicate Pred,
   return false;
 }
 
+bool ScalarEvolution::isKnownPredicateViaSubIdiom(ICmpInst::Predicate Pred,
+                                                  const SCEV *LHS,
+                                                  const SCEV *RHS) {
+  // Handle Y - X <= Y, if X s>= 0 and Y >= X. In that case, the result of (Y -
+  // X) will be in [0, Y+1) expression won't wrap in the unsigned sense.
+  auto *Add = dyn_cast<SCEVAddExpr>(LHS);
+  if (Add && Pred == CmpInst::ICMP_ULE) {
+    auto *X = Add->getOperand(0);
+    auto *Y = Add->getOperand(1);
+    if (Y == RHS && isKnownNonPositive(X) && isKnownNonNegative(Y) &&
+        isKnownPredicateViaConstantRanges(CmpInst::ICMP_UGE, Y,
+                                          getNegativeSCEV(X)))
+      return true;
+  }
+  return false;
+}
+
 bool
 ScalarEvolution::isKnownViaNonRecursiveReasoning(ICmpInst::Predicate Pred,
                                            const SCEV *LHS, const SCEV *RHS) {
   return isKnownPredicateExtendIdiom(Pred, LHS, RHS) ||
+         isKnownPredicateViaSubIdiom(Pred, LHS, RHS) ||
          isKnownPredicateViaConstantRanges(Pred, LHS, RHS) ||
          IsKnownPredicateViaMinOrMax(*this, Pred, LHS, RHS) ||
          IsKnownPredicateViaAddRecStart(*this, Pred, LHS, RHS) ||
@@ -11223,12 +11277,13 @@ ScalarEvolution::howManyLessThans(const SCEV *LHS, const SCEV *RHS,
     return ExitLimit(getCouldNotCompute() /* ExactNotTaken */, MaxBECount,
                      false /*MaxOrZero*/, Predicates);
   }
+
   // If the backedge is taken at least once, then it will be taken
   // (End-Start)/Stride times (rounded up to a multiple of Stride), where Start
   // is the LHS value of the less-than comparison the first time it is evaluated
   // and End is the RHS.
   const SCEV *BECountIfBackedgeTaken =
-    computeBECount(getMinusSCEV(End, Start), Stride, false);
+      computeBECount(getMinusSCEV(End, Start), Stride, false);
   // If the loop entry is guarded by the result of the backedge test of the
   // first loop iteration, then we know the backedge will be taken at least
   // once and so the backedge taken count is as above. If not then we use the
