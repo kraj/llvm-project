@@ -2529,19 +2529,19 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
     // Whether this library suffix is relevant for the triple.
     bool Active;
   } Suffixes[] = {
-      // This is the normal place.
-      {"gcc/" + CandidateTriple.str(), "../..", GCCDirExists},
-
-      // Debian puts cross-compilers in gcc-cross.
-      {"gcc-cross/" + CandidateTriple.str(), "../..", GCCCrossDirExists},
-
       // The Freescale PPC SDK has the gcc libraries in
       // <sysroot>/usr/lib/<triple>/x.y.z so have a look there as well. Only do
       // this on Freescale triples, though, since some systems put a *lot* of
       // files in that location, not just GCC installation data.
       {CandidateTriple.str(), "..",
        TargetTriple.getVendor() == llvm::Triple::Freescale ||
-           TargetTriple.getVendor() == llvm::Triple::OpenEmbedded}};
+           TargetTriple.getVendor() == llvm::Triple::OpenEmbedded},
+
+      // This is the normal place.
+      {"gcc/" + CandidateTriple.str(), "../..", GCCDirExists},
+
+      // Debian puts cross-compilers in gcc-cross.
+      {"gcc-cross/" + CandidateTriple.str(), "../..", GCCCrossDirExists}};
 
   for (auto &Suffix : Suffixes) {
     if (!Suffix.Active)
