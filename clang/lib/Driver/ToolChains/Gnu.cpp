@@ -18,6 +18,7 @@
 #include "clang/Config/config.h" // for GCC_INSTALL_PREFIX
 #include "clang/Driver/CommonArgs.h"
 #include "clang/Driver/Compilation.h"
+#include "clang/Driver/Distro.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/MultilibBuilder.h"
 #include "clang/Driver/Options.h"
@@ -2798,6 +2799,7 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
     const llvm::Triple &TargetTriple, const ArgList &Args,
     const std::string &LibDir, StringRef CandidateTriple,
     bool NeedsBiarchSuffix, bool GCCDirExists, bool GCCCrossDirExists) {
+  Distro Distro(D.getVFS(), TargetTriple);
   // Locations relative to the system lib directory where GCC's triple-specific
   // directories might reside.
   struct GCCLibSuffix {
@@ -2809,19 +2811,20 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
     // Whether this library suffix is relevant for the triple.
     bool Active;
   } Suffixes[] = {
-      // This is the normal place.
-      {"gcc/" + CandidateTriple.str(), "../..", GCCDirExists},
-
-      // Debian puts cross-compilers in gcc-cross.
-      {"gcc-cross/" + CandidateTriple.str(), "../..", GCCCrossDirExists},
-
       // The Freescale PPC SDK has the gcc libraries in
       // <sysroot>/usr/lib/<triple>/x.y.z so have a look there as well. Only do
       // this on Freescale triples, though, since some systems put a *lot* of
       // files in that location, not just GCC installation data.
       {CandidateTriple.str(), "..",
        TargetTriple.getVendor() == llvm::Triple::Freescale ||
-           TargetTriple.getVendor() == llvm::Triple::OpenEmbedded}};
+           TargetTriple.getVendor() == llvm::Triple::OpenEmbedded ||
+           Distro.IsOpenEmbedded()},
+
+      // This is the normal place.
+      {"gcc/" + CandidateTriple.str(), "../..", GCCDirExists},
+
+      // Debian puts cross-compilers in gcc-cross.
+      {"gcc-cross/" + CandidateTriple.str(), "../..", GCCCrossDirExists}};
 
   for (auto &Suffix : Suffixes) {
     if (!Suffix.Active)
@@ -3212,8 +3215,11 @@ Generic_GCC::addLibCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
   // incompatible with the NDK libraries.
   SmallString<128> DriverIncludeDir(getDriver().Dir);
   llvm::sys::path::append(DriverIncludeDir, "..", "include");
+
+  // do not add it when --sysroot is specified, since it would expect
+  // libc++ headers from sysroot and not relative to compiler install location
   if (AddIncludePath(DriverIncludeDir,
-                     /*TargetDirRequired=*/getTriple().isAndroid()))
+                     /*TargetDirRequired=*/getTriple().isAndroid() | !computeSysRoot().empty()))
     return;
   // If this is a development, non-installed, clang, libcxx will
   // not be found at ../include/c++ but it likely to be found at
