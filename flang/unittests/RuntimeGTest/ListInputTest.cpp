@@ -59,7 +59,7 @@ TEST(InputTest, TestListInput) {
 
   static const auto status{IONAME(EndIoStatement)(cookie)};
   ASSERT_EQ(status, 0) << "list-directed input failed, status "
-                             << static_cast<int>(status) << '\n';
+                       << static_cast<int>(status) << '\n';
 
   for (j = 0; j < listInputLength; ++j) {
     ASSERT_EQ(n[j], want[j])
@@ -70,7 +70,7 @@ TEST(InputTest, TestListInput) {
     ASSERT_EQ(std::strcmp(inputBuffers[j],
                   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ "),
         0)
-        << "wanted asc[" << j << "]=alphabets, got '" << inputBuffers[j] << "'\n";
+        << "wanted asc[" << j << "]=alphabets, got '" << inputBuffers[j]
+        << "'\n";
   }
 }
-
