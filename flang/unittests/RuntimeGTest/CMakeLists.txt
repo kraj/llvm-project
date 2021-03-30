@@ -5,6 +5,7 @@ add_flang_unittest(FlangRuntimeTests
   NumericalFormatTest.cpp
   RuntimeCrashTest.cpp
   CrashHandlerFixture.cpp
+  ListInputTest.cpp
 )
 
 target_link_libraries(FlangRuntimeTests
