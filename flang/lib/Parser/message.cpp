@@ -8,6 +8,7 @@
 
 #include "flang/Parser/message.h"
 #include "flang/Common/idioms.h"
+#include "flang/Common/colors.h"
 #include "flang/Parser/char-set.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -143,14 +144,72 @@ bool Message::SortBefore(const Message &that) const {
       location_, that.location_);
 }
 
-bool Message::IsFatal() const {
+DiagnosticLevel Message::GetDiagnosticLevel() const {
   return std::visit(
       common::visitors{
-          [](const MessageExpectedText &) { return true; },
-          [](const MessageFixedText &x) { return x.isFatal(); },
-          [](const MessageFormattedText &x) { return x.isFatal(); },
+          [](const MessageFixedText &t) { return t.GetDiagnosticLevel(); },
+          [](const MessageFormattedText &t) { return t.GetDiagnosticLevel(); },
+          [](const MessageExpectedText &t) { return t.GetDiagnosticLevel(); },
       },
       text_);
+}
+
+std::string Message::GetPrefix() const {
+  std::string prefix{""};
+  switch (GetDiagnosticLevel()) {
+    case DiagnosticLevel::Note: prefix += "note: "; break;
+    case DiagnosticLevel::Remark: break;
+    case DiagnosticLevel::Warning: prefix += "warning: "; break;
+    case DiagnosticLevel::Error:
+    case DiagnosticLevel::Fatal: prefix += "error: "; break;
+  }
+  return prefix;
+}
+
+void Message::EmitPrefix(llvm::raw_ostream &os) const {
+  static const bool showColors{false};
+  if (showColors) {
+    // Print diagnostic category in bold and color
+    switch (GetDiagnosticLevel()) {
+    case DiagnosticLevel::Note:
+      os.changeColor(noteColor, true);
+      break;
+    case DiagnosticLevel::Remark:
+      os.changeColor(remarkColor, true);
+      break;
+    case DiagnosticLevel::Warning:
+      os.changeColor(warningColor, true);
+      break;
+    case DiagnosticLevel::Error:
+      os.changeColor(errorColor, true);
+      break;
+    case DiagnosticLevel::Fatal:
+      os.changeColor(fatalColor, true);
+      break;
+    }
+  }
+
+  switch (GetDiagnosticLevel()) {
+  case DiagnosticLevel::Note:
+    os << "note: ";
+    break;
+  case DiagnosticLevel::Remark:
+    break;
+  case DiagnosticLevel::Warning:
+    os << "warning: ";
+    break;
+  case DiagnosticLevel::Error:
+  case DiagnosticLevel::Fatal:
+    os << "error: ";
+    break;
+  }
+
+  if (showColors)
+    os.resetColor();
+}
+
+bool Message::IsFatal() const {
+  return GetDiagnosticLevel() == DiagnosticLevel::Fatal;
 }
 
 std::string Message::ToString() const {
@@ -191,9 +250,8 @@ void Message::Emit(llvm::raw_ostream &o, const AllCookedSources &allCooked,
     bool echoSourceLine) const {
   std::optional<ProvenanceRange> provenanceRange{GetProvenanceRange(allCooked)};
   std::string text;
-  if (IsFatal()) {
-    text += "error: ";
-  }
+  // EmitPrefix(o);
+  text += GetPrefix();
   text += ToString();
   const AllSources &sources{allCooked.allSources()};
   sources.EmitMessage(o, provenanceRange, text, echoSourceLine);
