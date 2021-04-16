@@ -58,6 +58,8 @@ public:
       const llvm::opt::ArgList &DriverArgs, const JobAction &JA,
       const llvm::fltSemantics *FPType = nullptr) const override;
 
+  unsigned GetDefaultDwarfVersion() const override { return 5; }
+
 protected:
   Tool *buildAssembler() const override;
   Tool *buildLinker() const override;
