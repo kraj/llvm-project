@@ -18,6 +18,7 @@
 #include "llvm/ADT/Optional.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/DIE.h"
+#include "llvm/Target/TargetMachine.h"
 #include <string>
 
 namespace llvm {
@@ -79,6 +80,12 @@ protected:
   template <typename T>
   void addAttribute(DIEValueList &Die, dwarf::Attribute Attribute,
                     dwarf::Form Form, T &&Value) {
+    // For strict DWARF mode, only generate attributes available to current
+    // DWARF version.
+    if (Attribute != 0 && Asm->TM.Options.DebugStrictDwarf &&
+        DD->getDwarfVersion() < dwarf::AttributeVersion(Attribute))
+      return;
+
     Die.addValue(DIEValueAllocator,
                  DIEValue(Attribute, Form, std::forward<T>(Value)));
   }
