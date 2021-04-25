@@ -1020,6 +1020,11 @@ void DwarfUnit::constructTemplateValueParameterDIE(
     if (ConstantInt *CI = mdconst::dyn_extract<ConstantInt>(Val))
       addConstantValue(ParamDIE, CI, VP->getType());
     else if (GlobalValue *GV = mdconst::dyn_extract<GlobalValue>(Val)) {
+      // We need DW_OP_stack_value to represent the value of the global value.
+      // DW_OP_stack_value was introduced in DWARF 4, in strict dwarf mode, we
+      // should not use this expression if DWARF version is smaller than 4.
+      if (Asm->TM.Options.DebugStrictDwarf && DD->getDwarfVersion() < 4)
+        return;
       // We cannot describe the location of dllimport'd entities: the
       // computation of their address requires loads from the IAT.
       if (!GV->hasDLLImportStorageClass()) {
