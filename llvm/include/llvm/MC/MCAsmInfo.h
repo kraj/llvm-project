@@ -345,6 +345,10 @@ protected:
   /// target also needs the directory along with the basename. Default to true.
   bool HasBasenameOnlyForFileDirective = true;
 
+  /// Tue if the target represents string constant as mostly raw characters in
+  /// paired double quotation. Default to false.
+  bool HasPairedDoubleQuoteStringConstants = false;
+
   // True if the target allows .align directives on functions. This is true for
   // most targets, so defaults to true.
   bool HasFunctionAlignment = true;
@@ -672,6 +676,9 @@ public:
 
   bool hasBasenameOnlyForFileDirective() const {
     return HasBasenameOnlyForFileDirective;
+  }
+  bool hasPairedDoubleQuoteStringConstants() const {
+    return HasPairedDoubleQuoteStringConstants;
   }
   bool hasFunctionAlignment() const { return HasFunctionAlignment; }
   bool hasDotTypeDotSizeDirective() const { return HasDotTypeDotSizeDirective; }
