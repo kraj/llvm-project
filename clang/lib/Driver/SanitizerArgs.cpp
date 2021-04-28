@@ -1098,7 +1098,7 @@ void SanitizerArgs::addArgs(const ToolChain &TC, const llvm::opt::ArgList &Args,
   // Only pass the option to the frontend if the user requested,
   // otherwise the frontend will just use the codegen default.
   if (AsanDtorKind != llvm::AsanDtorKind::Invalid) {
-    CmdArgs.push_back(Args.MakeArgString("-fsanitize-address-destructor-kind=" +
+    CmdArgs.push_back(Args.MakeArgString("-fsanitize-address-destructor=" +
                                          AsanDtorKindToString(AsanDtorKind)));
   }
 
