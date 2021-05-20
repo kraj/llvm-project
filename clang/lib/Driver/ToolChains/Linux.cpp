@@ -216,6 +216,9 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
     StringRef TripleStr = T.str();
     StringRef DebianMultiarch =
         T.getArch() == llvm::Triple::x86 ? "i386-linux-gnu" : TripleStr;
+    // OpenEmbedded does not hardcode the triple to i386-linux-gnu like debian
+    if (GCCInstallation.getTriple().getVendor() == llvm::Triple::OpenEmbedded)
+        DebianMultiarch = TripleStr;
     return DebianMultiarch;
   };
 
