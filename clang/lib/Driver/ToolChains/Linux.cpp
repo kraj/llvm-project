@@ -227,8 +227,9 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
     : Generic_ELF(D, Triple, Args) {
   GCCInstallation.TripleToDebianMultiarch = [](const llvm::Triple &T) {
     StringRef TripleStr = T.str();
+    // OpenEmbedded does not hardcode the triple to i386-linux-gnu like debian
     StringRef DebianMultiarch =
-        T.getArch() == llvm::Triple::x86 ? "i386-linux-gnu" : TripleStr;
+        T.getArch() == llvm::Triple::x86 && T.getVendor() != llvm::Triple::OpenEmbedded ? "i386-linux-gnu" : TripleStr;
     return DebianMultiarch;
   };
 
