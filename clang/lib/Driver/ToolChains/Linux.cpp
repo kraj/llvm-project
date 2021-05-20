@@ -619,6 +619,9 @@ void Linux::addLibStdCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
       GCCInstallation.getTriple().getArch() == llvm::Triple::x86
           ? "i386-linux-gnu"
           : TripleStr;
+  // OpenEmbedded does not hardcode the triple to i386-linux-gnu like debian
+  if (GCCInstallation.getTriple().getVendor() == llvm::Triple::OpenEmbedded)
+	  DebianMultiarch = TripleStr;
 
   // Try generic GCC detection first.
   if (Generic_GCC::addGCCLibStdCxxIncludePaths(DriverArgs, CC1Args,
