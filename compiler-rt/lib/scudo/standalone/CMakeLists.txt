@@ -137,6 +137,10 @@ append_list_if(COMPILER_RT_HAS_LIBPTHREAD -pthread SCUDO_LINK_FLAGS)
 
 append_list_if(FUCHSIA zircon SCUDO_LINK_LIBS)
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "mips" AND CMAKE_SYSTEM_NAME MATCHES "Linux")
+    list(APPEND SCUDO_LINK_LIBS atomic)
+endif()
+
 if(COMPILER_RT_HAS_SCUDO_STANDALONE)
   add_compiler_rt_object_libraries(RTScudoStandalone
     ARCHS ${SCUDO_STANDALONE_SUPPORTED_ARCH}
