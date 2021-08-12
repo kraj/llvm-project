@@ -3316,8 +3316,11 @@ Generic_GCC::addLibCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
   // incompatible with the NDK libraries.
   SmallString<128> DriverIncludeDir(getDriver().Dir);
   llvm::sys::path::append(DriverIncludeDir, "..", "include");
+
+  // do not add it when --sysroot is specified, since it would expect
+  // libc++ headers from sysroot and not relative to compiler install location
   if (AddIncludePath(DriverIncludeDir,
-                     /*TargetDirRequired=*/getTriple().isAndroid()))
+                     /*TargetDirRequired=*/getTriple().isAndroid() | !computeSysRoot().empty()))
     return;
   // If this is a development, non-installed, clang, libcxx will
   // not be found at ../include/c++ but it likely to be found at
