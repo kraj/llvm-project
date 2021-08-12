@@ -2928,7 +2928,9 @@ Generic_GCC::addLibCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
 
   // Android never uses the libc++ headers installed alongside the toolchain,
   // which are generally incompatible with the NDK libraries anyway.
-  if (!getTriple().isAndroid())
+  // And also do not add it when --sysroot is specified, since it would expect
+  // libc++ headers from sysroot
+  if (!getTriple().isAndroid() && SysRoot.empty())
     if (AddIncludePath(getDriver().Dir + "/../include"))
       return;
   // If this is a development, non-installed, clang, libcxx will
