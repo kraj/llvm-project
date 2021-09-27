@@ -17,6 +17,7 @@
 #include "CGDebugInfo.h"
 #include "CGObjCRuntime.h"
 #include "CGOpenCLRuntime.h"
+#include "CGPointerAuthInfo.h"
 #include "CGRecordLayout.h"
 #include "CGValue.h"
 #include "CodeGenFunction.h"
@@ -5347,6 +5348,35 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
       Result = Builder.CreateIntToPtr(Result, OrigValueType);
     }
     return RValue::get(Result);
+  }
+
+  case Builtin::BI__builtin_virtual_member_address: {
+    Address This = EmitLValue(E->getArg(0)).getAddress();
+    APValue ConstMemFun;
+    E->getArg(1)->isCXX11ConstantExpr(getContext(), &ConstMemFun, nullptr);
+    const CXXMethodDecl *CXXMethod =
+        cast<CXXMethodDecl>(ConstMemFun.getMemberPointerDecl());
+    const CGFunctionInfo &FInfo =
+        CGM.getTypes().arrangeCXXMethodDeclaration(CXXMethod);
+    llvm::FunctionType *Ty = CGM.getTypes().GetFunctionType(FInfo);
+    CGCallee VCallee = CGM.getCXXABI().getVirtualFunctionPointer(
+        *this, CXXMethod, This, Ty, E->getBeginLoc());
+    llvm::Value *Callee = VCallee.getFunctionPointer();
+    if (const CGPointerAuthInfo &Schema = VCallee.getPointerAuthInfo())
+      Callee = EmitPointerAuthAuth(Schema, Callee);
+    return RValue::get(Callee);
+  }
+
+  case Builtin::BI__builtin_get_vtable_pointer: {
+    auto target = E->getArg(0);
+    auto type = target->getType();
+    auto decl = type->getPointeeCXXRecordDecl();
+    assert(decl);
+    auto thisAddress = EmitPointerWithAlignment(target);
+    assert(thisAddress.isValid());
+    auto vtablePointer =
+        GetVTablePtr(thisAddress, Int8PtrTy, decl, VTableAuthMode::MustTrap);
+    return RValue::get(vtablePointer);
   }
 
   case Builtin::BI__exception_code:
