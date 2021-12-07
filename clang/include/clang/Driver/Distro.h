@@ -45,6 +45,7 @@ public:
     RHEL7,
     Fedora,
     Gentoo,
+    //CLANG_EXTRA_OE_DISTRO_NAME
     OpenSUSE,
     UbuntuHardy,
     UbuntuIntrepid,
@@ -136,6 +137,7 @@ public:
 
   bool IsGentoo() const { return DistroVal == Gentoo; }
 
+  //CLANG_EXTRA_OE_DISTRO_CHECK
   /// @}
 };
 
