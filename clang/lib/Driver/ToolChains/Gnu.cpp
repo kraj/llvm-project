@@ -23,6 +23,7 @@
 #include "clang/Driver/Options.h"
 #include "clang/Driver/Tool.h"
 #include "clang/Driver/ToolChain.h"
+#include "clang/Driver/Distro.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/Path.h"
@@ -2633,6 +2634,7 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
     const llvm::Triple &TargetTriple, const ArgList &Args,
     const std::string &LibDir, StringRef CandidateTriple,
     bool NeedsBiarchSuffix, bool GCCDirExists, bool GCCCrossDirExists) {
+  Distro Distro(D.getVFS(), TargetTriple);
   // Locations relative to the system lib directory where GCC's triple-specific
   // directories might reside.
   struct GCCLibSuffix {
@@ -2650,7 +2652,8 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
       // files in that location, not just GCC installation data.
       {CandidateTriple.str(), "..",
        TargetTriple.getVendor() == llvm::Triple::Freescale ||
-           TargetTriple.getVendor() == llvm::Triple::OpenEmbedded},
+           TargetTriple.getVendor() == llvm::Triple::OpenEmbedded ||
+           Distro.IsOpenEmbedded()},
 
       // This is the normal place.
       {"gcc/" + CandidateTriple.str(), "../..", GCCDirExists},
