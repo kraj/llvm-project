@@ -649,6 +649,11 @@ void tools::addLTOOptions(const ToolChain &ToolChain, const ArgList &Args,
 void tools::addOpenMPRuntimeSpecificRPath(const ToolChain &TC,
                                           const ArgList &Args,
                                           ArgStringList &CmdArgs) {
+  // OpenEmbedded/Yocto installs libomp.so into <sysroot>/usr/lib
+  // therefore using -rpath is not needed, on the contrary it adds
+  // paths from cross compiler install location which is not correct
+  if (TC.getTriple().getVendor() == llvm::Triple::OpenEmbedded)
+    return;
 
   if (Args.hasFlag(options::OPT_fopenmp_implicit_rpath,
                    options::OPT_fno_openmp_implicit_rpath, true)) {
