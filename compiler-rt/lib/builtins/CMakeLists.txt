@@ -813,11 +813,9 @@ set(mips64el_SOURCES ${GENERIC_TF_SOURCES}
 
 set(nvptx64_SOURCES ${GENERIC_SOURCES})
 
-set(powerpc_SOURCES ${GENERIC_SOURCES})
-
 set(powerpcspe_SOURCES ${GENERIC_SOURCES})
 
-set(powerpc64_SOURCES
+set(powerpc_SOURCES
   ppc/divtc3.c
   ppc/fixtfdi.c
   ppc/fixunstfdi.c
@@ -832,14 +830,15 @@ set(powerpc64_SOURCES
 )
 # These routines require __int128, which isn't supported on AIX.
 if (NOT OS_NAME MATCHES "AIX")
-  set(powerpc64_SOURCES
+  set(powerpc_SOURCES
     ppc/floattitf.c
     ppc/fixtfti.c
     ppc/fixunstfti.c
-    ${powerpc64_SOURCES}
+    ${powerpc_SOURCES}
   )
 endif()
-set(powerpc64le_SOURCES ${powerpc64_SOURCES})
+set(powerpc64le_SOURCES ${powerpc_SOURCES})
+set(powerpc64_SOURCES ${powerpc_SOURCES})
 
 set(riscv_SOURCES
   cpu_model/riscv.c
@@ -1014,7 +1013,7 @@ else ()
 
       # For RISCV32 and 32-bit SPARC, we must force enable int128 for compiling long
       # double routines.
-      if (COMPILER_RT_ENABLE_SOFTWARE_INT128 OR ("${arch}" MATCHES "riscv32|sparc$"
+      if (COMPILER_RT_ENABLE_SOFTWARE_INT128 OR ("${arch}" MATCHES "riscv32|powerpc|sparc$"
         AND NOT CMAKE_COMPILER_IS_GNUCC))
         list(APPEND BUILTIN_CFLAGS_${arch} -fforce-enable-int128)
       endif()
