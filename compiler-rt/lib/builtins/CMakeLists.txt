@@ -628,11 +628,9 @@ set(mips64_SOURCES ${GENERIC_TF_SOURCES}
 set(mips64el_SOURCES ${GENERIC_TF_SOURCES}
                      ${mips_SOURCES})
 
-set(powerpc_SOURCES ${GENERIC_SOURCES})
-
 set(powerpcspe_SOURCES ${GENERIC_SOURCES})
 
-set(powerpc64_SOURCES
+set(powerpc_SOURCES
   ppc/divtc3.c
   ppc/fixtfdi.c
   ppc/fixunstfdi.c
@@ -647,14 +645,15 @@ set(powerpc64_SOURCES
 )
 # These routines require __int128, which isn't supported on AIX.
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "AIX")
-  set(powerpc64_SOURCES
+  set(powerpc_SOURCES
     ppc/floattitf.c
     ppc/fixtfti.c
     ppc/fixunstfti.c
-    ${powerpc64_SOURCES}
+    ${powerpc_SOURCES}
   )
 endif()
-set(powerpc64le_SOURCES ${powerpc64_SOURCES})
+set(powerpc64le_SOURCES ${powerpc_SOURCES})
+set(powerpc64_SOURCES ${powerpc_SOURCES})
 
 set(riscv_SOURCES
   riscv/save.S
@@ -761,9 +760,9 @@ else ()
         list(APPEND BUILTIN_CFLAGS_${arch} -fomit-frame-pointer -DCOMPILER_RT_ARMHF_TARGET)
       endif()
 
-      # For RISCV32, we must force enable int128 for compiling long
+      # For RISCV32/PPC32, we must force enable int128 for compiling long
       # double routines.
-      if("${arch}" STREQUAL "riscv32")
+      if("${arch}" STREQUAL "riscv32" OR "${arch}" STREQUAL "powerpc" )
         list(APPEND BUILTIN_CFLAGS_${arch} -fforce-enable-int128)
       endif()
 
