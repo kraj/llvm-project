@@ -98,6 +98,18 @@ const unsigned struct_kernel_stat64_sz = 104;
 const unsigned struct_kernel_stat_sz = 144;
 const unsigned struct_kernel_stat64_sz = 104;
 #    elif defined(__mips__)
+#if defined(__mips_o32) // O32 ABI
+#if _TIME_BITS == 64
+const unsigned struct_kernel_stat_sz = 112;
+const unsigned struct_kernel_stat64_sz = 112;
+#elif _FILE_OFFSET_BITS == 64
+const unsigned struct_kernel_stat_sz = 160;
+const unsigned struct_kernel_stat64_sz = 160;
+#else
+const unsigned struct_kernel_stat_sz = 144;
+const unsigned struct_kernel_stat64_sz = 160;
+#endif
+#else //__mips_o32
 const unsigned struct_kernel_stat_sz = SANITIZER_ANDROID
                                            ? FIRST_32_SECOND_64(104, 128)
 #      if defined(_ABIN32) && _MIPS_SIM == _ABIN32
@@ -108,6 +120,7 @@ const unsigned struct_kernel_stat_sz = SANITIZER_ANDROID
                                            : FIRST_32_SECOND_64(160, 216);
 #      endif
 const unsigned struct_kernel_stat64_sz = 104;
+#endif
 #    elif defined(__s390__) && !defined(__s390x__)
 const unsigned struct_kernel_stat_sz = 64;
 const unsigned struct_kernel_stat64_sz = 104;
