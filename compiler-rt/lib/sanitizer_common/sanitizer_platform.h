@@ -22,6 +22,15 @@
 // function declarations into a .S file which doesn't compile.
 // https://crbug.com/1162741
 #if __has_include(<features.h>) && !defined(__ANDROID__)
+// Some sources undefine _FILE_OFFSET_BITS deliberately e.g.
+// sanitizer_procmaps_solaris.cpp. This is problematic on glibc systems with
+// 32-bit architectures using 64-bit time_t and users passing _TIME_BITS=64
+// from build environment, therefore both _FILE_OFFSET_BITS and _TIME_BITS
+// need to be undefined together since features.h will check for both being 64
+// if one is set to 64.
+#  if !defined(_FILE_OFFSET_BITS)
+#    undef _TIME_BITS
+#  endif
 #  include <features.h>
 #endif
 
