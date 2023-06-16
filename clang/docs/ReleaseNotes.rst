@@ -724,6 +724,8 @@ Bug Fixes in This Version
 - Fix crash when passing a braced initializer list to a parentehsized aggregate
   initialization expression.
   (`#63008 <https://github.com/llvm/llvm-project/issues/63008>`_).
+- Apply ``-fmacro-prefix-map`` to anonymous tags in template arguments
+  (`#63219 <https://github.com/llvm/llvm-project/issues/63219>`_).
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
