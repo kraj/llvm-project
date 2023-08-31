@@ -2325,7 +2325,7 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
   static const char *const AArch64beTriples[] = {"aarch64_be-none-linux-gnu",
                                                  "aarch64_be-linux-gnu"};
 
-  static const char *const ARMLibDirs[] = {"/lib"};
+  static const char *const ARMLibDirs[] = {"/lib", "/lib32"};
   static const char *const ARMTriples[] = {"arm-linux-gnueabi"};
   static const char *const ARMHFTriples[] = {"arm-linux-gnueabihf",
                                              "armv7hl-redhat-linux-gnueabi",
