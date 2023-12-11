@@ -821,7 +821,11 @@ void SymbolCollector::setIncludeLocation(const Symbol &S, SourceLocation DefLoc,
 
   // Use the expansion location to get the #include header since this is
   // where the symbol is exposed.
-  IncludeFiles[S.ID] = SM.getDecomposedExpansionLoc(DefLoc).first;
+  FileID FID = SM.getDecomposedExpansionLoc(DefLoc).first;
+  if (FID.isInvalid())
+    return;
+
+  IncludeFiles[S.ID] = FID;
 
   // We update providers for a symbol with each occurence, as SymbolCollector
   // might run while parsing, rather than at the end of a translation unit.
