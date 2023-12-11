@@ -99,8 +99,10 @@ BPFTargetLowering::BPFTargetLowering(const TargetMachine &TM,
 
     setOperationAction(ISD::SDIVREM, VT, Expand);
     setOperationAction(ISD::UDIVREM, VT, Expand);
-    if (!STI.hasSdivSmod())
-      setOperationAction(ISD::SREM, VT, Expand);
+    if (!STI.hasSdivSmod()) {
+      setOperationAction(ISD::SDIV, VT, Custom);
+      setOperationAction(ISD::SREM, VT, Custom);
+    }
     setOperationAction(ISD::MULHU, VT, Expand);
     setOperationAction(ISD::MULHS, VT, Expand);
     setOperationAction(ISD::UMUL_LOHI, VT, Expand);
@@ -297,6 +299,15 @@ void BPFTargetLowering::ReplaceNodeResults(
   fail(DL, DAG, Msg);
 }
 
+SDValue BPFTargetLowering::reportUnsupported(SDValue Op, SelectionDAG &DAG,
+                                             const Twine &Msg) const {
+  const DebugLoc &DL = Op->getDebugLoc();
+  DiagnosticInfoUnsupported Diag(DAG.getMachineFunction().getFunction(), Msg,
+                                 DL);
+  DAG.getContext()->diagnose(Diag);
+  return DAG.getUNDEF(Op->getValueType(0));
+}
+
 SDValue BPFTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default:
@@ -307,6 +318,11 @@ SDValue BPFTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerGlobalAddress(Op, DAG);
   case ISD::SELECT_CC:
     return LowerSELECT_CC(Op, DAG);
+  case ISD::SDIV:
+  case ISD::SREM:
+    return reportUnsupported(
+        Op, DAG,
+        "unsupported signed division, please convert to unsigned div/mod.");
   case ISD::DYNAMIC_STACKALLOC:
     report_fatal_error("unsupported dynamic stack allocation");
   }
