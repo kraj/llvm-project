@@ -263,10 +263,8 @@ void RecordsSlice::visit(RecordVisitor &V) const {
     V.visitObjCCategory(*Cat.second);
 }
 
-namespace {
-
-std::unique_ptr<InterfaceFile> createInterfaceFile(const Records &Slices,
-                                                   StringRef InstallName) {
+static std::unique_ptr<InterfaceFile>
+createInterfaceFile(const Records &Slices, StringRef InstallName) {
   // Pickup symbols first.
   auto Symbols = std::make_unique<SymbolSet>();
   for (auto &S : Slices) {
@@ -318,8 +316,6 @@ std::unique_ptr<InterfaceFile> createInterfaceFile(const Records &Slices,
 
   return File;
 }
-
-} // namespace
 
 std::unique_ptr<InterfaceFile>
 llvm::MachO::convertToInterfaceFile(const Records &Slices) {

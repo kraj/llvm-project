@@ -19,15 +19,13 @@ RecordVisitor::~RecordVisitor() {}
 void RecordVisitor::visitObjCInterface(const ObjCInterfaceRecord &) {}
 void RecordVisitor::visitObjCCategory(const ObjCCategoryRecord &) {}
 
-namespace {
-bool shouldSkipRecord(const Record &R, const bool RecordUndefs) {
+static bool shouldSkipRecord(const Record &R, const bool RecordUndefs) {
   if (R.isExported())
     return false;
 
   // Skip non exported symbols unless for flat namespace libraries.
   return !(RecordUndefs && R.isUndefined());
 }
-} // namespace
 
 void SymbolConverter::visitGlobal(const GlobalRecord &GR) {
   auto [SymName, SymKind] = parseSymbol(GR.getName(), GR.getFlags());
