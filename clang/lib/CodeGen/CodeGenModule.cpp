@@ -997,7 +997,7 @@ void CodeGenModule::Release() {
                               uint32_t(CLANG_VERSION_PATCHLEVEL));
     std::string ProductId;
 #ifdef CLANG_VENDOR
-    ProductId = #CLANG_VENDOR;
+    ProductId = CLANG_VENDOR;
 #else
     ProductId = "clang";
 #endif
