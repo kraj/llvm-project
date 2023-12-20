@@ -6,16 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++03, c++11, c++14, c++17, c++20
-// UNSUPPORTED: clang-modules-build
+// Make sure that modules that are unknown fail.
 
-// A minimal test to validate import works.
+// MODULES: this_module_is_not_a_standard_library_module
 
-// MODULES: std
-
-import std;
-
-int main(int, char**) {
-  std::println("Hello modular world");
-  return 0;
-}
+// XFAIL: *
