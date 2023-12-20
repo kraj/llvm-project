@@ -6,15 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++03, c++11, c++14, c++17
-// UNSUPPORTED: clang-modules-build
+// Make sure that modules that are unknown fail.
 
-// XFAIL: has-no-module-support
+// MODULES: this_module_is_not_a_standard_library_module
 
-// A minimal test to validate import works.
-
-// MODULES: std.compat
-
-import std.compat;
-
-int main(int, char**) { return !(::strlen("Hello modular world") == 19); }
+// XFAIL: *
