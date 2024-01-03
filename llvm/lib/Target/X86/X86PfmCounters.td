@@ -121,7 +121,12 @@ def HaswellPfmCounters : ProcPfmCounters {
     PfmIssueCounter<"HWPort7", "uops_executed_port:port_7">
   ];
   let ValidationCounters = [
-    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">
+    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">,
+    PfmValidationCounter<L1DCacheLoadMiss, "MEM_LOAD_UOPS_RETIRED:L1_MISS">,
+    PfmValidationCounter<L1ICacheLoadMiss, "L1-ICACHE-LOAD-MISSES">,
+    PfmValidationCounter<DataTLBLoadMiss, "DTLB_LOAD_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<DataTLBStoreMiss, "DTLB_STORE_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<InstructionTLBLoadMiss, "ITLB_MISSES:MISS_CAUSES_A_WALK">
   ];
 }
 def : PfmCountersBinding<"haswell", HaswellPfmCounters>;
@@ -140,7 +145,12 @@ def BroadwellPfmCounters : ProcPfmCounters {
     PfmIssueCounter<"BWPort7", "uops_executed_port:port_7">
   ];
   let ValidationCounters = [
-    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">
+    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">,
+    PfmValidationCounter<L1DCacheLoadMiss, "MEM_LOAD_UOPS_RETIRED:L1_MISS">,
+    PfmValidationCounter<L1ICacheLoadMiss, "L1-ICACHE-LOAD-MISSES">,
+    PfmValidationCounter<DataTLBLoadMiss, "DTLB_LOAD_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<DataTLBStoreMiss, "DTLB_STORE_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<InstructionTLBLoadMiss, "ITLB_MISSES:MISS_CAUSES_A_WALK">
   ];
 }
 def : PfmCountersBinding<"broadwell", BroadwellPfmCounters>;
@@ -159,7 +169,12 @@ def SkylakeClientPfmCounters : ProcPfmCounters {
     PfmIssueCounter<"SKLPort7", "uops_dispatched_port:port_7">
   ];
   let ValidationCounters = [
-    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">
+    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">,
+    PfmValidationCounter<L1DCacheLoadMiss, "MEM_LOAD_RETIRED:L1_MISS">,
+    PfmValidationCounter<L1ICacheLoadMiss, "L1-ICACHE-LOAD-MISSES">,
+    PfmValidationCounter<DataTLBLoadMiss, "DTLB_LOAD_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<DataTLBStoreMiss, "DTLB_STORE_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<InstructionTLBLoadMiss, "ITLB_MISSES:MISS_CAUSES_A_WALK">
   ];
 }
 def : PfmCountersBinding<"skylake", SkylakeClientPfmCounters>;
@@ -178,7 +193,12 @@ def SkylakeServerPfmCounters : ProcPfmCounters {
     PfmIssueCounter<"SKXPort7", "uops_dispatched_port:port_7">
   ];
   let ValidationCounters = [
-    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">
+    PfmValidationCounter<InstructionRetired, "INSTRUCTIONS_RETIRED">,
+    PfmValidationCounter<L1DCacheLoadMiss, "MEM_LOAD_RETIRED:L1_MISS">,
+    PfmValidationCounter<L1ICacheLoadMiss, "L1-ICACHE-LOAD-MISSES">,
+    PfmValidationCounter<DataTLBLoadMiss, "DTLB_LOAD_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<DataTLBStoreMiss, "DTLB_STORE_MISSES:MISS_CAUSES_A_WALK">,
+    PfmValidationCounter<InstructionTLBLoadMiss, "ITLB_MISSES:MISS_CAUSES_A_WALK">
   ];
 }
 def : PfmCountersBinding<"skylake-avx512", SkylakeServerPfmCounters>;
@@ -297,7 +317,12 @@ def ZnVer2PfmCounters : ProcPfmCounters {
     PfmIssueCounter<"Zn2Divider", "div_op_count">
   ];
   let ValidationCounters = [
-    PfmValidationCounter<InstructionRetired, "RETIRED_INSTRUCTIONS">
+    PfmValidationCounter<InstructionRetired, "RETIRED_INSTRUCTIONS">,
+    PfmValidationCounter<L1DCacheLoadMiss, "L1-DCACHE-LOAD-MISSES">,
+    PfmValidationCounter<L1DCacheStoreMiss, "L1-DCACHE-STORE-MISSES">,
+    PfmValidationCounter<L1ICacheLoadMiss, "L1-ICACHE-LOAD-MISSES">,
+    PfmValidationCounter<DataTLBLoadMiss, "DTLB-LOAD-MISSES">,
+    PfmValidationCounter<InstructionTLBLoadMiss, "ITLB-LOAD-MISSES">
   ];
 }
 def : PfmCountersBinding<"znver2", ZnVer2PfmCounters>;
@@ -313,7 +338,12 @@ def ZnVer3PfmCounters : ProcPfmCounters {
     PfmIssueCounter<"Zn3Divider", "div_op_count">
   ];
   let ValidationCounters = [
-    PfmValidationCounter<InstructionRetired, "RETIRED_INSTRUCTIONS">
+    PfmValidationCounter<InstructionRetired, "RETIRED_INSTRUCTIONS">,
+    PfmValidationCounter<L1DCacheLoadMiss, "L1-DCACHE-LOAD-MISSES">,
+    PfmValidationCounter<L1DCacheStoreMiss, "L1-DCACHE-STORE-MISSES">,
+    PfmValidationCounter<L1ICacheLoadMiss, "L1-ICACHE-LOAD-MISSES">,
+    PfmValidationCounter<DataTLBLoadMiss, "DTLB-LOAD-MISSES">,
+    PfmValidationCounter<InstructionTLBLoadMiss, "ITLB-LOAD-MISSES">
   ];
 }
 def : PfmCountersBinding<"znver3", ZnVer3PfmCounters>;
