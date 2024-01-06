@@ -1,4 +1,4 @@
-; RUN: opt < %s -passes=asan -S | FileCheck %s
+; RUN: opt < %s -passes=asan -asan-use-stack-safety=0 -S | FileCheck %s
 
 ; Source (-O0 -fsanitize=address -fsanitize-address-use-after-scope):
 ;; struct S { int x, y; };
