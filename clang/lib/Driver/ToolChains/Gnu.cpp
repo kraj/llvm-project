@@ -2416,10 +2416,11 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
 
   static const char *const MIPSN32LibDirs[] = {"/lib32"};
   static const char *const MIPSN32Triples[] = {"mips64-linux-gnuabin32",
+                                               "mips64-linux-gnun32",
                                                "mipsisa64r6-linux-gnuabin32"};
   static const char *const MIPSN32ELLibDirs[] = {"/lib32"};
   static const char *const MIPSN32ELTriples[] = {
-      "mips64el-linux-gnuabin32", "mipsisa64r6el-linux-gnuabin32"};
+      "mips64el-linux-gnuabin32", "mips64el-linux-gnun32", "mipsisa64r6el-linux-gnuabin32"};
 
   static const char *const MSP430LibDirs[] = {"/lib"};
   static const char *const MSP430Triples[] = {"msp430-elf"};

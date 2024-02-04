@@ -1105,6 +1105,7 @@ Triple::Triple(std::string &&Str) : Data(std::move(Str)) {
       Environment =
           StringSwitch<Triple::EnvironmentType>(Components[0])
               .StartsWith("mipsn32", Triple::GNUABIN32)
+              .StartsWith("mips64-n32", Triple::GNUABIN32)
               .StartsWith("mips64", Triple::GNUABI64)
               .StartsWith("mipsisa64", Triple::GNUABI64)
               .StartsWith("mipsisa32", Triple::GNU)
