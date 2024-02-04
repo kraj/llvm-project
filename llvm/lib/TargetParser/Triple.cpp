@@ -318,7 +318,7 @@ StringRef Triple::getEnvironmentTypeName(EnvironmentType Kind) {
   case EABIHF: return "eabihf";
   case GNU: return "gnu";
   case GNUABI64: return "gnuabi64";
-  case GNUABIN32: return "gnuabin32";
+  case GNUABIN32: return "gnun32";
   case GNUEABI: return "gnueabi";
   case GNUEABIHF: return "gnueabihf";
   case GNUF32: return "gnuf32";
@@ -692,6 +692,7 @@ static Triple::EnvironmentType parseEnvironment(StringRef EnvironmentName) {
       .StartsWith("eabihf", Triple::EABIHF)
       .StartsWith("eabi", Triple::EABI)
       .StartsWith("gnuabin32", Triple::GNUABIN32)
+      .StartsWith("gnun32", Triple::GNUABIN32)
       .StartsWith("gnuabi64", Triple::GNUABI64)
       .StartsWith("gnueabihf", Triple::GNUEABIHF)
       .StartsWith("gnueabi", Triple::GNUEABI)
@@ -996,6 +997,7 @@ Triple::Triple(const Twine &Str)
       Environment =
           StringSwitch<Triple::EnvironmentType>(Components[0])
               .StartsWith("mipsn32", Triple::GNUABIN32)
+              .StartsWith("mips64-n32", Triple::GNUABIN32)
               .StartsWith("mips64", Triple::GNUABI64)
               .StartsWith("mipsisa64", Triple::GNUABI64)
               .StartsWith("mipsisa32", Triple::GNU)
