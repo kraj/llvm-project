@@ -218,13 +218,13 @@ Options::processAndFilterOutInstallAPIOptions(ArrayRef<const char *> Args) {
     DriverOpts.DylibToVerify = A->getValue();
 
   /// Any unclaimed arguments should be forwarded to the clang driver.
-  std::vector<const char *> StringList(ParsedArgs.size());
+  std::vector<const char *> ClangDriverArgs(ParsedArgs.size());
   for (const Arg *A : ParsedArgs) {
     if (A->isClaimed())
       continue;
-    llvm::copy(A->getValues(), std::back_inserter(StringList));
+    llvm::copy(A->getValues(), std::back_inserter(ClangDriverArgs));
   }
-  return StringList;
+  return ClangDriverArgs;
 }
 
 Options::Options(DiagnosticsEngine &Diag, FileManager *FM,
