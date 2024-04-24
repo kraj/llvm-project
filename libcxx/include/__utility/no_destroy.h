@@ -33,12 +33,12 @@ struct __no_destroy {
 
   template <class... _Args>
   _LIBCPP_CONSTEXPR _LIBCPP_HIDE_FROM_ABI explicit __no_destroy(_Args&&... __args) {
-    new (&__obj_) _Tp(std::forward<_Args>(__args)...);
+    ::new ((void*)__obj_) _Tp(std::forward<_Args>(__args)...);
   }
 
   template <class... _Args>
   _LIBCPP_CONSTEXPR_SINCE_CXX14 _LIBCPP_HIDE_FROM_ABI _Tp& __emplace(_Args&&... __args) {
-    return *(new (&__obj_) _Tp(std::forward<_Args>(__args)...));
+    return *(::new ((void*)__obj_) _Tp(std::forward<_Args>(__args)...));
   }
 
   _LIBCPP_CONSTEXPR_SINCE_CXX14 _LIBCPP_HIDE_FROM_ABI _Tp& __get() { return *reinterpret_cast<_Tp*>(__obj_); }
