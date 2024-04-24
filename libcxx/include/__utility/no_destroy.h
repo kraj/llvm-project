@@ -47,7 +47,7 @@ struct __no_destroy {
   }
 
 private:
-  alignas(_Tp) unsigned char __obj_[sizeof(_Tp)] = {};
+  _ALIGNAS_TYPE(_Tp) unsigned char __obj_[sizeof(_Tp)] = {};
 };
 
 _LIBCPP_END_NAMESPACE_STD
