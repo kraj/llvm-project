@@ -7,19 +7,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/Endian.h"
 #include <cstdint>
+
+using namespace llvm;
+using namespace support;
 
 // Lightly adapted from the SipHash reference C implementation:
 //   https://github.com/veorq/SipHash
 // by Jean-Philippe Aumasson and Daniel J. Bernstein
 
 #define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
-
-#define U8TO64_LE(p)                                                           \
-  (((uint64_t)((p)[0])) | ((uint64_t)((p)[1]) << 8) |                          \
-   ((uint64_t)((p)[2]) << 16) | ((uint64_t)((p)[3]) << 24) |                   \
-   ((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) |                   \
-   ((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56))
 
 #define SIPROUND                                                               \
   do {                                                                         \
@@ -48,23 +46,21 @@ namespace {
 /// \param k: reference to the key data 16-byte array (read-only)
 /// \returns output data, must be 8 or 16 bytes
 ///
-template <int cROUNDS, int dROUNDS, class ResultTy>
-ResultTy siphash(const unsigned char *in, uint64_t inlen,
-                 const unsigned char (&k)[16]) {
+template <int cROUNDS, int dROUNDS, size_t outlen>
+void siphash(const unsigned char *in, uint64_t inlen,
+             const unsigned char (&k)[16], unsigned char (&out)[outlen]) {
 
   const unsigned char *ni = (const unsigned char *)in;
   const unsigned char *kk = (const unsigned char *)k;
 
-  constexpr size_t outlen = sizeof(ResultTy);
-  static_assert(outlen == 8 || outlen == 16,
-                "result type should be uint64_t or uint128_t");
+  static_assert(outlen == 8 || outlen == 16, "result should be 8 or 16 bytes");
 
   uint64_t v0 = UINT64_C(0x736f6d6570736575);
   uint64_t v1 = UINT64_C(0x646f72616e646f6d);
   uint64_t v2 = UINT64_C(0x6c7967656e657261);
   uint64_t v3 = UINT64_C(0x7465646279746573);
-  uint64_t k0 = U8TO64_LE(kk);
-  uint64_t k1 = U8TO64_LE(kk + 8);
+  uint64_t k0 = endian::read64le(kk);
+  uint64_t k1 = endian::read64le(kk + 8);
   uint64_t m;
   int i;
   const unsigned char *end = ni + inlen - (inlen % sizeof(uint64_t));
@@ -79,7 +75,7 @@ ResultTy siphash(const unsigned char *in, uint64_t inlen,
     v1 ^= 0xee;
 
   for (; ni != end; ni += 8) {
-    m = U8TO64_LE(ni);
+    m = endian::read64le(ni);
     v3 ^= m;
 
     for (i = 0; i < cROUNDS; ++i)
@@ -130,10 +126,10 @@ ResultTy siphash(const unsigned char *in, uint64_t inlen,
     SIPROUND;
 
   b = v0 ^ v1 ^ v2 ^ v3;
-  uint64_t firstHalf = b;
+  endian::write64le(out, b);
 
   if (outlen == 8)
-    return firstHalf;
+    return;
 
   v1 ^= 0xdd;
 
@@ -141,9 +137,7 @@ ResultTy siphash(const unsigned char *in, uint64_t inlen,
     SIPROUND;
 
   b = v0 ^ v1 ^ v2 ^ v3;
-  uint64_t secondHalf = b;
-
-  return firstHalf | (ResultTy(secondHalf) << 64);
+  endian::write64le(out + 8, b);
 }
 
 } // end anonymous namespace
