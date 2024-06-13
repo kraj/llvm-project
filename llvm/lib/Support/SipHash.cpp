@@ -141,3 +141,17 @@ void siphash(const unsigned char *in, uint64_t inlen,
 }
 
 } // end anonymous namespace
+
+namespace llvm {
+
+void getSipHash_2_4_64(const uint8_t *In, uint64_t InLen,
+                       const uint8_t (&K)[16], uint8_t (&Out)[8]) {
+  siphash<2, 4>(In, InLen, K, Out);
+}
+
+void getSipHash_2_4_128(const uint8_t *In, uint64_t InLen,
+                        const uint8_t (&K)[16], uint8_t (&Out)[16]) {
+  siphash<2, 4>(In, InLen, K, Out);
+}
+
+} // end namespace llvm
