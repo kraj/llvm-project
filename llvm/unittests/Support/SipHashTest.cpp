@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/SipHash.h"
 #include "gtest/gtest.h"
 #include <string.h>
@@ -93,7 +94,7 @@ TEST(SipHashTest, SipHash_2_4_64) {
   uint8_t In[64], Out[8];
   for (size_t InLen = 0; InLen < sizeof(In); ++InLen) {
     In[InLen] = InLen;
-    getSipHash_2_4_64(In, InLen, K, Out);
+    getSipHash_2_4_64(ArrayRef(In, InLen), K, Out);
     for (size_t I = 0; I < sizeof(Out); ++I)
       EXPECT_EQ(ExpectedSipHash64[InLen][I], Out[I]);
   }
@@ -238,7 +239,7 @@ TEST(SipHashTest, SipHash_2_4_128) {
   uint8_t In[64], Out[16];
   for (size_t InLen = 0; InLen < sizeof(In); ++InLen) {
     In[InLen] = InLen;
-    getSipHash_2_4_128(In, InLen, K, Out);
+    getSipHash_2_4_128(ArrayRef(In, InLen), K, Out);
     for (size_t I = 0; I < sizeof(Out); ++I)
       EXPECT_EQ(ExpectedSipHash128[InLen][I], Out[I]);
   }

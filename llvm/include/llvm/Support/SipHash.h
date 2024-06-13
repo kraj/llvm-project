@@ -18,13 +18,15 @@
 
 namespace llvm {
 
+template<typename T> class ArrayRef;
+
 /// Computes a SipHash-2-4 64-bit result.
-void getSipHash_2_4_64(const uint8_t *In, uint64_t InLen,
-                       const uint8_t (&K)[16], uint8_t (&Out)[8]);
+void getSipHash_2_4_64(ArrayRef<uint8_t> In, const uint8_t (&K)[16],
+                       uint8_t (&Out)[8]);
 
 /// Computes a SipHash-2-4 128-bit result.
-void getSipHash_2_4_128(const uint8_t *In, uint64_t InLen,
-                        const uint8_t (&K)[16], uint8_t (&Out)[16]);
+void getSipHash_2_4_128(ArrayRef<uint8_t> In, const uint8_t (&K)[16],
+                        uint8_t (&Out)[16]);
 
 } // end namespace llvm
 

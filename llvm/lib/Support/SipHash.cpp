@@ -6,6 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/Support/SipHash.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Endian.h"
 #include <cstdint>
@@ -144,14 +146,14 @@ void siphash(const unsigned char *in, uint64_t inlen,
 
 namespace llvm {
 
-void getSipHash_2_4_64(const uint8_t *In, uint64_t InLen,
+void getSipHash_2_4_64(ArrayRef<uint8_t> In,
                        const uint8_t (&K)[16], uint8_t (&Out)[8]) {
-  siphash<2, 4>(In, InLen, K, Out);
+  siphash<2, 4>(In.data(), In.size(), K, Out);
 }
 
-void getSipHash_2_4_128(const uint8_t *In, uint64_t InLen,
+void getSipHash_2_4_128(ArrayRef<uint8_t> In,
                         const uint8_t (&K)[16], uint8_t (&Out)[16]) {
-  siphash<2, 4>(In, InLen, K, Out);
+  siphash<2, 4>(In.data(), In.size(), K, Out);
 }
 
 } // end namespace llvm
