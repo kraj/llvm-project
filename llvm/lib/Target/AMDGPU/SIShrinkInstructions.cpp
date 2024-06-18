@@ -886,16 +886,16 @@ bool SIShrinkInstructions::runOnMachineFunction(MachineFunction &MF) {
           if (isKImmOperand(Src)) {
             MI.setDesc(TII->get(AMDGPU::S_MOVK_I32));
             Src.setImm(SignExtend64(Src.getImm(), 32));
-            continue;
           }
 
           if ((ModOpc = canModifyToInlineImmOp32(TII, Src, ModImm,
                                                  /*Scalar=*/true))) {
             MI.setDesc(TII->get(ModOpc));
             Src.setImm(static_cast<int64_t>(ModImm));
-            continue;
           }
         }
+
+        continue;
       }
 
       // Shrink scalar logic operations.
