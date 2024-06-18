@@ -1,5 +1,6 @@
 ; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefixes=GCN,SI %s
 ; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefixes=GCN,VI %s
+; RUN: llc -march=amdgcn -mcpu=gfx1100 < %s | FileCheck -check-prefix=GFX11 %s
 
 ; Test that materialization constants that are the bit reversed of
 ; inline immediates are replaced with bfrev of the inline immediate to
@@ -277,4 +278,16 @@ define void @materialize_not_inv2pi_i32(ptr addrspace(1) %out) {
 define void @materialize_not_neg_inv2pi_i32(ptr addrspace(1) %out) {
   store i32 1105004156, ptr addrspace(1) %out
   ret void
+}
+
+; One constant is reversible, the other is not. We shouldn't break
+; vopd packing for this.
+; GFX11-LABEL: {{^}}vopd_materialize:
+; FIXME-GFX11: v_dual_mov_b32 v0, 0x102 :: v_dual_mov_b32 v1, 1.0
+; GFX11: v_bfrev_b32_e32 v0, 4.0
+; GFX11: v_mov_b32_e32 v1, 1.0
+define <2 x i32> @vopd_materialize() {
+  %insert0 = insertelement <2 x i32> poison, i32 258, i32 0
+  %insert1 = insertelement <2 x i32> %insert0, i32 1065353216, i32 1
+  ret <2 x i32> %insert1
 }
