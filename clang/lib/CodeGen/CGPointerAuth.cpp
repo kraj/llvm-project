@@ -80,20 +80,16 @@ CodeGen::getConstantSignedPointer(CodeGenModule &CGM, llvm::Constant *Pointer,
                                       OtherDiscriminator);
 }
 
-/// If applicable, sign a given constant function pointer with the ABI rules for
-/// functionType.
 llvm::Constant *CodeGenModule::getFunctionPointer(llvm::Constant *Pointer,
-                                                  QualType FunctionType,
-                                                  GlobalDecl GD) {
+                                                  QualType FunctionType) {
   assert(FunctionType->isFunctionType() ||
          FunctionType->isFunctionReferenceType() ||
          FunctionType->isFunctionPointerType());
 
-  if (auto PointerAuth = getFunctionPointerAuthInfo(FunctionType)) {
+  if (auto PointerAuth = getFunctionPointerAuthInfo(FunctionType))
     return getConstantSignedPointer(
-      Pointer, PointerAuth.getKey(), nullptr,
-      cast_or_null<llvm::Constant>(PointerAuth.getDiscriminator()));
-  }
+        Pointer, PointerAuth.getKey(), /*StorageAddress=*/nullptr,
+        cast_or_null<llvm::Constant>(PointerAuth.getDiscriminator()));
 
   return Pointer;
 }
@@ -102,5 +98,5 @@ llvm::Constant *CodeGenModule::getFunctionPointer(GlobalDecl GD,
                                                   llvm::Type *Ty) {
   const auto *FD = cast<FunctionDecl>(GD.getDecl());
   QualType FuncType = FD->getType();
-  return getFunctionPointer(getRawFunctionPointer(GD, Ty), FuncType, GD);
+  return getFunctionPointer(getRawFunctionPointer(GD, Ty), FuncType);
 }
