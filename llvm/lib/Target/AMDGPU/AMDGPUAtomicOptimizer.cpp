@@ -178,17 +178,18 @@ bool AMDGPUAtomicOptimizerImpl::run(Function &F) {
   return Changed;
 }
 
-static bool shouldOptimizeForType(Type *Ty) {
+static bool isOptimizableAtomic(Type *Ty) {
   switch (Ty->getTypeID()) {
   case Type::FloatTyID:
   case Type::DoubleTyID:
     return true;
   case Type::IntegerTyID: {
-    if (Ty->getIntegerBitWidth() == 32 || Ty->getIntegerBitWidth() == 64)
+    unsigned size = Ty->getIntegerBitWidth();
+    if (size == 32 || size == 64)
       return true;
+  }
   default:
     return false;
-  }
   }
 }
 
@@ -244,7 +245,7 @@ void AMDGPUAtomicOptimizerImpl::visitAtomicRMWInst(AtomicRMWInst &I) {
   // value to the atomic calculation. We can only optimize divergent values if
   // we have DPP available on our subtarget, and the atomic operation is 32
   // bits.
-  if (ValDivergent && (!ST->hasDPP() || !shouldOptimizeForType(I.getType()))) {
+  if (ValDivergent && (!ST->hasDPP() || !isOptimizableAtomic(I.getType()))) {
     return;
   }
 
@@ -326,7 +327,7 @@ void AMDGPUAtomicOptimizerImpl::visitIntrinsicInst(IntrinsicInst &I) {
   // value to the atomic calculation. We can only optimize divergent values if
   // we have DPP available on our subtarget, and the atomic operation is 32
   // bits.
-  if (ValDivergent && (!ST->hasDPP() || !shouldOptimizeForType(I.getType()))) {
+  if (ValDivergent && (!ST->hasDPP() || !isOptimizableAtomic(I.getType()))) {
     return;
   }
 
