@@ -35,6 +35,15 @@ using {0}Operands = detail::Clauses<{1}>;
 )";
 
 /// Remove multiple optional prefixes and suffixes from \c str.
+///
+/// Prefixes and suffixes are attempted to be removed once in the order they
+/// appear in the \c prefixes and \c suffixes arguments. All prefixes are
+/// processed before suffixes are. This means it will behave as shown in the
+/// following example:
+///   - str: "PrePreNameSuf1Suf2"
+///   - prefixes: ["Pre"]
+///   - suffixes: ["Suf1", "Suf2"]
+///   - return: "PreNameSuf1"
 static StringRef stripPrefixAndSuffix(StringRef str,
                                       llvm::ArrayRef<StringRef> prefixes,
                                       llvm::ArrayRef<StringRef> suffixes) {
@@ -177,10 +186,10 @@ static void verifyClause(Record *op, Record *clause) {
 ///
 /// \param[in] init The `DefInit` object representing the argument.
 /// \param[out] rank Number of levels of array nesting associated with the
-/// type.
+///                  type.
 ///
 /// \return the name of the base type to represent elements of the argument
-/// type.
+///         type.
 static StringRef translateArgumentType(Init *init, int &rank) {
   Record *def = cast<DefInit>(init)->getDef();
   bool isAttr = false, isValue = false;
@@ -210,11 +219,12 @@ static StringRef translateArgumentType(Init *init, int &rank) {
   }
 
   if (isValue) {
-    assert(!isAttr);
+    assert(!isAttr &&
+           "argument can't be simultaneously a value and an attribute");
     return "::mlir::Value";
   }
 
-  assert(isAttr);
+  assert(isAttr && "argument must be an attribute if it's not a value");
   return rank > 0 ? "::mlir::Attribute"
                   : def->getValueAsString("storageType").trim();
 }
