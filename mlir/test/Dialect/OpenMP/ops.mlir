@@ -804,7 +804,7 @@ func.func @omp_distribute(%chunk_size : i32, %data_var : memref<i32>, %arg0 : i3
 // CHECK-LABEL: omp_target
 func.func @omp_target(%if_cond : i1, %device : si32,  %num_threads : i32, %device_ptr: memref<i32>, %device_addr: memref<?xi32>, %map1: memref<?xi32>, %map2: memref<?xi32>) -> () {
 
-    // Test with optional operands; if_var, device, thread_limit, private, firstprivate and nowait.
+    // Test with optional operands; if_expr, device, thread_limit, private, firstprivate and nowait.
     // CHECK: omp.target if({{.*}}) device({{.*}}) thread_limit({{.*}}) nowait
     "omp.target"(%if_cond, %device, %num_threads) ({
        // CHECK: omp.terminator
@@ -2165,7 +2165,7 @@ func.func @omp_threadprivate() {
 llvm.mlir.global internal @_QFsubEx() : i32
 
 func.func @omp_cancel_parallel(%if_cond : i1) -> () {
-  // Test with optional operand; if_var.
+  // Test with optional operand; if_expr.
   omp.parallel {
     // CHECK: omp.cancel cancellation_construct_type(parallel) if(%{{.*}})
     omp.cancel cancellation_construct_type(parallel) if(%if_cond)

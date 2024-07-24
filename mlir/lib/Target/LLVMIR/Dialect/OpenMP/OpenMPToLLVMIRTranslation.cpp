@@ -1000,7 +1000,7 @@ convertOmpTeams(omp::TeamsOp op, llvm::IRBuilderBase &builder,
     threadLimit = moduleTranslation.lookupValue(threadLimitVar);
 
   llvm::Value *ifExpr = nullptr;
-  if (Value ifVar = op.getIfVar())
+  if (Value ifVar = op.getIfExpr())
     ifExpr = moduleTranslation.lookupValue(ifVar);
 
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
@@ -1061,7 +1061,7 @@ convertOmpTaskOp(omp::TaskOp taskOp, llvm::IRBuilderBase &builder,
   builder.restoreIP(moduleTranslation.getOpenMPBuilder()->createTask(
       ompLoc, allocaIP, bodyCB, !taskOp.getUntied(),
       moduleTranslation.lookupValue(taskOp.getFinal()),
-      moduleTranslation.lookupValue(taskOp.getIfVar()), dds));
+      moduleTranslation.lookupValue(taskOp.getIfExpr()), dds));
   return bodyGenStatus;
 }
 
@@ -1559,7 +1559,7 @@ convertOmpParallel(omp::ParallelOp opInst, llvm::IRBuilderBase &builder,
   };
 
   llvm::Value *ifCond = nullptr;
-  if (auto ifVar = opInst.getIfVar())
+  if (auto ifVar = opInst.getIfExpr())
     ifCond = moduleTranslation.lookupValue(ifVar);
   llvm::Value *numThreads = nullptr;
   if (auto numThreadsVar = opInst.getNumThreads())
@@ -1678,8 +1678,8 @@ convertOmpSimd(Operation &opInst, llvm::IRBuilderBase &builder,
   llvm::MapVector<llvm::Value *, llvm::Value *> alignedVars;
   llvm::omp::OrderKind order = convertOrderKind(simdOp.getOrder());
   ompBuilder->applySimd(loopInfo, alignedVars,
-                        simdOp.getIfVar()
-                            ? moduleTranslation.lookupValue(simdOp.getIfVar())
+                        simdOp.getIfExpr()
+                            ? moduleTranslation.lookupValue(simdOp.getIfExpr())
                             : nullptr,
                         order, simdlen, safelen);
 
@@ -2790,7 +2790,7 @@ convertOmpTargetData(Operation *op, llvm::IRBuilderBase &builder,
   LogicalResult result =
       llvm::TypeSwitch<Operation *, LogicalResult>(op)
           .Case([&](omp::TargetDataOp dataOp) {
-            if (auto ifVar = dataOp.getIfVar())
+            if (auto ifVar = dataOp.getIfExpr())
               ifCond = moduleTranslation.lookupValue(ifVar);
 
             if (auto devId = dataOp.getDevice())
@@ -2809,7 +2809,7 @@ convertOmpTargetData(Operation *op, llvm::IRBuilderBase &builder,
               return (LogicalResult)(enterDataOp.emitError(
                   "`nowait` is not supported yet"));
 
-            if (auto ifVar = enterDataOp.getIfVar())
+            if (auto ifVar = enterDataOp.getIfExpr())
               ifCond = moduleTranslation.lookupValue(ifVar);
 
             if (auto devId = enterDataOp.getDevice())
@@ -2826,7 +2826,7 @@ convertOmpTargetData(Operation *op, llvm::IRBuilderBase &builder,
               return (LogicalResult)(exitDataOp.emitError(
                   "`nowait` is not supported yet"));
 
-            if (auto ifVar = exitDataOp.getIfVar())
+            if (auto ifVar = exitDataOp.getIfExpr())
               ifCond = moduleTranslation.lookupValue(ifVar);
 
             if (auto devId = exitDataOp.getDevice())
@@ -2844,7 +2844,7 @@ convertOmpTargetData(Operation *op, llvm::IRBuilderBase &builder,
               return (LogicalResult)(updateDataOp.emitError(
                   "`nowait` is not supported yet"));
 
-            if (auto ifVar = updateDataOp.getIfVar())
+            if (auto ifVar = updateDataOp.getIfExpr())
               ifCond = moduleTranslation.lookupValue(ifVar);
 
             if (auto devId = updateDataOp.getDevice())
@@ -3012,7 +3012,7 @@ static bool getTargetEntryUniqueInfo(llvm::TargetRegionEntryInfo &targetInfo,
 
 static bool targetOpSupported(Operation &opInst) {
   auto targetOp = cast<omp::TargetOp>(opInst);
-  if (targetOp.getIfVar()) {
+  if (targetOp.getIfExpr()) {
     opInst.emitError("If clause not yet supported");
     return false;
   }

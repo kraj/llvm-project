@@ -444,7 +444,7 @@ struct ParallelOpLowering : public OpRewritePattern<scf::ParallelOp> {
     // Create the parallel wrapper.
     auto ompParallel = rewriter.create<omp::ParallelOp>(
         loc,
-        /* if_var = */ Value{},
+        /* if_expr = */ Value{},
         /* num_threads = */ numThreadsVar,
         /* allocate_vars = */ llvm::SmallVector<Value>{},
         /* allocator_vars = */ llvm::SmallVector<Value>{},

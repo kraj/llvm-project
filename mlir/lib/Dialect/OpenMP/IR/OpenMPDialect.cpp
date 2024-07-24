@@ -1474,7 +1474,7 @@ LogicalResult TargetOp::verify() {
 void ParallelOp::build(OpBuilder &builder, OperationState &state,
                        ArrayRef<NamedAttribute> attributes) {
   ParallelOp::build(
-      builder, state, /*if_var=*/nullptr, /*num_threads=*/nullptr,
+      builder, state, /*if_expr=*/nullptr, /*num_threads=*/nullptr,
       /*allocate_vars=*/ValueRange(), /*allocator_vars=*/ValueRange(),
       /*reduction_vars=*/ValueRange(), /*reduction_byref=*/nullptr,
       /*reduction_syms=*/nullptr, /*proc_bind_kind=*/nullptr,

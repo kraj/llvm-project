@@ -53,6 +53,10 @@ struct CopyprivateClauseOps {
 };
 
 struct CriticalNameClauseOps {
+  /// This field has a generic name because it's mirroring the `sym_name`
+  /// argument of the `OpenMP_CriticalNameClause` tablegen definition. That one
+  /// can't be renamed to anything more specific because the `sym_name` name is
+  /// a requirement of the `Symbol` MLIR trait associated with that clause.
   StringAttr symName;
 };
 

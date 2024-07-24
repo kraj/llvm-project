@@ -148,12 +148,12 @@ llvm.func @test_omp_parallel_num_threads_3() -> () {
 // CHECK: define internal void @[[OMP_OUTLINED_FN_NUM_THREADS_3_1]]
   // CHECK: call void @__kmpc_barrier
 
-// CHECK: define void @test_omp_parallel_if_1(i32 %[[IF_VAR_1:.*]])
+// CHECK: define void @test_omp_parallel_if_1(i32 %[[IF_EXPR_1:.*]])
 llvm.func @test_omp_parallel_if_1(%arg0: i32) -> () {
 
   %0 = llvm.mlir.constant(0 : index) : i32
   %1 = llvm.icmp "slt" %arg0, %0 : i32
-// CHECK: %[[IF_COND_VAR_1:.*]] = icmp slt i32 %[[IF_VAR_1]], 0
+// CHECK: %[[IF_COND_VAR_1:.*]] = icmp slt i32 %[[IF_EXPR_1]], 0
 
 
 // CHECK: %[[GTN_IF_1:.*]] = call i32 @__kmpc_global_thread_num(ptr @[[SI_VAR_IF_1:.*]])

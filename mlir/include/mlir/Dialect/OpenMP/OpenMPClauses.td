@@ -20,6 +20,7 @@
 #define OPENMP_CLAUSES
 
 include "mlir/Dialect/OpenMP/OpenMPOpBase.td"
+include "mlir/IR/SymbolInterfaces.td"
 
 //===----------------------------------------------------------------------===//
 // V5.2: [5.11] `aligned` clause
@@ -175,6 +176,10 @@ class OpenMP_CriticalNameClauseSkip<
     bit description = false, bit extraClassDeclaration = false
   > : OpenMP_Clause</*isRequired=*/true, traits, arguments, assemblyFormat,
                     description, extraClassDeclaration> {
+  let traits = [
+    Symbol
+  ];
+
   let arguments = (ins
     SymbolNameAttr:$sym_name
   );
@@ -455,11 +460,11 @@ class OpenMP_IfClauseSkip<
   > : OpenMP_Clause</*isRequired=*/false, traits, arguments, assemblyFormat,
                     description, extraClassDeclaration> {
   let arguments = (ins
-    Optional<I1>:$if_var
+    Optional<I1>:$if_expr
   );
 
   let assemblyFormat = [{
-    `if` `(` $if_var `)`
+    `if` `(` $if_expr `)`
   }];
 
   // Description varies depending on the operation.

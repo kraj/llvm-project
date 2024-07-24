@@ -145,7 +145,7 @@ def ParallelOp : OpenMP_Op<"parallel", traits = [
     The parallel construct includes a region of code which is to be executed
     by a team of threads.
 
-    The optional `if_var` parameter specifies a boolean result of a conditional
+    The optional `if_expr` parameter specifies a boolean result of a conditional
     check. If this value is 1 or is not provided then the parallel region runs
     as normal, if it is 0 then the parallel region is executed with one thread.
   }] # clausesDescription;
@@ -161,7 +161,7 @@ def ParallelOp : OpenMP_Op<"parallel", traits = [
   // no longer skipped for clauses added to this operation at that time.
   let assemblyFormat = [{
     oilist(
-          `if` `(` $if_var `)`
+          `if` `(` $if_expr `)`
           | `num_threads` `(` $num_threads `:` type($num_threads) `)`
           | `allocate` `(`
               custom<AllocateAndAllocator>(
@@ -206,7 +206,7 @@ def TeamsOp : OpenMP_Op<"teams", traits = [
     league of teams. Once created, the number of teams remains constant for the
     duration of its code region.
 
-    If the `if_var` is present and it evaluates to `false`, the number of teams
+    If the `if_expr` is present and it evaluates to `false`, the number of teams
     created is one.
   }] # clausesDescription;
 
@@ -568,7 +568,7 @@ def TaskOp : OpenMP_Op<"task", traits = [
     "mergeable task", please check OpenMP Specification.
 
     When an `if` clause is present on a task construct, and the value of
-    `if_var` evaluates to `false`, an "undeferred task" is generated, and the
+    `if_expr` evaluates to `false`, an "undeferred task" is generated, and the
     encountering thread must suspend the current task region, for which
     execution cannot be resumed until execution of the structured block that is
     associated with the generated task is completed.
@@ -964,7 +964,7 @@ def TargetDataOp: OpenMP_Op<"target_data", traits = [
     to and from the offloading device when multiple target regions are using
     the same data.
 
-    The optional `if_var` parameter specifies a boolean result of a conditional
+    The optional `if_expr` parameter specifies a boolean result of a conditional
     check. If this value is 1 or is not provided then the target region runs on
     a device, if it is 0 then the target region is executed on the host device.
   }] # clausesDescription;
@@ -993,7 +993,7 @@ def TargetEnterDataOp: OpenMP_Op<"target_enter_data", traits = [
     a device data environment. The target enter data directive is a
     stand-alone directive.
 
-    The optional `if_var` parameter specifies a boolean result of a conditional
+    The optional `if_expr` parameter specifies a boolean result of a conditional
     check. If this value is 1 or is not provided then the target region runs on
     a device, if it is 0 then the target region is executed on the host device.
   }] # clausesDescription;
@@ -1022,7 +1022,7 @@ def TargetExitDataOp: OpenMP_Op<"target_exit_data", traits = [
     device data environment. The target exit data directive is
     a stand-alone directive.
 
-    The optional `if_var` parameter specifies a boolean result of a conditional
+    The optional `if_expr` parameter specifies a boolean result of a conditional
     check. If this value is 1 or is not provided then the target region runs on
     a device, if it is 0 then the target region is executed on the host device.
   }] # clausesDescription;
@@ -1052,7 +1052,7 @@ def TargetUpdateOp: OpenMP_Op<"target_update", traits = [
     specified motion clauses. The target update construct is a stand-alone
     directive.
 
-    The optional `if_var` parameter specifies a boolean result of a conditional
+    The optional `if_expr` parameter specifies a boolean result of a conditional
     check. If this value is 1 or is not provided then the target region runs on
     a device, if it is 0 then the target region is executed on the host device.
 
@@ -1090,7 +1090,7 @@ def TargetOp : OpenMP_Op<"target", traits = [
     The target construct includes a region of code which is to be executed
     on a device.
 
-    The optional `if_var` parameter specifies a boolean result of a conditional
+    The optional `if_expr` parameter specifies a boolean result of a conditional
     check. If this value is 1 or is not provided then the target region runs on
     a device, if it is 0 then the target region is executed on the host device.
   }] # clausesDescription;
@@ -1119,9 +1119,7 @@ def MasterOp : OpenMP_Op<"master", singleRegion = true> {
 //===----------------------------------------------------------------------===//
 // 2.17.1 critical Construct
 //===----------------------------------------------------------------------===//
-def CriticalDeclareOp : OpenMP_Op<"critical.declare", traits = [
-    Symbol
-  ], clauses = [
+def CriticalDeclareOp : OpenMP_Op<"critical.declare", clauses = [
     OpenMP_CriticalNameClause, OpenMP_HintClause
   ]> {
   let summary = "declares a named critical section.";
