@@ -7061,7 +7061,9 @@ static void emitTargetCall(
     SmallVectorImpl<Value *> &Args,
     OpenMPIRBuilder::GenMapInfoCallbackTy GenMapInfoCB,
     SmallVector<llvm::OpenMPIRBuilder::DependData> Dependencies = {}) {
-  //  emitKernelLaunch
+  // Generate a function call to the host fallback implementation of the target
+  // region. This is called by the host when no offload entry was generated for
+  // the target region and when the offloading call fails at runtime.
   auto &&EmitTargetCallFallbackCB =
       [&](OpenMPIRBuilder::InsertPointTy IP) -> OpenMPIRBuilder::InsertPointTy {
     Builder.restoreIP(IP);
