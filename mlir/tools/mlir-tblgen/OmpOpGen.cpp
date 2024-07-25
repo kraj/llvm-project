@@ -49,11 +49,11 @@ static StringRef stripPrefixAndSuffix(StringRef str,
                                       llvm::ArrayRef<StringRef> suffixes) {
   for (StringRef prefix : prefixes)
     if (str.starts_with(prefix))
-      str = str.substr(prefix.size());
+      str = str.drop_front(prefix.size());
 
   for (StringRef suffix : suffixes)
     if (str.ends_with(suffix))
-      str = str.substr(0, str.size() - suffix.size());
+      str = str.drop_back(suffix.size());
 
   return str;
 }
