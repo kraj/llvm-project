@@ -421,7 +421,7 @@ func.func @omp_simd_aligned_mismatch(%arg0 : index, %arg1 : index,
       omp.yield
     }
   }) {alignments = [128],
-      operandSegmentSizes = array<i32: 2, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
+      operandSegmentSizes = array<i32: 2, 0, 0, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
   return
 }
 
@@ -435,7 +435,7 @@ func.func @omp_simd_aligned_negative(%arg0 : index, %arg1 : index,
     omp.loop_nest (%iv) : index = (%arg0) to (%arg1) step (%arg2) {
       omp.yield
     }
-  }) {alignments = [-1, 128], operandSegmentSizes = array<i32: 2, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
+  }) {alignments = [-1, 128], operandSegmentSizes = array<i32: 2, 0, 0, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
   return
 }
 
@@ -463,7 +463,7 @@ func.func @omp_simd_aligned_float(%arg0 : index, %arg1 : index,
     omp.loop_nest (%iv) : index = (%arg0) to (%arg1) step (%arg2) {
       omp.yield
     }
-  }) {alignments = [1.5, 128], operandSegmentSizes = array<i32: 2, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
+  }) {alignments = [1.5, 128], operandSegmentSizes = array<i32: 2, 0, 0, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
   return
 }
 
@@ -477,7 +477,7 @@ func.func @omp_simd_aligned_the_same_var(%arg0 : index, %arg1 : index,
     omp.loop_nest (%iv) : index = (%arg0) to (%arg1) step (%arg2) {
       omp.yield
     }
-  }) {alignments = [1, 128], operandSegmentSizes = array<i32: 2, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
+  }) {alignments = [1, 128], operandSegmentSizes = array<i32: 2, 0, 0, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
   return
 }
 
@@ -491,7 +491,7 @@ func.func @omp_simd_nontemporal_the_same_var(%arg0 : index,  %arg1 : index,
     omp.loop_nest (%iv) : index = (%arg0) to (%arg1) step (%arg2) {
       omp.yield
     }
-  }) {operandSegmentSizes = array<i32: 0, 0, 2, 0, 0>} : (memref<i32>, memref<i32>) -> ()
+  }) {operandSegmentSizes = array<i32: 0, 0, 0, 0, 2, 0, 0>} : (memref<i32>, memref<i32>) -> ()
   return
 }
 

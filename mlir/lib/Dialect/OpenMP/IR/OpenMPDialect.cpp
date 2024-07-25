@@ -1764,10 +1764,11 @@ LogicalResult WsloopOp::verify() {
 void SimdOp::build(OpBuilder &builder, OperationState &state,
                    const SimdOperands &clauses) {
   MLIRContext *ctx = builder.getContext();
-  // TODO Store clauses in op: privateVars, privateSyms, reductionVars,
-  // reductionByref, reductionSyms.
+  // TODO Store clauses in op: linearVars, linearStepVars, privateVars,
+  // privateSyms, reductionVars, reductionByref, reductionSyms.
   SimdOp::build(builder, state, clauses.alignedVars,
                 makeArrayAttr(ctx, clauses.alignments), clauses.ifVar,
+                /*linear_vars=*/{}, /*linear_step_vars=*/{},
                 clauses.nontemporalVars, clauses.order, clauses.orderMod,
                 /*private_vars=*/{}, /*private_syms=*/nullptr,
                 /*reduction_vars=*/{}, /*reduction_byref=*/nullptr,

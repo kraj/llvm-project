@@ -439,10 +439,9 @@ def SimdOp : OpenMP_Op<"simd", traits = [
     AttrSizedOperandSegments, DeclareOpInterfaceMethods<LoopWrapperInterface>,
     RecursiveMemoryEffects, SingleBlock
   ], clauses = [
-    // TODO: Complete clause list (linear).
-    OpenMP_AlignedClause, OpenMP_IfClause, OpenMP_NontemporalClause,
-    OpenMP_OrderClause, OpenMP_PrivateClause, OpenMP_ReductionClause,
-    OpenMP_SafelenClause, OpenMP_SimdlenClause
+    OpenMP_AlignedClause, OpenMP_IfClause, OpenMP_LinearClause,
+    OpenMP_NontemporalClause, OpenMP_OrderClause, OpenMP_PrivateClause,
+    OpenMP_ReductionClause, OpenMP_SafelenClause, OpenMP_SimdlenClause
   ], singleRegion = true> {
   let summary = "simd construct";
   let description = [{

@@ -575,7 +575,7 @@ func.func @omp_simd_aligned_list(%arg0 : index, %arg1 : index, %arg2 : index,
     }) : (index, index, index) -> ()
     "omp.terminator"() : () -> ()
   }) {alignments = [32, 128],
-      operandSegmentSizes = array<i32: 2, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
+      operandSegmentSizes = array<i32: 2, 0, 0, 0, 0, 0, 0>} : (memref<i32>, memref<i32>) -> ()
   return
 }
 
@@ -590,7 +590,7 @@ func.func @omp_simd_aligned_single(%arg0 : index, %arg1 : index, %arg2 : index,
     }) : (index, index, index) -> ()
     "omp.terminator"() : () -> ()
   }) {alignments = [32],
-      operandSegmentSizes = array<i32: 1, 0, 0, 0, 0>} : (memref<i32>) -> ()
+      operandSegmentSizes = array<i32: 1, 0, 0, 0, 0, 0, 0>} : (memref<i32>) -> ()
   return
 }
 
@@ -605,7 +605,7 @@ func.func @omp_simd_nontemporal_list(%arg0 : index, %arg1 : index,
       "omp.yield"() : () -> ()
     }) : (index, index, index) -> ()
     "omp.terminator"() : () -> ()
-  }) {operandSegmentSizes = array<i32: 0, 0, 2, 0, 0>} : (memref<i32>, memref<i64>) -> ()
+  }) {operandSegmentSizes = array<i32: 0, 0, 0, 0, 2, 0, 0>} : (memref<i32>, memref<i64>) -> ()
   return
 }
 
@@ -620,7 +620,7 @@ func.func @omp_simd_nontemporal_single(%arg0 : index, %arg1 : index,
       "omp.yield"() : () -> ()
     }) : (index, index, index) -> ()
     "omp.terminator"() : () -> ()
-  }) {operandSegmentSizes = array<i32: 0, 0, 1, 0, 0>} : (memref<i32>) -> ()
+  }) {operandSegmentSizes = array<i32: 0, 0, 0, 0, 1, 0, 0>} : (memref<i32>) -> ()
   return
 }
 
