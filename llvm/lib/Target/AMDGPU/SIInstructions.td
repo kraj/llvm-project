@@ -2163,7 +2163,18 @@ def : GCNPat <
   (S_MOV_B32 $ga)
 >;
 
-def : GCNPat <
+foreach pred = [NotHasTrue16BitInsts, UseFakeTrue16Insts] in {                                                                                                                                                                   
+  let True16Predicate = pred in                                                                                                                                                                                                  
+  def : GCNPat <                                                                                                                                                                                                                 
+    (VGPRImm<(i16 imm)>:$imm),                                                                                                                                                                                                   
+    (V_MOV_B32_e32 imm:$imm)                                                                                                                                                                                                     
+  >;                                                                                                                                                                                                                             
+}                                                                                                                                                                                                                                
+let True16Predicate = UseRealTrue16Insts in                                                                                                                                                                                      
+def : GCNPat <                                                                                                                                                                                                                   
+  (VGPRImm<(i16 imm)>:$imm),                                                                                                                                                                                                     
+  (V_MOV_B16_t16_e64 0, imm:$imm, 0)                                                                                                                                                                                             
+>;
   (VGPRImm<(i16 imm)>:$imm),
   (V_MOV_B32_e32 imm:$imm)
 >;
