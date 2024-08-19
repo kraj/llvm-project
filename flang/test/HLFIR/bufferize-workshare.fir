@@ -12,7 +12,7 @@
 // CHECK:               %[[VAL_6:.*]]:2 = hlfir.declare %[[VAL_5]](%[[VAL_3]]) {uniq_name = ".tmp.array"} : (!fir.heap<!fir.array<42xi32>>, !fir.shape<1>) -> (!fir.heap<!fir.array<42xi32>>, !fir.heap<!fir.array<42xi32>>)
 // CHECK:               %[[VAL_7:.*]] = arith.constant true
 // CHECK:               %[[VAL_8:.*]] = arith.constant 1 : index
-// CHECK:               "omp.workshare_loop_wrapper"() ({
+// CHECK:               omp.workshare_loop_wrapper {
 // CHECK:                 omp.loop_nest (%[[VAL_9:.*]]) : index = (%[[VAL_8]]) to (%[[VAL_1]]) inclusive step (%[[VAL_8]]) {
 // CHECK:                   %[[VAL_10:.*]] = hlfir.designate %[[VAL_4]]#0 (%[[VAL_9]])  : (!fir.ref<!fir.array<42xi32>>, index) -> !fir.ref<i32>
 // CHECK:                   %[[VAL_11:.*]] = fir.load %[[VAL_10]] : !fir.ref<i32>
@@ -22,7 +22,7 @@
 // CHECK:                   omp.yield
 // CHECK:                 }
 // CHECK:                 omp.terminator
-// CHECK:               }) : () -> ()
+// CHECK:               }
 // CHECK:               %[[VAL_14:.*]] = fir.undefined tuple<!fir.heap<!fir.array<42xi32>>, i1>
 // CHECK:               %[[VAL_15:.*]] = fir.insert_value %[[VAL_14]], %[[VAL_7]], [1 : index] : (tuple<!fir.heap<!fir.array<42xi32>>, i1>, i1) -> tuple<!fir.heap<!fir.array<42xi32>>, i1>
 // CHECK:               %[[VAL_16:.*]] = fir.insert_value %[[VAL_15]], %[[VAL_6]]#0, [0 : index] : (tuple<!fir.heap<!fir.array<42xi32>>, i1>, !fir.heap<!fir.array<42xi32>>) -> tuple<!fir.heap<!fir.array<42xi32>>, i1>
