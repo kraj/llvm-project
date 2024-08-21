@@ -1291,7 +1291,6 @@ bool AArch64ExpandPseudo::expandMI(MachineBasicBlock &MBB,
     MI.eraseFromParent();
     return true;
   }
-
   case AArch64::LOADgot: {
     MachineFunction *MF = MBB.getParent();
     Register DstReg = MI.getOperand(0).getReg();
