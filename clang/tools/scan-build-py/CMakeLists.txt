@@ -80,50 +80,50 @@ if(CLANG_INSTALL_SCANBUILDPY)
   endforeach()
 
   foreach(lib ${LibScanbuild})
-    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/lib/libscanbuild/${lib}
+    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/${lib}
                        COMMAND ${CMAKE_COMMAND} -E make_directory
                          ${CMAKE_BINARY_DIR}/lib
                        COMMAND ${CMAKE_COMMAND} -E make_directory
-                         ${CMAKE_BINARY_DIR}/lib/libscanbuild
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild
                        COMMAND ${CMAKE_COMMAND} -E copy
-                         ${CMAKE_CURRENT_SOURCE_DIR}/lib/libscanbuild/${lib}
-                         ${CMAKE_BINARY_DIR}/lib/libscanbuild/
-                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib/libscanbuild/${lib})
-    list(APPEND Depends ${CMAKE_BINARY_DIR}/lib/libscanbuild/${lib})
+                         ${CMAKE_CURRENT_SOURCE_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/${lib}
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/
+                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/${lib})
+    list(APPEND Depends ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/${lib})
     install(FILES lib/libscanbuild/${lib}
             DESTINATION lib/libscanbuild
             COMPONENT scan-build-py)
   endforeach()
 
   foreach(resource ${LibScanbuildResources})
-    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/lib/libscanbuild/resources/${resource}
+    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/resources/${resource}
                        COMMAND ${CMAKE_COMMAND} -E make_directory
                          ${CMAKE_BINARY_DIR}/lib
                        COMMAND ${CMAKE_COMMAND} -E make_directory
-                         ${CMAKE_BINARY_DIR}/lib/libscanbuild
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild
                        COMMAND ${CMAKE_COMMAND} -E make_directory
-                         ${CMAKE_BINARY_DIR}/lib/libscanbuild/resources
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/resources
                        COMMAND ${CMAKE_COMMAND} -E copy
-                         ${CMAKE_CURRENT_SOURCE_DIR}/lib/libscanbuild/resources/${resource}
-                         ${CMAKE_BINARY_DIR}/lib/libscanbuild/resources
-                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib/libscanbuild/resources/${resource})
-    list(APPEND Depends ${CMAKE_BINARY_DIR}/lib/libscanbuild/resources/${resource})
+                         ${CMAKE_CURRENT_SOURCE_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/resources/${resource}
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/resources
+                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/resources/${resource})
+    list(APPEND Depends ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libscanbuild/resources/${resource})
     install(FILES lib/libscanbuild/resources/${resource}
             DESTINATION lib/libscanbuild/resources
             COMPONENT scan-build-py)
   endforeach()
 
   foreach(lib ${LibEar})
-    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/lib/libear/${lib}
+    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libear/${lib}
                        COMMAND ${CMAKE_COMMAND} -E make_directory
                          ${CMAKE_BINARY_DIR}/lib
                        COMMAND ${CMAKE_COMMAND} -E make_directory
-                         ${CMAKE_BINARY_DIR}/lib/libear
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libear
                        COMMAND ${CMAKE_COMMAND} -E copy
-                         ${CMAKE_CURRENT_SOURCE_DIR}/lib/libear/${lib}
-                         ${CMAKE_BINARY_DIR}/lib/libear/
-                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib/libear/${lib})
-    list(APPEND Depends ${CMAKE_BINARY_DIR}/lib/libear/${lib})
+                         ${CMAKE_CURRENT_SOURCE_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libear/${lib}
+                         ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libear/
+                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libear/${lib})
+    list(APPEND Depends ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/libear/${lib})
     install(FILES lib/libear/${lib}
             DESTINATION lib/libear
             COMPONENT scan-build-py)
