@@ -132,6 +132,12 @@ Compiler options
 | jan_svoboda\@apple.com (email), jansvoboda11 (Phabricator), jansvoboda11 (GitHub)
 
 
+API Notes
+~~~~~~~~~~~~~~~~
+| Egor Zhdan
+| e_zhdan\@apple.com (email), egorzhdan (GitHub), egor.zhdan (Discourse)
+
+
 OpenBSD driver
 ~~~~~~~~~~~~~~
 | Brad Smith
