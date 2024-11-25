@@ -3877,6 +3877,8 @@ void fir::populateFIRToLLVMConversionPatterns(
 
   // Patterns that are populated without a type converter do not trigger
   // target materializations for the operands of the root op.
-  patterns.insert<HasValueOpConversion, InsertValueOpConversion>(
-      patterns.getContext());
+  patterns.insert<InsertValueOpConversion>(
+      converter, patterns.getContext());
+  patterns.insert<HasValueOpConversion>(
+     patterns.getContext());
 }
