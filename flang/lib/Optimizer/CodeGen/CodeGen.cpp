@@ -2153,6 +2153,9 @@ struct InsertValueOpConversion
   matchAndRewrite(fir::InsertValueOp insertVal, OpAdaptor adaptor,
                   mlir::ConversionPatternRewriter &rewriter) const override {
     mlir::ValueRange operands = adaptor.getOperands();
+    llvm::errs() << "InsertValueOpConversion: " << insertVal << "\n";
+    llvm::errs() << " -- operand 0: " << operands[0] << "\n";
+    llvm::errs() << " -- operand 1: " << operands[1] << "\n";
     auto indices = collectIndices(rewriter, insertVal.getCoor());
     toRowMajor(indices, operands[0].getType());
     rewriter.replaceOpWithNewOp<mlir::LLVM::InsertValueOp>(
@@ -3877,8 +3880,8 @@ void fir::populateFIRToLLVMConversionPatterns(
 
   // Patterns that are populated without a type converter do not trigger
   // target materializations for the operands of the root op.
-  patterns.insert<InsertValueOpConversion>(
-      converter, patterns.getContext());
-  patterns.insert<HasValueOpConversion>(
+  //patterns.insert<InsertValueOpConversion>(
+  //    converter, patterns.getContext());
+  patterns.insert<HasValueOpConversion, InsertValueOpConversion>(
      patterns.getContext());
 }
