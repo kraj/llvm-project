@@ -1315,7 +1315,8 @@ parseBoundsCheckingOptions(StringRef Params) {
   return Mode;
 }
 
-Expected<RAGreedyPass::Options> parseRegAllocGreedyFilterFunc(PassBuilder &PB, StringRef Params) {
+Expected<RAGreedyPass::Options>
+parseRegAllocGreedyFilterFunc(PassBuilder &PB, StringRef Params) {
   if (Params.empty() || Params == "all") {
     return RAGreedyPass::Options();
   }

@@ -1078,14 +1078,14 @@ void CodeGenPassBuilder<Derived, TargetMachineT>::addRegAllocPass(
   // Use the specified -regalloc-npm={basic|greedy|fast|pbqp}
   if (Opt.RegAlloc > RegAllocType::Default) {
     switch (Opt.RegAlloc) {
-      case RegAllocType::Fast:
-        addPass(RegAllocFastPass());
-        break;
-      case RegAllocType::Greedy:
-        addPass(RAGreedyPass());
-        break;
-      default:
-        report_fatal_error("Register allocator not supported yet.", false);
+    case RegAllocType::Fast:
+      addPass(RegAllocFastPass());
+      break;
+    case RegAllocType::Greedy:
+      addPass(RAGreedyPass());
+      break;
+    default:
+      report_fatal_error("Register allocator not supported yet.", false);
     }
     return;
   }
