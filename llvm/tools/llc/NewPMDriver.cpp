@@ -48,12 +48,6 @@
 
 using namespace llvm;
 
-// static cl::opt<std::string>
-//     RegAlloc("regalloc-npm",
-//              cl::desc("Register allocator to use for new pass manager"),
-//              cl::Hidden, cl::init("default"));
-
-// create option for RegAllocType enum
 static cl::opt<RegAllocType> RegAlloc(
     "regalloc-npm", cl::desc("Register allocator to use for new pass manager"),
     cl::Hidden, cl::init(RegAllocType::Unset),

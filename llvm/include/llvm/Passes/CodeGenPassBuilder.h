@@ -1075,7 +1075,6 @@ void CodeGenPassBuilder<Derived, TargetMachineT>::addTargetRegisterAllocator(
 template <typename Derived, typename TargetMachineT>
 void CodeGenPassBuilder<Derived, TargetMachineT>::addRegAllocPass(
     AddMachinePass &addPass, bool Optimized) const {
-  // TODO: Parse Opt.RegAlloc to add register allocator.
   // Use the specified -regalloc-npm={basic|greedy|fast|pbqp}
   if (Opt.RegAlloc > RegAllocType::Default) {
     switch (Opt.RegAlloc) {
