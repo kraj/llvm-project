@@ -163,3 +163,34 @@ end
 !PARSE-TREE: | OmpClause -> Otherwise -> OmpOtherwiseClause -> OmpDirectiveSpecification
 !PARSE-TREE: | | llvm::omp::Directive = nothing
 !PARSE-TREE: | | OmpClauseList ->
+
+subroutine f41
+  ! Two trait set selectors
+  !$omp metadirective &
+  !$omp when(implementation={vendor("amd")}, user={condition(.true.)}: nothing)
+end
+
+!UNPARSE: SUBROUTINE f41
+!UNPARSE: !$OMP METADIRECTIVE  WHEN(IMPLEMENTATION={VENDOR(amd)}, USER={CONDITION(.true._4)}: NO&
+!UNPARSE: !$OMP&THING)
+!UNPARSE: END SUBROUTINE
+
+!PARSE-TREE: ExecutionPartConstruct -> ExecutableConstruct -> OpenMPConstruct -> OpenMPStandaloneConstruct -> OmpMetadirectiveDirective
+!PARSE-TREE: | OmpClauseList -> OmpClause -> When -> OmpWhenClause
+!PARSE-TREE: | | Modifier -> OmpContextSelectorSpecification -> OmpTraitSetSelector
+!PARSE-TREE: | | | OmpTraitSetSelectorName -> Value = Implementation
+!PARSE-TREE: | | | OmpTraitSelector
+!PARSE-TREE: | | | | OmpTraitSelectorName -> Value = Vendor
+!PARSE-TREE: | | | | Properties
+!PARSE-TREE: | | | | | OmpTraitProperty -> OmpTraitPropertyName -> string = 'amd'
+!PARSE-TREE: | | OmpTraitSetSelector
+!PARSE-TREE: | | | OmpTraitSetSelectorName -> Value = User
+!PARSE-TREE: | | | OmpTraitSelector
+!PARSE-TREE: | | | | OmpTraitSelectorName -> Value = Condition
+!PARSE-TREE: | | | | Properties
+!PARSE-TREE: | | | | | OmpTraitProperty -> Scalar -> Expr = '.true._4'
+!PARSE-TREE: | | | | | | LiteralConstant -> LogicalLiteralConstant
+!PARSE-TREE: | | | | | | | bool = 'true'
+!PARSE-TREE: | | OmpDirectiveSpecification
+!PARSE-TREE: | | | llvm::omp::Directive = nothing
+!PARSE-TREE: | | | OmpClauseList ->

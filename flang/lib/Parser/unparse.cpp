@@ -2101,6 +2101,9 @@ public:
     Walk(std::get<std::list<OmpTraitSelector>>(x.t));
     Put("}");
   }
+  void Unparse(const OmpContextSelectorSpecification &x) {
+    Walk(x.v, ", ");
+  }
 
   void Unparse(const OmpObject &x) {
     common::visit(common::visitors{
