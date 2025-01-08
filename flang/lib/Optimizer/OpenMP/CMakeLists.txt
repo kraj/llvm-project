@@ -22,6 +22,7 @@ add_flang_library(FlangOpenMPTransforms
   FIRDialectSupport
   FIRSupport
   FortranCommon
+  FortranSupport
   FortranEvaluate
   MLIRFuncDialect
   MLIROpenMPDialect

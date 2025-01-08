@@ -57,6 +57,7 @@ add_flang_library(FortranLower
   ${dialect_libs}
   ${extension_libs}
   FortranCommon
+  FortranSupport
   FortranParser
   FortranEvaluate
   FortranSemantics
