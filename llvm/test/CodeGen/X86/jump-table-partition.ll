@@ -2,7 +2,7 @@
 ; requires: asserts
 
 ; RUN: llc -stop-after=block-placement %s -o - | llc --run-pass=static-data-splitter -stats -x mir -o - 2>&1 | FileCheck %s --check-prefix=STAT
-; RUN: llc -enable-split-machine-functions -split-static-data --function-sections -data-sections %s -o - 2>&1 | FileCheck %s --check-prefix=SECTION
+; RUN: llc -enable-split-machine-functions -split-static-data -emit-static-data-hotness-suffix=true -function-sections -data-sections %s -o - 2>&1 | FileCheck %s --check-prefix=SECTION
 
 ; `func_with_hot_jumptable` contains a hot jump table and `func_with_cold_jumptable` contains a cold one. 
 ; `func_without_entry_count` simulates the functions without profile information (e.g., not instrumented or not profiled),
@@ -13,7 +13,6 @@
 ; STAT-DAG: 1 static-data-splitter - Number of hot jump tables seen
 ; STAT-DAG: 1 static-data-splitter - Number of jump tables with unknown hotness
 
-; TODO: Construct a test case where a hot function has a cold jump table.
 ; SECTION: .section .rodata.hot.func_with_hot_jumptable
 ; SECTION: .section .rodata.unlikely.func_with_cold_jumptable
 ; SECTION: .section .rodata.hot.func_without_entry_count
@@ -28,6 +27,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @str.10 = private constant [7 x i8] c"case 1\00"
 @str.11 = private constant [8 x i8] c"default\00"
 
+; TODO: Add a cold jump table in this function.
 define i32 @func_with_hot_jumptable(i32 %num) !prof !13 {
 entry:
   switch i32 %num, label %sw.default [

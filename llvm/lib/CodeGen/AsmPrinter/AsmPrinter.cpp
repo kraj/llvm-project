@@ -2881,42 +2881,41 @@ void AsmPrinter::emitJumpTableInfo() {
           MJTI->getEntryKind() == MachineJumpTableInfo::EK_LabelDifference64,
       F);
 
+  std::vector<unsigned> JumpTableIndices;
+  for (unsigned JTI = 0, JTSize = JT.size(); JTI != JTSize; ++JTI)
+    JumpTableIndices.push_back(JTI);
   if (!EmitStaticDataHotnessSuffix) {
-    std::vector<unsigned> JumpTableIndices;
-    for (unsigned JTI = 0, e = JT.size(); JTI != e; ++JTI)
-      JumpTableIndices.push_back(JTI);
-    // Prior code in this function verifies JT is not empty. Use JT[0] directly.
     emitJumpTables(JumpTableIndices, TLOF.getSectionForJumpTable(F, TM),
                    JTInDiffSection, *MJTI);
     return;
   }
 
-  // Iterate all jump tables, put them into two vectors, hot and lukewarm
-  std::vector<unsigned> HotOrWarmJumpTableIndices, ColdJumpTableIndices;
-
-  for (unsigned JTI = 0, e = JT.size(); JTI != e; ++JTI) {
-    if (JT[JTI].Hotness == llvm::DataHotness::Cold)
-      ColdJumpTableIndices.push_back(JTI);
-    else
-      HotOrWarmJumpTableIndices.push_back(JTI);
+  // Iterate all jump tables, put hot jump table indices towards the beginning
+  // of the vector, and cold jump table indices towards the end.
+  unsigned ColdJumpTableStart = JT.size();
+  for (unsigned JTI = 0; JTI != ColdJumpTableStart;) {
+    if (JT[JTI].Hotness == llvm::DataHotness::Cold) {
+      ColdJumpTableStart -= 1;
+      std::swap(JumpTableIndices[JTI], JumpTableIndices[ColdJumpTableStart]);
+    } else
+      JTI += 1;
   }
 
-  if (!HotOrWarmJumpTableIndices.empty())
-    emitJumpTables(HotOrWarmJumpTableIndices,
-                   TLOF.getSectionForJumpTable(
-                       F, TM, &JT[*HotOrWarmJumpTableIndices.begin()]),
-                   JTInDiffSection, *MJTI);
-
-  if (!ColdJumpTableIndices.empty())
+  if (ColdJumpTableStart != 0)
     emitJumpTables(
-        ColdJumpTableIndices,
-        TLOF.getSectionForJumpTable(F, TM, &JT[*ColdJumpTableIndices.begin()]),
+        ArrayRef<unsigned>(JumpTableIndices).slice(0, ColdJumpTableStart),
+        TLOF.getSectionForJumpTable(F, TM, &JT[0]), JTInDiffSection, *MJTI);
+
+  if (ColdJumpTableStart != JT.size())
+    emitJumpTables(
+        ArrayRef<unsigned>(JumpTableIndices).slice(ColdJumpTableStart),
+        TLOF.getSectionForJumpTable(F, TM, &JT[ColdJumpTableStart]),
         JTInDiffSection, *MJTI);
 
   return;
 }
 
-void AsmPrinter::emitJumpTables(const std::vector<unsigned> &JumpTableIndices,
+void AsmPrinter::emitJumpTables(ArrayRef<unsigned> JumpTableIndices,
                                 MCSection *JumpTableSection,
                                 bool JTInDiffSection,
                                 const MachineJumpTableInfo &MJTI) {

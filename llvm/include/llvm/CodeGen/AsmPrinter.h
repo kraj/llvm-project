@@ -453,7 +453,7 @@ public:
   /// function to the current output stream.
   virtual void emitJumpTableInfo();
 
-  virtual void emitJumpTables(const std::vector<unsigned> &JumpTableIndices,
+  virtual void emitJumpTables(ArrayRef<unsigned> JumpTableIndices,
                               MCSection *JumpTableSection, bool JTInDiffSection,
                               const MachineJumpTableInfo &MJTI);
 
