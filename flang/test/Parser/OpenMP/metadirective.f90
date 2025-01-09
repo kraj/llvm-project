@@ -83,13 +83,13 @@ end
 !PARSE-TREE: | | | OmpTraitSelector
 !PARSE-TREE: | | | | OmpTraitSelectorName -> Value = Atomic_Default_Mem_Order
 !PARSE-TREE: | | | | Properties
-!PARSE-TREE: | | | | | OmpTraitProperty -> OmpTraitPropertyName -> string = 'acq_rel'
+!PARSE-TREE: | | | | | OmpTraitProperty -> OmpClause -> AcqRel
 !PARSE-TREE: | | OmpDirectiveSpecification
 !PARSE-TREE: | | | llvm::omp::Directive = nothing
 !PARSE-TREE: | | | OmpClauseList ->
 
 !UNPARSE: SUBROUTINE f30
-!UNPARSE: !$OMP METADIRECTIVE  WHEN(IMPLEMENTATION={ATOMIC_DEFAULT_MEM_ORDER(acq_rel)}: &
+!UNPARSE: !$OMP METADIRECTIVE  WHEN(IMPLEMENTATION={ATOMIC_DEFAULT_MEM_ORDER(ACQ_REL)}: &
 !UNPARSE: !$OMP&NOTHING)
 !UNPARSE: END SUBROUTINE
 
@@ -194,3 +194,4 @@ end
 !PARSE-TREE: | | OmpDirectiveSpecification
 !PARSE-TREE: | | | llvm::omp::Directive = nothing
 !PARSE-TREE: | | | OmpClauseList ->
+:qa

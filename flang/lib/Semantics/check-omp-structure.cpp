@@ -214,6 +214,11 @@ private:
 };
 
 bool OmpStructureChecker::CheckAllowedClause(llvmOmpClause clause) {
+  // Do not do clause checks while processing METADIRECTIVE.
+  if (GetDirectiveNest(ContextSelectorNest) > 0) {
+    return true;
+  }
+
   unsigned version{context_.langOptions().OpenMPVersion};
   DirectiveContext &dirCtx = GetContext();
   llvm::omp::Directive dir{dirCtx.directive};
@@ -4456,6 +4461,14 @@ void OmpStructureChecker::Enter(const parser::OmpClause::OmpxBare &x) {
         "%s clause is only allowed on combined TARGET TEAMS"_err_en_US,
         parser::ToUpperCaseLetters(getClauseName(llvm::omp::OMPC_ompx_bare)));
   }
+}
+
+void OmpStructureChecker::Enter(const parser::OmpContextSelector &ctxSel) {
+  EnterDirectiveNest(ContextSelectorNest);
+}
+
+void OmpStructureChecker::Leave(const parser::OmpContextSelector &) {
+  ExitDirectiveNest(ContextSelectorNest);
 }
 
 llvm::StringRef OmpStructureChecker::getClauseName(llvm::omp::Clause clause) {
