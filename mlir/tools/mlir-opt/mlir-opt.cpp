@@ -78,6 +78,7 @@ void registerSimpleParametricTilingPass();
 void registerTestAffineLoopParametricTilingPass();
 void registerTestAliasAnalysisPass();
 void registerTestArithEmulateWideIntPass();
+void registerTestReduceFloatBitwidthPass();
 void registerTestBuiltinAttributeInterfaces();
 void registerTestBuiltinDistinctAttributes();
 void registerTestCallGraphPass();
@@ -217,6 +218,7 @@ void registerTestPasses() {
   mlir::test::registerTestAffineLoopParametricTilingPass();
   mlir::test::registerTestAliasAnalysisPass();
   mlir::test::registerTestArithEmulateWideIntPass();
+  mlir::test::registerTestReduceFloatBitwidthPass();
   mlir::test::registerTestBuiltinAttributeInterfaces();
   mlir::test::registerTestBuiltinDistinctAttributes();
   mlir::test::registerTestCallGraphPass();
