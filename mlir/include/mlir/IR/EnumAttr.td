@@ -14,8 +14,8 @@ include "mlir/IR/AttrTypeBase.td"
 //===----------------------------------------------------------------------===//
 // Enum attribute kinds
 
-// Additional information for an enum attribute case.
-class EnumAttrCaseInfo<string sym, int intVal, string strVal> {
+// Additional information for an enum case.
+class EnumCase<string sym, int intVal, string strVal> {
   // The C++ enumerant symbol.
   string symbol = sym;
 
@@ -28,27 +28,39 @@ class EnumAttrCaseInfo<string sym, int intVal, string strVal> {
   string str = strVal;
 }
 
+// Alias `EnumCaseInfo` to its original name from when enums were always
+// wrapped in attributes.
+class EnumAttrCaseInfo<string sym, int intVal, string strVal> :
+    EnumCase<sym, intVal, strVal> {}
+
 // An enum attribute case stored with IntegerAttr, which has an integer value,
 // its representation as a string and a C++ symbol name which may be different.
+// Not needed when using the newer `EnumCase` form for defining enum cases.
 class IntEnumAttrCaseBase<I intType, string sym, string strVal, int intVal> :
-    EnumAttrCaseInfo<sym, intVal, strVal>,
+    EnumCase<sym, intVal, strVal>,
     SignlessIntegerAttrBase<intType, "case " # strVal> {
   let predicate =
     CPred<"::llvm::cast<::mlir::IntegerAttr>($_self).getInt() == " # intVal>;
 }
 
 // Cases of integer enum attributes with a specific type. By default, the string
-// representation is the same as the C++ symbol name.
+// representation is the same as the C++ symbol name. These forms
+// are not needed when using the newer `EnumCase` form.
 class I32EnumAttrCase<string sym, int val, string str = sym>
     : IntEnumAttrCaseBase<I32, sym, str, val>;
 class I64EnumAttrCase<string sym, int val, string str = sym>
     : IntEnumAttrCaseBase<I64, sym, str, val>;
 
-// A bit enum case stored with an IntegerAttr. `val` here is *not* the ordinal
-// number of a bit that is set. It is an integer value with bits set to match
-// the case.
+// A bit enum case. `val` here is *not* the ordinal number of a bit
+// that is set. It is an integer value with bits set to match the case.
+class BitEnumCaseBase<string sym, int val, string str = sym> :
+    EnumCase<sym, val, str>;
+
+// A form of `BitEnumCaseBase` that also inherits from `Attr` and encodes
+// the width of the enum, which was defined when enums were always
+// stored in attributes.
 class BitEnumAttrCaseBase<I intType, string sym, int val, string str = sym> :
-    EnumAttrCaseInfo<sym, val, str>,
+    BitEnumCaseBase<sym, val, str>,
     SignlessIntegerAttrBase<intType, "case " #str>;
 
 class I8BitEnumAttrCase<string sym, int val, string str = sym>
@@ -61,6 +73,9 @@ class I64BitEnumAttrCase<string sym, int val, string str = sym>
     : BitEnumAttrCaseBase<I64, sym, val, str>;
 
 // The special bit enum case with no bits set (i.e. value = 0).
+class BitEnumCaseNone<string sym, string str = sym>
+    : BitEnumCaseBase<sym, 0, str>;
+// Older forms, used when enums were necessarily attributes.
 class I8BitEnumAttrCaseNone<string sym, string str = sym>
     : I8BitEnumAttrCase<sym, 0, str>;
 class I16BitEnumAttrCaseNone<string sym, string str = sym>
@@ -69,6 +84,12 @@ class I32BitEnumAttrCaseNone<string sym, string str = sym>
     : I32BitEnumAttrCase<sym, 0, str>;
 class I64BitEnumAttrCaseNone<string sym, string str = sym>
     : I64BitEnumAttrCase<sym, 0, str>;
+
+// A bit enum case for a single bit, specified by a bit position `pos`.
+// The `pos` argument refers to the index of the bit, and must not
+// exceed the eventual bitwidth of the enum.
+class BitEnumCaseBit<string sym, int pos, string str = sym>
+    : BitEnumCaseBase<sym, !shl(1, pos), str>;
 
 // A bit enum case for a single bit, specified by a bit position.
 // The pos argument refers to the index of the bit, and is limited
@@ -90,12 +111,17 @@ class I64BitEnumAttrCaseBit<string sym, int pos, string str = sym>
 
 // A bit enum case for a group/list of previously declared cases, providing
 // a convenient alias for that group.
+class BitEnumAttrCase<string sym, list<BitEnumCaseBase> cases, string str = sym>
+    : BitEnumCaseBase<sym,
+      !foldl(0, cases, value, bitcase, !or(value, bitcase.value)),
+      str>;
+
+// The attribute-only form of `BitEnumCaseGroup`.
 class BitEnumAttrCaseGroup<I intType, string sym,
-                           list<BitEnumAttrCaseBase> cases, string str = sym>
+                           list<BitEnumCaseBase> cases, string str = sym>
     : BitEnumAttrCaseBase<intType, sym,
           !foldl(0, cases, value, bitcase, !or(value, bitcase.value)),
           str>;
-
 class I8BitEnumAttrCaseGroup<string sym, list<BitEnumAttrCaseBase> cases,
                               string str = sym>
     : BitEnumAttrCaseGroup<I8, sym, cases, str>;
@@ -109,11 +135,8 @@ class I64BitEnumAttrCaseGroup<string sym, list<BitEnumAttrCaseBase> cases,
                               string str = sym>
     : BitEnumAttrCaseGroup<I64, sym, cases, str>;
 
-// Additional information for an enum attribute.
-class EnumAttrInfo<
-    string name, list<EnumAttrCaseInfo> cases, Attr baseClass> :
-      Attr<baseClass.predicate, baseClass.summary> {
-
+// Additional information for an enum.
+class EnumInfo<string name, list<EnumCaseInfo>, string storageType> : {
   // Generate a description of this enums members for the MLIR docs.
   let description =
         "Enum cases:\n" # !interleave(
@@ -124,14 +147,14 @@ class EnumAttrInfo<
   string className = name;
 
   // List of all accepted cases
-  list<EnumAttrCaseInfo> enumerants = cases;
+  list<EnumCaseInfo> enumerants = cases;
 
   // The following fields are only used by the EnumsGen backend to generate
   // an enum class definition and conversion utility functions.
 
   // The underlying type for the C++ enum class. An empty string mean the
   // underlying type is not explicitly specified.
-  string underlyingType = "";
+  string underlyingType = storageType;
 
   // The name of the utility function that converts a value of the underlying
   // type to the corresponding symbol. It will have the following signature:
@@ -165,6 +188,13 @@ class EnumAttrInfo<
   // static constexpr unsigned <fn-name>();
   // ```
   string maxEnumValFnName = "getMaxEnumValFor" # name;
+}
+
+// Additional information for an attribute that will be an enum.
+class EnumAttrInfo<
+    string name, list<EnumAttrCaseInfo> cases, Attr baseClass> :
+      Attr<baseClass.predicate, baseClass.summary>,
+      EnumInfo<name, cases, ""> {
 
   // Generate specialized Attribute class
   bit genSpecializedAttr = 1;
