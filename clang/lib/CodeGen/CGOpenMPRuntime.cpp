@@ -32,12 +32,10 @@
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/AtomicOrdering.h"
-#include "llvm/Support/Error.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <cstdint>

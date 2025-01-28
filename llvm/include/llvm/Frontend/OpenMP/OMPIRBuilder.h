@@ -22,7 +22,6 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/Allocator.h"
-#include "llvm/Support/Error.h"
 #include "llvm/TargetParser/Triple.h"
 #include <forward_list>
 #include <map>
