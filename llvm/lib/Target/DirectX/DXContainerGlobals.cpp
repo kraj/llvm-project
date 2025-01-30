@@ -180,7 +180,6 @@ void DXContainerGlobals::addRootSignature(Module &M,
 
   RootSignatureHeader RSH;
   RSH.Flags = MRS->Flags;
-  RSH.Version = MRS->Version;
 
   for (const auto &Part : MRS->Parts) {
     RSH.pushPart(constructHeaderPart(Part));

@@ -10,10 +10,9 @@ Header:
   PartOffsets:     [ 60 ]
 Parts:
   - Name:            RTS0
-    Size:            44
+    Size:            40
     RootSignature:
-      Size: 44
-      Version:         1
+      Size: 64
       NumParameters:       1
       Parameters:
         - Type:            Constants32Bit
@@ -25,10 +24,9 @@ Parts:
       AllowInputAssemblerInputLayout: true
 
 #CHECK: - Name:            RTS0
-#CHECK-NEXT:   Size:            44
+#CHECK-NEXT:   Size:            40
 #CHECK-NEXT:   RootSignature:
 #CHECK-NEXT:     Size:            64
-#CHECK-NEXT:     Version:         1
 #CHECK-NEXT:     NumParameters:   1
 #CHECK-NEXT:     Parameters:
 #CHECK-NEXT:       - Type:            Constants32Bit

@@ -32,8 +32,7 @@ DXContainerYAML::ShaderFeatureFlags::ShaderFeatureFlags(uint64_t FlagData) {
 
 DXContainerYAML::RootSignatureDesc::RootSignatureDesc(
     const object::DirectX::RootSignature &Data)
-    : Size(Data.getSize()), Version(Data.getVersion()),
-      NumParameters(Data.getNParameters()) {
+    : Size(Data.getSize()), NumParameters(Data.getNParameters()) {
   uint32_t Flags = Data.getFlags();
 
   for (const auto &Param : Data.getParameters())
@@ -215,7 +214,6 @@ void MappingTraits<DXContainerYAML::Signature>::mapping(
 void MappingTraits<DXContainerYAML::RootSignatureDesc>::mapping(
     IO &IO, DXContainerYAML::RootSignatureDesc &S) {
   IO.mapRequired("Size", S.Size);
-  IO.mapRequired("Version", S.Version);
   IO.mapRequired("NumParameters", S.NumParameters);
   IO.mapRequired("Parameters", S.Parameters);
 #define ROOT_ELEMENT_FLAG(Num, Val, Str) IO.mapOptional(#Val, S.Val, false);

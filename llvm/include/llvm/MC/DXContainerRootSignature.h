@@ -16,7 +16,6 @@ class raw_ostream;
 
 namespace mcdxbc {
 struct RootSignatureHeader {
-  uint32_t Version;
   uint32_t Flags;
   SmallVector<dxbc::RootParameter> Parameters;
 

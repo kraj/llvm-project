@@ -60,13 +60,12 @@ struct RootSignaturePart {
 };
 
 struct ModuleRootSignature {
-  uint32_t Version;
   uint32_t Flags;
   SmallVector<RootSignaturePart> Parts;
 
   ModuleRootSignature() = default;
 
-  bool parse(int32_t Version, NamedMDNode *Root);
+  bool parse(NamedMDNode *Root);
 
   static ModuleRootSignature analyzeModule(Module &M);
 
