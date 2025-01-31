@@ -20,14 +20,14 @@ eval<E<int, float>> eE; // expected-error{{implicit instantiation of undefined t
 template<
   template <int ...N> // expected-error {{cannot be narrowed from type 'int' to 'short'}}
                       // expected-error@-1 {{conversion from 'int' to 'void *' is not allowed in a converted constant expression}}
-  class TT // expected-note 2{{previous template template parameter is here}}
+  class TT // expected-note 2{{template parameter is declared here}}
 > struct X0 { };
 
 template<int I, int J, int ...Rest> struct X0a;
 template<int ...Rest> struct X0b;
 template<int I, long J> struct X0c;
-template<int I, short J> struct X0d;
-template<int I, void *J> struct X0e; // expected-note{{template parameter is declared here}}
+template<int I, short J> struct X0d; // expected-note {{template parameter is declared here}}
+template<int I, void *J> struct X0e; // expected-note {{template parameter is declared here}}
 
 X0<X0a> inst_x0a;
 X0<X0b> inst_x0b;
@@ -38,14 +38,14 @@ X0<X0e> inst_x0e; // expected-note{{template template argument has different tem
 template<typename T,
          template <T ...N> // expected-error {{conversion from 'short' to 'void *' is not allowed in a converted constant expression}}
                            // expected-error@-1 {{cannot be narrowed from type 'int' to 'short'}}
-         class TT // expected-note 2{{previous template template parameter is here}}
+         class TT // expected-note 2{{template parameter is declared here}}
 > struct X1 { };
 
 template<int I, int J, int ...Rest> struct X1a;
 template<long I, long ...Rest> struct X1b;
 template<short I, short J> struct X1c;
-template<short I, long J> struct X1d;
-template<short I, void *J> struct X1e; // expected-note{{template parameter is declared here}}
+template<short I, long J> struct X1d;  // expected-note {{template parameter is declared here}}
+template<short I, void *J> struct X1e; // expected-note {{template parameter is declared here}}
 
 X1<int, X1a> inst_x1a;
 X1<long, X1b> inst_x1b;

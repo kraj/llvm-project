@@ -32,7 +32,7 @@ template<int N,
   class B3n;
 
 // Check validity of default arguments
-template<template<class, int> class =// expected-note {{previous template template parameter is here}}
+template<template<class, int> class =// expected-note {{template parameter is declared here}}
            Y1> // expected-error{{too many template arguments for class template 'Y1'}}
                // expected-note@-1 {{template template argument has different template parameters than its corresponding template template parameter}}
   class C1 {};

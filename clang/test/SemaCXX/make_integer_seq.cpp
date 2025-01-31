@@ -50,3 +50,4 @@ __make_integer_seq<f, int, 0> x; // expected-error{{template template parameter 
 
 __make_integer_seq<__make_integer_seq, int, 10> PR28494; // expected-note{{different template parameters}}
 // expected-error@make_integer_seq.cpp:* {{template argument for template template parameter must be a class template or type alias template}}
+// expected-note@*:* 3{{template parameter from hidden source: class}}

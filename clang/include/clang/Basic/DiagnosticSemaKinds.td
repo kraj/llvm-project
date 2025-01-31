@@ -5290,10 +5290,14 @@ def err_template_missing_args : Error<
   "%select{class template|function template|variable template|alias template|"
   "template template parameter|concept|template}0 %1 requires template "
   "arguments">;
-def err_template_arg_list_different_arity : Error<
-  "%select{too few|too many}0 template arguments for "
+def err_template_param_missing_arg : Error<
+  "missing template argument for template parameter">;
+def err_template_template_param_missing_param : Error<
+  "missing template parameter to bind to template template parameter">;
+def err_template_too_many_args : Error<
+  "too many template arguments for "
   "%select{class template|function template|variable template|alias template|"
-  "template template parameter|concept|template}1 %2">;
+  "template template parameter|concept|template}0 %1">;
 def note_template_decl_here : Note<"template is declared here">;
 def note_template_decl_external : Note<
   "template declaration from hidden source: %0">;

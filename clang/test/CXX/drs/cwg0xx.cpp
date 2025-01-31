@@ -806,6 +806,7 @@ namespace cwg49 { // cwg49: 2.8
   // since-cxx17-error@#cwg49-c {{non-type template argument is not a constant expression}}
   //   since-cxx17-note@#cwg49-c {{read of non-constexpr variable 'q' is not allowed in a constant expression}}
   //   since-cxx17-note@#cwg49-q {{declared here}}
+  //   since-cxx17-note@#cwg49-A {{template parameter is declared here}}
 } // namespace cwg49
 
 namespace cwg50 { // cwg50: 2.7
@@ -1018,9 +1019,9 @@ namespace cwg62 { // cwg62: 2.9
   struct A {
     struct { int n; } b;
   };
-  template<typename T> struct X {};
-  template<typename T> T get() { return get<T>(); }
-  template<typename T> int take(T) { return 0; }
+  template<typename T> struct X {}; // cxx98-note 6{{template parameter is declared here}}
+  template<typename T> T get() { return get<T>(); } // cxx98-note 4{{template parameter is declared here}}
+  template<typename T> int take(T) { return 0; }    // cxx98-note 1{{template parameter is declared here}}
 
   X<A> x1;
   A a = get<A>();
@@ -1135,10 +1136,11 @@ namespace cwg69 { // cwg69: 9
   extern template void f<char>();
   // cxx98-error@-1 {{extern templates are a C++11 extension}}
   // expected-error@-2 {{explicit instantiation declaration of 'f' with internal linkage}}
-  template<void(*)()> struct Q {};
+  template<void(*)()> struct Q {}; // #cwg69-Q
   Q<&f<int> > q;
   // cxx98-error@-1 {{non-type template argument referring to function 'f<int>' with internal linkage is a C++11 extension}}
   //   cxx98-note@#cwg69-f {{non-type template argument refers to function here}}
+  //   cxx98-note@#cwg69-Q {{template parameter is declared here}}
 } // namespace cwg69
 
 namespace cwg70 { // cwg70: 2.7

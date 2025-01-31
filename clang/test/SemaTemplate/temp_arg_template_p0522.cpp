@@ -1,8 +1,6 @@
 // RUN: %clang_cc1 -fsyntax-only -verify -std=c++20 %s
 
-// expected-note@temp_arg_template_p0522.cpp:* 1+{{template is declared here}}
 // expected-note@temp_arg_template_p0522.cpp:* 1+{{template parameter is declared here}}
-// expected-note@temp_arg_template_p0522.cpp:* 1+{{previous template template parameter is here}}
 
 template<template<int> typename> struct Ti; // #Ti
 template<template<int...> typename> struct TPi; // #TPi
@@ -33,13 +31,13 @@ namespace IntParam {
         Ti<iDi>,
         Ti<Pi>,
         Ti<iDt>>;
-  using err1 = Ti<ii>; // expected-error {{too few template arguments for class template 'ii'}}
+  using err1 = Ti<ii>; // expected-error@#Ti {{missing template parameter to bind to template template parameter}}
                        // expected-note@-1 {{different template parameters}}
-  using err2 = Ti<iiPi>; // expected-error {{too few template arguments for class template 'iiPi'}}
+  using err2 = Ti<iiPi>; // expected-error@#Ti {{missing template parameter to bind to template template parameter}}
                          // expected-note@-1 {{different template parameters}}
   using err3 = Ti<t0>; // expected-error@#Ti {{template argument for template type parameter must be a type}}
                        // expected-note@-1 {{different template parameters}}
-  using err4 = Ti<it>; // expected-error {{too few template arguments for class template 'it'}}
+  using err4 = Ti<it>; // expected-error@#Ti {{missing template parameter to bind to template template parameter}}
                        // expected-note@-1 {{different template parameters}}
 }
 
@@ -64,7 +62,7 @@ namespace IntAndPackParam {
 
 namespace DependentType {
   using ok = Pt<tT0<int, i>, tT0<int, iDi>>;
-  using err1 = tT0<int, ii>; // expected-error {{too few template arguments for class template 'ii'}}
+  using err1 = tT0<int, ii>; // expected-error@#tT0 {{missing template parameter to bind to template template parameter}}
                              // expected-note@-1 {{different template parameters}}
   using err2 = tT0<short, i>;
   using err2a = tT0<long long, i>; // expected-error@#tT0 {{cannot be narrowed from type 'long long' to 'int'}}
@@ -159,11 +157,10 @@ namespace GH101394 {
   } // namespace t1
   namespace t2 {
     template<template<Y> class> struct A {}; // #A
-    template<X> struct B; // #B
+    template<X> struct B;
     template struct A<B>;
     // expected-error@#A {{no viable conversion from 'const Y' to 'X'}}
     // expected-note@-2  {{different template parameters}}
     // expected-note@#X 2{{not viable}}
-    // expected-note@#B  {{passing argument to parameter here}}
   } // namespace t2
 } // namespace GH101394

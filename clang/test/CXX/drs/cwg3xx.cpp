@@ -318,6 +318,7 @@ namespace cwg319 { // cwg319: no
   pa parr; // ok, type has linkage despite using 'n1'
 
   template<typename> struct X {};
+  // cxx98-note@-1 2{{template parameter is declared here}}
 
   void f() {
     struct A { int n; };
@@ -997,6 +998,7 @@ namespace cwg354 { // cwg354: 3.1 c++11
   //   since-cxx17-note@#cwg354-ptr_mem {{template parameter is declared here}}
   ptr_mem<(int S::*)0> m1;
   // cxx98-error@-1 {{non-type template argument is not a pointer to member constant}}
+  //   cxx98-note@#cwg354-ptr_mem {{template parameter is declared here}}
   ptr_mem<(float S::*)0> m2; // #cwg354-m2
   // cxx98-error@#cwg354-m2 {{non-type template argument of type 'float S::*' cannot be converted to a value of type 'int S::*'}}
   //   cxx98-note@#cwg354-ptr_mem {{template parameter is declared here}}
@@ -1503,6 +1505,7 @@ namespace cwg389 { // cwg389: no
     typedef enum {} const D; // #cwg389-D
   };
   template<typename> struct T {};
+  // cxx98-note@-1 5{{template parameter is declared here}}
 
   struct WithLinkage1 {};
   enum WithLinkage2 {};

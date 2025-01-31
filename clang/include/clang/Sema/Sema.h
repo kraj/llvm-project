@@ -11781,7 +11781,7 @@ public:
                                  bool *ConstraintsNotSatisfied = nullptr);
 
   bool CheckTemplateTypeArgument(
-      TemplateTypeParmDecl *Param, TemplateArgumentLoc &Arg,
+      TemplateArgumentLoc &Arg,
       SmallVectorImpl<TemplateArgument> &SugaredConverted,
       SmallVectorImpl<TemplateArgument> &CanonicalConverted);
 
@@ -11817,9 +11817,10 @@ public:
                                      bool PartialOrdering,
                                      bool *StrictPackMatch);
 
+  SmallString<128> toTerseString(const NamedDecl &D) const;
+
   void NoteTemplateLocation(const NamedDecl &Decl,
                             std::optional<SourceRange> ParamRange = {});
-  void NoteTemplateParameterLocation(const NamedDecl &Decl);
 
   /// Given a non-type template argument that refers to a
   /// declaration and the type of its corresponding non-type template
@@ -12821,6 +12822,9 @@ public:
 
       /// We are performing partial ordering for template template parameters.
       PartialOrderingTTP,
+
+      /// Checking a Template Parameter
+      CheckTemplateParameter,
     } Kind;
 
     /// Was the enclosing context a non-instantiation SFINAE context?
@@ -13048,6 +13052,11 @@ public:
                           PartialOrderingTTP, TemplateDecl *PArg,
                           SourceRange InstantiationRange = SourceRange());
 
+    struct CheckTemplateParameter {};
+    /// \brief Note that we are checking a template parameter.
+    InstantiatingTemplate(Sema &SemaRef, CheckTemplateParameter,
+                          NamedDecl *Param);
+
     /// Note that we have finished instantiating this template.
     void Clear();
 
@@ -13079,6 +13088,13 @@ public:
     InstantiatingTemplate(const InstantiatingTemplate &) = delete;
 
     InstantiatingTemplate &operator=(const InstantiatingTemplate &) = delete;
+  };
+
+  /// For any diagnostics which occur within its scope, adds a context note
+  /// pointing to the declaration of the template parameter.
+  struct CheckTemplateParameterRAII : InstantiatingTemplate {
+    CheckTemplateParameterRAII(Sema &S, NamedDecl *Param)
+        : InstantiatingTemplate(S, CheckTemplateParameter(), Param) {}
   };
 
   bool SubstTemplateArgument(const TemplateArgumentLoc &Input,
