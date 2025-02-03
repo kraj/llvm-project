@@ -3124,6 +3124,19 @@ inline auto m_c_LogicalOp(const LHS &L, const RHS &R) {
   return m_LogicalOp<LHS, RHS, /*Commutable=*/true>(L, R);
 }
 
+struct GuaranteedNotToBeUndefOrPoison_match {
+  template <typename ITy> bool match(ITy *V) {
+    if (auto *AsValue = dyn_cast<Value>(V))
+      return isGuaranteedNotToBeUndefOrPoison(AsValue);
+    else
+      return false;
+  }
+};
+
+inline GuaranteedNotToBeUndefOrPoison_match m_guaranteedNotToBeUndefOrPoison() {
+  return GuaranteedNotToBeUndefOrPoison_match();
+}
+
 } // end namespace PatternMatch
 } // end namespace llvm
 
