@@ -1216,10 +1216,10 @@ void Sema::AddPragmaAttributes(Scope *S, Decl *D) {
   }
 }
 
-void Sema::PrintPragmaAttributeInstantiationPoint() {
+void Sema::PrintPragmaAttributeInstantiationPoint(DiagFuncRef DiagFunc) {
   assert(PragmaAttributeCurrentTargetDecl && "Expected an active declaration");
-  Diags.Report(PragmaAttributeCurrentTargetDecl->getBeginLoc(),
-               diag::note_pragma_attribute_applied_decl_here);
+  DiagFunc(PragmaAttributeCurrentTargetDecl->getBeginLoc(),
+           PDiag(diag::note_pragma_attribute_applied_decl_here));
 }
 
 void Sema::DiagnosePrecisionLossInComplexDivision() {
