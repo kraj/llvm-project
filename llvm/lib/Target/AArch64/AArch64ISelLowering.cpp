@@ -9328,10 +9328,25 @@ AArch64TargetLowering::LowerCall(CallLoweringInfo &CLI,
       }
       unsigned LocMemOffset = VA.getLocMemOffset();
       int32_t Offset = LocMemOffset + BEAlign;
-      SDValue PtrOff = DAG.getIntPtrConstant(Offset, DL);
-      PtrOff = DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr, PtrOff);
 
       if (IsTailCall) {
+        // When the frame pointer is perfectly aligned for the tail call and the
+        // same stack argument is passed down, omit storing it if is immutable
+        // and already in the right offset.
+        if (FPDiff == 0) {
+          if (auto *LoadNode = dyn_cast<LoadSDNode>(Arg)) {
+            if (auto *FINode =
+                    dyn_cast<FrameIndexSDNode>(LoadNode->getBasePtr())) {
+              MachineFrameInfo &MFI = MF.getFrameInfo();
+              int FI = FINode->getIndex();
+              if (LoadNode->getMemoryVT() == VA.getValVT() &&
+                  MFI.isImmutableObjectIndex(FI) &&
+                  Offset == MFI.getObjectOffset(FI))
+                continue;
+            }
+          }
+        }
+
         Offset = Offset + FPDiff;
         int FI = MF.getFrameInfo().CreateFixedObject(OpSize, Offset, true);
 
