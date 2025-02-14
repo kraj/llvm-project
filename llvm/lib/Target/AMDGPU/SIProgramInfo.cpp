@@ -202,27 +202,9 @@ const MCExpr *SIProgramInfo::getPGMRSrc2(CallingConv::ID CC,
   return MCConstantExpr::create(0, Ctx);
 }
 
-uint64_t SIProgramInfo::getFunctionCodeSize(const MachineFunction &MF) {
-  if (CodeSizeInBytes.has_value())
-    return *CodeSizeInBytes;
+uint64_t SIProgramInfo::getFunctionCodeSize(MachineFunction &MF) {
+  if (!CodeSizeInBytes.has_value())
+    CodeSizeInBytes = MF.estimateFunctionSizeInBytes();
 
-  const GCNSubtarget &STM = MF.getSubtarget<GCNSubtarget>();
-  const SIInstrInfo *TII = STM.getInstrInfo();
-
-  uint64_t CodeSize = 0;
-
-  for (const MachineBasicBlock &MBB : MF) {
-    for (const MachineInstr &MI : MBB) {
-      // TODO: CodeSize should account for multiple functions.
-
-      // TODO: Should we count size of debug info?
-      if (MI.isDebugInstr())
-        continue;
-
-      CodeSize += TII->getInstSizeInBytes(MI);
-    }
-  }
-
-  CodeSizeInBytes = CodeSize;
-  return CodeSize;
+  return *CodeSizeInBytes;
 }
