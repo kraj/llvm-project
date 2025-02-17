@@ -830,7 +830,8 @@ bool SIFoldOperandsImpl::tryToFoldACImm(
   if (UseOpIdx >= Desc.getNumOperands())
     return false;
 
-  if (!AMDGPU::isSISrcInlinableOperand(Desc, UseOpIdx))
+  // Filter out unhandled pseudos.
+  if (!AMDGPU::isSISrcOperand(Desc, UseOpIdx))
     return false;
 
   uint8_t OpTy = Desc.operands()[UseOpIdx].OperandType;
