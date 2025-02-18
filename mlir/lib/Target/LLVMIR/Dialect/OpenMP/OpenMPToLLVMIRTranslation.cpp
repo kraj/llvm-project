@@ -260,10 +260,6 @@ static LogicalResult checkImplementationStatus(Operation &op) {
   LogicalResult result = success();
   llvm::TypeSwitch<Operation &>(op)
       .Case([&](omp::DistributeOp op) {
-        if (op.isComposite() &&
-            isa_and_present<omp::WsloopOp>(op.getNestedWrapper()))
-          result = op.emitError() << "not yet implemented: "
-                                     "composite omp.distribute + omp.wsloop";
         checkAllocate(op, result);
         checkDistSchedule(op, result);
         checkOrder(op, result);
@@ -1993,6 +1989,14 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   bool isSimd = wsloopOp.getScheduleSimd();
   bool loopNeedsBarrier = !wsloopOp.getNowait();
 
+  // The only legal way for the direct parent to be omp.distribute is that this
+  // represents 'distribute parallel do'. Otherwise, this is a regular
+  // worksharing loop.
+  llvm::omp::WorksharingLoopType workshareLoopType =
+      llvm::isa_and_present<omp::DistributeOp>(opInst.getParentOp())
+          ? llvm::omp::WorksharingLoopType::DistributeForStaticLoop
+          : llvm::omp::WorksharingLoopType::ForStaticLoop;
+
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   llvm::Expected<llvm::BasicBlock *> regionBlock = convertOmpOpRegions(
       wsloopOp.getRegion(), "omp.wsloop.region", builder, moduleTranslation);
@@ -2008,7 +2012,8 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
           ompLoc.DL, loopInfo, allocaIP, loopNeedsBarrier,
           convertToScheduleKind(schedule), chunk, isSimd,
           scheduleMod == omp::ScheduleModifier::monotonic,
-          scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
+          scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered,
+          workshareLoopType);
 
   if (failed(handleError(wsloopIP, opInst)))
     return failure();
@@ -3791,6 +3796,12 @@ convertOmpDistribute(Operation &opInst, llvm::IRBuilderBase &builder,
     if (!regionBlock)
       return regionBlock.takeError();
     builder.SetInsertPoint(*regionBlock, (*regionBlock)->begin());
+
+    // Skip applying a workshare loop below when translating 'distribute
+    // parallel do' (it's been already handled by this point while translating
+    // the nested omp.wsloop).
+    if (isa_and_present<omp::WsloopOp>(distributeOp.getNestedWrapper()))
+      return llvm::Error::success();
 
     // TODO: Add support for clauses which are valid for DISTRIBUTE constructs.
     // Static schedule is the default.

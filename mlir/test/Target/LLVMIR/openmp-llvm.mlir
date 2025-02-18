@@ -3307,3 +3307,68 @@ llvm.func @distribute() {
 // CHECK:         store i64 1, ptr %[[STRIDE]]
 // CHECK:         %[[TID:.*]] = call i32 @__kmpc_global_thread_num({{.*}})
 // CHECK:         call void @__kmpc_for_static_init_{{.*}}(ptr @{{.*}}, i32 %[[TID]], i32 92, ptr %[[LASTITER]], ptr %[[LB]], ptr %[[UB]], ptr %[[STRIDE]], i64 1, i64 0)
+
+// -----
+
+llvm.func @distribute_wsloop(%lb : i32, %ub : i32, %step : i32) {
+  omp.parallel {
+    omp.distribute {
+      omp.wsloop {
+        omp.loop_nest (%iv) : i32 = (%lb) to (%ub) step (%step) {
+          omp.yield
+        }
+      } {omp.composite}
+    } {omp.composite}
+    omp.terminator
+  } {omp.composite}
+  llvm.return
+}
+
+// CHECK-LABEL: define void @distribute_wsloop
+// CHECK:         call void{{.*}}@__kmpc_fork_call({{.*}}, ptr @[[OUTLINED_PARALLEL:.*]],
+
+// CHECK:       define internal void @[[OUTLINED_PARALLEL]]({{.*}})
+// CHECK:         %[[ARGS:.*]] = alloca { i32, i32, i32, ptr, ptr, ptr, ptr }
+// CHECK:         %[[LASTITER_ALLOC:.*]] = alloca i32
+// CHECK:         %[[LB_ALLOC:.*]] = alloca i32
+// CHECK:         %[[UB_ALLOC:.*]] = alloca i32
+// CHECK:         %[[STRIDE_ALLOC:.*]] = alloca i32
+// CHECK:         %[[LB_ARG:.*]] = getelementptr {{.*}}, ptr %[[ARGS]], i32 0, i32 3
+// CHECK:         store ptr %[[LB_ALLOC]], ptr %[[LB_ARG]]
+// CHECK:         %[[UB_ARG:.*]] = getelementptr {{.*}}, ptr %[[ARGS]], i32 0, i32 4
+// CHECK:         store ptr %[[UB_ALLOC]], ptr %[[UB_ARG]]
+// CHECK:         %[[STRIDE_ARG:.*]] = getelementptr {{.*}}, ptr %[[ARGS]], i32 0, i32 5
+// CHECK:         store ptr %[[STRIDE_ALLOC]], ptr %[[STRIDE_ARG]]
+// CHECK:         %[[LASTITER_ARG:.*]] = getelementptr {{.*}}, ptr %[[ARGS]], i32 0, i32 6
+// CHECK:         store ptr %[[LASTITER_ALLOC]], ptr %[[LASTITER_ARG]]
+// CHECK:         call void @[[OUTLINED_DISTRIBUTE:.*]](ptr %[[ARGS]])
+
+// CHECK:       define internal void @[[OUTLINED_DISTRIBUTE]](ptr %[[ARGS_STRUCT:.*]])
+// CHECK:         %[[LB_PTR:.*]] = getelementptr {{.*}}, ptr %[[ARGS_STRUCT]], i32 0, i32 3
+// CHECK:         %[[LB:.*]] = load ptr, ptr %[[LB_PTR]]
+// CHECK:         %[[UB_PTR:.*]] = getelementptr {{.*}}, ptr %[[ARGS_STRUCT]], i32 0, i32 4
+// CHECK:         %[[UB:.*]] = load ptr, ptr %[[UB_PTR]]
+// CHECK:         %[[STRIDE_PTR:.*]] = getelementptr {{.*}}, ptr %[[ARGS_STRUCT]], i32 0, i32 5
+// CHECK:         %[[STRIDE:.*]] = load ptr, ptr %[[STRIDE_PTR]]
+// CHECK:         %[[LASTITER_PTR:.*]] = getelementptr {{.*}}, ptr %[[ARGS_STRUCT]], i32 0, i32 6
+// CHECK:         %[[LASTITER:.*]] = load ptr, ptr %[[LASTITER_PTR]]
+// CHECK:         br label %[[DISTRIBUTE_BODY:.*]]
+
+// CHECK:       [[DISTRIBUTE_BODY]]:
+// CHECK-NEXT:    br label %[[DISTRIBUTE_REGION:.*]]
+
+// CHECK:       [[DISTRIBUTE_REGION]]:
+// CHECK-NEXT:    br label %[[WSLOOP_REGION:.*]]
+
+// CHECK:       [[WSLOOP_REGION]]:
+// CHECK:         %omp_loop.tripcount = select {{.*}}
+// CHECK-NEXT:    br label %[[PREHEADER:.*]]
+
+// CHECK:       [[PREHEADER]]:
+// CHECK:         store i32 0, ptr %[[LB]]
+// CHECK:         %[[TRIPCOUNT:.*]] = sub i32 %omp_loop.tripcount, 1
+// CHECK:         store i32 %[[TRIPCOUNT]], ptr %[[UB]]
+// CHECK:         store i32 1, ptr %[[STRIDE]]
+// CHECK:         %[[TID:.*]] = call i32 @__kmpc_global_thread_num({{.*}})
+// CHECK:         %[[DIST_UB:.*]] = alloca i32
+// CHECK:         call void @__kmpc_dist_for_static_init_{{.*}}(ptr @{{.*}}, i32 %[[TID]], i32 34, ptr %[[LASTITER]], ptr %[[LB]], ptr %[[UB]], ptr %[[DIST_UB]], ptr %[[STRIDE]], i32 1, i32 0)
