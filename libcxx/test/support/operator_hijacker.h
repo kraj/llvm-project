@@ -23,6 +23,7 @@
 struct operator_hijacker {
   TEST_CONSTEXPR bool operator<(const operator_hijacker&) const { return true; }
   TEST_CONSTEXPR bool operator==(const operator_hijacker&) const { return true; }
+  TEST_CONSTEXPR void operator()() const {}
 
   template <typename T>
   friend void operator&(T&&) = delete;
