@@ -165,7 +165,7 @@ public:
 
   /// For a "cheap" instruction which doesn't enable additional sinking,
   /// should MachineSink break a critical edge to sink it anyways?
-  virtual bool shouldBreakCriticalEdgeToSink(MachineInstr &MI) const {
+  virtual bool shouldBreakCriticalEdgeToSink(const MachineInstr &MI) const {
     return false;
   }
 

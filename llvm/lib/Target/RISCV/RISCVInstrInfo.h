@@ -78,7 +78,7 @@ public:
 
   bool isReallyTriviallyReMaterializable(const MachineInstr &MI) const override;
 
-  bool shouldBreakCriticalEdgeToSink(MachineInstr &MI) const override {
+  bool shouldBreakCriticalEdgeToSink(const MachineInstr &MI) const override {
     return MI.getOpcode() == RISCV::ADDI && MI.getOperand(1).isReg() &&
            MI.getOperand(1).getReg() == RISCV::X0;
   }
