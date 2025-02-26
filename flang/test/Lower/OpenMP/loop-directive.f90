@@ -75,7 +75,7 @@ end subroutine
 subroutine test_reduction()
   integer :: i, dummy = 1
 
-  ! CHECK: omp.loop private(@{{.*}} %{{.*}}#0 -> %{{.*}} : !{{.*}}) reduction
+  ! CHECK: omp.simd private(@{{.*}} %{{.*}}#0 -> %{{.*}} : !{{.*}}) reduction
   ! CHECK-SAME:  (@[[RED]] %{{.*}}#0 -> %[[DUMMY_ARG:.*]] : !{{.*}}) {
   ! CHECK-NEXT:   omp.loop_nest (%{{.*}}) : i32 = (%{{.*}}) to (%{{.*}}) {{.*}} {
   ! CHECK:          %[[DUMMY_DECL:.*]]:2 = hlfir.declare %[[DUMMY_ARG]] {uniq_name = "_QFtest_reductionEdummy"}
@@ -293,4 +293,40 @@ subroutine teams_loop_cannot_be_parallel_for_4
     END DO
     !$omp end parallel
   END DO
+end subroutine
+
+! CHECK-LABEL: func.func @_QPloop_parallel_bind_reduction
+subroutine loop_parallel_bind_reduction
+  implicit none
+  integer :: x, i
+
+  ! CHECK: omp.wsloop
+  ! CHECK-SAME: private(@{{[^[:space:]]+}} %{{[^[:space:]]+}}#0 -> %[[PRIV_ARG:[^[:space:]]+]] : !fir.ref<i32>)
+  ! CHECK-SAME: reduction(@add_reduction_i32 %{{.*}}#0 -> %[[RED_ARG:.*]] : !fir.ref<i32>) {
+  ! CHECK-NEXT: omp.loop_nest {{.*}} {
+  ! CHECK-NEXT:   hlfir.declare %[[PRIV_ARG]] {uniq_name = "_QF{{.*}}Ei"}
+  ! CHECK-NEXT:   hlfir.declare %[[RED_ARG]] {uniq_name = "_QF{{.*}}Ex"}
+  ! CHECK:      }
+  ! CHECK: }
+  !$omp loop bind(parallel) reduction(+: x)
+  do i = 0, 10
+    x = x + i
+  end do
+end subroutine
+
+! CHECK-LABEL: func.func @_QPteams_loop_reduction
+subroutine teams_loop_reduction
+  implicit none
+  integer :: x, i
+
+  ! CHECK: omp.wsloop
+  ! CHECK-SAME: reduction(@add_reduction_i32 %{{.*}}#0 -> %[[RED_ARG:.*]] : !fir.ref<i32>) {
+  ! CHECK-NEXT: omp.loop_nest {{.*}} {
+  ! CHECK:        hlfir.declare %[[RED_ARG]] {uniq_name = "_QF{{.*}}Ex"}
+  ! CHECK:      }
+  ! CHECK: }
+  !$omp loop bind(parallel) reduction(+: x)
+  do i = 0, 10
+    x = x + i
+  end do
 end subroutine
