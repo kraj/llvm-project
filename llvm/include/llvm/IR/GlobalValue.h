@@ -550,6 +550,13 @@ public:
     return isDiscardableIfUnused(getLinkage());
   }
 
+  // the symbol in this module may be replaced by a prevailing copy.
+  bool mayBeReplacedByPrevailingCopy() const {
+    return getLinkage() != GlobalValue::ExternalLinkage &&
+           getLinkage() != GlobalValue::InternalLinkage &&
+           getLinkage() != GlobalValue::PrivateLinkage;
+  }
+
   bool isWeakForLinker() const { return isWeakForLinker(getLinkage()); }
 
 protected:
