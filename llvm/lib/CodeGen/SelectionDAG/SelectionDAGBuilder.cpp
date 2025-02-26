@@ -12022,7 +12022,7 @@ SelectionDAGBuilder::HandlePHINodesInSuccessorBlocks(const BasicBlock *LLVMBB) {
       if (const auto *C = dyn_cast<Constant>(PHIOp)) {
         unsigned &RegOut = ConstantsOut[C];
         if (RegOut == 0) {
-          RegOut = FuncInfo.CreateRegs(C);
+          RegOut = FuncInfo.CreateRegs(&PN);
           // We need to zero/sign extend ConstantInt phi operands to match
           // assumptions in FunctionLoweringInfo::ComputePHILiveOutRegInfo.
           ISD::NodeType ExtendType = ISD::ANY_EXTEND;
