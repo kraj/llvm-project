@@ -112,6 +112,12 @@ public:
 
   uint64_t entrycount() const { return counters()[0]; }
 };
+
+class ProfileWriter {
+public:
+  virtual void writeContextual(const ctx_profile::ContextNode &RootNode) = 0;
+  virtual ~ProfileWriter() = default;
+};
 } // namespace ctx_profile
 } // namespace llvm
 #endif
