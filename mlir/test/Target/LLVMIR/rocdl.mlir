@@ -1080,6 +1080,15 @@ llvm.func @rocdl_8bit_packed_v2i16(%sourceA: f32, %sourceB: f32, %old: vector<2x
   llvm.return %source_scaled : vector<2xi16>
 }
 
+llvm.func @rocdl_v2f16_v2i16(%source: vector<2xf16>, %old: vector<2xi16>) -> vector<2xi16> {
+// CHECK-LABEL: @rocdl_v2f16_v2i16
+// CHECK: call <2 x i16> @llvm.amdgcn.cvt.scalef32.pk.fp8.f16(<2 x i16> %{{.+}}, <2 x half> %{{.+}}, float 1.000000e+00, i1 false)
+  %c0 = llvm.mlir.constant(1.0 : f32) : f32
+  %false = llvm.mlir.constant(false) : i1
+  %source_scaled = rocdl.cvt.scalef32.pk.fp8.f16 %source, %c0 -> %old[%false] : vector<2xi16>
+  llvm.return %source_scaled : vector<2xi16>
+}
+
 llvm.func @rocdl_16bit_packed_floats(%sourceA: f32, %sourceB: f32) -> vector<2xf16> {
   // CHECK-LABEL: @rocdl_16bit_packed_floats
   // CHECK: call <2 x half> @llvm.amdgcn.cvt.pkrtz(float {{.*}}, float {{.*}})
