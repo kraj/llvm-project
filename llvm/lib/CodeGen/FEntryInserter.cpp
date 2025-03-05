@@ -59,7 +59,7 @@ bool FEntryInserter::run(MachineFunction &MF) {
   return true;
 }
 
-char FEntryInserter::ID = 0;
-char &llvm::FEntryInserterID = FEntryInserter::ID;
-INITIALIZE_PASS(FEntryInserter, "fentry-insert", "Insert fentry calls", false,
-                false)
+char FEntryInserterLegacy::ID = 0;
+char &llvm::FEntryInserterID = FEntryInserterLegacy::ID;
+INITIALIZE_PASS(FEntryInserterLegacy, "fentry-insert", "Insert fentry calls",
+                false, false)
