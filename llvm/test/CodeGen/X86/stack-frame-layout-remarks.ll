@@ -2,6 +2,7 @@
 
 ; ensure basic output works
 ; RUN: llc -mcpu=corei7 -O1 -pass-remarks-analysis=stack-frame-layout < %s 2>&1 >/dev/null | FileCheck %s
+; RUN: llc -enable-new-pm -mcpu=corei7 -O1 -pass-remarks-analysis=stack-frame-layout < %s 2>&1 >/dev/null | FileCheck %s
 
 ; check additional slots are displayed when stack is not optimized
 ; RUN: llc -mcpu=corei7 -O0 -pass-remarks-analysis=stack-frame-layout < %s 2>&1 >/dev/null | FileCheck %s --check-prefix=NO_COLORING
