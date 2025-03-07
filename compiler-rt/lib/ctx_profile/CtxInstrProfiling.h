@@ -113,6 +113,12 @@ struct ContextRoot {
   static_assert(sizeof(Taken) == 1);
 };
 
+struct FunctionData {
+  FunctionData *Next = nullptr;
+  ContextNode *volatile FlatCtx = nullptr;
+  ::__sanitizer::StaticSpinMutex Mutex;
+};
+
 /// This API is exposed for testing. See the APIs below about the contract with
 /// LLVM.
 inline bool isScratch(const void *Ctx) {
@@ -152,7 +158,8 @@ void __llvm_ctx_profile_release_context(__ctx_profile::ContextRoot *Root);
 
 /// called for any other function than entry points, in the entry BB of such
 /// function. Same consideration about LSB of returned value as .._start_context
-ContextNode *__llvm_ctx_profile_get_context(void *Callee, GUID Guid,
+ContextNode *__llvm_ctx_profile_get_context(__ctx_profile::FunctionData *Data,
+                                            void *Callee, GUID Guid,
                                             uint32_t NumCounters,
                                             uint32_t NumCallsites);
 

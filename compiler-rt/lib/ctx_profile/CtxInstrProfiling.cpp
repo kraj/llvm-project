@@ -8,6 +8,8 @@
 
 #include "CtxInstrProfiling.h"
 #include "sanitizer_common/sanitizer_allocator_internal.h"
+#include "sanitizer_common/sanitizer_atomic.h"
+#include "sanitizer_common/sanitizer_atomic_clang.h"
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_dense_map.h"
 #include "sanitizer_common/sanitizer_libc.h"
@@ -26,6 +28,17 @@ namespace {
 __sanitizer::SpinMutex AllContextsMutex;
 SANITIZER_GUARDED_BY(AllContextsMutex)
 __sanitizer::Vector<ContextRoot *> AllContextRoots;
+
+__sanitizer::atomic_uintptr_t AllFunctionsData = {};
+
+__sanitizer::SpinMutex FlatCtxArenaMutex;
+SANITIZER_GUARDED_BY(FlatCtxArenaMutex)
+Arena* FlatCtxArenaHead = nullptr;
+SANITIZER_GUARDED_BY(FlatCtxArenaMutex)
+Arena* FlatCtxArena = nullptr;
+
+__thread bool IsUnderContext = false;
+__sanitizer::atomic_uint8_t ProfilingStarted = {};
 
 // utility to taint a pointer by setting the LSB. There is an assumption
 // throughout that the addresses of contexts are even (really, they should be
@@ -109,7 +122,10 @@ void resetContextNode(ContextNode &Node) {
       resetContextNode(*Next);
 }
 
-void onContextEnter(ContextNode &Node) { ++Node.counters()[0]; }
+ContextNode *onContextEnter(ContextNode &Node) {
+  ++Node.counters()[0];
+  return &Node;
+}
 
 } // namespace
 
@@ -182,12 +198,62 @@ ContextNode *getCallsiteSlow(GUID Guid, ContextNode **InsertionPoint,
   return Ret;
 }
 
-ContextNode *__llvm_ctx_profile_get_context(void *Callee, GUID Guid,
-                                            uint32_t NumCounters,
+ContextNode *getFlatProfile(FunctionData &Data, GUID Guid, uint32_t NumCounters) {
+  if (ContextNode *Existing = Data.FlatCtx)
+    return Existing;
+  {
+    // We could instead try to take the lock and, if that fails, return
+    // TheScratchContext. But that could leave message pump loops more sparsely
+    // profiled than everything else. Maybe that doesn't matter, and we can
+    // optimize this later.
+    __sanitizer::GenericScopedLock<__sanitizer::StaticSpinMutex> L(&Data.Mutex);
+    if (ContextNode *Existing = Data.FlatCtx)
+      return Existing;
+
+    auto NeededSize = ContextNode::getAllocSize(NumCounters, 0);
+    char *AllocBuff = nullptr;
+    {
+      __sanitizer::GenericScopedLock<__sanitizer::SpinMutex> FL(
+          &FlatCtxArenaMutex);
+      if (FlatCtxArena)
+        AllocBuff = FlatCtxArena->tryBumpAllocate(NeededSize);
+      if (!AllocBuff) {
+        FlatCtxArena = Arena::allocateNewArena(getArenaAllocSize(NeededSize),
+                                               FlatCtxArena);
+        AllocBuff = FlatCtxArena->tryBumpAllocate(NeededSize);
+      }
+      if (!FlatCtxArenaHead)
+        FlatCtxArenaHead = FlatCtxArena;
+    }
+    auto *Ret = allocContextNode(AllocBuff, Guid, NumCounters, 0);
+    Data.FlatCtx = Ret;
+
+    Data.Next = reinterpret_cast<FunctionData *>(
+        __sanitizer::atomic_load_relaxed(&AllFunctionsData));
+    while (!__sanitizer::atomic_compare_exchange_strong(
+        &AllFunctionsData, reinterpret_cast<uintptr_t *>(&Data.Next),
+        reinterpret_cast<uintptr_t>(&Data),
+        __sanitizer::memory_order_release)) {
+    }
+  }
+
+  return Data.FlatCtx;
+}
+
+ContextNode *getUnhandledContext(FunctionData &Data, GUID Guid,
+                                 uint32_t NumCounters) {
+  if (IsUnderContext || !__sanitizer::atomic_load_relaxed(&ProfilingStarted))
+    return TheScratchContext;
+  return markAsScratch(
+      onContextEnter(*getFlatProfile(Data, Guid, NumCounters)));
+}
+
+ContextNode *__llvm_ctx_profile_get_context(FunctionData *Data, void *Callee,
+                                            GUID Guid, uint32_t NumCounters,
                                             uint32_t NumCallsites) {
   // fast "out" if we're not even doing contextual collection.
   if (!__llvm_ctx_profile_current_context_root)
-    return TheScratchContext;
+    return getUnhandledContext(*Data, Guid, NumCounters);
 
   // also fast "out" if the caller is scratch. We can see if it's scratch by
   // looking at the interior pointer into the subcontexts vector that the caller
@@ -257,6 +323,7 @@ void setupContext(ContextRoot *Root, GUID Guid, uint32_t NumCounters,
 ContextNode *__llvm_ctx_profile_start_context(
     ContextRoot *Root, GUID Guid, uint32_t Counters,
     uint32_t Callsites) SANITIZER_NO_THREAD_SAFETY_ANALYSIS {
+  IsUnderContext = true;
   if (!Root->FirstMemBlock) {
     setupContext(Root, Guid, Counters, Callsites);
   }
@@ -272,6 +339,7 @@ ContextNode *__llvm_ctx_profile_start_context(
 
 void __llvm_ctx_profile_release_context(ContextRoot *Root)
     SANITIZER_NO_THREAD_SAFETY_ANALYSIS {
+  IsUnderContext = false;
   if (__llvm_ctx_profile_current_context_root) {
     __llvm_ctx_profile_current_context_root = nullptr;
     Root->Taken.Unlock();
@@ -291,10 +359,12 @@ void __llvm_ctx_profile_start_collection() {
 
     resetContextNode(*Root->FirstNode);
   }
+  __sanitizer::atomic_store_relaxed(&ProfilingStarted, true);
   __sanitizer::Printf("[ctxprof] Initial NumMemUnits: %zu \n", NumMemUnits);
 }
 
 bool __llvm_ctx_profile_fetch(ProfileWriter &Writer) {
+  __sanitizer::atomic_store_relaxed(&ProfilingStarted, false);
   __sanitizer::GenericScopedLock<__sanitizer::SpinMutex> Lock(
       &AllContextsMutex);
 
@@ -310,17 +380,42 @@ bool __llvm_ctx_profile_fetch(ProfileWriter &Writer) {
     Writer.writeContextual(*Root->FirstNode);
   }
   Writer.endContextSection();
+  Writer.startFlatSection();
+  // The list progresses behind the head, so taking this snapshot allows the
+  // list to grow concurrently without causing a race condition with our
+  // traversing it.
+  const auto *Pos = reinterpret_cast<const FunctionData *>(
+      __sanitizer::atomic_load_relaxed(&AllFunctionsData));
+  for (; Pos; Pos = Pos->Next)
+    Writer.writeFlat(Pos->FlatCtx->guid(), Pos->FlatCtx->counters(),
+                     Pos->FlatCtx->counters_size());
+  Writer.endFlatSection();
   return true;
 }
 
 void __llvm_ctx_profile_free() {
-  __sanitizer::GenericScopedLock<__sanitizer::SpinMutex> Lock(
-      &AllContextsMutex);
-  for (int I = 0, E = AllContextRoots.Size(); I < E; ++I)
-    for (auto *A = AllContextRoots[I]->FirstMemBlock; A;) {
+  {
+    __sanitizer::GenericScopedLock<__sanitizer::SpinMutex> Lock(
+        &AllContextsMutex);
+    for (int I = 0, E = AllContextRoots.Size(); I < E; ++I)
+      for (auto *A = AllContextRoots[I]->FirstMemBlock; A;) {
+        auto *C = A;
+        A = A->next();
+        __sanitizer::InternalFree(C);
+      }
+    AllContextRoots.Reset();
+  }
+  __sanitizer::atomic_store_relaxed(&AllFunctionsData, 0U);
+  {
+    __sanitizer::GenericScopedLock<__sanitizer::SpinMutex> Lock(
+        &FlatCtxArenaMutex);
+    FlatCtxArena = nullptr;
+    for (auto *A = FlatCtxArenaHead; A;) {
       auto *C = A;
-      A = A->next();
+      A = C->next();
       __sanitizer::InternalFree(C);
     }
-  AllContextRoots.Reset();
+
+    FlatCtxArenaHead = nullptr;
+  }
 }
