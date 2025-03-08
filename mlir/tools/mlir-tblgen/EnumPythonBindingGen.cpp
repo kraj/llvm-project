@@ -85,17 +85,6 @@ static void emitEnumClass(EnumInfo enumInfo, raw_ostream &os) {
   os << "\n";
 }
 
-/// Attempts to extract the bitwidth B from string "uintB_t" describing the
-/// type. This bitwidth information is not readily available in ODS. Returns
-/// `false` on success, `true` on failure.
-static bool extractUIntBitwidth(StringRef uintType, int64_t &bitwidth) {
-  if (!uintType.consume_front("uint"))
-    return true;
-  if (!uintType.consume_back("_t"))
-    return true;
-  return uintType.getAsInteger(/*Radix=*/10, bitwidth);
-}
-
 /// Emits an attribute builder for the given enum attribute to support automatic
 /// conversion between enum values and attributes in Python. Returns
 /// `false` on success, `true` on failure.

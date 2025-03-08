@@ -86,7 +86,7 @@ static void emitParserPrinter(const EnumInfo &enumInfo, StringRef qualName,
     StringRef name = caseVal.getStr();
     if (!mlir::tblgen::canFormatStringAsKeyword(name)) {
       nonKeywordCases.set(index);
-      caseListOs << "\"" << name << "\"";
+      caseListOs << "\\\"" << name << "\\\"";
     } else {
       caseListOs << name;
     }
