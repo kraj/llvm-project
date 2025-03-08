@@ -579,8 +579,8 @@ class _bitSymbolsToValue<EnumInfo bitEnum, string case> {
 class ConstantEnumCaseBase<Attr attribute,
     EnumInfo enumInfo, string case>
   : ConstantAttr<attribute,
-  !if(!isa<BitEnumAttr>(enumInfo),
-    _bitSymbolsToValue<!cast<BitEnumAttr>(enumInfo), case>.value,
+  !if(!isa<BitEnumBase>(enumInfo),
+    _bitSymbolsToValue<enumInfo, case>.value,
     _symbolToValue<enumInfo, case>.value
   )
 >;
