@@ -95,7 +95,7 @@ class I8BitEnumCaseNone<string sym, string str = sym>
   : BitEnumCaseNone<sym, str, 8>;
 class I16BitEnumCaseNone<string sym, string str = sym>
   : BitEnumCaseNone<sym, str, 16>;
-class 32BitEnumCaseNone<string sym, string str = sym>
+class I32BitEnumCaseNone<string sym, string str = sym>
   : BitEnumCaseNone<sym, str, 32>;
 class I64BitEnumCaseNone<string sym, string str = sym>
   : BitEnumCaseNone<sym, str, 64>;
@@ -381,17 +381,17 @@ class BitEnum<string name, string summary, list<BitEnumCaseBase> cases, int widt
 }
 
 class I8BitEnum<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnum<name, summary, cases, 8>;
 class I16BitEnum<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnum<name, summary, cases, 16>;
 class I32BitEnum<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnum<name, summary, cases, 32>;
 
 class I64BitEnum<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnum<name, summary, cases, 64>;
 
 // A bit enum stored with an IntegerAttr.
@@ -400,7 +400,7 @@ class I64BitEnum<string name, string summary,
 // be generated on the integer to make sure only allowed bits are set. Besides,
 // helper methods are generated to parse a string separated with a specified
 // delimiter to a symbol and vice versa.
-class BitEnumAttrBase<I intType, list<BitEnumAttrCaseBase> cases,
+class BitEnumAttrBase<I intType, list<BitEnumCaseBase> cases,
                       string summary>
     : SignlessIntegerAttrBase<intType, summary> {
   let predicate = And<[
@@ -413,7 +413,7 @@ class BitEnumAttrBase<I intType, list<BitEnumAttrCaseBase> cases,
 }
 
 class BitEnumAttr<I intType, string name, string summary,
-                  list<BitEnumAttrCaseBase> cases>
+                  list<BitEnumCaseBase> cases>
     : EnumAttrInfo<name, cases, BitEnumAttrBase<intType, cases, summary>>,
       BitEnumBase<cases> {
   // We need to return a string because we may concatenate symbols for multiple
@@ -455,25 +455,25 @@ class BitEnumAttr<I intType, string name, string summary,
 }
 
 class I8BitEnumAttr<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnumAttr<I8, name, summary, cases> {
   let underlyingType = "uint8_t";
 }
 
 class I16BitEnumAttr<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnumAttr<I16, name, summary, cases> {
   let underlyingType = "uint16_t";
 }
 
 class I32BitEnumAttr<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnumAttr<I32, name, summary, cases> {
   let underlyingType = "uint32_t";
 }
 
 class I64BitEnumAttr<string name, string summary,
-                     list<BitEnumAttrCaseBase> cases>
+                     list<BitEnumCaseBase> cases>
     : BitEnumAttr<I64, name, summary, cases> {
   let underlyingType = "uint64_t";
 }
