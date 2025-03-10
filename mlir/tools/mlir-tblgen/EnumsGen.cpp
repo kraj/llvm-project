@@ -156,18 +156,19 @@ inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, {0} value) {{
       {0} flags = {{};
       do {{
         // Parse the keyword containing a part of the enum.
-        std::string enumKeyword;
+        ::llvm::StringRef enumKeyword;
         auto loc = parser.getCurrentLocation();
-        if (failed(parser.parseOptionalKeyword(&enumKeyword)))
+        if (failed(parser.parseOptionalKeyword(&enumKeyword))) {{
           return parser.emitError(loc, "expected keyword for {2}");
+        }
 
         // Symbolize the keyword.
-        if (::std::optional<{0}> flag = {1}::symbolizeEnum<{0}>(enumKeyword)) {{}
+        if (::std::optional<{0}> flag = {1}::symbolizeEnum<{0}>(enumKeyword)) {{
           flags = flags | *flag;
         } else {{
-          return parser.emitError(loc, "expected one of {3} for {2} but got: ") << enumKeyword;
+          return parser.emitError(loc, "expected one of {3} for {2}, got: ") << enumKeyword;
         }
-      } while({5})
+      } while (::mlir::succeeded(parser.{5}()));
       return flags;
     }
   };
@@ -183,8 +184,8 @@ inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, {0} value) {{
       {0} flags = {{};
       bool firstIter = true;
       do {{
-        // Parse the keyword containing part of the enum.
-        std::string enumKeyword;
+        // Parse the keyword containing a part of the enum.
+        ::llvm::StringRef enumKeyword;
         auto loc = parser.getCurrentLocation();
         if (failed(parser.parseOptionalKeyword(&enumKeyword))) {{
           if (firstIter)
@@ -194,13 +195,13 @@ inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, {0} value) {{
         firstIter = false;
 
         // Symbolize the keyword.
-        if (::std::optional<{0}> flag = {1}::symbolizeEnum<{0}>(enumKeyword)) {{}
+        if (::std::optional<{0}> flag = {1}::symbolizeEnum<{0}>(enumKeyword)) {{
           flags = flags | *flag;
         } else {{
-          return parser.emitError(loc, "expected one of {3} for {2} but got: ") << enumKeyword;
+          return parser.emitError(loc, "expected one of {3} for {2}, got: ") << enumKeyword;
         }
-      } while(parser.{5}())
-      return flags;
+      } while(::mlir::succeeded(parser.{5}()));
+      return std::optional<{0}>{{flags};
     }
   };
   } // namespace mlir
@@ -475,7 +476,8 @@ static void emitSymToStrFnForBitEnum(const Record &enumDef, raw_ostream &os) {
     // order, removing bits for groups with all bits present.
     for (const auto &enumerant : llvm::reverse(enumerants)) {
       if ((enumerant.getValue() != 0) &&
-          enumerant.getDef().isSubClassOf("BitEnumAttrCaseGroup")) {
+          (enumerant.getDef().isSubClassOf("BitEnumCaseGroup") ||
+           enumerant.getDef().isSubClassOf("BitEnumAttrCaseGroup"))) {
         os << formatv(formatCompareRemove, enumerant.getValue(),
                       enumerant.getStr(), enumInfo.getUnderlyingType());
       }
@@ -483,7 +485,8 @@ static void emitSymToStrFnForBitEnum(const Record &enumDef, raw_ostream &os) {
     // Emit comparisons for individual bit cases in tablegen declaration order.
     for (const auto &enumerant : enumerants) {
       if ((enumerant.getValue() != 0) &&
-          enumerant.getDef().isSubClassOf("BitEnumAttrCaseBit"))
+          (enumerant.getDef().isSubClassOf("BitEnumCaseBit") ||
+           enumerant.getDef().isSubClassOf("BitEnumAttrCaseBit")))
         os << formatv(formatCompare, enumerant.getValue(), enumerant.getStr());
     }
   } else {

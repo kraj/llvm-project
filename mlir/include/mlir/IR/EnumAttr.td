@@ -10,6 +10,7 @@
 #define ENUMATTR_TD
 
 include "mlir/IR/AttrTypeBase.td"
+include "mlir/IR/Properties.td"
 
 //===----------------------------------------------------------------------===//
 // Enum attribute kinds
@@ -549,6 +550,98 @@ class EnumAttr<Dialect dialect, EnumInfo enumInfo, string name = "",
   // The default assembly format for enum attributes. Selected to best work with
   // operation assembly formats.
   let assemblyFormat = "$value";
+}
+
+// A property wrapping by a C++ enum. This class will automatically create bytecode
+// serialization logic for the given enum, as well as arranging for parser and
+// printer calls.
+//
+// If `defaultCase` is provided, the default value of this property will be the given
+// enum case.
+class EnumProp<EnumInfo enumInfo, EnumCase defaultCase = ?> : Property<enumInfo.cppType, enumInfo.summary> {
+  EnumInfo enum = enumInfo;
+
+  let description = enumInfo.description;
+
+  let predicate = !if(
+    !isa<BitEnumBase>(enumInfo),
+    CPred<"(static_cast<" # enumInfo.underlyingType # ">($_self) & ~" # !cast<BitEnumBase>(enumInfo).validBits # ") == 0">,
+    Or<!foreach(case, enumInfo.enumerants, CPred<"$_self == " # enumInfo.cppType # "::" # case.symbol>)>);
+
+  let convertFromAttribute = [{
+    auto intAttr = ::mlir::dyn_cast_if_present<::mlir::IntegerAttr>($_attr);
+    if (!intAttr) {
+      return $_diag() << "expected IntegerAttr storage for }] # enumInfo.cppType # [{";
+    }
+    $_storage = static_cast<}] # enumInfo.cppType # [{>(intAttr.getValue().getZExtValue());
+    return ::mlir::success();
+  }];
+
+  let convertToAttribute = [{
+    return ::mlir::IntegerAttr::get(::mlir::IntegerType::get($_ctxt, }] # enumInfo.bitwidth
+      # [{), static_cast<}] # enumInfo.underlyingType #[{>($_storage));
+  }];
+
+  let writeToMlirBytecode = [{
+    $_writer.writeVarInt(static_cast<uint64_t>($_storage));
+  }];
+
+  let readFromMlirBytecode = [{
+    uint64_t rawValue;
+    if (failed($_reader.readVarInt(rawValue)))
+      return ::mlir::failure();
+    $_storage = static_cast<}] # enumInfo.cppType # [{>(rawValue);
+  }];
+
+  let optionalParser = [{
+    auto value = ::mlir::FieldParser<}] # enumInfo.cppType # [{>::parse($_parser);
+    if (::mlir::failed(value))
+      return ::mlir::failure();
+    if (!(value->has_value()))
+      return *value;
+    $_storage = std::move(**value);
+  }];
+
+  let defaultValue = !if(!initialized(defaultCase), enumInfo.cppType # "::" # defaultCase.symbol, "");
+}
+
+// An EnumProp which, when printed, is surrounded by mnemonic<>.
+// For example, if the enum can be a, b, or c, and the mnemonic is foo,
+// the format of this property will be "foo<a>", "foo<b>", or "foo<c>".
+class NamedEnumProp<EnumInfo enumInfo, string name, EnumCase defaultCase = ?> : EnumProp<enumInfo, defaultCase> {
+  string mnemonic = name;
+
+  let parser = [{
+    if ($_parser.parseKeyword("}] # name # [{", "expected }] # name # [{")
+        || $_parser.parseLess()) {
+      return ::mlir::failure();
+    }
+    auto parseRes = ::mlir::FieldParser<}] # enumInfo.cppType # [{>::parse($_parser);
+    if (::mlir::failed(parseRes) ||
+        ::mlir::failed($_parser.parseGreater())) {
+      return ::mlir::failure();
+    }
+    $_storage = *parseRes;
+  }];
+
+  let optionalParser = [{
+    if ($_parser.parseOptionalKeyword("}] # name # [{")) {
+      return std::nullopt;
+    }
+    if ($_parser.parseLess()) {
+      return ::mlir::failure();
+    }
+    auto parseRes = ::mlir::FieldParser<}] # enumInfo.cppType # [{>::parse($_parser);
+    if (::mlir::failed(parseRes) ||
+        ::mlir::failed($_parser.parseGreater())) {
+      return ::mlir::failure();
+    }
+    $_storage = *parseRes;
+  }];
+
+  let printer = [{
+    $_printer << "}] # name # [{<" << $_storage << ">";
+  }];
 }
 
 class _symbolToValue<EnumInfo enumInfo, string case> {

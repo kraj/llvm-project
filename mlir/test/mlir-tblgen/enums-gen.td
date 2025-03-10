@@ -101,3 +101,32 @@ def MyNonKeywordBitEnum: I32BitEnumAttr<"MyNonKeywordBitEnum", "An example bit e
 // DECL: inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, ::MyNonKeywordBitEnum value) {
 // DECL:   auto valueStr = stringifyEnum(value);
 // DECL:   return p << '"' << valueStr << '"';
+
+def MyNonQuotedPrintBitEnum
+  : I32BitEnum<"MyNonQuotedPrintBitEnum", "Example new-style bit enum",
+    [None, Bit0, Bit1, Bit2, Bit3, BitGroup]>;
+
+// DECL: struct FieldParser<::MyNonQuotedPrintBitEnum, ::MyNonQuotedPrintBitEnum> {
+// DECL:   template <typename ParserT>
+// DECL:   static FailureOr<::MyNonQuotedPrintBitEnum> parse(ParserT &parser) {
+// DECL:     ::MyNonQuotedPrintBitEnum flags = {};
+// DECL:     do {
+  // DECL:     // Parse the keyword containing a part of the enum.
+// DECL:       ::llvm::StringRef enumKeyword;
+// DECL:       auto loc = parser.getCurrentLocation();
+// DECL:       if (failed(parser.parseOptionalKeyword(&enumKeyword))) {
+// DECL:         return parser.emitError(loc, "expected keyword for Example new-style bit enum");
+// DECL:       }
+// DECL:       // Symbolize the keyword.
+// DECL:       if (::std::optional<::MyNonQuotedPrintBitEnum> flag = ::symbolizeEnum<::MyNonQuotedPrintBitEnum>(enumKeyword))
+// DECL:         flags = flags | *flag;
+// DECL:       } else {
+// DECL:         return parser.emitError(loc, "expected one of [none, tagged, Bit1, Bit2, Bit3, BitGroup] for Example new-style bit enum, got: ") << enumKeyword;
+// DECL:       }
+// DECL:     } while (::mlir::succeeded(parser.parseOptionalVerticalBar()));
+// DECL:     return flags;
+// DECL:   }
+
+// DECL: inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, ::MyNonQuotedPrintBitEnum value) {
+// DECL:   auto valueStr = stringifyEnum(value);
+// DECL-NEXT:   return p << valueStr;

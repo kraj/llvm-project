@@ -52,6 +52,7 @@ bool EnumInfo::isEnumAttr() const { return isSubClassOf("EnumAttrInfo"); }
 std::optional<Attribute> EnumInfo::asEnumAttr() const {
   if (isEnumAttr())
     return Attribute(def);
+  return std::nullopt;
 }
 
 bool EnumInfo::isBitEnum() const { return isSubClassOf("BitEnumBase"); }
