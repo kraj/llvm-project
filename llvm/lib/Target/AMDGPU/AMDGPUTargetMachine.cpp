@@ -2185,6 +2185,7 @@ AMDGPUCodeGenPassBuilder::getRAOptionsForPhase(RegAllocPhase Phase) const {
     return RA_OPTIONS(onlyAllocateVGPRs, "vgpr", true);
   }
 
+  llvm_unreachable("invalid phase value");
 #undef RA_OPTIONS
 }
 
