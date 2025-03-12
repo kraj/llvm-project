@@ -765,7 +765,7 @@ entry:
   %a.neg = fsub half -0.0, %a.val
   %r.val = fpext half %a.neg to float
   store volatile float %r.val, ptr addrspace(1) %r
-  store volatile half %a.neg, ptr addrspace(1) undef
+  store volatile half %a.neg, ptr addrspace(1) poison
   ret void
 }
 
@@ -869,7 +869,7 @@ entry:
   %r.val = fpext half %a.neg to float
   %mul = fmul half %a.neg, %a.val
   store volatile float %r.val, ptr addrspace(1) %r
-  store volatile half %mul, ptr addrspace(1) undef
+  store volatile half %mul, ptr addrspace(1) poison
   ret void
 }
 
@@ -970,7 +970,7 @@ entry:
   %a.fabs = call half @llvm.fabs.f16(half %a.val)
   %r.val = fpext half %a.fabs to float
   store volatile float %r.val, ptr addrspace(1) %r
-  store volatile half %a.fabs, ptr addrspace(1) undef
+  store volatile half %a.fabs, ptr addrspace(1) poison
   ret void
 }
 
@@ -1074,7 +1074,7 @@ entry:
   %r.val = fpext half %a.fabs to float
   %mul = fmul half %a.fabs, %a.val
   store volatile float %r.val, ptr addrspace(1) %r
-  store volatile half %mul, ptr addrspace(1) undef
+  store volatile half %mul, ptr addrspace(1) poison
   ret void
 }
 
@@ -1176,7 +1176,7 @@ entry:
   %a.fneg.fabs = fsub half -0.0, %a.fabs
   %r.val = fpext half %a.fneg.fabs to float
   store volatile float %r.val, ptr addrspace(1) %r
-  store volatile half %a.fneg.fabs, ptr addrspace(1) undef
+  store volatile half %a.fneg.fabs, ptr addrspace(1) poison
   ret void
 }
 
@@ -1281,7 +1281,7 @@ entry:
   %r.val = fpext half %a.fneg.fabs to float
   %mul = fmul half %a.fneg.fabs, %a.val
   store volatile float %r.val, ptr addrspace(1) %r
-  store volatile half %mul, ptr addrspace(1) undef
+  store volatile half %mul, ptr addrspace(1) poison
   ret void
 }
 
