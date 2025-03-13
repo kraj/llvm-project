@@ -140,10 +140,6 @@ if(OS_NAME MATCHES "Android|Linux|Fuchsia" AND
    COMPILER_RT_LIBCXXABI_PATH)
   macro(partially_link_libcxx name dir arch)
     get_target_flags_for_arch(${arch} target_cflags)
-    if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
-      get_compiler_rt_target(${arch} target)
-      set(target_cflags --target=${target} ${target_cflags})
-    endif()
     set(cxx_${arch}_merge_dir "${CMAKE_CURRENT_BINARY_DIR}/cxx_${arch}_merge.dir")
     file(MAKE_DIRECTORY ${cxx_${arch}_merge_dir})
     add_custom_command(TARGET clang_rt.${name}-${arch} POST_BUILD
