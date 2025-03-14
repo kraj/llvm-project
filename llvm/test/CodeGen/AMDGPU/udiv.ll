@@ -2459,7 +2459,7 @@ define amdgpu_kernel void @fdiv_test_denormals(ptr addrspace(1) nocapture readon
 bb:
   %tmp = load i8, ptr addrspace(1) null, align 1
   %tmp1 = sext i8 %tmp to i32
-  %tmp2 = getelementptr inbounds i8, ptr addrspace(1) %arg, i64 undef
+  %tmp2 = getelementptr inbounds i8, ptr addrspace(1) %arg, i64 0
   %tmp3 = load i8, ptr addrspace(1) %tmp2, align 1
   %tmp4 = sext i8 %tmp3 to i32
   %tmp5 = sdiv i32 %tmp1, %tmp4
