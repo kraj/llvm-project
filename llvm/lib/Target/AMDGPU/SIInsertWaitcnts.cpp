@@ -58,6 +58,11 @@ static cl::opt<bool> ForceEmitZeroLoadFlag(
     cl::desc("Force all waitcnt load counters to wait until 0"),
     cl::init(false), cl::Hidden);
 
+static cl::opt<bool>
+    RelaxLDSDMA("amdgpu-relax-lds-dma-waitcnt",
+                cl::desc("Relax the waitcnt for LDS DMA instructions"),
+                cl::init(false), cl::Hidden);
+
 namespace {
 // Class of object that encapsulates latest instruction counter score
 // associated with the operand.  Used for determining whether
@@ -1748,7 +1753,7 @@ bool SIInsertWaitcnts::generateWaitcntInstBefore(MachineInstr &MI,
             }
           }
         }
-        if (!FoundAliasingStore)
+        if (!FoundAliasingStore || RelaxLDSDMA)
           ScoreBrackets.determineWait(LOAD_CNT, RegNo, Wait);
         if (Memop->isStore()) {
           ScoreBrackets.determineWait(EXP_CNT, RegNo, Wait);
