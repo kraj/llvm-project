@@ -209,13 +209,12 @@ struct Report {
 
 struct GadgetReport : public Report {
   const GadgetKind &Kind;
-  SmallVector<MCPhysReg> AffectedRegisters;
+  SmallVector<MCPhysReg, 1> AffectedRegisters;
   std::vector<MCInstReference> OverwritingInstrs;
 
   GadgetReport(const GadgetKind &Kind, MCInstReference Location,
-               const BitVector &AffectedRegisters)
-      : Report(Location), Kind(Kind),
-        AffectedRegisters(AffectedRegisters.set_bits()) {}
+               MCPhysReg AffectedRegister)
+      : Report(Location), Kind(Kind), AffectedRegisters({AffectedRegister}) {}
 
   void generateReport(raw_ostream &OS, const BinaryContext &BC) const override;
 
