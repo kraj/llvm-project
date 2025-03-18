@@ -13462,13 +13462,114 @@ static ElaboratedTypeKeyword getCommonTypeKeyword(const T *X, const T *Y) {
                                             : ElaboratedTypeKeyword::None;
 }
 
+static NestedNameSpecifier *getCommonNNS(ASTContext &Ctx,
+                                         NestedNameSpecifier *X,
+                                         NestedNameSpecifier *Y, bool IsSame) {
+  if (X == Y)
+    return X;
+
+  NestedNameSpecifier *Canon = Ctx.getCanonicalNestedNameSpecifier(X);
+  if (Canon != Ctx.getCanonicalNestedNameSpecifier(Y)) {
+    assert(!IsSame && "Should be the same NestedNameSpecifier");
+    return nullptr;
+  }
+
+  NestedNameSpecifier *R = nullptr;
+  switch (auto KX = X->getKind(), KY = Y->getKind(); KX) {
+  case NestedNameSpecifier::SpecifierKind::Identifier: {
+    assert(KY == NestedNameSpecifier::SpecifierKind::Identifier);
+    IdentifierInfo *II = X->getAsIdentifier();
+    assert(II == Y->getAsIdentifier());
+    NestedNameSpecifier *P =
+        ::getCommonNNS(Ctx, X->getPrefix(), Y->getPrefix(), /*IsSame=*/true);
+    R = NestedNameSpecifier::Create(Ctx, P, II);
+    break;
+  }
+  case NestedNameSpecifier::SpecifierKind::Namespace:
+  case NestedNameSpecifier::SpecifierKind::NamespaceAlias: {
+    assert(KY == NestedNameSpecifier::SpecifierKind::Namespace ||
+           KY == NestedNameSpecifier::SpecifierKind::NamespaceAlias);
+    NestedNameSpecifier *P = ::getCommonNNS(Ctx, X->getPrefix(), Y->getPrefix(),
+                                            /*IsSame=*/false);
+    NamespaceAliasDecl *AX = X->getAsNamespaceAlias(),
+                       *AY = Y->getAsNamespaceAlias();
+    if (declaresSameEntity(AX, AY)) {
+      R = NestedNameSpecifier::Create(Ctx, P, ::getCommonDeclChecked(AX, AY));
+      break;
+    }
+    NamespaceDecl *NX = AX ? AX->getNamespace() : X->getAsNamespace(),
+                  *NY = AY ? AY->getNamespace() : Y->getAsNamespace();
+    R = NestedNameSpecifier::Create(Ctx, P, ::getCommonDeclChecked(NX, NY));
+    break;
+  }
+  case NestedNameSpecifier::SpecifierKind::TypeSpec:
+  case NestedNameSpecifier::SpecifierKind::TypeSpecWithTemplate: {
+    assert(KY == NestedNameSpecifier::SpecifierKind::TypeSpec ||
+           KY == NestedNameSpecifier::SpecifierKind::TypeSpecWithTemplate);
+    bool Template =
+        KX == NestedNameSpecifier::SpecifierKind::TypeSpecWithTemplate &&
+        KY == NestedNameSpecifier::SpecifierKind::TypeSpecWithTemplate;
+
+    const Type *TX = X->getAsType(), *TY = Y->getAsType();
+    if (TX == TY) {
+      NestedNameSpecifier *P =
+          ::getCommonNNS(Ctx, X->getPrefix(), Y->getPrefix(),
+                         /*IsSame=*/false);
+      R = NestedNameSpecifier::Create(Ctx, P, Template, TX);
+      break;
+    }
+    // TODO: Try to salvage the original prefix.
+    // If getCommonSugaredType removed any top level sugar, the original prefix
+    // is not applicable anymore.
+    NestedNameSpecifier *P = nullptr;
+    const Type *T = Ctx.getCommonSugaredType(QualType(X->getAsType(), 0),
+                                             QualType(Y->getAsType(), 0),
+                                             /*Unqualified=*/true)
+                        .getTypePtr();
+    switch (T->getTypeClass()) {
+    case Type::Elaborated: {
+      auto *ET = cast<ElaboratedType>(T);
+      R = NestedNameSpecifier::Create(Ctx, ET->getQualifier(), Template,
+                                      ET->getNamedType().getTypePtr());
+      break;
+    }
+    case Type::DependentName: {
+      auto *DN = cast<DependentNameType>(T);
+      R = NestedNameSpecifier::Create(Ctx, DN->getQualifier(),
+                                      DN->getIdentifier());
+      break;
+    }
+    case Type::DependentTemplateSpecialization: {
+      auto *DTST = cast<DependentTemplateSpecializationType>(T);
+      T = Ctx.getDependentTemplateSpecializationType(
+                 DTST->getKeyword(), /*NNS=*/nullptr, DTST->getIdentifier(),
+                 DTST->template_arguments())
+              .getTypePtr();
+      P = DTST->getQualifier();
+      R = NestedNameSpecifier::Create(Ctx, DTST->getQualifier(), Template, T);
+      break;
+    }
+    default:
+      R = NestedNameSpecifier::Create(Ctx, P, Template, T);
+      break;
+    }
+    break;
+  }
+  case NestedNameSpecifier::SpecifierKind::Global:
+    assert(KY == NestedNameSpecifier::SpecifierKind::Global);
+    return X;
+  case NestedNameSpecifier::SpecifierKind::Super:
+    assert(KY == NestedNameSpecifier::SpecifierKind::Super);
+    return X;
+  }
+  assert(Ctx.getCanonicalNestedNameSpecifier(R) == Canon);
+  return R;
+}
+
 template <class T>
-static NestedNameSpecifier *getCommonNNS(ASTContext &Ctx, const T *X,
-                                         const T *Y) {
-  // FIXME: Try to keep the common NNS sugar.
-  return X->getQualifier() == Y->getQualifier()
-             ? X->getQualifier()
-             : Ctx.getCanonicalNestedNameSpecifier(X->getQualifier());
+static NestedNameSpecifier *getCommonQualifier(ASTContext &Ctx, const T *X,
+                                               const T *Y, bool IsSame) {
+  return ::getCommonNNS(Ctx, X->getQualifier(), Y->getQualifier(), IsSame);
 }
 
 template <class T>
@@ -13879,8 +13980,9 @@ static QualType getCommonNonSugarTypeNode(ASTContext &Ctx, const Type *X,
                *NY = cast<DependentNameType>(Y);
     assert(NX->getIdentifier() == NY->getIdentifier());
     return Ctx.getDependentNameType(
-        getCommonTypeKeyword(NX, NY), getCommonNNS(Ctx, NX, NY),
-        NX->getIdentifier(), NX->getCanonicalTypeInternal());
+        getCommonTypeKeyword(NX, NY),
+        getCommonQualifier(Ctx, NX, NY, /*IsSame=*/true), NX->getIdentifier(),
+        NX->getCanonicalTypeInternal());
   }
   case Type::DependentTemplateSpecialization: {
     const auto *TX = cast<DependentTemplateSpecializationType>(X),
@@ -13889,8 +13991,9 @@ static QualType getCommonNonSugarTypeNode(ASTContext &Ctx, const Type *X,
     auto As = getCommonTemplateArguments(Ctx, TX->template_arguments(),
                                          TY->template_arguments());
     return Ctx.getDependentTemplateSpecializationType(
-        getCommonTypeKeyword(TX, TY), getCommonNNS(Ctx, TX, TY),
-        TX->getIdentifier(), As);
+        getCommonTypeKeyword(TX, TY),
+        getCommonQualifier(Ctx, TX, TY, /*IsSame=*/true), TX->getIdentifier(),
+        As);
   }
   case Type::UnaryTransform: {
     const auto *TX = cast<UnaryTransformType>(X),
@@ -14047,7 +14150,8 @@ static QualType getCommonSugarTypeNode(ASTContext &Ctx, const Type *X,
   case Type::Elaborated: {
     const auto *EX = cast<ElaboratedType>(X), *EY = cast<ElaboratedType>(Y);
     return Ctx.getElaboratedType(
-        ::getCommonTypeKeyword(EX, EY), ::getCommonNNS(Ctx, EX, EY),
+        ::getCommonTypeKeyword(EX, EY),
+        ::getCommonQualifier(Ctx, EX, EY, /*IsSame=*/false),
         Ctx.getQualifiedType(Underlying),
         ::getCommonDecl(EX->getOwnedTagDecl(), EY->getOwnedTagDecl()));
   }
