@@ -1,0 +1,107 @@
+# RUN: llc -mtriple=aarch64-linux-gnu -verify-machineinstrs -o - %s -start-before=phi-node-elimination -stop-after=block-placement | FileCheck %s
+
+# TODO: Reduce test case.
+# CHECK-NOT: CBNZX
+
+---
+name: test
+tracksRegLiveness: true
+body: |
+  bb.0:
+    liveins: $x0, $w1, $x2, $x3
+    %42:gpr64all = COPY killed $x0
+    %41:gpr32all = COPY killed $w1
+    %120:gpr64common = COPY killed $x2
+    %121:gpr64common = COPY killed $x3
+    B %bb.20
+
+  bb.20:
+    successors: %bb.21(0x30000000), %bb.22(0x50000000); %bb.21(37.50%), %bb.22(62.50%)
+
+    %43:gpr64common = PHI %42:gpr64all, %bb.0, %55:gpr64common, %bb.28
+    %44:gpr32all = PHI %41:gpr32all, %bb.0, %57:gpr32all, %bb.28
+    %144:gpr64 = LDRXui %121:gpr64common, 0 :: (load (s64))
+    %145:gpr64 = LDRXui %43:gpr64common, 0 :: (load (s64))
+    %146:gpr64 = EORXrr killed %145:gpr64, killed %144:gpr64
+    STRXui killed %43:gpr64common, %121:gpr64common, 0 :: (store (s64))
+    STRXui %146:gpr64, %121:gpr64common, 1 :: (store (s64))
+    %147:gpr64 = LDRXui %120:gpr64common, 1 :: (load (s64))
+    CBNZX %147:gpr64, %bb.22
+
+  bb.21:
+    successors: %bb.26(0x80000000); %bb.26(100.00%)
+
+    %45:gpr64all = COPY killed %146:gpr64
+    B %bb.26
+
+  bb.22:
+    successors: %bb.23(0x80000000); %bb.23(100.00%)
+
+    %46:gpr64all = COPY killed %147:gpr64
+    %148:gpr64 = LDRXui %120:gpr64common, 0 :: (load (s64))
+    %47:gpr64all = COPY killed %148:gpr64
+
+  bb.23:
+    successors: %bb.25(0x04000000), %bb.24(0x7c000000); %bb.25(3.12%), %bb.24(96.88%)
+
+    %48:gpr32common = PHI %44:gpr32all, %bb.22, %51:gpr32all, %bb.24
+    %49:gpr64common = PHI %46:gpr64all, %bb.22, %52:gpr64all, %bb.24
+    %50:gpr64 = PHI %47:gpr64all, %bb.22, %49:gpr64common, %bb.24
+    %149:gpr32 = LDRWui %49:gpr64common, 2 :: (load (s32))
+    %150:gpr32common = nsw ADDWri %48:gpr32common, 1, 0
+    dead $wzr = SUBSWrr killed %149:gpr32, killed %150:gpr32common, implicit-def $nzcv
+    Bcc 12, %bb.25, implicit killed $nzcv
+    B %bb.24
+
+  bb.24:
+    successors: %bb.25(0x04000000), %bb.23(0x7c000000); %bb.25(3.12%), %bb.23(96.88%)
+
+    %152:gpr32 = LDRWui %49:gpr64common, 3 :: (load (s32))
+    dead $wzr = SUBSWrr %48:gpr32common, %152:gpr32, implicit-def $nzcv
+    %154:gpr32 = CSELWr killed %48:gpr32common, killed %152:gpr32, 12, implicit killed $nzcv
+    %51:gpr32all = COPY killed %154:gpr32
+    %155:gpr64 = LDRXui %49:gpr64common, 0 :: (load (s64))
+    %156:gpr64 = EORXrr %155:gpr64, %50:gpr64
+    %52:gpr64all = COPY %156:gpr64
+    STRXui %49:gpr64common, %120:gpr64common, 0 :: (store (s64))
+    STRXui killed %156:gpr64, %120:gpr64common, 1 :: (store (s64))
+    dead $xzr = SUBSXrr killed %155:gpr64, killed %50:gpr64, implicit-def $nzcv
+    Bcc 1, %bb.23, implicit killed $nzcv
+    B %bb.25
+
+  bb.25:
+    successors: %bb.26(0x80000000); %bb.26(100.00%)
+
+    %53:gpr32all = PHI %48:gpr32common, %bb.23, %51:gpr32all, %bb.24
+    %158:gpr64 = LDRXui %121:gpr64common, 1 :: (load (s64))
+    %54:gpr64all = COPY killed %158:gpr64
+
+  bb.26:
+    successors: %bb.29(0x04000000), %bb.27(0x7c000000); %bb.29(3.12%), %bb.27(96.88%)
+
+    %55:gpr64common = PHI %45:gpr64all, %bb.21, %54:gpr64all, %bb.25
+    %56:gpr32common = PHI %44:gpr32all, %bb.21, %53:gpr32all, %bb.25
+    CBZX %55:gpr64common, %bb.29
+    B %bb.27
+
+  bb.27:
+    successors: %bb.29(0x04000000), %bb.28(0x7c000000); %bb.29(3.12%), %bb.28(96.88%)
+
+    %159:gpr32 = LDRWui %55:gpr64common, 2 :: (load (s32))
+    %160:gpr32common = nsw ADDWri %56:gpr32common, 1, 0
+    dead $wzr = SUBSWrr killed %159:gpr32, killed %160:gpr32common, implicit-def $nzcv
+    Bcc 12, %bb.29, implicit killed $nzcv
+    B %bb.28
+
+  bb.28:
+    successors: %bb.20(0x80000000); %bb.20(100.00%)
+
+    %162:gpr32 = LDRWui %55:gpr64common, 3 :: (load (s32))
+    dead $wzr = SUBSWrr %56:gpr32common, %162:gpr32, implicit-def $nzcv
+    %164:gpr32 = CSELWr killed %56:gpr32common, killed %162:gpr32, 12, implicit killed $nzcv
+    %57:gpr32all = COPY killed %164:gpr32
+    B %bb.20
+
+  bb.29:
+    RET_ReallyLR    
+...
