@@ -46,6 +46,7 @@
 #include "deltas/ReduceRegisterUses.h"
 #include "deltas/ReduceSpecialGlobals.h"
 #include "deltas/ReduceUsingSimplifyCFG.h"
+#include "deltas/ReduceValuesToReturn.h"
 #include "deltas/ReduceVirtualRegisters.h"
 #include "deltas/RunIRPasses.h"
 #include "deltas/SimplifyInstructions.h"
