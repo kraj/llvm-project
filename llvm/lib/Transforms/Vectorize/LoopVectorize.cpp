@@ -5028,7 +5028,7 @@ calculateRegisterUsage(VPlan &Plan, ArrayRef<ElementCount> VFs,
         }
       } else {
         for (auto *R : OpenIntervals) {
-          if (isa<VPVectorPointerRecipe, VPReverseVectorPointerRecipe>(R))
+          if (isa<VPVectorPointerRecipe, VPVectorEndPointerRecipe>(R))
             continue;
           if (isa<VPCanonicalIVPHIRecipe, VPReplicateRecipe, VPDerivedIVRecipe,
                   VPScalarIVStepsRecipe>(R) ||
