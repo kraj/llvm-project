@@ -104,6 +104,8 @@ const OMPClauseWithPreInit *OMPClauseWithPreInit::get(const OMPClause *C) {
     return static_cast<const OMPFilterClause *>(C);
   case OMPC_ompx_dyn_cgroup_mem:
     return static_cast<const OMPXDynCGroupMemClause *>(C);
+  case OMPC_dyn_groupprivate:
+    return static_cast<const OMPDynGroupprivateClause *>(C);
   case OMPC_default:
   case OMPC_proc_bind:
   case OMPC_safelen:
@@ -2721,6 +2723,18 @@ void OMPClausePrinter::VisitOMPBindClause(OMPBindClause *Node) {
 void OMPClausePrinter::VisitOMPXDynCGroupMemClause(
     OMPXDynCGroupMemClause *Node) {
   OS << "ompx_dyn_cgroup_mem(";
+  Node->getSize()->printPretty(OS, nullptr, Policy, 0);
+  OS << ")";
+}
+
+void OMPClausePrinter::VisitOMPDynGroupprivateClause(
+    OMPDynGroupprivateClause *Node) {
+  OS << "dyn_groupprivate(";
+  OpenMPDynGroupprivateClauseModifier Modifier = Node->getModifier();
+  if (Modifier != OMPC_DYN_GROUPPRIVATE_unknown) {
+    OS << getOpenMPSimpleClauseTypeName(Node->getClauseKind(), Modifier)
+       << ": ";
+  }
   Node->getSize()->printPretty(OS, nullptr, Policy, 0);
   OS << ")";
 }

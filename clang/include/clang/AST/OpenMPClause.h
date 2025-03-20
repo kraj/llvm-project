@@ -9768,6 +9768,69 @@ public:
   Expr *getSize() const { return getStmtAs<Expr>(); }
 };
 
+/// This represents 'dyn_groupprivate' clause in '#pragma omp target ...'
+/// and '#pragma omp teams ...' directives.
+///
+/// \code
+/// #pragma omp target [...] dyn_groupprivate(N)
+/// \endcode
+class OMPDynGroupprivateClause
+    : public OMPOneStmtClause<llvm::omp::OMPC_dyn_groupprivate, OMPClause>,
+      public OMPClauseWithPreInit {
+  friend class OMPClauseReader;
+
+  /// Modifiers for 'grainsize' clause.
+  OpenMPDynGroupprivateClauseModifier Modifier = OMPC_DYN_GROUPPRIVATE_unknown;
+
+  /// Location of the modifier.
+  SourceLocation ModifierLoc;
+
+  /// Set size.
+  void setSize(Expr *E) { setStmt(E); }
+
+  /// Sets modifier.
+  void setModifier(OpenMPDynGroupprivateClauseModifier M) { Modifier = M; }
+
+  /// Sets modifier location.
+  void setModifierLoc(SourceLocation Loc) { ModifierLoc = Loc; }
+
+public:
+  /// Build 'dyn_groupprivate' clause.
+  ///
+  /// \param Modifier Clause modifier.
+  /// \param Size Size expression.
+  /// \param HelperSize Helper Size expression
+  /// \param CaptureRegion Innermost OpenMP region where expressions in this
+  /// \param StartLoc Starting location of the clause.
+  /// \param LParenLoc Location of '('.
+  /// \param ModifierLoc Modifier location.
+  /// \param EndLoc Ending location of the clause.
+  OMPDynGroupprivateClause(OpenMPDynGroupprivateClauseModifier Modifier,
+                         Expr *Size, Stmt *HelperSize,
+                         OpenMPDirectiveKind CaptureRegion,
+                         SourceLocation StartLoc, SourceLocation LParenLoc,
+                         SourceLocation ModifierLoc, SourceLocation EndLoc)
+      : OMPOneStmtClause(Size, StartLoc, LParenLoc, EndLoc),
+        OMPClauseWithPreInit(this), Modifier(Modifier), ModifierLoc(ModifierLoc) {
+    setPreInitStmt(HelperSize, CaptureRegion);
+  }
+
+  /// Build an empty clause.
+  OMPDynGroupprivateClause() : OMPOneStmtClause(), OMPClauseWithPreInit(this) {}
+
+  /// Return the size expression.
+  Expr *getSize() { return getStmtAs<Expr>(); }
+
+  /// Return the size expression.
+  Expr *getSize() const { return getStmtAs<Expr>(); }
+
+  /// Gets modifier.
+  OpenMPDynGroupprivateClauseModifier getModifier() const { return Modifier; }
+
+  /// Gets modifier location.
+  SourceLocation getModifierLoc() const { return ModifierLoc; }
+};
+
 /// This represents the 'doacross' clause for the '#pragma omp ordered'
 /// directive.
 ///
