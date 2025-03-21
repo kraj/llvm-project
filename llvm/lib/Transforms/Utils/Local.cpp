@@ -3359,9 +3359,7 @@ static void combineMetadata(Instruction *K, const Instruction *J,
       // being removed as unknown metadata. The actual merging is handled
       // separately below.
       case LLVMContext::MD_mmra:
-        [[fallthrough]];
       case LLVMContext::MD_memprof:
-        [[fallthrough]];
       case LLVMContext::MD_callsite:
         break;
       case LLVMContext::MD_align:
