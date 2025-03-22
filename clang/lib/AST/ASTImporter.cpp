@@ -9958,7 +9958,7 @@ Expected<TemplateName> ASTImporter::Import(TemplateName From) {
 
     return ToContext.getSubstTemplateTemplateParm(
         *ReplacementOrErr, *AssociatedDeclOrErr, Subst->getIndex(),
-        Subst->getPackIndex());
+        Subst->getPackIndex(), Subst->getFinal());
   }
 
   case TemplateName::SubstTemplateTemplateParmPack: {
