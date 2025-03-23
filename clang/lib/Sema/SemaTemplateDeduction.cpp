@@ -3245,7 +3245,7 @@ CheckDeducedArgumentConstraints(Sema &S, TemplateDeclT *Template,
                                 ArrayRef<TemplateArgument> SugaredDeducedArgs,
                                 ArrayRef<TemplateArgument> CanonicalDeducedArgs,
                                 TemplateDeductionInfo &Info) {
-  llvm::SmallVector<const Expr *, 3> AssociatedConstraints;
+  llvm::SmallVector<AssociatedConstraint, 3> AssociatedConstraints;
   Template->getAssociatedConstraints(AssociatedConstraints);
 
   std::optional<ArrayRef<TemplateArgument>> Innermost;
@@ -5235,9 +5235,11 @@ static bool CheckDeducedPlaceholderConstraints(Sema &S, const AutoType &Type,
       ImplicitConceptSpecializationDecl::Create(
           S.getASTContext(), Concept->getDeclContext(), Concept->getLocation(),
           CTAI.CanonicalConverted));
-  if (S.CheckConstraintSatisfaction(Concept, {Concept->getConstraintExpr()},
-                                    MLTAL, TypeLoc.getLocalSourceRange(),
-                                    Satisfaction))
+  if (S.CheckConstraintSatisfaction(
+          Concept,
+          AssociatedConstraint(Concept->getConstraintExpr(),
+                               /*ArgumentPackSubstitutionIndex=*/-1),
+          MLTAL, TypeLoc.getLocalSourceRange(), Satisfaction))
     return true;
   if (!Satisfaction.IsSatisfied) {
     std::string Buf;
@@ -6111,7 +6113,7 @@ FunctionTemplateDecl *Sema::getMoreSpecializedTemplate(
       !Context.hasSameType(FD1->getReturnType(), FD2->getReturnType()))
     return nullptr;
 
-  llvm::SmallVector<const Expr *, 3> AC1, AC2;
+  llvm::SmallVector<AssociatedConstraint, 3> AC1, AC2;
   FT1->getAssociatedConstraints(AC1);
   FT2->getAssociatedConstraints(AC2);
   bool AtLeastAsConstrained1, AtLeastAsConstrained2;
@@ -6216,7 +6218,7 @@ FunctionDecl *Sema::getMoreConstrainedFunction(FunctionDecl *FD1,
   if (FunctionDecl *P = FD2->getTemplateInstantiationPattern(false))
     F2 = P;
 
-  llvm::SmallVector<const Expr *, 1> AC1, AC2;
+  llvm::SmallVector<AssociatedConstraint, 1> AC1, AC2;
   F1->getAssociatedConstraints(AC1);
   F2->getAssociatedConstraints(AC2);
   bool AtLeastAsConstrained1, AtLeastAsConstrained2;
@@ -6448,7 +6450,7 @@ getMoreSpecialized(Sema &S, QualType T1, QualType T2, TemplateLikeDecl *P1,
   if (!TemplateArgumentListAreEqual(S.getASTContext())(P1, P2))
     return nullptr;
 
-  llvm::SmallVector<const Expr *, 3> AC1, AC2;
+  llvm::SmallVector<AssociatedConstraint, 3> AC1, AC2;
   P1->getAssociatedConstraints(AC1);
   P2->getAssociatedConstraints(AC2);
   bool AtLeastAsConstrained1, AtLeastAsConstrained2;
