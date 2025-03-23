@@ -29,12 +29,12 @@ class Sema;
 enum { ConstraintAlignment = 8 };
 
 struct alignas(ConstraintAlignment) AtomicConstraint {
-  const Expr *ConstraintExpr;
+  AssociatedConstraint AC;
   NamedDecl *ConstraintDecl;
   std::optional<ArrayRef<TemplateArgumentLoc>> ParameterMapping;
 
-  AtomicConstraint(const Expr *ConstraintExpr, NamedDecl *ConstraintDecl)
-      : ConstraintExpr(ConstraintExpr), ConstraintDecl(ConstraintDecl) {};
+  AtomicConstraint(const AssociatedConstraint &AC, NamedDecl *ConstraintDecl)
+      : AC(AC), ConstraintDecl(ConstraintDecl) {};
 
   bool hasMatchingParameterMapping(ASTContext &C,
                                    const AtomicConstraint &Other) const {
@@ -70,7 +70,14 @@ struct alignas(ConstraintAlignment) AtomicConstraint {
     // We do not actually substitute the parameter mappings into the
     // constraint expressions, therefore the constraint expressions are
     // the originals, and comparing them will suffice.
-    if (ConstraintExpr != Other.ConstraintExpr)
+    if (AC.ConstraintExpr != Other.AC.ConstraintExpr)
+      return false;
+
+    // FIXME: As the normalization cache doesn't take
+    // ArgumentPackSubstitutionIndex into account,
+    // this won't have an effect.
+    if (AC.ArgumentPackSubstitutionIndex !=
+        Other.AC.ArgumentPackSubstitutionIndex)
       return false;
 
     // Check that the parameter lists are identical
@@ -152,9 +159,11 @@ struct NormalizedConstraint {
 
 private:
   static std::optional<NormalizedConstraint>
-  fromConstraintExprs(Sema &S, NamedDecl *D, ArrayRef<const Expr *> E);
+  fromConstraintAssociatedConstraints(Sema &S, NamedDecl *D,
+                                      ArrayRef<AssociatedConstraint> ACs);
   static std::optional<NormalizedConstraint>
-  fromConstraintExpr(Sema &S, NamedDecl *D, const Expr *E);
+  fromConstraintAssociatedConstraint(Sema &S, NamedDecl *D,
+                                     AssociatedConstraint AC);
 };
 
 struct alignas(ConstraintAlignment) NormalizedConstraintPair {
@@ -180,7 +189,7 @@ struct alignas(ConstraintAlignment) FoldExpandedConstraint {
 
 const NormalizedConstraint *getNormalizedAssociatedConstraints(
     Sema &S, NamedDecl *ConstrainedDecl,
-    ArrayRef<const Expr *> AssociatedConstraints);
+    ArrayRef<AssociatedConstraint> AssociatedConstraints);
 
 template <typename AtomicSubsumptionEvaluator>
 bool subsumes(const NormalForm &PDNF, const NormalForm &QCNF,
@@ -226,8 +235,8 @@ bool subsumes(const NormalForm &PDNF, const NormalForm &QCNF,
 }
 
 template <typename AtomicSubsumptionEvaluator>
-bool subsumes(Sema &S, NamedDecl *DP, ArrayRef<const Expr *> P, NamedDecl *DQ,
-              ArrayRef<const Expr *> Q, bool &Subsumes,
+bool subsumes(Sema &S, NamedDecl *DP, ArrayRef<AssociatedConstraint> P,
+              NamedDecl *DQ, ArrayRef<AssociatedConstraint> Q, bool &Subsumes,
               const AtomicSubsumptionEvaluator &E) {
   // C++ [temp.constr.order] p2
   //   In order to determine if a constraint P subsumes a constraint Q, P is
