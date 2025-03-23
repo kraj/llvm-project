@@ -2130,6 +2130,8 @@ void TextNodeDumper::VisitSubstTemplateTypeParmType(
   VisitTemplateTypeParmDecl(T->getReplacedParameter());
   if (auto PackIndex = T->getPackIndex())
     OS << " pack_index " << *PackIndex;
+  if (T->getFinal())
+    OS << " final";
 }
 
 void TextNodeDumper::VisitSubstTemplateTypeParmPackType(
