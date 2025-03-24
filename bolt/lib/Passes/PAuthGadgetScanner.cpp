@@ -194,10 +194,20 @@ template <typename T> static void iterateOverInstrs(BinaryFunction &BF, T Fn) {
 ///   X30 is safe-to-dereference - the state computed for sub- and
 ///   super-registers is not inspected.
 struct State {
-  /// A BitVector containing the registers that are either safe at function
-  /// entry and were not clobbered yet, or those not clobbered since being
-  /// authenticated.
+  /// A BitVector containing the registers that can be treated as being
+  /// authenticated (assuming failed authentication is permitted to produce
+  /// an invalid address, provided it generates an error on memory access).
+  /// The registers in this set are either
+  /// * not clobbered since being authenticated, or
+  /// * trusted at function entry and were not clobbered yet, or
+  /// * contain a safely materialized address.
   BitVector SafeToDerefRegs;
+  /// A BitVector containing the registers that can be treated as being
+  /// authenticated *successfully*. These registers are either
+  /// * authenticated and then checked to be authenticated successfully, or
+  /// * trusted at function entry and were not clobbered yet, or
+  /// * contain a safely materialized address.
+  BitVector TrustedRegs;
   /// A vector of sets, only used in the second data flow run.
   /// Each element in the vector represents one of the registers for which we
   /// track the set of last instructions that wrote to this register. For
@@ -210,7 +220,8 @@ struct State {
   State() {}
 
   State(unsigned NumRegs, unsigned NumRegsToTrack)
-      : SafeToDerefRegs(NumRegs), LastInstWritingReg(NumRegsToTrack) {}
+      : SafeToDerefRegs(NumRegs), TrustedRegs(NumRegs),
+        LastInstWritingReg(NumRegsToTrack) {}
 
   State &merge(const State &StateIn) {
     if (StateIn.empty())
@@ -219,6 +230,7 @@ struct State {
       return (*this = StateIn);
 
     SafeToDerefRegs &= StateIn.SafeToDerefRegs;
+    TrustedRegs &= StateIn.TrustedRegs;
     for (unsigned I = 0; I < LastInstWritingReg.size(); ++I)
       for (const MCInst *J : StateIn.LastInstWritingReg[I])
         LastInstWritingReg[I].insert(J);
@@ -231,6 +243,7 @@ struct State {
 
   bool operator==(const State &RHS) const {
     return SafeToDerefRegs == RHS.SafeToDerefRegs &&
+           TrustedRegs == RHS.TrustedRegs &&
            LastInstWritingReg == RHS.LastInstWritingReg;
   }
   bool operator!=(const State &RHS) const { return !((*this) == RHS); }
@@ -255,6 +268,7 @@ raw_ostream &operator<<(raw_ostream &OS, const State &S) {
     OS << "empty";
   } else {
     OS << "SafeToDerefRegs: " << S.SafeToDerefRegs << ", ";
+    OS << "TrustedRegs: " << S.TrustedRegs << ", ";
     printLastInsts(OS, S.LastInstWritingReg);
   }
   OS << ">";
@@ -275,11 +289,14 @@ void PacStatePrinter::print(raw_ostream &OS, const State &S) const {
   OS << "pacret-state<";
   if (S.empty()) {
     assert(S.SafeToDerefRegs.empty());
+    assert(S.TrustedRegs.empty());
     assert(S.LastInstWritingReg.empty());
     OS << "empty";
   } else {
     OS << "SafeToDerefRegs: ";
     RegStatePrinter.print(OS, S.SafeToDerefRegs);
+    OS << ", TrustedRegs: ";
+    RegStatePrinter.print(OS, S.TrustedRegs);
     OS << ", ";
     printLastInsts(OS, S.LastInstWritingReg);
   }
@@ -308,6 +325,8 @@ protected:
   /// RegToTrackInstsFor is the set of registers for which the dataflow analysis
   /// must compute which the last set of instructions writing to it are.
   const TrackedRegisters RegsToTrackInstsFor;
+  /// ???
+  DenseMap<const MCInst *, std::pair<MCPhysReg, const MCInst *>> CheckerSequenceInfo;
 
   SmallPtrSet<const MCInst *, 4> &lastWritingInsts(State &S,
                                                    MCPhysReg Reg) const {
@@ -322,8 +341,10 @@ protected:
 
   State createEntryState() {
     State S(NumRegs, RegsToTrackInstsFor.getNumTrackedRegisters());
-    for (MCPhysReg Reg : BC.MIB->getTrustedLiveInRegs())
-      S.SafeToDerefRegs |= BC.MIB->getAliases(Reg, /*OnlySmaller=*/true);
+    for (MCPhysReg Reg : BC.MIB->getTrustedLiveInRegs()) {
+      S.TrustedRegs |= BC.MIB->getAliases(Reg, /*OnlySmaller=*/true);
+      S.SafeToDerefRegs = S.TrustedRegs;
+    }
     return S;
   }
 
@@ -371,6 +392,46 @@ protected:
     return Regs;
   }
 
+  // Returns all registers made trusted by this instruction.
+  SmallVector<MCPhysReg> getNewTrustedRegs(const MCInst &Point,
+                                           const State &Cur) const {
+    SmallVector<MCPhysReg> Regs;
+    const MCPhysReg NoReg = BC.MIB->getNoRegister();
+
+    // An authenticated pointer can be checked, or
+    MCPhysReg CheckedReg =
+        BC.MIB->getAuthCheckedReg(Point, /*MayOverwrite=*/false);
+    if (CheckedReg != NoReg && Cur.SafeToDerefRegs[CheckedReg])
+      Regs.push_back(CheckedReg);
+
+    if (CheckerSequenceInfo.contains(&Point)) {
+      MCPhysReg CheckedReg;
+      const MCInst *FirstCheckerInst;
+      std::tie(CheckedReg, FirstCheckerInst) = CheckerSequenceInfo.at(&Point);
+
+      // FirstCheckerInst should belong to the same basic block, meaning
+      // it was deterministically processed a few steps before this instruction.
+      const State &StateBeforeChecker = getStateBefore(*FirstCheckerInst).get();
+      if (StateBeforeChecker.SafeToDerefRegs[CheckedReg])
+        Regs.push_back(CheckedReg);
+    }
+
+    // ... a safe address can be materialized, or
+    MCPhysReg NewAddrReg = BC.MIB->getSafelyMaterializedAddressReg(Point);
+    if (NewAddrReg != NoReg)
+      Regs.push_back(NewAddrReg);
+
+    // ... an address can be updated in a safe manner, producing the result
+    // which is as trusted as the input address.
+    MCPhysReg ArithResult, ArithSrc;
+    std::tie(ArithResult, ArithSrc) =
+        BC.MIB->analyzeSafeAddressArithmetics(Point);
+    if (ArithResult != NoReg && Cur.TrustedRegs[ArithSrc])
+      Regs.push_back(ArithResult);
+
+    return Regs;
+  }
+
   State computeNext(const MCInst &Point, const State &Cur) {
     PacStatePrinter P(BC);
     LLVM_DEBUG({
@@ -401,11 +462,14 @@ protected:
     // PC-relative constant.
     SmallVector<MCPhysReg> AuthenticatedOrBetter =
         getAuthenticatedRegs(Point, Cur);
+    // Compute the set of registers made trusted by this instruction.
+    SmallVector<MCPhysReg> NewTrustedRegs = getNewTrustedRegs(Point, Cur);
 
     // Then, compute the state after this instruction is executed.
     State Next = Cur;
 
     Next.SafeToDerefRegs.reset(Clobbered);
+    Next.TrustedRegs.reset(Clobbered);
     // Keep track of this instruction if it writes to any of the registers we
     // need to track that for:
     for (MCPhysReg Reg : RegsToTrackInstsFor.getRegisters())
@@ -415,8 +479,8 @@ protected:
     // After accounting for clobbered registers in general, override the state
     // according to authentication and other *special cases* of clobbering.
 
-    // The sub-registers of each authenticated register are also trusted now,
-    // but not their super-registers (as they retain untrusted register units).
+    // The sub-registers of each authenticated register are also safe now,
+    // but not their super-registers (as they retain unsafe register units).
     BitVector AuthenticatedSubregs(NumRegs);
     for (MCPhysReg AutReg : AuthenticatedOrBetter)
       AuthenticatedSubregs |= BC.MIB->getAliases(AutReg, /*OnlySmaller=*/true);
@@ -425,6 +489,15 @@ protected:
       if (RegsToTrackInstsFor.isTracked(Reg))
         lastWritingInsts(Next, Reg).clear();
     }
+
+    // Process new trusted registers.
+    for (MCPhysReg TrustedReg : NewTrustedRegs)
+      Next.TrustedRegs |= BC.MIB->getAliases(TrustedReg, /*OnlySmaller=*/true);
+    // NewTrustedRegs is a subset of AuthenticatedOrBetter, thus no need to
+    // update last writing instructions.
+    assert(all_of(NewTrustedRegs, [&AuthenticatedOrBetter](MCPhysReg Reg) {
+      return is_contained(AuthenticatedOrBetter, Reg);
+    }));
 
     LLVM_DEBUG({
       dbgs() << "  .. result: (";
@@ -637,6 +710,26 @@ shouldReportCallGadget(const BinaryContext &BC, const MCInstReference &Inst,
   return std::make_shared<GadgetReport>(CallKind, Inst, DestReg);
 }
 
+static std::shared_ptr<Report>
+shouldReportSigningOracle(const BinaryContext &BC, const MCInstReference &Inst,
+                          const State &S) {
+  static const GadgetKind CallKind("signing oracle found");
+
+  MCPhysReg SignedReg = BC.MIB->getSignedReg(Inst);
+  if (SignedReg == BC.MIB->getNoRegister())
+    return nullptr;
+
+  LLVM_DEBUG({
+    traceInst(BC, "Found sign inst", Inst);
+    traceReg(BC, "Signed reg", SignedReg);
+    traceRegMask(BC, "TrustedRegs", S.TrustedRegs);
+  });
+  if (S.TrustedRegs[SignedReg])
+    return nullptr;
+
+  return std::make_shared<GadgetReport>(CallKind, Inst, SignedReg);
+}
+
 FunctionAnalysisResult
 Analysis::findGadgets(BinaryFunction &BF,
                       MCPlusBuilder::AllocatorIdTy AllocatorId) {
@@ -668,6 +761,8 @@ Analysis::findGadgets(BinaryFunction &BF,
       return;
 
     if (auto Report = shouldReportCallGadget(BC, Inst, S))
+      Result.Diagnostics.push_back(Report);
+    if (auto Report = shouldReportSigningOracle(BC, Inst, S))
       Result.Diagnostics.push_back(Report);
   });
   return Result;
