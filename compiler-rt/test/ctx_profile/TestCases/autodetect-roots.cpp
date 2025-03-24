@@ -1,19 +1,26 @@
-// Simple integration test for contextual instrumentation
+// Root autodetection test for contextual profiling
 //
 // Copy the header defining ContextNode.
 // RUN: mkdir -p %t_include
 // RUN: cp %llvm_src/include/llvm/ProfileData/CtxInstrContextNode.h %t_include/
 //
-// Compile with ctx instrumentation "on". We treat "theRoot" as callgraph root.
-// RUN: %clangxx %s %ctxprofilelib -I%t_include -O2 -o %t.bin -mllvm -profile-context-root=theRoot \
-// RUN:   -mllvm -ctx-prof-skip-callsite-instr=skip_me
+// Compile with ctx instrumentation "on". We use -profile-context-root as signal
+// that we want contextual profiling, but we can specify anything there, that
+// won't be matched with any function, and result in the behavior we are aiming
+// for here.
+//
+// RUN: %clangxx %s %ctxprofilelib -I%t_include -O2 -o %t.bin \
+// RUN:   -mllvm -profile-context-root="<autodetect>" -g \
+// RUN:   -mllvm -ctx-prof-skip-callsite-instr=skip_me -Wl,-export-dynamic
 //
 // Run the binary, and observe the profile fetch handler's output.
-// RUN: %t.bin | FileCheck %s
+// RUN %t.bin | FileCheck %s
 
 #include "CtxInstrContextNode.h"
+#include <atomic>
 #include <cstdio>
 #include <iostream>
+#include <thread>
 
 using namespace llvm::ctx_profile;
 extern "C" void __llvm_ctx_profile_start_collection(bool);
@@ -159,9 +166,36 @@ bool profileWriter() {
 }
 
 int main(int argc, char **argv) {
-  __llvm_ctx_profile_start_collection(false);
-  theRoot();
-  flatFct();
+  std::atomic<bool> Stop = false;
+  std::atomic<int> Started = 0;
+  std::thread T1([&]() {
+    ++Started;
+    while (!Stop) {
+      theRoot();
+    }
+  });
+
+  std::thread T2([&]() {
+    ++Started;
+    while (!Stop) {
+      theRoot();
+    }
+  });
+
+  std::thread T3([&]() {
+    while (Started < 2) {
+    }
+    __llvm_ctx_profile_start_collection(true);
+  });
+
+  T3.join();
+  using namespace std::chrono_literals;
+
+  std::this_thread::sleep_for(40s);
+  Stop = true;
+  T1.join();
+  T2.join();
+
   // This would be implemented in a specific RPC handler, but here we just call
   // it directly.
   return !profileWriter();

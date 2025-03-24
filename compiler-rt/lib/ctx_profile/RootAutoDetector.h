@@ -12,6 +12,7 @@
 #include "sanitizer_common/sanitizer_dense_map.h"
 #include "sanitizer_common/sanitizer_internal_defs.h"
 #include "sanitizer_common/sanitizer_stacktrace.h"
+#include "sanitizer_common/sanitizer_vector.h"
 #include <pthread.h>
 #include <sanitizer/common_interface_defs.h>
 
@@ -64,5 +65,33 @@ public:
 
   const Trie &start() const { return TheTrie; }
 };
+
+class RootAutoDetector final {
+  static const uint64_t SampleRate = 6113;
+  pthread_t WorkerThread;
+
+  struct PerThreadSamples {
+    PerThreadSamples(RootAutoDetector &Parent);
+
+    PerThreadCallsiteTrie TrieRoot;
+    SpinMutex M;
+  };
+  SpinMutex AllSamplesMutex;
+  SANITIZER_GUARDED_BY(AllSamplesMutex)
+  Vector<PerThreadSamples*> AllSamples;
+  atomic_uintptr_t &FunctionDataListHead;
+  atomic_uintptr_t &Self;
+  void collectStack();
+
+public:
+  RootAutoDetector(atomic_uintptr_t &FunctionDataListHead,
+                   atomic_uintptr_t &Self)
+      : FunctionDataListHead(FunctionDataListHead), Self(Self) {}
+
+  void sample();
+  void start();
+  void join();
+};
+
 } // namespace __ctx_profile
 #endif
