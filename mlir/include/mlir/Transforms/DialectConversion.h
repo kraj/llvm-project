@@ -898,7 +898,18 @@ public:
   /// Replace the given operation with the new value ranges. The number of op
   /// results and value ranges must match. The given  operation is erased.
   void replaceOpWithMultiple(Operation *op,
-                             ArrayRef<SmallVector<Value, 1>> newValues);
+                             SmallVector<SmallVector<Value>> &&newValues);
+
+  void replaceOpWithMultiple(Operation *op,
+                             ArrayRef<SmallVector<Value>> newValues);
+
+  /// Overload to disambiguate uses of initializer lists as parameters.
+  void
+  replaceOpWithMultiple(Operation *op,
+                        std::initializer_list<SmallVector<Value>> newValues) {
+    replaceOpWithMultiple(op, ArrayRef(newValues));
+  }
+
   // Note: This overload matches SmallVector<ValueRange>,
   // SmallVector<SmallVector<Value>>, etc.
   template <typename RangeRangeT>
@@ -906,9 +917,9 @@ public:
     // Note: Prefer the ArrayRef<SmallVector<Value, 1>> overload because it
     // does not copy the replacements vector.
     auto vals = llvm::map_to_vector(newValues, [](const auto &r) {
-      return SmallVector<Value, 1>(std::begin(r), std::end(r));
+      return SmallVector<Value>(std::begin(r), std::end(r));
     });
-    replaceOpWithMultiple(op, ArrayRef(vals));
+    replaceOpWithMultiple(op, std::move(vals));
   }
   // Note: This overload matches initializer list of ValueRange,
   // SmallVector<Value>, etc.
@@ -917,9 +928,9 @@ public:
     // Note: Prefer the ArrayRef<SmallVector<Value, 1>> overload because it
     // does not copy the replacements vector.
     auto vals = llvm::map_to_vector(newValues, [](const RangeT &r) {
-      return SmallVector<Value, 1>(std::begin(r), std::end(r));
+      return SmallVector<Value>(std::begin(r), std::end(r));
     });
-    replaceOpWithMultiple(op, ArrayRef(vals));
+    replaceOpWithMultiple(op, std::move(vals));
   }
 
   /// PatternRewriter hook for erasing a dead operation. The uses of this

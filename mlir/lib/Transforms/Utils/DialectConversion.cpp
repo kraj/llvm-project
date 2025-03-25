@@ -137,8 +137,20 @@ struct ConversionValueMapping {
   /// as `lookupOrDefault`.
   ValueVector lookupOrNull(Value from, TypeRange desiredTypes = {}) const;
 
-  template <typename T>
-  struct IsValueVector : std::is_same<std::decay_t<T>, ValueVector> {};
+  template <typename>
+  struct IsValueVector : std::false_type {};
+
+  template <typename T, size_t n>
+  struct IsValueVector<SmallVector<T, n>> : std::true_type {};
+
+  template <typename T, size_t n>
+  struct IsValueVector<SmallVector<T, n> &> : std::true_type {};
+
+  template <typename T, size_t n>
+  struct IsValueVector<SmallVector<T, n> &&> : std::true_type {};
+
+  template <typename T, size_t n>
+  struct IsValueVector<const SmallVector<T, n> &> : std::true_type {};
 
   /// Map a value vector to the one provided.
   template <typename OldVal, typename NewVal>
@@ -947,7 +959,8 @@ struct ConversionPatternRewriterImpl : public RewriterBase::Listener {
                                OpBuilder::InsertPoint previous) override;
 
   /// Notifies that an op is about to be replaced with the given values.
-  void notifyOpReplaced(Operation *op, ArrayRef<ValueVector> newValues);
+  template <typename RangeOfValueVector>
+  void notifyOpReplaced(Operation *op, RangeOfValueVector &&newValues);
 
   /// Notifies that a block is about to be erased.
   void notifyBlockIsBeingErased(Block *block);
@@ -1519,8 +1532,9 @@ void ConversionPatternRewriterImpl::notifyOperationInserted(
   appendRewrite<MoveOperationRewrite>(op, previous.getBlock(), prevOp);
 }
 
+template <typename RangeOfValueVector>
 void ConversionPatternRewriterImpl::notifyOpReplaced(
-    Operation *op, ArrayRef<ValueVector> newValues) {
+    Operation *op, RangeOfValueVector &&newValues) {
   assert(newValues.size() == op->getNumResults());
   assert(!ignoredOps.contains(op) && "operation was already replaced");
 
@@ -1562,7 +1576,7 @@ void ConversionPatternRewriterImpl::notifyOpReplaced(
     // Remap result to replacement value.
     if (repl.empty())
       continue;
-    mapping.map(result, repl);
+    mapping.map(result, std::forward<decltype(repl)>(repl));
   }
 
   appendRewrite<ReplaceOperationRewrite>(op, currentTypeConverter);
@@ -1644,11 +1658,11 @@ void ConversionPatternRewriter::replaceOp(Operation *op, ValueRange newValues) {
       llvm::map_to_vector(newValues, [](Value v) -> ValueVector {
         return v ? ValueVector{v} : ValueVector();
       });
-  impl->notifyOpReplaced(op, newVals);
+  impl->notifyOpReplaced(op, std::move(newVals));
 }
 
 void ConversionPatternRewriter::replaceOpWithMultiple(
-    Operation *op, ArrayRef<SmallVector<Value, 1>> newValues) {
+    Operation *op, ArrayRef<SmallVector<Value>> newValues) {
   assert(op->getNumResults() == newValues.size() &&
          "incorrect # of replacement values");
   LLVM_DEBUG({
@@ -1658,13 +1672,24 @@ void ConversionPatternRewriter::replaceOpWithMultiple(
   impl->notifyOpReplaced(op, newValues);
 }
 
+void ConversionPatternRewriter::replaceOpWithMultiple(
+    Operation *op, SmallVector<SmallVector<Value>> &&newValues) {
+  assert(op->getNumResults() == newValues.size() &&
+         "incorrect # of replacement values");
+  LLVM_DEBUG({
+    impl->logger.startLine()
+        << "** Replace : '" << op->getName() << "'(" << op << ")\n";
+  });
+  impl->notifyOpReplaced(op, std::move(newValues));
+}
+
 void ConversionPatternRewriter::eraseOp(Operation *op) {
   LLVM_DEBUG({
     impl->logger.startLine()
         << "** Erase   : '" << op->getName() << "'(" << op << ")\n";
   });
   SmallVector<ValueVector> nullRepls(op->getNumResults(), ValueVector());
-  impl->notifyOpReplaced(op, nullRepls);
+  impl->notifyOpReplaced(op, std::move(nullRepls));
 }
 
 void ConversionPatternRewriter::eraseBlock(Block *block) {
