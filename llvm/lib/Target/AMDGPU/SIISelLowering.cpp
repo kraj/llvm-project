@@ -2841,6 +2841,86 @@ void SITargetLowering::insertCopiesSplitCSR(
   }
 }
 
+class InregVPGRSpiller {
+  CCState &State;
+  const unsigned WaveFrontSize;
+
+  Register CurReg;
+  unsigned CurLane = 0;
+
+protected:
+  SelectionDAG &DAG;
+  MachineFunction &MF;
+
+  Register getCurReg() const { return CurReg; }
+  unsigned getCurLane() const { return CurLane; }
+
+  InregVPGRSpiller(SelectionDAG &DAG, MachineFunction &MF, CCState &State)
+      : State(State),
+        WaveFrontSize(MF.getSubtarget<GCNSubtarget>().getWavefrontSize()),
+        DAG(DAG), MF(MF) {}
+
+  void setReg(Register &Reg) {
+    if (CurReg.isValid()) {
+      State.DeallocateReg(Reg);
+      Reg = CurReg;
+    } else {
+      CurReg = Reg;
+    }
+  }
+
+  void forward() {
+    // We have used the same VGPRs of all the lanes, so we need to reset it and
+    // pick up a new one in the next move.
+    if (++CurLane % WaveFrontSize == 0)
+      CurReg = 0;
+  }
+};
+
+class InregVPGRSpillerCallee final : private InregVPGRSpiller {
+public:
+  InregVPGRSpillerCallee(SelectionDAG &DAG, MachineFunction &MF, CCState &State)
+      : InregVPGRSpiller(DAG, MF, State) {}
+
+  SDValue read(SDValue Chain, const SDLoc &SL, Register &Reg, EVT VT) {
+    setReg(Reg);
+
+    MF.addLiveIn(getCurReg(), &AMDGPU::VGPR_32RegClass);
+
+    // TODO: Do we need the chain here?
+    SmallVector<SDValue, 4> Operands{
+        DAG.getTargetConstant(Intrinsic::amdgcn_readlane, SL, MVT::i32),
+        DAG.getRegister(getCurReg(), VT),
+        DAG.getTargetConstant(getCurLane(), SL, MVT::i32)};
+    SDValue Res = DAG.getNode(ISD::INTRINSIC_WO_CHAIN, SL, VT, Operands);
+
+    forward();
+
+    return Res;
+  }
+};
+
+class InregVPGRSpillerCallSite final : private InregVPGRSpiller {
+public:
+  InregVPGRSpillerCallSite(SelectionDAG &DAG, MachineFunction &MF,
+                           CCState &State)
+      : InregVPGRSpiller(DAG, MF, State) {}
+
+  SDValue write(const SDLoc &SL, Register &Reg, SDValue V, EVT VT) {
+    setReg(Reg);
+
+    SmallVector<SDValue, 4> Operands{
+        DAG.getTargetConstant(Intrinsic::amdgcn_writelane, SL, MVT::i32),
+        DAG.getRegister(getCurReg(), VT), V,
+        DAG.getTargetConstant(getCurLane(), SL, MVT::i32)};
+    SDValue Res = DAG.getNode(ISD::INTRINSIC_WO_CHAIN, SL, VT, Operands);
+
+    forward();
+
+    return Res;
+  }
+};
+
 SDValue SITargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool isVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
@@ -2963,6 +3043,7 @@ SDValue SITargetLowering::LowerFormalArguments(
   // FIXME: Alignment of explicit arguments totally broken with non-0 explicit
   // kern arg offset.
   const Align KernelArgBaseAlign = Align(16);
+  InregVPGRSpillerCallee Spiller(DAG, MF, CCInfo);
 
   for (unsigned i = 0, e = Ins.size(), ArgIdx = 0; i != e; ++i) {
     const ISD::InputArg &Arg = Ins[i];
@@ -3130,8 +3211,17 @@ SDValue SITargetLowering::LowerFormalArguments(
       llvm_unreachable("Unexpected register class in LowerFormalArguments!");
     EVT ValVT = VA.getValVT();
 
-    Reg = MF.addLiveIn(Reg, RC);
-    SDValue Val = DAG.getCopyFromReg(Chain, DL, Reg, VT);
+    SDValue Val;
+    // If an argument is marked inreg but gets pushed to a VGPR, it indicates
+    // we've run out of SGPRs for argument passing. In such cases, we'd prefer
+    // to start packing inreg arguments into individual lanes of VGPRs, rather
+    // than placing them directly into VGPRs.
+    if (RC == &AMDGPU::VGPR_32RegClass && Arg.Flags.isInReg()) {
+      Val = Spiller.read(Chain, DL, Reg, VT);
+    } else {
+      Reg = MF.addLiveIn(Reg, RC);
+      Val = DAG.getCopyFromReg(Chain, DL, Reg, VT);
+    }
 
     if (Arg.Flags.isSRet()) {
       // The return object should be reasonably addressable.
@@ -3875,6 +3965,8 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
 
   MVT PtrVT = MVT::i32;
 
+  InregVPGRSpillerCallSite Spiller(DAG, MF, CCInfo);
+
   // Walk the register/memloc assignments, inserting copies/loads.
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
@@ -3904,6 +3996,9 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
     }
 
     if (VA.isRegLoc()) {
+      Register Reg = VA.getLocReg();
+      if (Outs[i].Flags.isInReg() && AMDGPU::VGPR_32RegClass.contains(Reg))
+        Arg = Spiller.write(DL, Reg, Arg, VA.getLocVT());
       RegsToPass.push_back(std::pair(VA.getLocReg(), Arg));
     } else {
       assert(VA.isMemLoc());
