@@ -269,6 +269,41 @@ static OverwriteResult isMaskedStoreOverwrite(const Instruction *KillingI,
       return OW_Unknown;
     return OW_Complete;
   }
+  if (KillingII->getIntrinsicID() == Intrinsic::vp_store) {
+    // Operands {0        , 1     , 2   , 3 }
+    //          {StoredVal, VecPtr, Mask, VL}
+    // Types.
+    VectorType *KillingTy =
+        cast<VectorType>(KillingII->getArgOperand(0)->getType());
+    VectorType *DeadTy = cast<VectorType>(DeadII->getArgOperand(0)->getType());
+    if (KillingTy->getScalarSizeInBits() != DeadTy->getScalarSizeInBits())
+      return OW_Unknown;
+    // Element count.
+    if (KillingTy->getElementCount() != DeadTy->getElementCount())
+      return OW_Unknown;
+    // Pointers.
+    Value *KillingPtr = KillingII->getArgOperand(1)->stripPointerCasts();
+    Value *DeadPtr = DeadII->getArgOperand(1)->stripPointerCasts();
+    if (KillingPtr != DeadPtr && !AA.isMustAlias(KillingPtr, DeadPtr))
+      return OW_Unknown;
+    // Masks.
+    // TODO: check that KillingII's mask is a superset of the DeadII's mask.
+    if (KillingII->getArgOperand(2) != DeadII->getArgOperand(2))
+      return OW_Unknown;
+    // Lengths.
+    if (KillingII->getArgOperand(3) != DeadII->getArgOperand(3))
+      return OW_Unknown;
+    AAMDNodes KillingAA = KillingII->getAAMetadata();
+    AAMDNodes DeadAA = DeadII->getAAMetadata();
+    // There must be scoped noalias metadata on both stores.
+    if (!KillingAA.Scope || !DeadAA.Scope || !KillingAA.NoAlias ||
+        !DeadAA.NoAlias)
+      return OW_Unknown;
+    // Check that both stores have the same scope and noalias metadata.
+    if (KillingAA.Scope != DeadAA.Scope || KillingAA.NoAlias != DeadAA.NoAlias)
+      return OW_Unknown;
+    return OW_Complete;
+  }
   return OW_Unknown;
 }
 
