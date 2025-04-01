@@ -248,7 +248,7 @@ void SerializeGPUModuleBase::addControlVariables(
     controlVariable->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Local);
   };
 
-  int abi = 500;
+  int abi = 600;
   abiVer.getAsInteger(0, abi);
   module.addModuleFlag(llvm::Module::Error, "amdhsa_code_object_version", abi);
   // Return if no device libraries are required.
