@@ -274,13 +274,12 @@ gpu.func @test_store_nd_vc(%dst: memref<24x32xf16>) {
 
 // CHECK: func @test_store_nd_simt(%[[arg0:.*]]: memref<24x32xf16>) {
 gpu.func @test_store_nd_simt(%src: memref<24x32xf16>) {
-   // CHECK: %[[C:.*]] = arith.constant dense<1.000000e+00> : vector<48x1xf16>
-  %1 = arith.constant dense<1.0>: vector<48x1xf16>
-  // CHECK: %[[R0:.*]] = xegpu.create_nd_tdesc %arg0[0, 0] : memref<24x32xf16> -> !xegpu.tensor_desc<24x32xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>
-  %2 = xegpu.create_nd_tdesc %src[0, 0] : memref<24x32xf16> ->
-    !xegpu.tensor_desc<24x32xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>
-  // CHECK: xegpu.store_nd %[[C]], %[[R0]] <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}> : vector<48x1xf16>, !xegpu.tensor_desc<24x32xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>
-  xegpu.store_nd %1, %2 <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}>: vector<48x1xf16>, !xegpu.tensor_desc<24x32xf16, #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>
+  // CHECK: %[[C:.*]] = arith.constant dense<1.000000e+00> : vector<48xf16>
+  %1 = arith.constant dense<1.0>: vector<48xf16>
+  // CHECK: %[[R0:.*]] = xegpu.create_nd_tdesc %arg0[0, 0] : memref<24x32xf16> -> !xegpu.tensor_desc<24x32xf16>
+  %2 = xegpu.create_nd_tdesc %src[0, 0] : memref<24x32xf16> -> !xegpu.tensor_desc<24x32xf16>
+  // CHECK: xegpu.store_nd %[[C]], %[[R0]] <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}> : vector<48xf16>, !xegpu.tensor_desc<24x32xf16>
+  xegpu.store_nd %1, %2 <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}>: vector<48xf16>, !xegpu.tensor_desc<24x32xf16>
   gpu.return
 }
 
@@ -300,13 +299,12 @@ gpu.func @test_store_nd_vc_2(%dst: memref<24x32xf16>) {
 
 // CHECK: func @test_store_nd_simt_2(%[[arg0:.*]]: memref<24x32xf16>) {
 gpu.func @test_store_nd_simt_2(%src: memref<24x32xf16>) {
-   // CHECK: %[[C:.*]] = arith.constant dense<1.000000e+00> : vector<2x1xf16>
-  %1 = arith.constant dense<1.0>: vector<2x1xf16>
-  // CHECK: %[[R0:.*]] = xegpu.create_nd_tdesc %arg0[0, 0] : memref<24x32xf16> -> !xegpu.tensor_desc<32xf16, #xegpu.layout<lane_layout = [16], lane_data = [1]>>
-  %2 = xegpu.create_nd_tdesc %src[0, 0] : memref<24x32xf16> ->
-    !xegpu.tensor_desc<32xf16, #xegpu.layout<lane_layout = [16], lane_data = [1]>>
-  // CHECK: xegpu.store_nd %[[C]], %[[R0]] <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}> : vector<2x1xf16>, !xegpu.tensor_desc<32xf16, #xegpu.layout<lane_layout = [16], lane_data = [1]>>
-  xegpu.store_nd %1, %2 <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}>: vector<2x1xf16>, !xegpu.tensor_desc<32xf16, #xegpu.layout<lane_layout = [16], lane_data = [1]>>
+  // CHECK: %[[C:.*]] = arith.constant dense<1.000000e+00> : vector<2xf16>
+  %1 = arith.constant dense<1.0>: vector<2xf16>
+  // CHECK: %[[R0:.*]] = xegpu.create_nd_tdesc %arg0[0, 0] : memref<24x32xf16> -> !xegpu.tensor_desc<32xf16>
+  %2 = xegpu.create_nd_tdesc %src[0, 0] : memref<24x32xf16> -> !xegpu.tensor_desc<32xf16>
+  // CHECK: xegpu.store_nd %[[C]], %[[R0]] <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}> : vector<2xf16>, !xegpu.tensor_desc<32xf16>
+  xegpu.store_nd %1, %2 <{l1_hint = #xegpu.cache_hint<write_back>, l2_hint = #xegpu.cache_hint<uncached>}>: vector<2xf16>, !xegpu.tensor_desc<32xf16>
   gpu.return
 }
 

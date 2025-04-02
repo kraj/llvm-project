@@ -119,22 +119,10 @@ func.func @test_store_nd_vc_2(%dst: memref<16xf16>) {
 }
 
 // -----
-func.func @test_store_nd_layout(%dst: memref<24x32xf32>, %data: vector<8x2xf32>) {
-  %1 = xegpu.create_nd_tdesc %dst[0, 0] : memref<24x32xf32> ->
-    !xegpu.tensor_desc<8x16xf32,   #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>
-  // expected-error@+1 {{Result shape [8, 2] is not consistent with distributed vector shape [8, 1] for tensor descriptor}}
-  xegpu.store_nd %data, %1
-    : vector<8x2xf32>, !xegpu.tensor_desc<8x16xf32,   #xegpu.layout<lane_layout = [1, 16], lane_data = [1, 1]>>
-  return
-}
-
-// -----
-func.func @test_store_nd_layout(%dst: memref<24x32xf32>, %data: vector<2xf32>) {
-  %1 = xegpu.create_nd_tdesc %dst[0, 0] : memref<24x32xf32> ->
-    !xegpu.tensor_desc<16xf32, #xegpu.layout<lane_layout = [16], lane_data = [1]>>
-  // expected-error@+1 {{Result shape [2] is not consistent with distributed vector shape [1, 1] for tensor descriptor}}
-  xegpu.store_nd %data, %1
-    : vector<2xf32>, !xegpu.tensor_desc<16xf32, #xegpu.layout<lane_layout = [16], lane_data = [1]>>
+func.func @test_store_nd_layout(%dst: memref<24x32xf32>, %data: vector<4xf32>) {
+  %1 = xegpu.create_nd_tdesc %dst[0, 0] : memref<24x32xf32> -> !xegpu.tensor_desc<16xf32>
+  // expected-error@+1 {{Result shape [4] is not a valid distribution for tensor descriptor}}
+  xegpu.store_nd %data, %1 : vector<4xf32>, !xegpu.tensor_desc<16xf32>
   return
 }
 

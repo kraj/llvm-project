@@ -391,8 +391,35 @@ LogicalResult StoreNdOp::verify() {
   auto tdescShape = getShapeOf(dstTy);
   auto valueShape = getShapeOf(valTy);
 
-  return isArgShapesValid(dstTy, valTy, tdescShape,
-                          [&]() { return emitOpError(); });
+  // Similar to LoadNdOp, handling a 1D vector as the value can be complex. It
+  // may represent the input of a 1D block store in SIMD mode or a fragment of
+  // a block store input in SIMT mode. In the latter case, the tensor descriptor
+  // must be evenly distributed, with each lane holding an equally sized fragment of
+  // the input. Only subgroup size 8 or 16 is supported.
+  if (valTy.getRank() == 1 && valTy.getNumElements() < dstTy.getNumElements()) {
+    // SIMT mode doesn't need LayoutAttr.
+    if (dstTy.getLayoutAttr())
+      return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+
+    int tdescElems = dstTy.getNumElements() * dstTy.getArrayLength();
+    int valueElems = valueShape[0];
+
+    int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems: -1;
+    if (lanes != 16 && lanes != 8) {
+      return emitOpError() << "Result shape " << makeString(getShapeOf(valTy))
+                           << " is not a valid distribution for tensor descriptor "
+                           << dstTy;
+    }
+    return success();
+  }
+
+  // SIMD code should have the same shape as the tensor descriptor.
+  if (tdescShape != valueShape) {
+    return emitOpError() << "Result shape " << makeString(valueShape)
+                         << " is not consistent with tensor descriptor " << dstTy;
+  }
+
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
