@@ -274,9 +274,17 @@ LogicalResult LoadNdOp::verify() {
   if (!isReadHintOrNone(getL3HintAttr()))
     return emitOpError("invalid l3_hint: ") << getL3HintAttr();
 
+  // 2D tensor_desc with 1D (or scalar) value is allowed for SIMT code.
+  // In this case, we will skip the check since it lacks of semantic information.
+  // TODO: 1D tensor_desc with 1D (or scalar) value could be SIMD or SIMT too.
+  if (valueTy.getRank() == 1 && tdescTy.getRank() > 1) {
+    return success();
+  }
+
+  // Check SIMD mode.
   auto array_len = tdescTy.getArrayLength();
   // adjusted tensor descriptor shape tracks the expected shape of the result.
-  auto adjustedTdescShape = getShapeOf(tdescTy);
+  auto tdescShape = getShapeOf(tdescTy);
   auto valueShape = getShapeOf(valueTy);
 
   if (getTranspose()) {
@@ -288,7 +296,7 @@ LogicalResult LoadNdOp::verify() {
     });
 
     if (valid)
-      transpose(trans, adjustedTdescShape);
+      transpose(trans, tdescShape);
     else
       mlir::emitWarning(getLoc()) << "Invalid transpose attr. It is ignored.";
   }
@@ -297,8 +305,8 @@ LogicalResult LoadNdOp::verify() {
     if (tdescTy.getRank() == 2) {
       const int axis = 0;
       auto vnni_factor = valueShape.back();
-      adjustedTdescShape[axis] /= vnni_factor;
-      adjustedTdescShape.push_back(vnni_factor);
+      tdescShape[axis] /= vnni_factor;
+      tdescShape.push_back(vnni_factor);
     } else {
       mlir::emitWarning(getLoc())
           << "Invalid Packed Attr. It is ignored (available for 2D "
@@ -307,12 +315,15 @@ LogicalResult LoadNdOp::verify() {
   }
 
   if (array_len > 1) {
-    auto it = adjustedTdescShape.begin();
-    adjustedTdescShape.insert(it, array_len);
+    tdescShape.insert(tdescShape.begin(), array_len);
   }
 
-  return isArgShapesValid(tdescTy, valueTy, adjustedTdescShape,
-                          [&]() { return emitOpError(); });
+  if (valueShape != tdescShape) {
+    return emitOpError() << "Value shape: " << makeString(valueShape)
+                         << " is not consistent with tensor descriptor " << tdescTy;
+  }
+
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
@@ -569,59 +580,33 @@ void UpdateOffsetOp::build(OpBuilder &builder, OperationState &state,
 LogicalResult DpasOp::verify() {
   int64_t lhsRank = getLhsType().getRank();
   int64_t rhsRank = getRhsType().getRank();
-  int64_t resultRank = getResultType().getRank();
+  int64_t resRank = getResultType().getRank();
   auto lhsShape = getLhsType().getShape();
   auto rhsShape = getRhsType().getShape();
-  auto resultShape = getResultType().getShape();
+  auto resShape = getResultType().getShape();
 
-  auto sgMapA = getSgMapAAttr();
-  auto sgMapB = getSgMapBAttr();
-  auto sgMapC = getSgMapCAttr();
+  if (getAcc()) {
+    if (getAcc().getType() != getResultType())
+      return emitOpError("Expecting the acc type to be the same as result.");
+  }
 
-  // If sg_maps are not present, then the operation is in SIMD mode.
-  if (!sgMapA && !sgMapB && !sgMapC) {
-    if (lhsRank != 2 || (rhsRank != 2 && rhsRank != 3) || resultRank != 2)
+  //SIMT code: skip the check since lack of semantic info at this level.
+  // Users need to ensure the correctness.
+  if (lhsRank == 1 && rhsRank == 1 && resRank == 1) {
+    return success();
+  } else { // SIMD code
+    if (lhsRank != 2 || (rhsRank != 2 && rhsRank != 3) || resRank != 2)
       return emitOpError(
           "expecting lhs and result to be a 2D vector, and rhs to be either "
           "2D or 3D (packed) vector.");
     auto bK = rhsRank == 3 ? rhsShape[0] * rhsShape[2] : rhsShape[0];
     if (bK != lhsShape[1])
       return emitOpError("K-dimension mismatch.");
-    if (lhsShape[0] != resultShape[0])
+    if (lhsShape[0] != resShape[0])
       return emitOpError("M-dimension mismatch.");
-    if (rhsShape[1] != resultShape[1])
+    if (rhsShape[1] != resShape[1])
       return emitOpError("N-dimension mismatch.");
-    return success();
   }
-  // Otherwise, in SIMT mode we expect sg_map attributes for all operands and
-  // result of DPAS operation.
-  if (!sgMapA || !sgMapB || !sgMapC)
-    return emitOpError("sg_map attributes for all operands and outputs are "
-                       "expected in SIMT xegpu::Dpas operation");
-
-  // In SIMT mode, All data fragments must be 2D
-  if (lhsRank != 2 || rhsRank != 2 || resultRank != 2)
-    return emitOpError("expecting lhs, rhs, and result to be a 2D vector.");
-
-  auto wiLayoutA = sgMapA.getWiLayout();
-  auto wiLayoutB = sgMapB.getWiLayout();
-  auto wiLayoutC = sgMapC.getWiLayout();
-  // Obtain the expanded shapes of the operands and result using wi_layout.
-  // NOTE: For B, get rid of the packed dimension for the expanded shape.
-  SmallVector<int64_t> expandedShapeA = {lhsShape[0] * wiLayoutA[0],
-                                         lhsShape[1] * wiLayoutA[1]};
-  SmallVector<int64_t> expandedShapeB = {
-      rhsShape[0] * rhsShape[1] * wiLayoutB[0], 1 * wiLayoutB[1]};
-  SmallVector<int64_t> expandedShapeC = {resultShape[0] * wiLayoutC[0],
-                                         resultShape[1] * wiLayoutC[1]};
-  auto bK = expandedShapeB[0];
-  if (bK != expandedShapeA[1])
-    return emitOpError("K-dimension mismatch.");
-  if (expandedShapeA[0] != expandedShapeC[0])
-    return emitOpError("M-dimension mismatch.");
-  if (expandedShapeB[1] != expandedShapeC[1])
-    return emitOpError("N-dimension mismatch.");
-
   return success();
 }
 } // namespace xegpu
