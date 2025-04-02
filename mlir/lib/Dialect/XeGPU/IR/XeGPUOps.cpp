@@ -78,18 +78,18 @@ static LogicalResult
 isArgShapesValid(TensorDescType tdescTy, VectorType valueTy,
                  ArrayRef<int64_t> adjustedTdescShape,
                  function_ref<InFlightDiagnostic()> emitError) {
-  auto sgMap = tdescTy.getSGMapAttr();
+  auto layout = tdescTy.getLayoutAttr();
   auto valueShape = valueTy.getShape();
-  // sg_map not present means IR is in SIMD mode. In this case value shape must
+  // layout not present means IR is in SIMD mode. In this case value shape must
   // match adjusted tensor descriptor shape.
-  if (!sgMap)
+  if (!layout)
     return valueShape == adjustedTdescShape
                ? success()
                : emitError()
                      << "Value shape " << makeString(valueShape)
                      << " is not consistent with tensor descriptor " << tdescTy;
 
-  // sg_map present means IR is in SIMT mode. In this case sg_map determines the
+  // layout present means IR is in SIMT mode. In this case layout determines the
   // value shape.
   auto expectedValueShapeOrFailure = tdescTy.getDistributedVectorType();
   assert(succeeded(expectedValueShapeOrFailure) &&
@@ -103,6 +103,28 @@ isArgShapesValid(TensorDescType tdescTy, VectorType valueTy,
                    << " is not consistent with distributed vector shape "
                    << makeString(expectedValueShapeOrFailure.value().getShape())
                    << " for tensor descriptor " << tdescTy;
+}
+
+static bool isEvenDistributed(llvm::ArrayRef<int64_t> shape,
+                              xegpu::LayoutAttr attr) {
+  assert(attr && "Layout attribute is missing.");
+  llvm::SmallVector<int32_t> defaults(shape.size(), 1);
+  llvm::ArrayRef<int32_t> layout, data;
+  if (auto sg_layout = attr.getSgLayout()) {
+    layout = sg_layout.asArrayRef();
+    auto sg_data = attr.getSgData();
+    data = sg_data ? sg_data.asArrayRef() : defaults;
+  } else {
+    layout = attr.getLaneLayout().asArrayRef();
+    auto lane_data = attr.getLaneData();
+    data = lane_data ? lane_data.asArrayRef() : defaults;
+  }
+  for (auto [s, d, l] : llvm::zip_equal(shape, data, layout)) {
+    // check s % (d * l) != 0
+    if (s % d != 0 || (s / d) % l != 0)
+      return false;
+  }
+  return true;
 }
 
 //===----------------------------------------------------------------------===//
@@ -552,7 +574,7 @@ LogicalResult StoreScatterOp::verify() {
                           [&]() { return emitOpError(); });
 }
 
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 // XeGPU_UpdateOffsetOp
 //===----------------------------------------------------------------------===//
 void UpdateOffsetOp::build(OpBuilder &builder, OperationState &state,
@@ -581,8 +603,10 @@ LogicalResult DpasOp::verify() {
   int64_t lhsRank = getLhsType().getRank();
   int64_t rhsRank = getRhsType().getRank();
   int64_t resRank = getResultType().getRank();
+  int64_t resRank = getResultType().getRank();
   auto lhsShape = getLhsType().getShape();
   auto rhsShape = getRhsType().getShape();
+  auto resShape = getResultType().getShape();
   auto resShape = getResultType().getShape();
 
   if (getAcc()) {
@@ -603,12 +627,44 @@ LogicalResult DpasOp::verify() {
     if (bK != lhsShape[1])
       return emitOpError("K-dimension mismatch.");
     if (lhsShape[0] != resShape[0])
+    if (lhsShape[0] != resShape[0])
       return emitOpError("M-dimension mismatch.");
     if (rhsShape[1] != resShape[1])
       return emitOpError("N-dimension mismatch.");
   }
   return success();
 }
+
+//===----------------------------------------------------------------------===//
+// XeGPU_ConvertLayoutOp
+//===----------------------------------------------------------------------===//
+LogicalResult ConvertLayoutOp::verify() {
+  auto srcMap = getSrcMapAttr();
+  auto resMap = getResMapAttr();
+  if (!srcMap)
+    return emitOpError("expected srcMap.");
+  if (!resMap)
+    return emitOpError("expected resMap.");
+
+  if (srcMap == resMap)
+    return emitOpError("expected different srcMap and resMap.");
+
+  // both srcMap and resMap should be WgLayout or SgLayout at the same time.
+  if ((!srcMap.isWgLayout() || !resMap.isWgLayout()) &&
+      (!srcMap.isSgLayout() || !resMap.isSgLayout()))
+    return emitOpError(
+        "expected srcMap and resMap be WgLayout or SgLayout at the same time.");
+
+  auto shape = getSource().getType().getShape();
+  if (!isEvenDistributed(shape, srcMap))
+    return emitOpError("invalid srcMap, data cannot be evenly distributed.");
+
+  if (!isEvenDistributed(shape, resMap))
+    return emitOpError("invalid resMap, data cannot be evenly distributed.");
+
+  return mlir::success();
+}
+
 } // namespace xegpu
 } // namespace mlir
 
