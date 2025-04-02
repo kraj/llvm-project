@@ -269,12 +269,12 @@ calculateConstraintSatisfaction(Sema &S, const CXXFoldExpr *FE,
     if (Conjunction != Satisfaction.IsSatisfied)
       return Out;
   }
-  std::optional<unsigned> NumExpansions =
+  UnsignedOrNone NumExpansions =
       Evaluator.EvaluateFoldExpandedConstraintSize(FE);
   if (!NumExpansions)
     return ExprError();
   for (unsigned I = 0; I < *NumExpansions; I++) {
-    Sema::ArgumentPackSubstitutionIndexRAII SubstIndex(S, I);
+    Sema::ArgPackSubstIndexRAII SubstIndex(S, I);
     ExprResult Res = calculateConstraintSatisfaction(S, FE->getPattern(),
                                                      Satisfaction, Evaluator);
     if (Res.isInvalid())
@@ -528,7 +528,7 @@ static ExprResult calculateConstraintSatisfaction(
       return SubstitutedExpression;
     }
 
-    std::optional<unsigned>
+    UnsignedOrNone
     EvaluateFoldExpandedConstraintSize(const CXXFoldExpr *FE) const {
 
       // We should ignore errors in the presence of packs of different size.
@@ -541,15 +541,15 @@ static ExprResult calculateConstraintSatisfaction(
       assert(!Unexpanded.empty() && "Pack expansion without parameter packs?");
       bool Expand = true;
       bool RetainExpansion = false;
-      std::optional<unsigned> OrigNumExpansions = FE->getNumExpansions(),
-                              NumExpansions = OrigNumExpansions;
+      UnsignedOrNone OrigNumExpansions = FE->getNumExpansions(),
+                     NumExpansions = OrigNumExpansions;
       if (S.CheckParameterPacksForExpansion(
               FE->getEllipsisLoc(), Pattern->getSourceRange(), Unexpanded,
               MLTAL, Expand, RetainExpansion, NumExpansions) ||
           !Expand || RetainExpansion)
         return std::nullopt;
 
-      if (NumExpansions && S.getLangOpts().BracketDepth < NumExpansions) {
+      if (NumExpansions && S.getLangOpts().BracketDepth < *NumExpansions) {
         S.Diag(FE->getEllipsisLoc(),
                clang::diag::err_fold_expression_limit_exceeded)
             << *NumExpansions << S.getLangOpts().BracketDepth
@@ -594,8 +594,7 @@ static bool CheckConstraintSatisfaction(
     return true;
 
   for (const AssociatedConstraint &AC : AssociatedConstraints) {
-    Sema::ArgumentPackSubstitutionIndexRAII _(S,
-                                              AC.ArgumentPackSubstitutionIndex);
+    Sema::ArgPackSubstIndexRAII _(S, AC.ArgPackSubstIndex);
     ExprResult Res = calculateConstraintSatisfaction(
         S, Template, TemplateIDRange.getBegin(), TemplateArgsLists,
         AC.ConstraintExpr, Satisfaction);
@@ -697,9 +696,9 @@ bool Sema::CheckConstraintSatisfaction(const Expr *ConstraintExpr,
       return S.PerformContextuallyConvertToBool(const_cast<Expr *>(AtomicExpr));
     }
 
-    std::optional<unsigned>
+    UnsignedOrNone
     EvaluateFoldExpandedConstraintSize(const CXXFoldExpr *FE) const {
-      return 0;
+      return 0u;
     }
   };
 
@@ -1487,7 +1486,7 @@ substituteParameterMappings(Sema &S, NormalizedConstraint &N,
   }
 
   if (N.isFoldExpanded()) {
-    Sema::ArgumentPackSubstitutionIndexRAII _(S, -1);
+    Sema::ArgPackSubstIndexRAII _(S, std::nullopt);
     return substituteParameterMappings(
         S, N.getFoldExpandedConstraint()->Constraint, Concept, MLTAL,
         ArgsAsWritten);

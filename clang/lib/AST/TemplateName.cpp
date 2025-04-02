@@ -80,13 +80,15 @@ void SubstTemplateTemplateParmStorage::Profile(llvm::FoldingSetNodeID &ID) {
   Profile(ID, Replacement, getAssociatedDecl(), getIndex(), getPackIndex());
 }
 
-void SubstTemplateTemplateParmStorage::Profile(
-    llvm::FoldingSetNodeID &ID, TemplateName Replacement, Decl *AssociatedDecl,
-    unsigned Index, std::optional<unsigned> PackIndex) {
+void SubstTemplateTemplateParmStorage::Profile(llvm::FoldingSetNodeID &ID,
+                                               TemplateName Replacement,
+                                               Decl *AssociatedDecl,
+                                               unsigned Index,
+                                               UnsignedOrNone PackIndex) {
   Replacement.Profile(ID);
   ID.AddPointer(AssociatedDecl);
   ID.AddInteger(Index);
-  ID.AddInteger(PackIndex ? *PackIndex + 1 : 0);
+  ID.AddInteger(PackIndex.toInternalRepresentation());
 }
 
 SubstTemplateTemplateParmPackStorage::SubstTemplateTemplateParmPackStorage(

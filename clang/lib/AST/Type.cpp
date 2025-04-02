@@ -4059,7 +4059,7 @@ PackIndexingType::PackIndexingType(const ASTContext &Context,
                           getTrailingObjects<QualType>());
 }
 
-std::optional<unsigned> PackIndexingType::getSelectedIndex() const {
+UnsignedOrNone PackIndexingType::getSelectedIndex() const {
   if (isInstantiationDependentType())
     return std::nullopt;
   // Should only be not a constant for error recovery.
@@ -4261,9 +4261,10 @@ static const TemplateTypeParmDecl *getReplacedParameter(Decl *D,
       getReplacedTemplateParameterList(D)->getParam(Index));
 }
 
-SubstTemplateTypeParmType::SubstTemplateTypeParmType(
-    QualType Replacement, Decl *AssociatedDecl, unsigned Index,
-    std::optional<unsigned> PackIndex)
+SubstTemplateTypeParmType::SubstTemplateTypeParmType(QualType Replacement,
+                                                     Decl *AssociatedDecl,
+                                                     unsigned Index,
+                                                     UnsignedOrNone PackIndex)
     : Type(SubstTemplateTypeParm, Replacement.getCanonicalType(),
            Replacement->getDependence()),
       AssociatedDecl(AssociatedDecl) {
