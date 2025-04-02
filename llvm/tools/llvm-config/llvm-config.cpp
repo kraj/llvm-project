@@ -577,7 +577,7 @@ int main(int argc, char **argv) {
             HostTriple.isWindowsMSVCEnvironment() ? "-LIBPATH:" : "-L";
         LDFlags += ActiveLibDir;
         MaybePrintQuoted(LDFlags);
-        OS << ' ' << LLVM_LDFLAGS << '\n';
+        OS << '\n';
       } else if (Arg == "--system-libs") {
         PrintSystemLibs = true;
       } else if (Arg == "--libs") {
