@@ -296,10 +296,25 @@ LogicalResult LoadNdOp::verify() {
   if (!isReadHintOrNone(getL3HintAttr()))
     return emitOpError("invalid l3_hint: ") << getL3HintAttr();
 
-  // 2D tensor_desc with 1D (or scalar) value is allowed for SIMT code.
-  // In this case, we will skip the check since it lacks of semantic information.
-  // TODO: 1D tensor_desc with 1D (or scalar) value could be SIMD or SIMT too.
-  if (valueTy.getRank() == 1 && tdescTy.getRank() > 1) {
+  // Handling a 1D vector as the result can be complex. It may represent the
+  // outcome of a 1D block load in SIMD mode or a fragment of a block load
+  // result in SIMT mode. In the latter case, the tensor descriptor must be
+  // evenly distributed, with each lane holding an equally sized fragment of
+  // the result. Only subgroup size 8 or 16 is supported.
+  if (valueTy.getRank() == 1 && valueTy.getNumElements() < tdescTy.getNumElements()) {
+    // SIMT mode doesn't need LayoutAttr.
+    if (tdescTy.getLayoutAttr())
+      return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+
+    int tdescElems = tdescTy.getNumElements() * tdescTy.getArrayLength();
+    int valueElems = valueTy.getNumElements();
+
+    int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems: -1;
+    if (lanes != 16 && lanes != 8) {
+      return emitOpError() << "Result shape " << makeString(getShapeOf(valueTy))
+                           << " is not a valid distribution for tensor descriptor "
+                           << tdescTy;
+    }
     return success();
   }
 
@@ -340,8 +355,8 @@ LogicalResult LoadNdOp::verify() {
     tdescShape.insert(tdescShape.begin(), array_len);
   }
 
-  if (valueShape != tdescShape) {
-    return emitOpError() << "Value shape: " << makeString(valueShape)
+  if (tdescShape != valueShape) {
+    return emitOpError() << "Result shape " << makeString(valueShape)
                          << " is not consistent with tensor descriptor " << tdescTy;
   }
 
@@ -603,10 +618,8 @@ LogicalResult DpasOp::verify() {
   int64_t lhsRank = getLhsType().getRank();
   int64_t rhsRank = getRhsType().getRank();
   int64_t resRank = getResultType().getRank();
-  int64_t resRank = getResultType().getRank();
   auto lhsShape = getLhsType().getShape();
   auto rhsShape = getRhsType().getShape();
-  auto resShape = getResultType().getShape();
   auto resShape = getResultType().getShape();
 
   if (getAcc()) {
