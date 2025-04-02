@@ -348,7 +348,6 @@ FailureOr<VectorType> TensorDescType::getDistributedVectorType() {
   auto sgSize = std::accumulate(laneData.begin(), laneData.end(), 1,
                                 std::multiplies<int64_t>());
 
-
   // Case 1: regular loads/stores
   auto scatterAttr = getEncodingAsScatterTensorDescAttr();
   if (scatterAttr) {

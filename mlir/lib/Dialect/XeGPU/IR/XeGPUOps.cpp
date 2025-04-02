@@ -269,19 +269,22 @@ LogicalResult LoadNdOp::verify() {
   // result in SIMT mode. In the latter case, the tensor descriptor must be
   // evenly distributed, with each lane holding an equally sized fragment of
   // the result. Only subgroup size 8 or 16 is supported.
-  if (valueTy.getRank() == 1 && valueTy.getNumElements() < tdescTy.getNumElements()) {
+  if (valueTy.getRank() == 1 &&
+      valueTy.getNumElements() < tdescTy.getNumElements()) {
     // SIMT mode doesn't need LayoutAttr.
     if (tdescTy.getLayoutAttr())
-      return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+      return emitOpError()
+             << "TensorDesc doesn't need LayoutAttr for SIMT code";
 
     int tdescElems = tdescTy.getNumElements() * tdescTy.getArrayLength();
     int valueElems = valueTy.getNumElements();
 
-    int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems: -1;
+    int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems : -1;
     if (lanes != 16 && lanes != 8) {
-      return emitOpError() << "Result shape " << makeString(getShapeOf(valueTy))
-                           << " is not a valid distribution for tensor descriptor "
-                           << tdescTy;
+      return emitOpError()
+             << "Result shape " << makeString(getShapeOf(valueTy))
+             << " is not a valid distribution for tensor descriptor "
+             << tdescTy;
     }
     return success();
   }
@@ -325,7 +328,8 @@ LogicalResult LoadNdOp::verify() {
 
   if (tdescShape != valueShape) {
     return emitOpError() << "Result shape " << makeString(valueShape)
-                         << " is not consistent with tensor descriptor " << tdescTy;
+                         << " is not consistent with tensor descriptor "
+                         << tdescTy;
   }
 
   return success();
@@ -362,21 +366,22 @@ LogicalResult StoreNdOp::verify() {
   // Similar to LoadNdOp, handling a 1D vector as the value can be complex. It
   // may represent the input of a 1D block store in SIMD mode or a fragment of
   // a block store input in SIMT mode. In the latter case, the tensor descriptor
-  // must be evenly distributed, with each lane holding an equally sized fragment of
-  // the input. Only subgroup size 8 or 16 is supported.
+  // must be evenly distributed, with each lane holding an equally sized
+  // fragment of the input. Only subgroup size 8 or 16 is supported.
   if (valTy.getRank() == 1 && valTy.getNumElements() < dstTy.getNumElements()) {
     // SIMT mode doesn't need LayoutAttr.
     if (dstTy.getLayoutAttr())
-      return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+      return emitOpError()
+             << "TensorDesc doesn't need LayoutAttr for SIMT code";
 
     int tdescElems = dstTy.getNumElements() * dstTy.getArrayLength();
     int valueElems = valueShape[0];
 
-    int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems: -1;
+    int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems : -1;
     if (lanes != 16 && lanes != 8) {
-      return emitOpError() << "Value shape " << makeString(getShapeOf(valTy))
-                           << " is not a valid distribution for tensor descriptor "
-                           << dstTy;
+      return emitOpError()
+             << "Value shape " << makeString(getShapeOf(valTy))
+             << " is not a valid distribution for tensor descriptor " << dstTy;
     }
     return success();
   }
@@ -384,7 +389,8 @@ LogicalResult StoreNdOp::verify() {
   // SIMD code should have the same shape as the tensor descriptor.
   if (tdescShape != valueShape) {
     return emitOpError() << "Value shape " << makeString(valueShape)
-                         << " is not consistent with tensor descriptor " << dstTy;
+                         << " is not consistent with tensor descriptor "
+                         << dstTy;
   }
 
   return success();
@@ -539,12 +545,14 @@ LogicalResult LoadGatherOp::verify() {
   if (valueTy.getRank() == 1 && valueTy.getNumElements() != tdescShape[0]) {
     auto chunkSize = tdescTy.getChunkSize();
     if (valueTy.getNumElements() != chunkSize) {
-      return emitOpError() << "Result shape " << makeString(valueShape)
-                           << " is not a valid distribution for tensor descriptor "
-                           << tdescTy;
+      return emitOpError()
+             << "Result shape " << makeString(valueShape)
+             << " is not a valid distribution for tensor descriptor "
+             << tdescTy;
     } else { // valid SIMT code doesn't need LayoutAttr and TransposeAttr.
       if (tdescTy.getLayoutAttr())
-        return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+        return emitOpError()
+               << "TensorDesc doesn't need LayoutAttr for SIMT code";
       if (getTransposeAttr())
         return emitOpError() << "doesn't need TransposeAttr for SIMT code";
     }
@@ -598,12 +606,14 @@ LogicalResult StoreScatterOp::verify() {
   if (valueTy.getRank() == 1 && valueTy.getNumElements() != tdescShape[0]) {
     auto chunkSize = tdescTy.getChunkSize();
     if (valueTy.getNumElements() != chunkSize) {
-      return emitOpError() << "Value shape " << makeString(valueShape)
-                           << " is not a valid distribution for tensor descriptor "
-                           << tdescTy;
+      return emitOpError()
+             << "Value shape " << makeString(valueShape)
+             << " is not a valid distribution for tensor descriptor "
+             << tdescTy;
     } else { // valid SIMT code doesn't need LayoutAttr and TransposeAttr.
       if (tdescTy.getLayoutAttr())
-        return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+        return emitOpError()
+               << "TensorDesc doesn't need LayoutAttr for SIMT code";
       if (getTransposeAttr())
         return emitOpError() << "doesn't need TransposeAttr for SIMT code";
     }
