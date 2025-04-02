@@ -242,25 +242,14 @@ func.func @test_create_tdesc_layout_3(%src: ui64) {
 }
 
 // -----
-func.func @test_load_gather_layout_1(%src: ui64) {
+func.func @test_load_gather_simt_1(%src: ui64) {
   %0 = arith.constant dense<1>: vector<4xi1>
   %cst = arith.constant dense<[0, 8, 16, 24]> : vector<4xindex>
-  %1 = xegpu.create_tdesc %src, %cst : ui64, vector<4xindex> -> !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,   #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>
-  // expected-error@+1 {{Result shape [1, 2] is not consistent with distributed vector shape [2, 1] for tensor descriptor}}
-  %2 = xegpu.load %1, %0 <{l1_hint = #xegpu.cache_hint<cached>, transpose}> : !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>, vector<4xi1> -> vector<1x2xf32>
+  %1 = xegpu.create_tdesc %src, %cst : ui64, vector<4xindex> -> !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>>
+  // expected-error@+1 {{Result shape [6] is not a valid distribution for tensor descriptor}}
+  %2 = xegpu.load %1, %0 <{l1_hint = #xegpu.cache_hint<cached>}> : !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>>, vector<4xi1> -> vector<6xf32>
   return
 }
-
-// -----
-func.func @test_load_gather_layout_2(%src: ui64) {
-  %0 = arith.constant dense<1>: vector<4xi1>
-  %cst = arith.constant dense<[0, 8, 16, 24]> : vector<4xindex>
-  %1 = xegpu.create_tdesc %src, %cst : ui64, vector<4xindex> -> !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>
-  // expected-error@+1 {{esult shape [2] is not consistent with distributed vector shape [2, 1] for tensor descriptor}}
-  %2 = xegpu.load %1, %0 <{l1_hint = #xegpu.cache_hint<cached>, transpose}> : !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>, vector<4xi1> -> vector<2xf32>
-  return
-}
-
 
 // -----
 func.func @test_store_scatter_layout_1(%src: ui64) {

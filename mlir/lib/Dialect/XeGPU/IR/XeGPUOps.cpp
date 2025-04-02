@@ -567,14 +567,34 @@ LogicalResult LoadGatherOp::verify() {
   if (tdescShape[0] != maskShape[0])
     return emitOpError("dim-0 of the Mask and TensorDesc should be the same.");
 
+  // for SIMT code, the value should be 1D vector with size of chunkSize.
+  if (valueTy.getRank() == 1 && valueTy.getNumElements() != tdescShape[0]) {
+    auto chunkSize = tdescTy.getChunkSize();
+    if (valueTy.getNumElements() != chunkSize) {
+      return emitOpError() << "Result shape " << makeString(valueShape)
+                           << " is not a valid distribution for tensor descriptor "
+                           << tdescTy;
+    } else { // valid SIMT code doesn't need LayoutAttr and TransposeAttr.
+      if (tdescTy.getLayoutAttr())
+        return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+      if (getTransposeAttr())
+        return emitOpError() << "doesn't need TransposeAttr for SIMT code";
+    }
+    return success();
+  }
+
+  // For SIMD code verification.
   if (tdescTy.getRank() == 2) {
     if (!getTransposeAttr())
       return emitOpError("load of rank-2 tensor has to be transposed.");
     transpose({1, 0}, tdescShape);
   }
 
-  return isArgShapesValid(tdescTy, valueTy, tdescShape,
-                          [&]() { return emitOpError(); });
+  if (tdescShape != valueShape)
+    return emitOpError() << "Result shape " << makeString(valueShape)
+                         << " is not consistent with tensor descriptor "
+                         << tdescTy;
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
