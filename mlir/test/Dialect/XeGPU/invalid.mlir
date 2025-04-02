@@ -119,9 +119,9 @@ func.func @test_store_nd_vc_2(%dst: memref<16xf16>) {
 }
 
 // -----
-func.func @test_store_nd_layout(%dst: memref<24x32xf32>, %data: vector<4xf32>) {
+func.func @test_store_nd_simt(%dst: memref<24x32xf32>, %data: vector<4xf32>) {
   %1 = xegpu.create_nd_tdesc %dst[0, 0] : memref<24x32xf32> -> !xegpu.tensor_desc<16xf32>
-  // expected-error@+1 {{Result shape [4] is not a valid distribution for tensor descriptor}}
+  // expected-error@+1 {{Value shape [4] is not a valid distribution for tensor descriptor}}
   xegpu.store_nd %data, %1 : vector<4xf32>, !xegpu.tensor_desc<16xf32>
   return
 }
@@ -130,7 +130,7 @@ func.func @test_store_nd_layout(%dst: memref<24x32xf32>, %data: vector<4xf32>) {
 func.func @test_store_nd_vc_5(%dst: memref<24x32xf32>, %data: vector<8x1xf32>) {
   %1 = xegpu.create_nd_tdesc %dst[0, 0] : memref<24x32xf32> ->
     !xegpu.tensor_desc<8x16xf32>
-  // expected-error@+1 {{Result shape [8, 1] is not consistent with tensor descriptor}}
+  // expected-error@+1 {{Value shape [8, 1] is not consistent with tensor descriptor}}
   xegpu.store_nd %data, %1 : vector<8x1xf32>, !xegpu.tensor_desc<8x16xf32>
   return
 }
@@ -252,24 +252,13 @@ func.func @test_load_gather_simt_1(%src: ui64) {
 }
 
 // -----
-func.func @test_store_scatter_layout_1(%src: ui64) {
+func.func @test_store_scatter_simt_1(%src: ui64) {
   %0 = arith.constant dense<1>: vector<4xi1>
   %cst = arith.constant dense<[0, 8, 16, 24]> : vector<4xindex>
-  %val = arith.constant dense<2.9>: vector<1x2xf32>
-  %1 = xegpu.create_tdesc %src, %cst : ui64, vector<4xindex> -> !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>
-  // expected-error@+1 {{Result shape [1, 2] is not consistent with distributed vector shape [2, 1] for tensor descriptor}}
-  xegpu.store %val, %1, %0 <{l1_hint = #xegpu.cache_hint<cached>, transpose}> : vector<1x2xf32>, !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>, vector<4xi1>
-  return
-}
-
-// -----
-func.func @test_store_scatter_layout_2(%src: ui64) {
-  %0 = arith.constant dense<1>: vector<4xi1>
-  %cst = arith.constant dense<[0, 8, 16, 24]> : vector<4xindex>
-  %val = arith.constant dense<2.9>: vector<2xf32>
-  %1 = xegpu.create_tdesc %src, %cst : ui64, vector<4xindex> -> !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>
-  // expected-error@+1 {{esult shape [2] is not consistent with distributed vector shape [2, 1] for tensor descriptor}}
-  xegpu.store %val, %1, %0 <{l1_hint = #xegpu.cache_hint<cached>, transpose}> : vector<2xf32>, !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>,  #xegpu.layout<lane_layout = [4, 1], lane_data = [1, 1]>>, vector<4xi1>
+  %val = arith.constant dense<2.9>: vector<6xf32>
+  %1 = xegpu.create_tdesc %src, %cst : ui64, vector<4xindex> -> !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>>
+  // expected-error@+1 {{Value shape [6] is not a valid distribution for tensor descriptor}}
+  xegpu.store %val, %1, %0 <{l1_hint = #xegpu.cache_hint<cached>}> : vector<6xf32>, !xegpu.tensor_desc<4x2xf32, #xegpu.scatter_tdesc_attr<chunk_size = 2>>, vector<4xi1>
   return
 }
 

@@ -73,38 +73,6 @@ static bool isWriteHintOrNone(const CachePolicyAttr &attr) {
          kind == CachePolicy::WRITE_BACK || kind == CachePolicy::WRITE_THROUGH;
 }
 
-// Helper to validate value shape of LoadNd and StoreNd ops.
-static LogicalResult
-isArgShapesValid(TensorDescType tdescTy, VectorType valueTy,
-                 ArrayRef<int64_t> adjustedTdescShape,
-                 function_ref<InFlightDiagnostic()> emitError) {
-  auto layout = tdescTy.getLayoutAttr();
-  auto valueShape = valueTy.getShape();
-  // layout not present means IR is in SIMD mode. In this case value shape must
-  // match adjusted tensor descriptor shape.
-  if (!layout)
-    return valueShape == adjustedTdescShape
-               ? success()
-               : emitError()
-                     << "Value shape " << makeString(valueShape)
-                     << " is not consistent with tensor descriptor " << tdescTy;
-
-  // layout present means IR is in SIMT mode. In this case layout determines the
-  // value shape.
-  auto expectedValueShapeOrFailure = tdescTy.getDistributedVectorType();
-  assert(succeeded(expectedValueShapeOrFailure) &&
-         "Failed to compute distributed vector shape for "
-         "tensor descriptor ");
-
-  return valueTy == expectedValueShapeOrFailure.value()
-             ? success()
-             : emitError()
-                   << "Result shape " << makeString(valueShape)
-                   << " is not consistent with distributed vector shape "
-                   << makeString(expectedValueShapeOrFailure.value().getShape())
-                   << " for tensor descriptor " << tdescTy;
-}
-
 static bool isEvenDistributed(llvm::ArrayRef<int64_t> shape,
                               xegpu::LayoutAttr attr) {
   assert(attr && "Layout attribute is missing.");
@@ -406,7 +374,7 @@ LogicalResult StoreNdOp::verify() {
 
     int lanes = tdescElems % valueElems == 0 ? tdescElems / valueElems: -1;
     if (lanes != 16 && lanes != 8) {
-      return emitOpError() << "Result shape " << makeString(getShapeOf(valTy))
+      return emitOpError() << "Value shape " << makeString(getShapeOf(valTy))
                            << " is not a valid distribution for tensor descriptor "
                            << dstTy;
     }
@@ -415,7 +383,7 @@ LogicalResult StoreNdOp::verify() {
 
   // SIMD code should have the same shape as the tensor descriptor.
   if (tdescShape != valueShape) {
-    return emitOpError() << "Result shape " << makeString(valueShape)
+    return emitOpError() << "Value shape " << makeString(valueShape)
                          << " is not consistent with tensor descriptor " << dstTy;
   }
 
@@ -626,14 +594,35 @@ LogicalResult StoreScatterOp::verify() {
   if (tdescShape[0] != maskShape[0])
     return emitOpError("dim-0 of the Mask and TensorDesc should be the same.");
 
+  // for SIMT code, the value should be 1D vector with size of chunkSize.
+  if (valueTy.getRank() == 1 && valueTy.getNumElements() != tdescShape[0]) {
+    auto chunkSize = tdescTy.getChunkSize();
+    if (valueTy.getNumElements() != chunkSize) {
+      return emitOpError() << "Value shape " << makeString(valueShape)
+                           << " is not a valid distribution for tensor descriptor "
+                           << tdescTy;
+    } else { // valid SIMT code doesn't need LayoutAttr and TransposeAttr.
+      if (tdescTy.getLayoutAttr())
+        return emitOpError() << "TensorDesc doesn't need LayoutAttr for SIMT code";
+      if (getTransposeAttr())
+        return emitOpError() << "doesn't need TransposeAttr for SIMT code";
+    }
+    return success();
+  }
+
+  // for SIMD code verification.
   if (tdescTy.getRank() == 2) {
     if (!getTransposeAttr())
       return emitOpError("Store of a rank-2 tensor has to be transposed.");
     transpose({1, 0}, tdescShape);
   }
 
-  return isArgShapesValid(tdescTy, valueTy, tdescShape,
-                          [&]() { return emitOpError(); });
+  if (tdescShape != valueShape)
+    return emitOpError() << "Value shape " << makeString(valueShape)
+                         << " is not consistent with tensor descriptor "
+                         << tdescTy;
+
+  return success();
 }
 
 //===---------------------------------------------------------------------===//
