@@ -1688,10 +1688,15 @@ PassBuilder::buildFatLTODefaultPipeline(OptimizationLevel Level, bool ThinLTO,
   MPM.addPass(
       LowerTypeTestsPass(nullptr, nullptr, lowertypetests::DropTestKind::All));
 
-  // Use the ThinLTO post-link pipeline with sample profiling
-  if (ThinLTO && PGOOpt && PGOOpt->Action == PGOOptions::SampleUse)
+  // ModuleSimplification does not run the coroutine passes for ThinLTOPreLink,
+  // so we need the coroutine passes to run for ThinLTO builds, otherwise they
+  // will miscompile.
+  if (ThinLTO) {
+    // TODO: determine how to only run the ThinLTODefaultPipeline when using
+    // sample profiling. Ideally, we'd be able to still use the module
+    // optimization pipeline, with additional cleanups for coroutines.
     MPM.addPass(buildThinLTODefaultPipeline(Level, /*ImportSummary=*/nullptr));
-  else {
+  } else {
     // otherwise, just use module optimization
     MPM.addPass(
         buildModuleOptimizationPipeline(Level, ThinOrFullLTOPhase::None));
