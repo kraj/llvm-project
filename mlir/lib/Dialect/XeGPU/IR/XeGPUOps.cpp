@@ -541,9 +541,9 @@ LogicalResult LoadGatherOp::verify() {
   if (tdescShape[0] != maskShape[0])
     return emitOpError("dim-0 of the Mask and TensorDesc should be the same.");
 
+  auto chunkSize = tdescTy.getChunkSize();
   // for SIMT code, the value should be 1D vector with size of chunkSize.
   if (valueTy.getRank() == 1 && valueTy.getNumElements() != tdescShape[0]) {
-    auto chunkSize = tdescTy.getChunkSize();
     if (valueTy.getNumElements() != chunkSize) {
       return emitOpError()
              << "Result shape " << makeString(valueShape)
@@ -556,6 +556,11 @@ LogicalResult LoadGatherOp::verify() {
       if (getTransposeAttr())
         return emitOpError() << "doesn't need TransposeAttr for SIMT code";
     }
+    return success();
+  } else if (valueTy.getRank() == 1 && tdescShape[0] == chunkSize) {
+    // for 1D vector and valueTy.getNumElements() == tdescShape[0] case,
+    // it is a valid SIMT code if chunkSize happens to be the same as
+    // subgroup size, e.g., tensor_desc<16x16xf16, chunkSize = 16>
     return success();
   }
 
@@ -602,9 +607,9 @@ LogicalResult StoreScatterOp::verify() {
   if (tdescShape[0] != maskShape[0])
     return emitOpError("dim-0 of the Mask and TensorDesc should be the same.");
 
+  auto chunkSize = tdescTy.getChunkSize();
   // for SIMT code, the value should be 1D vector with size of chunkSize.
   if (valueTy.getRank() == 1 && valueTy.getNumElements() != tdescShape[0]) {
-    auto chunkSize = tdescTy.getChunkSize();
     if (valueTy.getNumElements() != chunkSize) {
       return emitOpError()
              << "Value shape " << makeString(valueShape)
@@ -617,6 +622,11 @@ LogicalResult StoreScatterOp::verify() {
       if (getTransposeAttr())
         return emitOpError() << "doesn't need TransposeAttr for SIMT code";
     }
+    return success();
+  } else if (valueTy.getRank() == 1 && tdescShape[0] == chunkSize) {
+    // for 1D vector and valueTy.getNumElements() == tdescShape[0] case,
+    // it is a valid SIMT code if chunkSize happens to be the same as
+    // subgroup size, e.g., tensor_desc<16x16xf16, chunkSize = 16>
     return success();
   }
 
