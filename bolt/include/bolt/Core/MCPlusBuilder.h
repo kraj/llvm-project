@@ -622,6 +622,9 @@ public:
   /// controlled, provided InReg and executable code are not. Please note that
   /// registers other than InReg as well as the contents of memory which is
   /// writable by the process should be considered attacker-controlled.
+  ///
+  /// The instruction should not write any values derived from InReg anywhere,
+  /// except for OutReg.
   virtual std::optional<std::pair<MCPhysReg, MCPhysReg>>
   analyzeAddressArithmeticsForPtrAuth(const MCInst &Inst) const {
     llvm_unreachable("not implemented");

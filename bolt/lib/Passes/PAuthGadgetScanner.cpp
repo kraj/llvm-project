@@ -722,16 +722,487 @@ SrcSafetyAnalysis::create(BinaryFunction &BF,
                                                        RegsToTrackInstsFor);
 }
 
-static std::shared_ptr<Report>
+/// A state representing which registers are safe to be used as the destination
+/// operand of an authentication instruction.
+///
+/// Similar to SrcState, it is the analysis that should take register aliasing
+/// into account.
+///
+/// Depending on the implementation, it may be possible that an authentication
+/// instruction returns an invalid pointer on failure instead of terminating
+/// the program immediately (assuming the program will crash as soon as that
+/// pointer is dereferenced). To prevent brute-forcing the correct signature,
+/// it should be impossible for an attacker to test if a pointer is correctly
+/// signed - either the program should be terminated on authentication failure
+/// or it should be impossible to tell whether authentication succeeded or not.
+///
+/// For that reason, a restricted set of operations is allowed on any register
+/// containing a value derived from the result of an authentication instruction
+/// until that register is either wiped or checked not to contain a result of a
+/// failed authentication.
+///
+/// Specifically, the safety property for a register is computed by iterating
+/// the instructions in backward order: the source register Xn of an instruction
+/// Inst is safe if at least one of the following is true:
+/// * Inst checks if Xn contains the result of a successful authentication and
+///   terminates the program on failure. Note that Inst can either naturally
+///   dereference Xn (load, branch, return, etc. instructions) or be the first
+///   instruction of an explicit checking sequence.
+/// * Inst performs safe address arithmetic AND both source and result
+///   registers, as well as any temporary registers, must be safe after
+///   execution of Inst (temporaries are not used on AArch64 and thus not
+///   currently supported/allowed).
+///   See MCPlusBuilder::analyzeAddressArithmeticsForPtrAuth for the details.
+/// * Inst fully overwrites Xn with an unrelated value.
+struct DstState {
+  /// The set of registers whose values cannot be inspected by an attacker in
+  /// a way usable as an authentication oracle. The results of authentication
+  /// instructions should be written to such registers.
+  BitVector CannotEscapeUnchecked;
+
+  std::vector<SmallPtrSet<const MCInst *, 4>> FirstInstLeakingReg;
+
+  /// Construct an empty state.
+  DstState() {}
+
+  DstState(unsigned NumRegs, unsigned NumRegsToTrack)
+      : CannotEscapeUnchecked(NumRegs), FirstInstLeakingReg(NumRegsToTrack) {}
+
+  DstState &merge(const DstState &StateIn) {
+    if (StateIn.empty())
+      return *this;
+    if (empty())
+      return (*this = StateIn);
+
+    CannotEscapeUnchecked &= StateIn.CannotEscapeUnchecked;
+    return *this;
+  }
+
+  /// Returns true if this object does not store state of any registers -
+  /// neither safe, nor unsafe ones.
+  bool empty() const { return CannotEscapeUnchecked.empty(); }
+
+  bool operator==(const DstState &RHS) const {
+    return CannotEscapeUnchecked == RHS.CannotEscapeUnchecked;
+  }
+  bool operator!=(const DstState &RHS) const {
+    return !((*this) == RHS);
+  }
+};
+
+raw_ostream &operator<<(raw_ostream &OS, const DstState &S) {
+  OS << "dst-state<";
+  if (S.empty()) {
+    OS << "empty";
+  } else {
+    OS << "CannotEscapeUnchecked: " << S.CannotEscapeUnchecked;
+  }
+  OS << ">";
+  return OS;
+}
+
+class DstStatePrinter {
+public:
+  void print(raw_ostream &OS, const DstState &S) const;
+  explicit DstStatePrinter(const BinaryContext &BC) : BC(BC) {}
+
+private:
+  const BinaryContext &BC;
+};
+
+void DstStatePrinter::print(raw_ostream &OS, const DstState &S) const {
+  RegStatePrinter RegStatePrinter(BC);
+  OS << "dst-state<";
+  if (S.empty()) {
+    assert(S.CannotEscapeUnchecked.empty());
+    OS << "empty";
+  } else {
+    OS << "CannotEscapeUnchecked: ";
+    RegStatePrinter.print(OS, S.CannotEscapeUnchecked);
+  }
+  OS << ">";
+}
+
+/// Computes which registers are safe to be written by auth instructions.
+///
+/// This is the base class for two implementations: a dataflow-based analysis
+/// which is intended to be used for most functions and a simplified CFG-unaware
+/// version for functions without reconstructed CFG.
+class DstSafetyAnalysis {
+public:
+  DstSafetyAnalysis(BinaryFunction &BF, const std::vector<MCPhysReg> &RegsToTrackInstsFor)
+      : BC(BF.getBinaryContext()), NumRegs(BC.MRI->getNumRegs()), RegsToTrackInstsFor(RegsToTrackInstsFor) {}
+
+  virtual ~DstSafetyAnalysis() {}
+
+  static std::shared_ptr<DstSafetyAnalysis>
+  create(BinaryFunction &BF, MCPlusBuilder::AllocatorIdTy AllocId, const std::vector<MCPhysReg> &RegsToTrackInstsFor);
+
+  virtual void run() = 0;
+  virtual ErrorOr<const DstState &> getStateAfter(const MCInst &Inst) const = 0;
+
+protected:
+  BinaryContext &BC;
+  const unsigned NumRegs;
+
+  const TrackedRegisters RegsToTrackInstsFor;
+  /// Stores information about the detected instruction sequences emitted to
+  /// check an authenticated pointer. Specifically, if such sequence is detected
+  /// in a basic block, it maps the first instruction of that sequence to the
+  /// register being checked.
+  ///
+  /// As the detection of such sequences requires iterating over the adjacent
+  /// instructions, it should be done before calling computeNext(), which
+  /// operates on separate instructions.
+  DenseMap<const MCInst *, MCPhysReg> RegCheckedAt;
+
+  SmallPtrSet<const MCInst *, 4> &firstLeakingInsts(DstState &S,
+                                                    MCPhysReg Reg) const {
+    unsigned Index = RegsToTrackInstsFor.getIndex(Reg);
+    return S.FirstInstLeakingReg[Index];
+  }
+  const SmallPtrSet<const MCInst *, 4> &firstLeakingInsts(const DstState &S,
+                                                          MCPhysReg Reg) const {
+    unsigned Index = RegsToTrackInstsFor.getIndex(Reg);
+    return S.FirstInstLeakingReg[Index];
+  }
+
+  /// Creates a state with all registers marked unsafe (not to be confused
+  /// with empty state).
+  DstState createUnsafeState() {
+    DstState S(NumRegs, RegsToTrackInstsFor.getNumTrackedRegisters());
+    return S;
+  }
+
+  BitVector getLeakedRegs(const MCInst &Point) const {
+    BitVector Leaked(NumRegs, false);
+
+    // Assume a call can read all registers.
+    if (BC.MIB->isCall(Point)) {
+      Leaked.set();
+      return Leaked;
+    }
+
+    // Compute the set of registers overlapping with any register used by
+    // this instruction.
+
+    const MCInstrDesc &Desc = BC.MII->get(Point.getOpcode());
+
+    for (MCPhysReg Reg : Desc.implicit_uses())
+      Leaked |= BC.MIB->getAliases(Reg, /*OnlySmaller=*/false);
+
+    for (const MCOperand &Op : BC.MIB->useOperands(Point)) {
+      if (Op.isReg())
+        Leaked |= BC.MIB->getAliases(Op.getReg(), /*OnlySmaller=*/false);
+    }
+
+    return Leaked;
+  }
+
+  SmallVector<MCPhysReg> getRegsMadeProtected(const MCInst &Point, const BitVector &LeakedRegs, const DstState &Cur) const {
+    SmallVector<MCPhysReg> Regs;
+    const MCPhysReg NoReg = BC.MIB->getNoRegister();
+
+    // A pointer can be checked, or
+    MCPhysReg CheckedReg =
+        BC.MIB->getAuthCheckedReg(Point, /*MayOverwrite=*/true);
+    if (CheckedReg != NoReg)
+      Regs.push_back(CheckedReg);
+    if (RegCheckedAt.contains(&Point))
+      Regs.push_back(RegCheckedAt.at(&Point));
+
+    // ... it can be used as a branch target, or
+    if (BC.MIB->isIndirectBranch(Point) || BC.MIB->isIndirectCall(Point)) {
+      bool IsAuthenticated;
+      MCPhysReg BranchDestReg = BC.MIB->getRegUsedAsIndirectBranchDest(Point, IsAuthenticated);
+      assert(BranchDestReg != NoReg);
+      if (!IsAuthenticated)
+        Regs.push_back(BranchDestReg);
+    }
+
+    // ... it can be used as a return target, or
+    if (BC.MIB->isReturn(Point)) {
+      ErrorOr<MCPhysReg> RetReg = BC.MIB->getRegUsedAsRetDest(Point);
+      if (RetReg && *RetReg != NoReg)
+        Regs.push_back(*RetReg);
+    }
+
+    // ... an address can be updated in a safe manner, or
+    if (auto DstAndSrc = BC.MIB->analyzeAddressArithmeticsForPtrAuth(Point)) {
+      MCPhysReg DstReg, SrcReg;
+      std::tie(DstReg, SrcReg) = *DstAndSrc;
+      // Note that *all* registers containing the derived values must be safe,
+      // both source and destination ones. No temporaries are supported at now.
+      if (Cur.CannotEscapeUnchecked[SrcReg] && Cur.CannotEscapeUnchecked[DstReg])
+        Regs.push_back(SrcReg);
+    }
+
+    // ... the register can be overwritten in whole with an unrelated value -
+    // for that reason, ignore the registers that are both read and written:
+    //
+    //     movk x0, #42, lsl #16  // keeps some bits of x0
+    //     mul  x1, x1, #3        // not all information is actually lost
+    //
+    BitVector FullyOverwrittenRegs;
+    BC.MIB->getWrittenRegs(Point, FullyOverwrittenRegs);
+    FullyOverwrittenRegs.reset(LeakedRegs);
+    for (MCPhysReg Reg : FullyOverwrittenRegs.set_bits())
+      Regs.push_back(Reg);
+
+    return Regs;
+  }
+
+  DstState computeNext(const MCInst &Point, const DstState &Cur) {
+    DstStatePrinter P(BC);
+    LLVM_DEBUG({
+      dbgs() << "  DstSafetyAnalysis::ComputeNext(";
+      BC.InstPrinter->printInst(&const_cast<MCInst &>(Point), 0, "", *BC.STI,
+                                dbgs());
+      dbgs() << ", ";
+      P.print(dbgs(), Cur);
+      dbgs() << ")\n";
+    });
+
+    // If this instruction is reachable by the analysis, a non-empty state will
+    // be propagated to it from the entry basic block sooner or later.
+    // Until then, skip computeNext().
+    if (Cur.empty()) {
+      LLVM_DEBUG(
+          { dbgs() << "Skipping computeNext(Point, Cur) as Cur is empty.\n"; });
+      return DstState();
+    }
+
+    // First, compute various properties of the instruction, taking the state
+    // before its execution into account, if necessary.
+
+    BitVector LeakedRegs = getLeakedRegs(Point);
+    SmallVector<MCPhysReg> NewProtectedRegs = getRegsMadeProtected(Point, LeakedRegs, Cur);
+
+    // Then, compute the state after this instruction is executed.
+    DstState Next = Cur;
+
+    Next.CannotEscapeUnchecked.reset(LeakedRegs);
+    for (MCPhysReg Reg : RegsToTrackInstsFor.getRegisters()) {
+      if (LeakedRegs[Reg])
+        firstLeakingInsts(Next, Reg) = {&Point};
+    }
+
+    BitVector NewProtectedSubregs(NumRegs, false);
+    for (MCPhysReg Reg : NewProtectedRegs)
+      NewProtectedSubregs |= BC.MIB->getAliases(Reg, /*OnlySmaller=*/true);
+    Next.CannotEscapeUnchecked |= NewProtectedSubregs;
+    for (MCPhysReg Reg : RegsToTrackInstsFor.getRegisters()) {
+      if (NewProtectedSubregs[Reg])
+        firstLeakingInsts(Next, Reg).clear();
+    }
+
+    LLVM_DEBUG({
+      dbgs() << "    .. result: (";
+      P.print(dbgs(), Next);
+      dbgs() << ")\n";
+    });
+
+    return Next;
+  }
+
+public:
+  std::vector<MCInstReference>
+  getLeakingInsts(const MCInst &Inst, BinaryFunction &BF,
+                  const ArrayRef<MCPhysReg> Regs) const {
+    if (RegsToTrackInstsFor.empty())
+      return {};
+    auto MaybeState = getStateAfter(Inst);
+    if (!MaybeState)
+      llvm_unreachable("Expected state to be present");
+    const DstState &S = *MaybeState;
+    // Due to aliasing registers, multiple registers may have been tracked.
+    std::set<const MCInst *> FirstLeakingInsts;
+    for (MCPhysReg TrackedReg : Regs) {
+      for (const MCInst *Inst : firstLeakingInsts(S, TrackedReg))
+        FirstLeakingInsts.insert(Inst);
+    }
+    std::vector<MCInstReference> Result;
+    for (const MCInst *Inst : FirstLeakingInsts) {
+      MCInstReference Ref = MCInstReference::get(Inst, BF);
+      assert(Ref && "Expected Inst to be found");
+      Result.push_back(MCInstReference(Ref));
+    }
+    return Result;
+  }
+};
+
+class DataflowDstSafetyAnalysis
+    : public DstSafetyAnalysis,
+      public DataflowAnalysis<DataflowDstSafetyAnalysis, DstState,
+                              /*Backward=*/true, DstStatePrinter> {
+  using DFParent = DataflowAnalysis<DataflowDstSafetyAnalysis, DstState,
+                                    true, DstStatePrinter>;
+  friend DFParent;
+
+  using DstSafetyAnalysis::BC;
+  using DstSafetyAnalysis::computeNext;
+
+public:
+  DataflowDstSafetyAnalysis(
+      BinaryFunction &BF, MCPlusBuilder::AllocatorIdTy AllocId,
+      const std::vector<MCPhysReg> &RegsToTrackInstsFor)
+      : DstSafetyAnalysis(BF, RegsToTrackInstsFor), DFParent(BF, AllocId) {
+  }
+
+  ErrorOr<const DstState &> getStateAfter(const MCInst &Inst) const override {
+    return DFParent::getStateBefore(Inst);
+  }
+
+  void run() override {
+    for (BinaryBasicBlock &BB : Func) {
+      if (auto CheckerInfo = BC.MIB->getAuthCheckedReg(BB)) {
+        LLVM_DEBUG({
+          dbgs() << "Found pointer checking sequence in " << BB.getName()
+                 << ":\n";
+          traceReg(BC, "Checked register", CheckerInfo->first);
+          traceInst(BC, "First instruction", *CheckerInfo->second);
+        });
+        RegCheckedAt[CheckerInfo->second] = CheckerInfo->first;
+      }
+    }
+    DFParent::run();
+  }
+
+protected:
+  void preflight() {}
+
+  DstState getStartingStateAtBB(const BinaryBasicBlock &BB) {
+    // In general, the initial state should be empty, not everything-is-unsafe,
+    // to give a chance for some meaningful state to be propagated to BB from
+    // an indirectly reachable "exit basic block" ending with a return or tail
+    // call instruction.
+    //
+    // A basic block without any successors, on the other hand, can be
+    // pessimistically initialized to everything-is-unsafe: this will naturally
+    // handle both return and tail call instructions and is harmless for
+    // internal indirect branch instructions (such as computed gotos).
+    if (BB.succ_empty())
+      return createUnsafeState();
+
+    return DstState();
+  }
+
+  DstState getStartingStateAtPoint(const MCInst &Point) {
+    return DstState();
+  }
+
+  void doConfluence(DstState &StateOut, const DstState &StateIn) {
+    DstStatePrinter P(BC);
+    LLVM_DEBUG({
+      dbgs() << "  DataflowDstSafetyAnalysis::Confluence(\n";
+      dbgs() << "    State 1: ";
+      P.print(dbgs(), StateOut);
+      dbgs() << "\n";
+      dbgs() << "    State 2: ";
+      P.print(dbgs(), StateIn);
+      dbgs() << ")\n";
+    });
+
+    StateOut.merge(StateIn);
+
+    LLVM_DEBUG({
+      dbgs() << "    merged state: ";
+      P.print(dbgs(), StateOut);
+      dbgs() << "\n";
+    });
+  }
+
+  StringRef getAnnotationName() const { return "DataflowDstSafetyAnalysis"; }
+};
+
+class CFGUnawareDstSafetyAnalysis : public DstSafetyAnalysis {
+  BinaryFunction &BF;
+  MCPlusBuilder::AllocatorIdTy AllocId;
+  unsigned StateAnnotationIndex;
+
+  void cleanStateAnnotations() {
+    for (auto &I : BF.instrs())
+      BC.MIB->removeAnnotation(I.second, StateAnnotationIndex);
+  }
+
+  DstState createUnsafeState() const {
+    return DstState(NumRegs, RegsToTrackInstsFor.getNumTrackedRegisters());
+  }
+
+public:
+  CFGUnawareDstSafetyAnalysis(
+      BinaryFunction &BF, MCPlusBuilder::AllocatorIdTy AllocId, const std::vector<MCPhysReg> &RegsToTrackInstsFor)
+      : DstSafetyAnalysis(BF, RegsToTrackInstsFor), BF(BF),
+        AllocId(AllocId) {
+    StateAnnotationIndex =
+        BC.MIB->getOrCreateAnnotationIndex("CFGUnawareDstSafetyAnalysis");
+  }
+
+  void run() override {
+    DstState S = createUnsafeState();
+    for (auto &I : llvm::reverse(BF.instrs())) {
+      MCInst &Inst = I.second;
+
+      // If Inst can change the control flow, we cannot be sure that the next
+      // instruction (to be executed in analyzed program) is the one processed
+      // on the previous iteration, thus pessimistically resetting S before
+      // starting to analyze Inst.
+      if (BC.MIB->isCall(Inst) || BC.MIB->isBranch(Inst) ||
+          BC.MIB->isReturn(Inst)) {
+        LLVM_DEBUG({ traceInst(BC, "Control flow instruction", Inst); });
+        S = createUnsafeState();
+      }
+
+      // Check if we need to remove an old annotation (this is the case if
+      // this is the second, detailed, run of the analysis).
+      if (BC.MIB->hasAnnotation(Inst, StateAnnotationIndex))
+        BC.MIB->removeAnnotation(Inst, StateAnnotationIndex);
+      // Attach the state *after* this instruction executes.
+      BC.MIB->addAnnotation(Inst, StateAnnotationIndex, S, AllocId);
+
+      // Compute the next state.
+      S = computeNext(Inst, S);
+    }
+  }
+
+  ErrorOr<const DstState &> getStateAfter(const MCInst &Inst) const override {
+    return BC.MIB->getAnnotationAs<DstState>(Inst, StateAnnotationIndex);
+  }
+
+  ~CFGUnawareDstSafetyAnalysis() { cleanStateAnnotations(); }
+};
+
+std::shared_ptr<DstSafetyAnalysis> DstSafetyAnalysis::create(
+    BinaryFunction &BF, MCPlusBuilder::AllocatorIdTy AllocId,
+    const std::vector<MCPhysReg> &RegsToTrackInstsFor) {
+  if (BF.hasCFG())
+    return std::make_shared<DataflowDstSafetyAnalysis>(BF, AllocId, RegsToTrackInstsFor);
+  return std::make_shared<CFGUnawareDstSafetyAnalysis>(BF, AllocId, RegsToTrackInstsFor);
+}
+
+static IssueWithRegsToTrack make_generic_report(MCInstReference Location,
+                                                  StringRef Text) {
+  auto Report = std::make_shared<GenericReport>(Location, Text);
+  return IssueWithRegsToTrack(Report, {});
+}
+
+static IssueWithRegsToTrack make_report(const GadgetKind &Kind,
+                                          MCInstReference Location,
+                                          MCPhysReg RequestedDetails) {
+  auto Report = std::make_shared<GadgetReport>(Kind, Location);
+  return IssueWithRegsToTrack(Report, {RequestedDetails});
+}
+
+static std::optional<IssueWithRegsToTrack>
 shouldReportReturnGadget(const BinaryContext &BC, const MCInstReference &Inst,
                          const SrcState &S) {
   static const GadgetKind RetKind("non-protected ret found");
   if (!BC.MIB->isReturn(Inst))
-    return nullptr;
+    return std::nullopt;
 
   ErrorOr<MCPhysReg> MaybeRetReg = BC.MIB->getRegUsedAsRetDest(Inst);
   if (MaybeRetReg.getError()) {
-    return std::make_shared<GenericReport>(
+    return make_generic_report(
         Inst, "Warning: pac-ret analysis could not analyze this return "
               "instruction");
   }
@@ -742,26 +1213,26 @@ shouldReportReturnGadget(const BinaryContext &BC, const MCInstReference &Inst,
     traceReg(BC, "Authenticated reg", BC.MIB->getAuthenticatedReg(Inst));
   });
   if (BC.MIB->isAuthenticationOfReg(Inst, RetReg))
-    return nullptr;
+    return std::nullopt;
   LLVM_DEBUG({ traceRegMask(BC, "SafeToDerefRegs", S.SafeToDerefRegs); });
   if (S.SafeToDerefRegs[RetReg])
-    return nullptr;
+    return std::nullopt;
 
-  return std::make_shared<GadgetReport>(RetKind, Inst, RetReg);
+  return make_report(RetKind, Inst, RetReg);
 }
 
-static std::shared_ptr<Report>
+static std::optional<IssueWithRegsToTrack>
 shouldReportCallGadget(const BinaryContext &BC, const MCInstReference &Inst,
                        const SrcState &S) {
   static const GadgetKind CallKind("non-protected call found");
   if (!BC.MIB->isIndirectCall(Inst) && !BC.MIB->isIndirectBranch(Inst))
-    return nullptr;
+    return std::nullopt;
 
   bool IsAuthenticated = false;
   MCPhysReg DestReg =
       BC.MIB->getRegUsedAsIndirectBranchDest(Inst, IsAuthenticated);
   if (IsAuthenticated)
-    return nullptr;
+    return std::nullopt;
 
   assert(DestReg != BC.MIB->getNoRegister());
   LLVM_DEBUG({
@@ -770,19 +1241,19 @@ shouldReportCallGadget(const BinaryContext &BC, const MCInstReference &Inst,
     traceRegMask(BC, "SafeToDerefRegs", S.SafeToDerefRegs);
   });
   if (S.SafeToDerefRegs[DestReg])
-    return nullptr;
+    return std::nullopt;
 
-  return std::make_shared<GadgetReport>(CallKind, Inst, DestReg);
+  return make_report(CallKind, Inst, DestReg);
 }
 
-static std::shared_ptr<Report>
+static std::optional<IssueWithRegsToTrack>
 shouldReportSigningOracle(const BinaryContext &BC, const MCInstReference &Inst,
                           const SrcState &S) {
   static const GadgetKind SigningOracleKind("signing oracle found");
 
   MCPhysReg SignedReg = BC.MIB->getSignedReg(Inst);
   if (SignedReg == BC.MIB->getNoRegister())
-    return nullptr;
+    return std::nullopt;
 
   LLVM_DEBUG({
     traceInst(BC, "Found sign inst", Inst);
@@ -790,9 +1261,37 @@ shouldReportSigningOracle(const BinaryContext &BC, const MCInstReference &Inst,
     traceRegMask(BC, "TrustedRegs", S.TrustedRegs);
   });
   if (S.TrustedRegs[SignedReg])
-    return nullptr;
+    return std::nullopt;
 
-  return std::make_shared<GadgetReport>(SigningOracleKind, Inst, SignedReg);
+  return make_report(SigningOracleKind, Inst, SignedReg);
+}
+
+static std::optional<IssueWithRegsToTrack>
+shouldReportAuthOracle(const BinaryContext &BC, const MCInstReference &Inst,
+                       const DstState &S) {
+  static const GadgetKind AuthOracleKind("authentication oracle found");
+
+  ErrorOr<MCPhysReg> AuthReg = BC.MIB->getAuthenticatedReg(Inst);
+  if (!AuthReg || *AuthReg == BC.MIB->getNoRegister())
+    return std::nullopt;
+
+  LLVM_DEBUG({
+    traceInst(BC, "Found auth inst", Inst);
+    traceReg(BC, "Authenticated reg", *AuthReg);
+  });
+
+  if (S.empty()) {
+    LLVM_DEBUG({ dbgs() << "    DstState is empty!\n"; });
+    return make_generic_report(Inst, "Warning: no state computed for an authentication instruction (possibly unreachable)");
+  }
+
+  LLVM_DEBUG({
+    traceRegMask(BC, "safe output registers", S.CannotEscapeUnchecked);
+  });
+  if (S.CannotEscapeUnchecked[*AuthReg])
+    return std::nullopt;
+
+  return make_report(AuthOracleKind, Inst, *AuthReg);
 }
 
 template <typename T> static void iterateOverInstrs(BinaryFunction &BF, T Fn) {
@@ -806,11 +1305,17 @@ template <typename T> static void iterateOverInstrs(BinaryFunction &BF, T Fn) {
   }
 }
 
-FunctionAnalysisResult
-Analysis::findGadgets(BinaryFunction &BF,
-                      MCPlusBuilder::AllocatorIdTy AllocatorId) {
-  FunctionAnalysisResult Result;
+static std::vector<MCPhysReg>
+collectRegsToTrack(const SmallVector<IssueWithRegsToTrack> &Reports) {
+  SmallSet<MCPhysReg, 4> RegsToTrack;
+  for (auto Report : Reports)
+    RegsToTrack.insert_range(Report.RequestedDetails);
+  std::vector<MCPhysReg> RegsToTrackVec(RegsToTrack.begin(), RegsToTrack.end());
+  return RegsToTrackVec;
+}
 
+void
+FunctionAnalysis::findUnsafeUses(SmallVector<IssueWithRegsToTrack> &Reports) {
   auto Analysis = SrcSafetyAnalysis::create(BF, AllocatorId, {});
   LLVM_DEBUG({ dbgs() << "Running src register safety analysis...\n"; });
   Analysis->run();
@@ -819,45 +1324,34 @@ Analysis::findGadgets(BinaryFunction &BF,
     BF.dump();
   });
 
-  BinaryContext &BC = BF.getBinaryContext();
   iterateOverInstrs(BF, [&](MCInstReference Inst) {
     const SrcState &S = *Analysis->getStateBefore(Inst);
 
     // If non-empty state was never propagated from the entry basic block
     // to Inst, assume it to be unreachable and report a warning.
     if (S.empty()) {
-      Result.Diagnostics.push_back(std::make_shared<GenericReport>(
+      Reports.push_back(make_generic_report(
           Inst, "Warning: unreachable instruction found"));
       return;
     }
 
     if (auto Report = shouldReportReturnGadget(BC, Inst, S))
-      Result.Diagnostics.push_back(Report);
+      Reports.push_back(*Report);
 
     if (PacRetGadgetsOnly)
       return;
 
     if (auto Report = shouldReportCallGadget(BC, Inst, S))
-      Result.Diagnostics.push_back(Report);
+      Reports.push_back(*Report);
     if (auto Report = shouldReportSigningOracle(BC, Inst, S))
-      Result.Diagnostics.push_back(Report);
+      Reports.push_back(*Report);
   });
-  return Result;
 }
 
-void Analysis::computeDetailedInfo(BinaryFunction &BF,
-                                   MCPlusBuilder::AllocatorIdTy AllocatorId,
-                                   FunctionAnalysisResult &Result) {
-  BinaryContext &BC = BF.getBinaryContext();
-
-  // Collect the affected registers across all gadgets found in this function.
-  SmallSet<MCPhysReg, 4> RegsToTrack;
-  for (auto Report : Result.Diagnostics)
-    RegsToTrack.insert_range(Report->getAffectedRegisters());
-  std::vector<MCPhysReg> RegsToTrackVec(RegsToTrack.begin(), RegsToTrack.end());
-
+void FunctionAnalysis::augmentUnsafeUses(const SmallVector<IssueWithRegsToTrack> &Reports) {
+  std::vector<MCPhysReg> RegsToTrack = collectRegsToTrack(Reports);
   // Re-compute the analysis with register tracking.
-  auto Analysis = SrcSafetyAnalysis::create(BF, AllocatorId, RegsToTrackVec);
+  auto Analysis = SrcSafetyAnalysis::create(BF, AllocatorId, RegsToTrack);
   LLVM_DEBUG(
       { dbgs() << "\nRunning detailed src register safety analysis...\n"; });
   Analysis->run();
@@ -867,32 +1361,84 @@ void Analysis::computeDetailedInfo(BinaryFunction &BF,
   });
 
   // Augment gadget reports.
-  for (auto Report : Result.Diagnostics) {
-    LLVM_DEBUG(
-        { traceInst(BC, "Attaching clobbering info to", Report->Location); });
-    (void)BC;
-    Report->setOverwritingInstrs(Analysis->getLastClobberingInsts(
-        Report->Location, BF, Report->getAffectedRegisters()));
+  for (auto Report : Reports) {
+    MCInstReference Location = Report.Issue->Location;
+    LLVM_DEBUG({ traceInst(BC, "Attaching clobbering info to", Location); });
+    auto Details = std::make_shared<ClobberingInfo>(Analysis->getLastClobberingInsts(
+        Location, BF, Report.RequestedDetails));
+    Result.Diagnostics.emplace_back(Report.Issue, Details);
   }
 }
 
-void Analysis::runOnFunction(BinaryFunction &BF,
-                             MCPlusBuilder::AllocatorIdTy AllocatorId) {
+void
+FunctionAnalysis::findUnsafeDefs(SmallVector<IssueWithRegsToTrack> &Reports) {
+  if (PacRetGadgetsOnly)
+    return;
+
+  auto Analysis = DstSafetyAnalysis::create(BF, AllocatorId, {});
+  LLVM_DEBUG({ dbgs() << "Running dst register safety analysis...\n"; });
+  Analysis->run();
   LLVM_DEBUG({
-    dbgs() << "Analyzing in function " << BF.getPrintName() << ", AllocatorId "
+    dbgs() << "After dst register safety analysis:\n";
+    BF.dump();
+  });
+
+  iterateOverInstrs(BF, [&](MCInstReference Inst) {
+    const DstState &S = *Analysis->getStateAfter(Inst);
+
+    if (auto Report = shouldReportAuthOracle(BC, Inst, S))
+      Reports.push_back(*Report);
+  });
+}
+
+void FunctionAnalysis::augmentUnsafeDefs(const SmallVector<IssueWithRegsToTrack> &Reports) {
+  std::vector<MCPhysReg> RegsToTrack = collectRegsToTrack(Reports);
+  // Re-compute the analysis with register tracking.
+  auto Analysis = DstSafetyAnalysis::create(BF, AllocatorId, RegsToTrack);
+  LLVM_DEBUG(
+      { dbgs() << "\nRunning detailed dst register safety analysis...\n"; });
+  Analysis->run();
+  LLVM_DEBUG({
+    dbgs() << "After detailed dst register safety analysis:\n";
+    BF.dump();
+  });
+
+  // Augment gadget reports.
+  for (auto Report : Reports) {
+    MCInstReference Location = Report.Issue->Location;
+    LLVM_DEBUG({ traceInst(BC, "Attaching leakage info to", Location); });
+    auto Details = std::make_shared<LeakageInfo>(Analysis->getLeakingInsts(
+        Location, BF, Report.RequestedDetails));
+    Result.Diagnostics.emplace_back(Report.Issue, Details);
+  }
+}
+
+void FunctionAnalysis::run() {
+  LLVM_DEBUG({
+    dbgs() << "Analyzing function " << BF.getPrintName() << ", AllocatorId = "
            << AllocatorId << "\n";
     BF.dump();
   });
 
-  FunctionAnalysisResult FAR = findGadgets(BF, AllocatorId);
+  SmallVector<IssueWithRegsToTrack> UnsafeUses;
+  findUnsafeUses(UnsafeUses);
+  if (!UnsafeUses.empty())
+    augmentUnsafeUses(UnsafeUses);
+
+  SmallVector<IssueWithRegsToTrack> UnsafeDefs;
+  findUnsafeDefs(UnsafeDefs);
+  if (!UnsafeDefs.empty())
+    augmentUnsafeDefs(UnsafeDefs);
+}
+
+void Analysis::runOnFunction(BinaryFunction &BF,
+                             MCPlusBuilder::AllocatorIdTy AllocatorId) {
+  FunctionAnalysis FA(BF, AllocatorId, PacRetGadgetsOnly);
+  FA.run();
+
+  const FunctionAnalysisResult &FAR = FA.getResult();
   if (FAR.Diagnostics.empty())
     return;
-
-  // Redo the analysis, but now also track which instructions last wrote
-  // to any of the registers in RetRegsWithGadgets, so that better
-  // diagnostics can be produced.
-
-  computeDetailedInfo(BF, AllocatorId, FAR);
 
   // `runOnFunction` is typically getting called from multiple threads in
   // parallel. Therefore, use a lock to avoid data races when storing the
@@ -920,16 +1466,14 @@ static void printBB(const BinaryContext &BC, const BinaryBasicBlock *BB,
   }
 }
 
-static void reportFoundGadgetInSingleBBSingleOverwInst(
-    raw_ostream &OS, const BinaryContext &BC, const MCInstReference OverwInst,
+static void reportFoundGadgetInSingleBBSingleRelatedInst(
+    raw_ostream &OS, const BinaryContext &BC, const MCInstReference RelatedInst,
     const MCInstReference Location) {
   BinaryBasicBlock *BB = Location.getBasicBlock();
-  assert(OverwInst.ParentKind == MCInstReference::BasicBlockParent);
+  assert(RelatedInst.ParentKind == MCInstReference::BasicBlockParent);
   assert(Location.ParentKind == MCInstReference::BasicBlockParent);
-  MCInstInBBReference OverwInstBB = OverwInst.U.BBRef;
-  if (BB == OverwInstBB.BB) {
-    // overwriting inst and ret instruction are in the same basic block.
-    assert(OverwInstBB.BBIndex < Location.U.BBRef.BBIndex);
+  MCInstInBBReference RelatedInstBB = RelatedInst.U.BBRef;
+  if (BB == RelatedInstBB.BB) {
     OS << "  This happens in the following basic block:\n";
     printBB(BC, BB);
   }
@@ -952,31 +1496,45 @@ void Report::printBasicInfo(raw_ostream &OS, const BinaryContext &BC,
 void GadgetReport::generateReport(raw_ostream &OS,
                                   const BinaryContext &BC) const {
   printBasicInfo(OS, BC, Kind.getDescription());
+}
 
-  BinaryFunction *BF = Location.getFunction();
-  OS << "  The " << OverwritingInstrs.size()
-     << " instructions that write to the affected registers after any "
-        "authentication are:\n";
+void DetailedInfo::printRelatedInstrs(raw_ostream &OS,
+                               const MCInstReference Location) const {
+  const BinaryFunction &BF = *Location.getFunction();
+  const BinaryContext &BC = BF.getBinaryContext();
+
   // Sort by address to ensure output is deterministic.
-  SmallVector<MCInstReference> OI = OverwritingInstrs;
-  llvm::sort(OI, [](const MCInstReference &A, const MCInstReference &B) {
+  SmallVector<MCInstReference> RI = RelatedInstrs;
+  llvm::sort(RI, [](const MCInstReference &A, const MCInstReference &B) {
     return A.getAddress() < B.getAddress();
   });
-  for (unsigned I = 0; I < OI.size(); ++I) {
-    MCInstReference InstRef = OI[I];
+  for (unsigned I = 0; I < RI.size(); ++I) {
+    MCInstReference InstRef = RI[I];
     OS << "  " << (I + 1) << ". ";
-    BC.printInstruction(OS, InstRef, InstRef.getAddress(), BF);
+    BC.printInstruction(OS, InstRef, InstRef.getAddress(), &BF);
   };
-  if (OverwritingInstrs.size() == 1) {
-    const MCInstReference OverwInst = OverwritingInstrs[0];
+  if (RelatedInstrs.size() == 1) {
+    const MCInstReference RelatedInst = RelatedInstrs[0];
     // Printing the details for the MCInstReference::FunctionParent case
     // is not implemented not to overcomplicate the code, as most functions
     // are expected to have CFG information.
-    if (OverwInst.ParentKind == MCInstReference::BasicBlockParent)
-      reportFoundGadgetInSingleBBSingleOverwInst(OS, BC, OverwInst, Location);
+    if (RelatedInst.ParentKind == MCInstReference::BasicBlockParent)
+      reportFoundGadgetInSingleBBSingleRelatedInst(OS, BC, RelatedInst, Location);
   }
 }
 
+void ClobberingInfo::printInfo(raw_ostream &OS, const MCInstReference Location) const {
+  OS << "  The " << RelatedInstrs.size()
+     << " instructions that write to the affected registers after any "
+        "authentication are:\n";
+  printRelatedInstrs(OS, Location);
+}
+
+void LeakageInfo::printInfo(raw_ostream &OS, const MCInstReference Location) const {
+  OS << "  The " << RelatedInstrs.size()
+     << " instructions that leak the affected registers are:\n";
+  printRelatedInstrs(OS, Location);
+}
 void GenericReport::generateReport(raw_ostream &OS,
                                    const BinaryContext &BC) const {
   printBasicInfo(OS, BC, Text);
@@ -996,11 +1554,15 @@ Error Analysis::runOnFunctions(BinaryContext &BC) {
       BC, ParallelUtilities::SchedulingPolicy::SP_INST_LINEAR, WorkFun,
       SkipFunc, "PAuthGadgetScanner");
 
-  for (BinaryFunction *BF : BC.getAllBinaryFunctions())
-    if (AnalysisResults.count(BF) > 0) {
-      for (const std::shared_ptr<Report> &R : AnalysisResults[BF].Diagnostics)
-        R->generateReport(outs(), BC);
+  for (BinaryFunction *BF : BC.getAllBinaryFunctions()) {
+    if (!AnalysisResults.count(BF))
+      continue;
+    for (const DetailedReport &R : AnalysisResults[BF].Diagnostics) {
+      R.Issue->generateReport(outs(), BC);
+      if (R.Details)
+        R.Details->printInfo(outs(), R.Issue->Location);
     }
+  }
   return Error::success();
 }
 
