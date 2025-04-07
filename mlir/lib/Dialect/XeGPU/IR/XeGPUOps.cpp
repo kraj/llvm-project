@@ -87,9 +87,10 @@ static bool isEvenDistributed(llvm::ArrayRef<int64_t> shape,
     auto lane_data = attr.getLaneData();
     data = lane_data ? lane_data.asArrayRef() : defaults;
   }
-  for (auto [s, d, l] : llvm::zip_equal(shape, data, layout)) {
-    // check s % (d * l) != 0
-    if (s % d != 0 || (s / d) % l != 0)
+  for (auto [dimSize, dataFactor, layoutFactor] :
+       llvm::zip_equal(shape, data, layout)) {
+    // check dimSize % (dataFactor * layoutFactor) != 0
+    if (dimSize % dataFactor != 0 || (dimSize / dataFactor) % layoutFactor != 0)
       return false;
   }
   return true;
@@ -645,7 +646,7 @@ LogicalResult StoreScatterOp::verify() {
   return success();
 }
 
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 // XeGPU_UpdateOffsetOp
 //===----------------------------------------------------------------------===//
 void UpdateOffsetOp::build(OpBuilder &builder, OperationState &state,
