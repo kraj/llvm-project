@@ -64,7 +64,7 @@ public:
   ProfileSummaryInfo(ProfileSummaryInfo &&Arg) = default;
 
   /// If no summary is present, attempt to refresh.
-  void refresh();
+  void refresh(std::unique_ptr<ProfileSummary> &&Other = nullptr);
 
   /// Returns true if profile summary is available.
   bool hasProfileSummary() const { return Summary != nullptr; }
