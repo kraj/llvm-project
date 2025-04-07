@@ -7032,6 +7032,9 @@ static Expected<Function *> createOutlinedFunction(
       continue;
     }
 
+    if (isa<ConstantData>(Input))
+      continue;
+
     ReplaceValue(Input, InputCopy, Func);
   }
 
