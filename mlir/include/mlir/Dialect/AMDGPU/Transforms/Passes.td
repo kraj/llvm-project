@@ -63,6 +63,8 @@ def AmdgpuTransferReadToLoadPass : Pass<"amdgpu-transfer-read-to-load"> {
     load accessing pattern compared with existing implementation of
     llvm.intr.masked.load on vectors.
   }];
-  let dependentDialects = [];
+  let dependentDialects = [
+    "scf::SCFDialect"
+  ];
 }
 #endif // MLIR_DIALECT_AMDGPU_TRANSFORMS_PASSES_TD_
