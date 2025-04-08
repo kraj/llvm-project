@@ -3765,9 +3765,28 @@ void Verifier::visitCallBase(CallBase &Call) {
           "Return type cannot be x86_amx for indirect call!");
   }
 
-  if (Function *F = Call.getCalledFunction())
+  if (Function *F = Call.getCalledFunction()) {
     if (Intrinsic::ID ID = (Intrinsic::ID)F->getIntrinsicID())
       visitIntrinsicCall(ID, Call);
+    // TODO: Move this to target dependent IR verifier once we have it.
+    auto IsAMDGPUEntryFunctionCC = [](CallingConv::ID CC) -> bool {
+      switch (CC) {
+      case CallingConv::AMDGPU_KERNEL:
+      case CallingConv::AMDGPU_VS:
+      case CallingConv::AMDGPU_GS:
+      case CallingConv::AMDGPU_PS:
+      case CallingConv::AMDGPU_CS:
+      case CallingConv::AMDGPU_ES:
+      case CallingConv::AMDGPU_HS:
+      case CallingConv::AMDGPU_LS:
+        return true;
+      default:
+        return false;
+      }
+    };
+    Check(!IsAMDGPUEntryFunctionCC(F->getCallingConv()),
+          "Call to amdgpu entry function is not allowed");
+  }
 
   // Verify that a callsite has at most one "deopt", at most one "funclet", at
   // most one "gc-transition", at most one "cfguardtarget", at most one

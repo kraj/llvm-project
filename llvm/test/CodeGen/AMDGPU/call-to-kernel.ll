@@ -1,18 +1,105 @@
-; RUN: not --crash llc -mtriple=amdgcn -mcpu=tahiti -verify-machineinstrs -o /dev/null %s 2>&1 | FileCheck %s
+; RUN: not llvm-as %s -o /dev/null 2>&1 | FileCheck %s
 
-; FIXME: It should be invalid IR to have a call to a kernel, but this
-; is currently relied on, but should be eliminated before codegen.
-define amdgpu_kernel void @callee_kernel(ptr addrspace(1) %out) #0 {
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_kernel void @callee_kernel(ptr addrspace(1) %out) {
 entry:
   store volatile i32 0, ptr addrspace(1) %out
   ret void
 }
 
-; CHECK: LLVM ERROR: Unsupported calling convention for call
-define amdgpu_kernel void @caller_kernel(ptr addrspace(1) %out) #0 {
+define amdgpu_kernel void @caller_kernel(ptr addrspace(1) %out) {
 entry:
-  call amdgpu_kernel void @callee_kernel(ptr addrspace(1) %out)
+  call void @callee_kernel(ptr addrspace(1) %out)
   ret void
 }
 
-attributes #0 = { nounwind noinline }
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_vs void @callee_vs(ptr addrspace(1) inreg %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_vs void @caller_vs(ptr addrspace(1) inreg %out) {
+entry:
+  call void @callee_vs(ptr addrspace(1) %out)
+  ret void
+}
+
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_gs void @callee_gs(ptr addrspace(1) %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_gs void @caller_gs(ptr addrspace(1) %out) {
+entry:
+  call void @callee_gs(ptr addrspace(1) %out)
+  ret void
+}
+
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_ps void @callee_ps(ptr addrspace(1) %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_ps void @caller_ps(ptr addrspace(1) %out) {
+entry:
+  call void @callee_ps(ptr addrspace(1) %out)
+  ret void
+}
+
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_cs void @callee_cs(ptr addrspace(1) %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_cs void @caller_cs(ptr addrspace(1) %out) {
+entry:
+  call void @callee_cs(ptr addrspace(1) %out)
+  ret void
+}
+
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_es void @callee_es(ptr addrspace(1) %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_es void @caller_es(ptr addrspace(1) %out) {
+entry:
+  call void @callee_es(ptr addrspace(1) %out)
+  ret void
+}
+
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_hs void @callee_hs(ptr addrspace(1) %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_hs void @caller_hs(ptr addrspace(1) %out) {
+entry:
+  call void @callee_hs(ptr addrspace(1) %out)
+  ret void
+}
+
+; CHECK: Call to amdgpu entry function is not allowed
+define amdgpu_ls void @callee_ls(ptr addrspace(1) %out) {
+entry:
+  store volatile i32 0, ptr addrspace(1) %out
+  ret void
+}
+
+define amdgpu_ls void @caller_ls(ptr addrspace(1) %out) {
+entry:
+  call void @callee_ls(ptr addrspace(1) %out)
+  ret void
+}
