@@ -308,6 +308,7 @@ define void @prop_deref(ptr %p) {
 ; CHECK-NEXT:    call void @bar1(ptr dereferenceable(16) [[P]])
 ; CHECK-NEXT:    ret void
 ;
+;<
   call void @foo1(ptr dereferenceable(16) %p)
   ret void
 }
@@ -748,5 +749,49 @@ define void @prop_range_direct(i32 %v) {
 ; CHECK-NEXT:    ret void
 ;
   call void @foo4(i32 range(i32 1, 11) %v)
+  ret void
+}
+
+declare void @bar_fp(float %x)
+
+define dso_local void @foo_fp(float %x) {
+; CHECK-LABEL: define {{[^@]+}}@foo_fp
+; CHECK-SAME: (float [[X:%.*]]) {
+; CHECK-NEXT:    call void @bar_fp(float [[X]])
+; CHECK-NEXT:    ret void
+;
+  call void @bar_fp(float %x)
+  ret void
+}
+
+define void @prop_param_nofpclass(float %x) {
+; CHECK-LABEL: define {{[^@]+}}@prop_param_nofpclass
+; CHECK-SAME: (float [[X:%.*]]) {
+; CHECK-NEXT:    call void @bar_fp(float [[X]])
+; CHECK-NEXT:    ret void
+;
+  call void @foo_fp(float nofpclass(nan inf) %x)
+  ret void
+}
+
+declare void @func_fp(float)
+
+define dso_local void @intersect_nofpclass(float %v) {
+; CHECK-LABEL: define {{[^@]+}}@intersect_nofpclass
+; CHECK-SAME: (float [[V:%.*]]) {
+; CHECK-NEXT:    call void @func_fp(float nofpclass(inf) [[V]])
+; CHECK-NEXT:    ret void
+;
+  call void @func_fp(float nofpclass(inf) %v)
+  ret void
+}
+
+define void @prop_nofpclass_empty_intersect(float %v) {
+; CHECK-LABEL: define {{[^@]+}}@prop_nofpclass_empty_intersect
+; CHECK-SAME: (float [[V:%.*]]) {
+; CHECK-NEXT:    call void @func_fp(float nofpclass(inf) [[V]])
+; CHECK-NEXT:    ret void
+;
+  call void @intersect_nofpclass(float nofpclass(nan) %v)
   ret void
 }
