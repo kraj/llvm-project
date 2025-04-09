@@ -144,7 +144,7 @@ LogicalResult BulkStoreOp::verify() {
 std::optional<mlir::NVVM::MMATypes>
 MmaOp::inferOperandMMAType(Type operandElType, bool isAccumulator) {
   auto half2Type =
-      LLVM::getFixedVectorType(Float16Type::get(operandElType.getContext()), 2);
+      VectorType::get(2, Float16Type::get(operandElType.getContext()));
   if (operandElType.isF64())
     return NVVM::MMATypes::f64;
   if (operandElType.isF16() || operandElType == half2Type)
@@ -243,7 +243,8 @@ void MmaOp::print(OpAsmPrinter &p) {
   p.printOptionalAttrDict(this->getOperation()->getAttrs(), ignoreAttrNames);
 
   // Print the types of the operands and result.
-  p << " : " << "(";
+  p << " : "
+    << "(";
   llvm::interleaveComma(SmallVector<Type, 3>{frags[0].regs[0].getType(),
                                              frags[1].regs[0].getType(),
                                              frags[2].regs[0].getType()},
@@ -404,7 +405,7 @@ LogicalResult MmaOp::verify() {
   MLIRContext *context = getContext();
   auto f16Ty = Float16Type::get(context);
   auto i32Ty = IntegerType::get(context, 32);
-  auto f16x2Ty = LLVM::getFixedVectorType(f16Ty, 2);
+  auto f16x2Ty = VectorType::get(2, f16Ty);
   auto f32Ty = Float32Type::get(context);
   auto f16x2x4StructTy = LLVM::LLVMStructType::getLiteral(
       context, {f16x2Ty, f16x2Ty, f16x2Ty, f16x2Ty});
@@ -506,7 +507,7 @@ LogicalResult MmaOp::verify() {
       expectedA.emplace_back(1, f64Ty);
       expectedB.emplace_back(1, f64Ty);
       expectedC.emplace_back(2, f64Ty);
-      // expectedC.emplace_back(1, LLVM::getFixedVectorType(f64Ty, 2));
+      // expectedC.emplace_back(1, VectorType::get(2, f64Ty));
       expectedResult.emplace_back(LLVM::LLVMStructType::getLiteral(
           context, SmallVector<Type>(2, f64Ty)));
       allowedShapes.push_back({8, 8, 4});
@@ -992,7 +993,9 @@ std::string NVVM::WgmmaMmaAsyncOp::getPtx() {
   ss << "},";
   // Need to map read/write registers correctly.
   regCnt = (regCnt * 2);
-  ss << " $" << (regCnt) << "," << " $" << (regCnt + 1) << "," << " p";
+  ss << " $" << (regCnt) << ","
+     << " $" << (regCnt + 1) << ","
+     << " p";
   if (getTypeD() != WGMMATypes::s32) {
     ss << ", $" << (regCnt + 3) << ",  $" << (regCnt + 4);
   }
@@ -1219,7 +1222,7 @@ llvm::Intrinsic::ID CpAsyncBulkTensorPrefetchOp::getIntrinsicID(int tensorDims,
             : CP_ASYNC_BULK_TENSOR_REDUCE_MODE(op, dim, tile)
 
 #define GET_CP_ASYNC_BULK_TENSOR_ID(op, dims, is_im2col)                       \
-  [&]() -> auto {                                                              \
+  [&]() -> auto{                                                               \
     switch (dims) {                                                            \
     case 1:                                                                    \
       return CP_ASYNC_BULK_TENSOR_REDUCE_MODE(op, 1, tile);                    \
@@ -1234,7 +1237,8 @@ llvm::Intrinsic::ID CpAsyncBulkTensorPrefetchOp::getIntrinsicID(int tensorDims,
     default:                                                                   \
       llvm_unreachable("Invalid TensorDim in CpAsyncBulkTensorReduceOp.");     \
     }                                                                          \
-  }()
+  }                                                                            \
+  ()
 
 llvm::Intrinsic::ID CpAsyncBulkTensorReduceOp::getIntrinsicID(
     int tensorDims, NVVM::TMAReduxKind kind, bool isIm2Col) {
@@ -1364,13 +1368,14 @@ Tcgen05CommitOp::getIntrinsicIDAndArgs(Operation &op,
           : TCGEN05_CP_IMPL(shape_mc, src_fmt, _cg1)
 
 #define GET_TCGEN05_CP_ID(shape_mc, src_fmt, is_2cta)                          \
-  [&]() -> auto {                                                              \
+  [&]() -> auto{                                                               \
     if (src_fmt == Tcgen05CpSrcFormat::B6x16_P32)                              \
       return TCGEN05_CP_2CTA(shape_mc, _b6x16_p32, is_2cta);                   \
     if (src_fmt == Tcgen05CpSrcFormat::B4x16_P64)                              \
       return TCGEN05_CP_2CTA(shape_mc, _b4x16_p64, is_2cta);                   \
     return TCGEN05_CP_2CTA(shape_mc, , is_2cta);                               \
-  }()
+  }                                                                            \
+  ()
 
 llvm::Intrinsic::ID Tcgen05CpOp::getIntrinsicID(Operation &op) {
   auto curOp = cast<NVVM::Tcgen05CpOp>(op);
