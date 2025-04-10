@@ -73,6 +73,12 @@ static bool isWriteHintOrNone(const CachePolicyAttr &attr) {
          kind == CachePolicy::WRITE_BACK || kind == CachePolicy::WRITE_THROUGH;
 }
 
+// Checks if the given shape is evenly distributed based on the layout
+// and data factors provided by the LayoutAttr. The function ensures that
+// each dimension of the shape can be evenly divided by the corresponding
+// data factor, and the resulting quotient can be evenly divided by the
+// layout factor. Returns `true` if the shape is evenly distributed,
+// otherwise `false`.
 static bool isEvenDistributed(llvm::ArrayRef<int64_t> shape,
                               xegpu::LayoutAttr attr) {
   assert(attr && "Layout attribute is missing.");
@@ -89,7 +95,6 @@ static bool isEvenDistributed(llvm::ArrayRef<int64_t> shape,
   }
   for (auto [dimSize, dataFactor, layoutFactor] :
        llvm::zip_equal(shape, data, layout)) {
-    // check dimSize % (dataFactor * layoutFactor) != 0
     if (dimSize % dataFactor != 0 || (dimSize / dataFactor) % layoutFactor != 0)
       return false;
   }
@@ -696,7 +701,6 @@ LogicalResult DpasOp::verify() {
     auto bK = rhsRank == 3 ? rhsShape[0] * rhsShape[2] : rhsShape[0];
     if (bK != lhsShape[1])
       return emitOpError("K-dimension mismatch.");
-    if (lhsShape[0] != resShape[0])
     if (lhsShape[0] != resShape[0])
       return emitOpError("M-dimension mismatch.");
     if (rhsShape[1] != resShape[1])

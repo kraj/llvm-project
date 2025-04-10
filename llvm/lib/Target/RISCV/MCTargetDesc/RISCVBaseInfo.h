@@ -340,9 +340,9 @@ enum OperandType : unsigned {
   OPERAND_SIMM12_LSB00000,
   OPERAND_SIMM16,
   OPERAND_SIMM16_NONZERO,
-  OPERAND_SIMM20,
+  OPERAND_SIMM20_LI,
   OPERAND_SIMM26,
-  OPERAND_SIMM32,
+  OPERAND_BARE_SIMM32,
   OPERAND_CLUI_IMM,
   OPERAND_VTYPEI10,
   OPERAND_VTYPEI11,
@@ -352,7 +352,7 @@ enum OperandType : unsigned {
   OPERAND_RVKRNUM_2_14,
   OPERAND_RLIST,
   OPERAND_RLIST_S0,
-  OPERAND_SPIMM,
+  OPERAND_STACKADJ,
   // Operand is a 3-bit rounding mode, '111' indicates FRM register.
   // Represents 'frm' argument passing to floating-point operations.
   OPERAND_FRMARG,
@@ -651,8 +651,8 @@ inline static unsigned encodeRegListNumRegs(unsigned NumRegs) {
 }
 
 inline static unsigned getStackAdjBase(unsigned RlistVal, bool IsRV64) {
-  assert(RlistVal != RLISTENCODE::INVALID_RLIST &&
-         "{ra, s0-s10} is not supported, s11 must be included.");
+  assert(RlistVal >= RLISTENCODE::RA && RlistVal <= RLISTENCODE::RA_S0_S11 &&
+         "Invalid Rlist");
   unsigned NumRegs = (RlistVal - RLISTENCODE::RA) + 1;
   // s10 and s11 are saved together.
   if (RlistVal == RLISTENCODE::RA_S0_S11)
