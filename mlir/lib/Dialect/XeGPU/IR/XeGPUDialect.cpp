@@ -349,7 +349,7 @@ FailureOr<VectorType> TensorDescType::getDistributedVectorType() {
   // compute sgSize by multiply elements of laneLayout
   // e.g. for 2D layout, sgSize = laneLayout[0] * laneLayout[1]
   // e.g. for 1D layout, sgSize = laneLayout[0]
-  auto sgSize = std::accumulate(laneData.begin(), laneData.end(), 1,
+  auto sgSize = std::accumulate(laneLayout.begin(), laneLayout.end(), 1,
                                 std::multiplies<int64_t>());
 
   // Case 1: regular loads/stores
