@@ -3105,10 +3105,10 @@ Instruction *InstCombinerImpl::visitGetElementPtrInst(GetElementPtrInst &GEP) {
       return GEPNoWrapFlags::none();
     };
 
-    // Try to replace ADD + GEP with GEP + GEP.
+    // Try to replace ADD/OR + GEP with GEP + GEP.
     Value *Idx1, *Idx2;
     if (match(GEP.getOperand(1),
-              m_OneUse(m_Add(m_Value(Idx1), m_Value(Idx2))))) {
+              m_OneUse(m_AddLike(m_Value(Idx1), m_Value(Idx2))))) {
       //   %idx = add i64 %idx1, %idx2
       //   %gep = getelementptr i32, ptr %ptr, i64 %idx
       // as:

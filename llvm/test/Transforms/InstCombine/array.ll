@@ -109,12 +109,11 @@ entry:
   ret void
 }
 
-; FIXME: Should be transformed as OR+GEP -> GEP+GEP (similar to gep_inbounds_add_nuw below).
 define ptr @gep_inbounds_nuwaddlike(ptr %ptr, i64 %a, i64 %b) {
 ; CHECK-LABEL: define ptr @gep_inbounds_nuwaddlike(
 ; CHECK-SAME: ptr [[PTR:%.*]], i64 [[A:%.*]], i64 [[B:%.*]]) {
-; CHECK-NEXT:    [[ADD:%.*]] = or disjoint i64 [[A]], [[B]]
-; CHECK-NEXT:    [[GEP:%.*]] = getelementptr inbounds nuw i32, ptr [[PTR]], i64 [[ADD]]
+; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr inbounds nuw i32, ptr [[PTR]], i64 [[A]]
+; CHECK-NEXT:    [[GEP:%.*]] = getelementptr inbounds nuw i32, ptr [[TMP1]], i64 [[B]]
 ; CHECK-NEXT:    ret ptr [[GEP]]
 ;
   %add = or disjoint i64 %a, %b
