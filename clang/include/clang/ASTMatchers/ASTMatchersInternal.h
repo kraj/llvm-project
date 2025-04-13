@@ -1013,10 +1013,7 @@ private:
     // First, for any types that have a declaration, extract the declaration and
     // match on it.
     if (const auto *S = dyn_cast<TagType>(&Node)) {
-      return matchesDecl(S->getDecl(), Finder, Builder);
-    }
-    if (const auto *S = dyn_cast<InjectedClassNameType>(&Node)) {
-      return matchesDecl(S->getDecl(), Finder, Builder);
+      return matchesDecl(S->getOriginalDecl(), Finder, Builder);
     }
     if (const auto *S = dyn_cast<TemplateTypeParmType>(&Node)) {
       return matchesDecl(S->getDecl(), Finder, Builder);
@@ -1025,6 +1022,9 @@ private:
       return matchesDecl(S->getDecl(), Finder, Builder);
     }
     if (const auto *S = dyn_cast<UnresolvedUsingType>(&Node)) {
+      return matchesDecl(S->getDecl(), Finder, Builder);
+    }
+    if (const auto *S = dyn_cast<UsingType>(&Node)) {
       return matchesDecl(S->getDecl(), Finder, Builder);
     }
     if (const auto *S = dyn_cast<ObjCObjectType>(&Node)) {
@@ -1062,12 +1062,6 @@ private:
                          Builder);
     }
 
-    // FIXME: We desugar elaborated types. This makes the assumption that users
-    // do never want to match on whether a type is elaborated - there are
-    // arguments for both sides; for now, continue desugaring.
-    if (const auto *S = dyn_cast<ElaboratedType>(&Node)) {
-      return matchesSpecialized(S->desugar(), Finder, Builder);
-    }
     // Similarly types found via using declarations.
     // These are *usually* meaningless sugar, and this matches the historical
     // behavior prior to the introduction of UsingType.
@@ -1207,8 +1201,8 @@ using AdaptativeDefaultToTypes =
 /// All types that are supported by HasDeclarationMatcher above.
 using HasDeclarationSupportedTypes =
     TypeList<CallExpr, CXXConstructExpr, CXXNewExpr, DeclRefExpr, EnumType,
-             ElaboratedType, InjectedClassNameType, LabelStmt, AddrLabelExpr,
-             MemberExpr, QualType, RecordType, TagType,
+             InjectedClassNameType, LabelStmt, AddrLabelExpr, MemberExpr,
+             QualType, RecordType, TagType, UsingType,
              TemplateSpecializationType, TemplateTypeParmType, TypedefType,
              UnresolvedUsingType, ObjCIvarRefExpr, ObjCInterfaceDecl>;
 
@@ -1785,7 +1779,7 @@ public:
 
 private:
   static DynTypedNode extract(const NestedNameSpecifierLoc &Loc) {
-    return DynTypedNode::create(*Loc.getNestedNameSpecifier());
+    return DynTypedNode::create(Loc.getNestedNameSpecifier());
   }
 };
 
