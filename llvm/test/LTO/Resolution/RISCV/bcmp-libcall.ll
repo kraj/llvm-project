@@ -29,8 +29,7 @@ define i1 @foo(ptr %0, [2 x i32] %1) {
 declare i32 @memcmp(ptr, ptr, i32)
 
 ;; Ensure bcmp is removed from module. Follow up patches can address this.
-; INTERNALIZE-NOT: declare{{.*}}i32 @bcmp
-; INTERNALIZE-NOT: define{{.*}}i32 @bcmp
+; INTERNALIZE: define{{.*}}i32 @bcmp
 define i32 @bcmp(ptr %0, ptr %1, i32 %2) {
   ret i32 0
 }
