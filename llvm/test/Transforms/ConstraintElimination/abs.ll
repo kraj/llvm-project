@@ -67,8 +67,7 @@ define i1 @abs_plus_one_unsigned_greater_or_equal_nonnegative_arg(i32 %arg) {
 ; CHECK-SAME: i32 [[ARG:%.*]]) {
 ; CHECK-NEXT:    [[CMP_ARG_NONNEGATIVE:%.*]] = icmp sge i32 [[ARG]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[CMP_ARG_NONNEGATIVE]])
-; CHECK-NEXT:    [[ABS:%.*]] = tail call i32 @llvm.abs.i32(i32 [[ARG]], i1 true)
-; CHECK-NEXT:    [[ABS_PLUS_ONE:%.*]] = add nuw i32 [[ABS]], 1
+; CHECK-NEXT:    [[ABS_PLUS_ONE:%.*]] = add nuw i32 [[ARG]], 1
 ; CHECK-NEXT:    ret i1 true
 ;
   %cmp_arg_nonnegative = icmp sge i32 %arg, 0
@@ -95,9 +94,7 @@ define i1 @abs_plus_one_unsigned_greater_or_equal_cannot_be_simplified(i32 %arg)
 
 define i1 @abs_constant_negative_arg() {
 ; CHECK-LABEL: define i1 @abs_constant_negative_arg() {
-; CHECK-NEXT:    [[ABS:%.*]] = tail call i32 @llvm.abs.i32(i32 -3, i1 false)
-; CHECK-NEXT:    [[CMP:%.*]] = icmp sge i32 [[ABS]], 3
-; CHECK-NEXT:    ret i1 [[CMP]]
+; CHECK-NEXT:    ret i1 true
 ;
   %abs = tail call i32 @llvm.abs.i32(i32 -3, i1 false)
   %cmp = icmp sge i32 %abs, 3
@@ -106,7 +103,6 @@ define i1 @abs_constant_negative_arg() {
 
 define i1 @abs_constant_positive_arg() {
 ; CHECK-LABEL: define i1 @abs_constant_positive_arg() {
-; CHECK-NEXT:    [[ABS:%.*]] = tail call i32 @llvm.abs.i32(i32 3, i1 false)
 ; CHECK-NEXT:    ret i1 true
 ;
   %abs = tail call i32 @llvm.abs.i32(i32 3, i1 false)
@@ -151,7 +147,6 @@ define i1 @abs_is_nonnegative_int_min_is_poison(i32 %arg) {
 
 define i1 @abs_is_nonnegative_constant_arg() {
 ; CHECK-LABEL: define i1 @abs_is_nonnegative_constant_arg() {
-; CHECK-NEXT:    [[ABS:%.*]] = tail call i32 @llvm.abs.i32(i32 -3, i1 true)
 ; CHECK-NEXT:    ret i1 true
 ;
   %abs = tail call i32 @llvm.abs.i32(i32 -3, i1 true)
@@ -164,8 +159,7 @@ define i64 @abs_assume_nonnegative(i64 %arg) {
 ; CHECK-SAME: i64 [[ARG:%.*]]) {
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp sge i64 [[ARG]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[ABS:%.*]] = tail call i64 @llvm.abs.i64(i64 [[ARG]], i1 false)
-; CHECK-NEXT:    ret i64 [[ABS]]
+; CHECK-NEXT:    ret i64 [[ARG]]
 ;
   %precond = icmp sge i64 %arg, 0
   call void @llvm.assume(i1 %precond)
@@ -178,7 +172,7 @@ define i64 @abs_assume_negative(i64 %arg) {
 ; CHECK-SAME: i64 [[ARG:%.*]]) {
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp slt i64 [[ARG]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[ABS:%.*]] = tail call i64 @llvm.abs.i64(i64 [[ARG]], i1 false)
+; CHECK-NEXT:    [[ABS:%.*]] = sub i64 0, [[ARG]]
 ; CHECK-NEXT:    ret i64 [[ABS]]
 ;
   %precond = icmp slt i64 %arg, 0
