@@ -34,7 +34,7 @@ define i64 @usub_sat_when_lhs_ugt_rhs(i64 noundef %a, i64 noundef %b) {
 ; CHECK-SAME: i64 noundef [[A:%.*]], i64 noundef [[B:%.*]]) {
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp ugt i64 [[A]], [[B]]
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[SUB_SAT:%.*]] = call i64 @llvm.usub.sat.i64(i64 [[A]], i64 [[B]])
+; CHECK-NEXT:    [[SUB_SAT:%.*]] = sub i64 [[A]], [[B]]
 ; CHECK-NEXT:    ret i64 [[SUB_SAT]]
 ;
   %precond = icmp ugt i64 %a, %b
@@ -48,8 +48,7 @@ define i64 @usub_sat_when_lhs_ule_rhs(i64 noundef %a, i64 noundef %b) {
 ; CHECK-SAME: i64 noundef [[A:%.*]], i64 noundef [[B:%.*]]) {
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp ule i64 [[A]], [[B]]
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[SUB_SAT:%.*]] = call i64 @llvm.usub.sat.i64(i64 [[A]], i64 [[B]])
-; CHECK-NEXT:    ret i64 [[SUB_SAT]]
+; CHECK-NEXT:    ret i64 0
 ;
   %precond = icmp ule i64 %a, %b
   call void @llvm.assume(i1 %precond)
