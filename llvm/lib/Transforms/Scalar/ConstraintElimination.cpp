@@ -1123,6 +1123,7 @@ void State::addInfoFor(BasicBlock &BB) {
     // Enqueue overflow intrinsics for simplification.
     case Intrinsic::sadd_with_overflow:
     case Intrinsic::ssub_with_overflow:
+    case Intrinsic::usub_with_overflow:
     case Intrinsic::ucmp:
     case Intrinsic::scmp:
       WorkList.push_back(
@@ -1783,6 +1784,15 @@ tryToSimplifyOverflowMath(IntrinsicInst *II, ConstraintInfo &Info,
         !DoesConditionHold(CmpInst::ICMP_SGE, B, Zero, Info))
       return false;
     Changed = replaceSubOverflowUses(II, A, B, ToRemove);
+    break;
+  }
+  case Intrinsic::usub_with_overflow: {
+    // usub overflows iff A < B
+    // TODO: If the operation is guaranteed to overflow, we could
+    // also apply some simplifications.
+    if (DoesConditionHold(CmpInst::ICMP_UGE, A, B, Info)) {
+      Changed = replaceSubOverflowUses(II, A, B, ToRemove);
+    }
     break;
   }
   }
