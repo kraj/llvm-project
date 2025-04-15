@@ -55,6 +55,7 @@ using namespace CodeGen;
 
 namespace llvm {
 extern cl::opt<bool> EnableSingleByteCoverage;
+void fixIrreducibleConvergence(llvm::Function *F);
 } // namespace llvm
 
 /// shouldEmitLifetimeMarkers - Decide whether we need emit the life-time
@@ -370,12 +371,6 @@ void CodeGenFunction::FinishFunction(SourceLocation EndLoc) {
          "mismatched push/pop of cleanups in EHStack!");
   assert(DeferredDeactivationCleanupStack.empty() &&
          "mismatched activate/deactivate of cleanups!");
-
-  if (CGM.shouldEmitConvergenceTokens()) {
-    ConvergenceTokenStack.pop_back();
-    assert(ConvergenceTokenStack.empty() &&
-           "mismatched push/pop in convergence stack!");
-  }
 
   bool OnlySimpleReturnStmts = NumSimpleReturnExprs > 0
     && NumSimpleReturnExprs == NumReturnExprs
@@ -1645,6 +1640,13 @@ void CodeGenFunction::GenerateCode(GlobalDecl GD, llvm::Function *Fn,
       Builder.CreateUnreachable();
       Builder.ClearInsertionPoint();
     }
+  }
+
+  if (CGM.shouldEmitConvergenceTokens()) {
+    ConvergenceTokenStack.pop_back();
+    assert(ConvergenceTokenStack.empty() &&
+           "mismatched push/pop in convergence stack!");
+    fixIrreducibleConvergence(CurFn);
   }
 
   // Emit the standard function epilogue.

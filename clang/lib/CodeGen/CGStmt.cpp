@@ -3317,16 +3317,6 @@ CodeGenFunction::GenerateCapturedStmtFunction(const CapturedStmt &S) {
   return F;
 }
 
-// Returns the first convergence entry/loop/anchor instruction found in |BB|.
-// std::nullptr otherwise.
-static llvm::ConvergenceControlInst *getConvergenceToken(llvm::BasicBlock *BB) {
-  for (auto &I : *BB) {
-    if (auto *CI = dyn_cast<llvm::ConvergenceControlInst>(&I))
-      return CI;
-  }
-  return nullptr;
-}
-
 llvm::CallBase *
 CodeGenFunction::addConvergenceControlToken(llvm::CallBase *Input) {
   llvm::ConvergenceControlInst *ParentToken = ConvergenceTokenStack.back();
@@ -3351,7 +3341,7 @@ CodeGenFunction::emitConvergenceLoopToken(llvm::BasicBlock *BB) {
 llvm::ConvergenceControlInst *
 CodeGenFunction::getOrEmitConvergenceEntryToken(llvm::Function *F) {
   llvm::BasicBlock *BB = &F->getEntryBlock();
-  llvm::ConvergenceControlInst *Token = getConvergenceToken(BB);
+  llvm::ConvergenceControlInst *Token = llvm::getConvergenceControlDef(*BB);
   if (Token)
     return Token;
 
