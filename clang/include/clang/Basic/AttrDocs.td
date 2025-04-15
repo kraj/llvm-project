@@ -1676,9 +1676,6 @@ def ConvergentDocs : Documentation {
   let Category = DocCatFunction;
   let Content = [{
 
-In languages designed for SPMD/SIMT programming model, e.g. OpenCL or CUDA,
-the call instructions of a function with this attribute must be executed by
-all work items or threads in a work group or sub group.
 The ``convergent`` attribute can be placed on a function declaration to indicate
 that every call to this function should be treated as a
 :ref:`convergent operation<convergent-operation>`.
