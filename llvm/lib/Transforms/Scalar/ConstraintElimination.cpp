@@ -1142,7 +1142,7 @@ void State::addInfoFor(BasicBlock &BB) {
     case Intrinsic::abs:
     case Intrinsic::usub_sat:
       WorkList.push_back(
-        FactOrCheck::getCheck(DT.getNode(&BB), cast<CallInst>(&I)));
+          FactOrCheck::getCheck(DT.getNode(&BB), cast<CallInst>(&I)));
       [[fallthrough]];
     case Intrinsic::uadd_sat:
       WorkList.push_back(FactOrCheck::getInstFact(DT.getNode(&BB), &I));
