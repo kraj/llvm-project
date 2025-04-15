@@ -22,7 +22,8 @@ define i1 @usub_sat_ule_lhs(i64 %a, i64 %b) {
 ; CHECK-LABEL: define i1 @usub_sat_ule_lhs(
 ; CHECK-SAME: i64 [[A:%.*]], i64 [[B:%.*]]) {
 ; CHECK-NEXT:    [[SUB_SAT:%.*]] = call i64 @llvm.usub.sat.i64(i64 [[A]], i64 [[B]])
-; CHECK-NEXT:    ret i1 true
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ule i64 [[SUB_SAT]], [[A]]
+; CHECK-NEXT:    ret i1 [[CMP]]
 ;
   %sub.sat = call i64 @llvm.usub.sat.i64(i64 %a, i64 %b)
   %cmp = icmp ule i64 %sub.sat, %a
