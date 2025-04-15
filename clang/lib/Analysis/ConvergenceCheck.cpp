@@ -16,6 +16,12 @@
 using namespace clang;
 using namespace llvm;
 
+static void errorJumpIntoNoConvergent(Sema &S, Stmt *From, Stmt *Parent) {
+  S.Diag(Parent->getBeginLoc(),
+         diag::err_jump_into_noconvergent);
+  S.Diag(From->getBeginLoc(), diag::note_goto_affects_convergence);
+}
+
 static void warnGotoCycle(Sema &S, Stmt *From, Stmt *Parent) {
   S.Diag(Parent->getBeginLoc(),
          diag::warn_cycle_created_by_goto_affects_convergence);
@@ -60,6 +66,11 @@ static void checkConvergenceOnGoto(Sema &S, GotoStmt *From, ParentMap &PM) {
 
   SmallVector<Stmt *> Loops;
   for (Stmt *I = To; I != ParentFrom; I = PM.getParent(I)) {
+    if (const auto *AS = dyn_cast<AttributedStmt>(I)) {
+      if (hasSpecificAttr<NoConvergentAttr>(AS->getAttrs())) {
+        errorJumpIntoNoConvergent(S, From, I);
+      }
+    }
     // Can't jump into a ranged-for, so we don't need to look for it here.
     if (isa<ForStmt, WhileStmt, DoStmt>(I))
       Loops.push_back(I);
@@ -93,6 +104,11 @@ static void checkConvergenceForSwitch(Sema &S, SwitchStmt *Switch,
        Case = Case->getNextSwitchCase()) {
     SmallVector<Stmt *> Loops;
     for (Stmt *I = Case; I != Switch; I = PM.getParent(I)) {
+      if (const auto *AS = dyn_cast<AttributedStmt>(I)) {
+        if (hasSpecificAttr<NoConvergentAttr>(AS->getAttrs())) {
+          errorJumpIntoNoConvergent(S, Switch, I);
+        }
+      }
       // Can't jump into a ranged-for, so we don't need to look for it here.
       if (isa<ForStmt, WhileStmt, DoStmt>(I))
         Loops.push_back(I);

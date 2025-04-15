@@ -11,10 +11,28 @@
 
 using namespace llvm;
 
-static ConvergenceControlInst *getEntryToken(Function *F) {
-  ConvergenceControlInst *Entry = getConvergenceControlDef(F->getEntryBlock());
-  assert(Entry && Entry->isEntry());
-  return Entry;
+static void initializeTokenSources(SmallVectorImpl<ConvergenceControlInst*> &Worklist, Function *F) {
+  Module *M = F->getParent();
+
+  Function *Entry = Intrinsic::getDeclarationIfExists(M, Intrinsic::experimental_convergence_entry);
+  if (Entry) {
+    for (User *U : Entry->users()) {
+      if (auto *II = dyn_cast<ConvergenceControlInst>(U)) {
+        if (II->getFunction() == F)
+          Worklist.push_back(II);
+      }
+    }
+  }
+
+  Function *Anchor = Intrinsic::getDeclarationIfExists(M, Intrinsic::experimental_convergence_entry);
+  if (Anchor) {
+    for (User *U : Anchor->users()) {
+      if (auto *II = dyn_cast<ConvergenceControlInst>(U)) {
+        if (II->getFunction() == F)
+          Worklist.push_back(II);
+      }
+    }
+  }
 }
 
 namespace llvm {
@@ -32,7 +50,8 @@ void fixIrreducibleConvergence(Function *F) {
   std::map<CallBase *, DecisionTy> Decision;
   SmallPtrSet<CallBase *, 4> NonIntrinsicUsers;
 
-  SmallVector<ConvergenceControlInst *> Worklist = {getEntryToken(F)};
+  SmallVector<ConvergenceControlInst *> Worklist;
+  initializeTokenSources(Worklist, F);
 
   while (!Worklist.empty()) {
     ConvergenceControlInst *CB = Worklist.pop_back_val();

@@ -1357,8 +1357,10 @@ void CodeGenFunction::StartFunction(GlobalDecl GD, QualType RetTy,
     if (const auto *VecWidth = CurFuncDecl->getAttr<MinVectorWidthAttr>())
       LargestVectorWidth = VecWidth->getVectorWidth();
 
-  if (CGM.shouldEmitConvergenceTokens())
-    ConvergenceTokenStack.push_back(getOrEmitConvergenceEntryToken(CurFn));
+  if (CGM.shouldEmitConvergenceTokens()) {
+    llvm::ConvergenceControlInst *Token = (FD && FD->hasAttr<NoConvergentAttr>()) ? getOrEmitConvergenceAnchorToken(CurFn) : getOrEmitConvergenceEntryToken(CurFn);
+    ConvergenceTokenStack.push_back(Token);
+  }
 }
 
 void CodeGenFunction::EmitFunctionBody(const Stmt *Body) {
