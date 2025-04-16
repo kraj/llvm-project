@@ -413,7 +413,9 @@ func.func @atomic_rmw_with_offset(%I : memref<10xi32, strided<[1], offset: 5>>, 
 // -----
 
 // CHECK-LABEL: func @generic_atomic_rmw
-func.func @generic_atomic_rmw(%I : memref<10xi32>, %i : index) {
+llvm.func @generic_atomic_rmw() {
+  %I = "test.foo"() : () -> (memref<10xi32>)
+  %i = "test.foo"() : () -> (index)
   %x = memref.generic_atomic_rmw %I[%i] : memref<10xi32> {
     ^bb0(%old_value : i32):
       memref.atomic_yield %old_value : i32
@@ -432,7 +434,7 @@ func.func @generic_atomic_rmw(%I : memref<10xi32>, %i : index) {
 // -----
 
 // CHECK-LABEL: func @generic_atomic_rmw_in_alloca_scope
-func.func @generic_atomic_rmw_in_alloca_scope(){
+llvm.func @generic_atomic_rmw_in_alloca_scope() {
   %c1 = arith.constant 1 : index
   %alloc = memref.alloc() : memref<2x3xi32>
   memref.alloca_scope  {
@@ -441,7 +443,7 @@ func.func @generic_atomic_rmw_in_alloca_scope(){
       memref.atomic_yield %arg0 : i32
     }
   }
-  return
+  llvm.return
 }
 // CHECK:        %[[STACK_SAVE:.*]] = llvm.intr.stacksave : !llvm.ptr
 // CHECK-NEXT:   llvm.br ^bb1
