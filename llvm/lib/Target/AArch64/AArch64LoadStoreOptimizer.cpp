@@ -1538,10 +1538,12 @@ static bool areCandidatesToMergeOrPair(MachineInstr &FirstMI, MachineInstr &MI,
   if (!PairIsValidLdStrOpc)
     return false;
 
-  // FIXME: We don't support merging narrow stores with mixed scaled/unscaled
-  // offsets.
+  // Narrow stores do not have pair-wise opcodes, so constraint their merging
+  // iff they are zero stores.
   if (isNarrowStore(OpcA) || isNarrowStore(OpcB))
-    return false;
+    return getLdStRegOp(FirstMI).getReg() == AArch64::WZR &&
+           getLdStRegOp(MI).getReg() == AArch64::WZR &&
+           TII->getMemScale(FirstMI) == TII->getMemScale(MI);
 
   // The STR<S,D,Q,W,X>pre - STR<S,D,Q,W,X>ui and
   // LDR<S,D,Q,W,X,SW>pre-LDR<S,D,Q,W,X,SW>ui
