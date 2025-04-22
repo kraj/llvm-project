@@ -255,8 +255,7 @@ class ClobberingInfo : public ExtraInfo {
   SmallVector<MCInstReference> ClobberingInstrs;
 
 public:
-  ClobberingInfo(const ArrayRef<MCInstReference> Instrs)
-      : ClobberingInstrs(Instrs) {}
+  ClobberingInfo(ArrayRef<MCInstReference> Instrs) : ClobberingInstrs(Instrs) {}
 
   void print(raw_ostream &OS, const MCInstReference Location) const override;
 };
@@ -300,7 +299,7 @@ class FunctionAnalysis {
   bool PacRetGadgetsOnly;
 
   void findUnsafeUses(SmallVector<BriefReport<MCPhysReg>> &Reports);
-  void augmentUnsafeUseReports(const ArrayRef<BriefReport<MCPhysReg>> Reports);
+  void augmentUnsafeUseReports(ArrayRef<BriefReport<MCPhysReg>> Reports);
 
   /// Process the reports which do not have to be augmented, and remove them
   /// from Reports.
