@@ -748,7 +748,7 @@ define i32 @muli32_p65(i32 %a) nounwind {
   ret i32 %1
 }
 
-define i32 @muli32_p66(i32 %a) nounwind {
+define i32 @muli32_p65(i32 %a) nounwind {
 ; RV32I-LABEL: muli32_p66:
 ; RV32I:       # %bb.0:
 ; RV32I-NEXT:    slli a1, a0, 6
