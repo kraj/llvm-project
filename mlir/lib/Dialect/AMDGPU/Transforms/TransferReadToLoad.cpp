@@ -253,6 +253,10 @@ struct TransferReadLowering final : OpRewritePattern<vector::TransferReadOp> {
 
     auto ifOp =
         rewriter.create<scf::IfOp>(loc, ifCondition, thenBuilder, elseBuilder);
+    
+    //Value res = createVectorLoadForMaskedLoad(
+    //    rewriter, loc, readOp, requiresBroadcasting, unbroadcastedVectorType);
+    //rewriter.replaceOp(readOp, res);
 
     rewriter.replaceOp(readOp, ifOp);
 

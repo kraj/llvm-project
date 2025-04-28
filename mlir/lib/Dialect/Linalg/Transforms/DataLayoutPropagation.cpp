@@ -15,6 +15,7 @@
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/Utils/Utils.h"
 #include "mlir/Dialect/Utils/IndexingUtils.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dominance.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/ADT/SetOperations.h"
@@ -308,9 +309,25 @@ static GenericOp packGenericOp(RewriterBase &rewriter, GenericOp genericOp,
   for (OpOperand *inputOperand : genericOp.getDpsInputOperands()) {
     auto [packedOperand, packedIndexingMap] = getOrCreatePackedViewOfOperand(
         rewriter, loc, packInfo, genericOp, inputOperand);
-    inputOperands.push_back(packedOperand);
+    llvm::errs() << "input operand: " << inputOperand->get() << "\n";
+    Value unpack = inputOperand->get();
+    auto unpackOp = unpack.getDefiningOp<linalg::UnPackOp>();
+    auto unpackSrc = unpackOp.getSource();
+    llvm::errs() << "unpack op: " << unpackOp << "\n";
+    llvm::errs() << "unpack src: " << unpackSrc << "\n";
+    //inputOperands.push_back(packedOperand);
+    auto unpackTarget = unpackOp.getDest();
+    auto unpackTargetOp = unpackTarget.getDefiningOp<tensor::ExtractSliceOp>();
+    inputOperands.push_back(unpackSrc);
     indexingMaps.push_back(packedIndexingMap);
   }
+
+  // Get the type of the input operand.
+  auto inputType = inputOperands[0].getType();
+  auto rankedTensorType = cast<RankedTensorType>(inputType);
+  auto emptyOp = rewriter.create<tensor::EmptyOp>(
+      loc, rankedTensorType.getShape(), cast<RankedTensorType>(dest.getType()).getElementType());
+  dest = emptyOp.getResult();
 
   int64_t numInnerLoops = packInfo.getNumTiledLoops();
   SmallVector<utils::IteratorType> iterTypes =
@@ -1078,12 +1095,16 @@ pushDownUnPackOpThroughGenericOp(RewriterBase &rewriter, GenericOp genericOp,
   // If the dps init operand of the generic is a tensor.empty, do not pack it
   // and forward the new tensor.empty as a destination.
   Value dest = packedOutOperand;
+  llvm::errs() << "The genericOp" << genericOp << "\n";
   if (auto initTensor = genericOp.getDpsInitOperand(0)
                             ->get()
                             .getDefiningOp<tensor::EmptyOp>()) {
+    llvm::errs() << "The initTensor" << *initTensor << "\n";
+    llvm::errs() << "The destPack" << destPack.getDest() << "\n";
     if (destPack)
       dest = destPack.getDest();
   }
+  llvm::errs() << "dest: " << dest << "\n";
 
   // Pack the genericOp.
   GenericOp newGenericOp =
@@ -1095,11 +1116,16 @@ pushDownUnPackOpThroughGenericOp(RewriterBase &rewriter, GenericOp genericOp,
   if (!destPack)
     return std::make_tuple(newGenericOp, newResult);
 
+  //// Create a cast op to cast the generic result to type of the packedOutOperand
+  //auto packedOutTy =
+  //    cast<RankedTensorType>(packedOutOperand.getType());
+  //newResult = rewriter.create<tensor::CastOp>(genericOp.getLoc(),
+  //                    packedOutTy, newResult);
+
   auto mixedTiles = destPack.getMixedTiles();
   auto innerDimsPos = destPack.getInnerDimsPos();
   auto outerDimsPerm = destPack.getOuterDimsPerm();
 
-  // Insert an unPackOp right after the packed generic.
   Value unPackOpRes =
       rewriter
           .create<linalg::UnPackOp>(genericOp.getLoc(), newResult,
@@ -1204,5 +1230,6 @@ void mlir::linalg::populateDataLayoutPropagationPatterns(
       .insert<BubbleUpPackOpThroughGenericOpPattern, BubbleUpPackThroughPadOp,
               BubbleUpPackOpThroughReshapeOp, PushDownUnPackOpThroughGenericOp,
               PushDownUnPackThroughPadOp, PushDownUnPackOpThroughReshapeOp>(
+    // Look at PushDownUnPackOpThroughGenericOp
           patterns.getContext(), controlPackUnPackPropagation);
 }
