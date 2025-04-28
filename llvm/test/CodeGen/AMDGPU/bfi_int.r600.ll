@@ -7,14 +7,15 @@
 define amdgpu_kernel void @bfi_def(ptr addrspace(1) %out, i32 %x, i32 %y, i32 %z) {
 ; R600-LABEL: bfi_def:
 ; R600:       ; %bb.0: ; %entry
-; R600-NEXT:    ALU 2, @4, KC0[CB0:0-32], KC1[]
-; R600-NEXT:    MEM_RAT_CACHELESS STORE_RAW T1.X, T0.X, 1
+; R600-NEXT:    ALU 3, @4, KC0[CB0:0-32], KC1[]
+; R600-NEXT:    MEM_RAT_CACHELESS STORE_RAW T0.X, T1.X, 1
 ; R600-NEXT:    CF_END
 ; R600-NEXT:    PAD
 ; R600-NEXT:    ALU clause starting at 4:
-; R600-NEXT:     LSHR * T0.X, KC0[2].Y, literal.x,
+; R600-NEXT:     MOV * T0.W, KC0[3].X,
+; R600-NEXT:     BFI_INT T0.X, KC0[2].Z, KC0[2].W, PV.W,
+; R600-NEXT:     LSHR * T1.X, KC0[2].Y, literal.x,
 ; R600-NEXT:    2(2.802597e-45), 0(0.000000e+00)
-; R600-NEXT:     BFI_INT * T1.X, KC0[2].Z, KC0[2].W, KC0[3].X,
 entry:
   %0 = xor i32 %x, -1
   %1 = and i32 %z, %0
