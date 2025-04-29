@@ -6174,6 +6174,14 @@ void CodeGenModule::EmitGlobalFunctionDefinition(GlobalDecl GD,
   CodeGenFunction(*this).GenerateCode(GD, Fn, FI);
 
   setNonAliasAttributes(GD, Fn);
+
+  if (D->hasAttr<OpenCLKernelAttr>())
+    if (GD.getKernelReferenceKind() == KernelReferenceKind::Stub &&
+        !Fn->hasFnAttribute(llvm::Attribute::NoInline) &&
+        !Fn->hasFnAttribute(llvm::Attribute::InlineHint) &&
+        !Fn->hasFnAttribute(llvm::Attribute::OptimizeNone))
+      Fn->addFnAttr(llvm::Attribute::AlwaysInline);
+
   SetLLVMFunctionAttributesForDefinition(D, Fn);
 
   if (const ConstructorAttr *CA = D->getAttr<ConstructorAttr>())
