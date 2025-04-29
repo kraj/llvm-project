@@ -14,10 +14,12 @@
 #include "llvm/DebugInfo/Symbolize/SymbolizableModule.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/ProfileData/DataAccessProf.h"
 #include "llvm/ProfileData/MemProfData.inc"
 #include "llvm/ProfileData/MemProfReader.h"
 #include "llvm/ProfileData/MemProfYAML.h"
 #include "llvm/Support/raw_ostream.h"
+#include "gmock/gmock-more-matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -36,6 +38,7 @@ using ::llvm::StringRef;
 using ::llvm::object::SectionedAddress;
 using ::llvm::symbolize::SymbolizableModule;
 using ::testing::ElementsAre;
+using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::Return;
@@ -745,6 +748,60 @@ HeapProfileRecords:
                                            Frame(0x800, 88, 80, false))),
                 testing::Field(&CallSiteInfo::CalleeGuids,
                                ElementsAre(0x3000)))));
+}
+
+// Test the serialization and de-serialization of DataAccessProfData.
+TEST(MemProf, DataAccessProfileRoundTrip) {
+  using namespace llvm::data_access_prof;
+  llvm::data_access_prof::DataAccessProfData Data;
+
+  // In the bool conversion, Error is true if it's in a failure state and false
+  // if it's in an accept state. Use ASSERT_FALSE or EXPECT_FALSE for no error.
+  Data.addSymbolizedDataAccessProfile("foo.llvm.123", 100);
+  Data.addSymbolizedDataAccessProfile("bar.__uniq.321", 123);
+  Data.addSymbolizedDataAccessProfile(
+      135246, 1000, {DataLocation{"file1", 1}, DataLocation{"file2", 2}});
+
+  std::string serializedData;
+  llvm::raw_string_ostream OS(serializedData);
+  llvm::ProfOStream POS(OS);
+
+  EXPECT_FALSE(Data.serialize(POS));
+
+  llvm::data_access_prof::DataAccessProfData deserializedData;
+
+  const unsigned char *p =
+      reinterpret_cast<const unsigned char *>(serializedData.data());
+  EXPECT_FALSE(deserializedData.deserialize(p));
+
+  EXPECT_THAT(deserializedData.getSymbolNames(),
+              ElementsAre(Pair("foo", 0), Pair("bar.__uniq.321", 1)));
+  EXPECT_THAT(deserializedData.getFileNames(),
+              ElementsAre(Pair("file1", 0), Pair("file2", 1)));
+
+  EXPECT_THAT(
+      deserializedData.getRecords(),
+      ElementsAre(
+          AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 0),
+                testing::Field(&DataAccessProfRecord::AccessCount, 100),
+                testing::Field(&DataAccessProfRecord::IsStringLiteral, false),
+                testing::Field(&DataAccessProfRecord::Locations,
+                               testing::IsEmpty())),
+          AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 1),
+                testing::Field(&DataAccessProfRecord::AccessCount, 123),
+                testing::Field(&DataAccessProfRecord::IsStringLiteral, false),
+                testing::Field(&DataAccessProfRecord::Locations,
+                               testing::IsEmpty())),
+          AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 135246),
+                testing::Field(&DataAccessProfRecord::AccessCount, 1000),
+                testing::Field(&DataAccessProfRecord::IsStringLiteral, true),
+                testing::Field(
+                    &DataAccessProfRecord::Locations,
+                    ElementsAre(
+                        AllOf(testing::Field(&DataLocation::FileName, "file1"),
+                              testing::Field(&DataLocation::Line, 1)),
+                        AllOf(testing::Field(&DataLocation::FileName, "file2"),
+                              testing::Field(&DataLocation::Line, 2)))))));
 }
 
 // Verify that the YAML parser accepts a GUID expressed as a function name.
