@@ -9,9 +9,7 @@ define i128 @f1(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r3), 3
 ; CHECK-NEXT:    vl %v1, 0(%r4), 3
-; CHECK-NEXT:    vchq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp slt i128 %val1, %val2
@@ -25,9 +23,7 @@ define i128 @f2(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r4), 3
 ; CHECK-NEXT:    vl %v1, 0(%r3), 3
-; CHECK-NEXT:    vchq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp sle i128 %val1, %val2
@@ -41,9 +37,7 @@ define i128 @f3(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r4), 3
 ; CHECK-NEXT:    vl %v1, 0(%r3), 3
-; CHECK-NEXT:    vchq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp sgt i128 %val1, %val2
@@ -57,9 +51,7 @@ define i128 @f4(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r3), 3
 ; CHECK-NEXT:    vl %v1, 0(%r4), 3
-; CHECK-NEXT:    vchq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp sge i128 %val1, %val2
@@ -73,9 +65,7 @@ define i128 @f5(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r3), 3
 ; CHECK-NEXT:    vl %v1, 0(%r4), 3
-; CHECK-NEXT:    vchlq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxlq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp ult i128 %val1, %val2
@@ -89,9 +79,7 @@ define i128 @f6(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r4), 3
 ; CHECK-NEXT:    vl %v1, 0(%r3), 3
-; CHECK-NEXT:    vchlq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxlq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp ule i128 %val1, %val2
@@ -105,9 +93,7 @@ define i128 @f7(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r4), 3
 ; CHECK-NEXT:    vl %v1, 0(%r3), 3
-; CHECK-NEXT:    vchlq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxlq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp ugt i128 %val1, %val2
@@ -121,9 +107,7 @@ define i128 @f8(i128 %val1, i128 %val2) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vl %v0, 0(%r3), 3
 ; CHECK-NEXT:    vl %v1, 0(%r4), 3
-; CHECK-NEXT:    vchlq %v2, %v1, %v0
-; CHECK-NEXT:    vx %v1, %v1, %v0
-; CHECK-NEXT:    veval %v0, %v0, %v1, %v2, 30
+; CHECK-NEXT:    vmxlq %v0, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %cmp = icmp uge i128 %val1, %val2

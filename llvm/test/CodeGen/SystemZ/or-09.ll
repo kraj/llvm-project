@@ -46,12 +46,10 @@ define i128 @f3(i128 %a) {
 define i128 @f4(i128 %mask, i128 %true, i128 %false) {
 ; CHECK-LABEL: f4:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vl %v1, 0(%r4), 3
-; CHECK-NEXT:    vl %v2, 0(%r5), 3
 ; CHECK-NEXT:    vl %v0, 0(%r3), 3
-; CHECK-NEXT:    vx %v1, %v1, %v2
-; CHECK-NEXT:    vn %v0, %v1, %v0
-; CHECK-NEXT:    vx %v0, %v0, %v2
+; CHECK-NEXT:    vl %v1, 0(%r5), 3
+; CHECK-NEXT:    vl %v2, 0(%r4), 3
+; CHECK-NEXT:    vsel %v0, %v2, %v1, %v0
 ; CHECK-NEXT:    vst %v0, 0(%r2), 3
 ; CHECK-NEXT:    br %r14
   %notmask = xor i128 %mask, -1

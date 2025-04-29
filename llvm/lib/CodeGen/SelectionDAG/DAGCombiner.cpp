@@ -8337,7 +8337,9 @@ SDValue DAGCombiner::visitOR(SDNode *N) {
     if (SDValue R = foldLogicTreeOfShifts(N, N0, N1, DAG))
       return R;
 
-  if (!TLI.hasAndNot(SDValue(N, 0)) && VT.isScalarInteger() && VT != MVT::i1)
+  if (!TLI.hasAndNot(SDValue(N, 0)) && VT.isScalarInteger() && VT != MVT::i1 &&
+      !TLI.isOperationLegal(ISD::VSELECT, VT))
+
     if (SDValue R = foldMaskedMerge(N, DAG, DL))
       return R;
 
