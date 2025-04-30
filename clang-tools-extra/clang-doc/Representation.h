@@ -535,6 +535,8 @@ struct ClangDocContext {
   // JavaScript files that will be imported in all HTML files.
   std::vector<std::string> JsScripts;
   StringRef Base;
+  // Mustache Template files
+  llvm::StringMap<std::string> MustacheTemplates;
   Index Idx;
 };
 
