@@ -406,7 +406,27 @@ static json::Value extractValue(const RecordInfo &I,
 
 static void setupTemplateValue(const ClangDocContext &CDCtx, json::Value &V,
                                Info *I) {
+  V.getAsObject()->insert({"ProjectName", CDCtx.ProjectName});
+  json::Value StylesheetArr = Array();
+  auto InfoPath = I->getRelativeFilePath("");
+  SmallString<128> RelativePath = computeRelativePath("", InfoPath);
+  for (const auto &FilePath : CDCtx.UserStylesheets) {
+    SmallString<128> StylesheetPath = RelativePath;
+    sys::path::append(StylesheetPath, sys::path::filename(FilePath));
+    sys::path::native(StylesheetPath, sys::path::Style::posix);
+    StylesheetArr.getAsArray()->emplace_back(StylesheetPath);
+  }
+  V.getAsObject()->insert({"Stylesheets", StylesheetArr});
+
+  json::Value ScriptArr = Array();
+  for (auto Script : CDCtx.JsScripts) {
+    SmallString<128> JsPath = RelativePath;
+    sys::path::append(JsPath, sys::path::filename(Script));
+    ScriptArr.getAsArray()->emplace_back(JsPath);
+  }
+  V.getAsObject()->insert({"Scripts", ScriptArr});
 }
+
 Error MustacheHTMLGenerator::generateDocForInfo(Info *I, raw_ostream &OS,
                                                 const ClangDocContext &CDCtx) {
   switch (I->IT) {
