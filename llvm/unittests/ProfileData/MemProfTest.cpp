@@ -839,15 +839,12 @@ TEST(MemProf, DataAccessProfile) {
 
   // Teset that symbol names and file names are stored in the input order.
   {
-    EXPECT_THAT(llvm::to_vector(Data.getSymbolNames()),
-                ElementsAre("foo", "bar.__uniq.321"));
-    EXPECT_THAT(llvm::to_vector(Data.getFileNames()),
-                ElementsAre("file1", "file2"));
+    EXPECT_THAT(llvm::to_vector(Data.getStrings()),
+                ElementsAre("foo", "bar.__uniq.321", "file1", "file2"));
   }
 
   // Test profile lookups.
   {
-
     EXPECT_THAT(
         *Data.getProfileRecord("foo.llvm.123"),
         AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 0),
@@ -889,12 +886,12 @@ TEST(MemProf, DataAccessProfile) {
 
     const unsigned char *p =
         reinterpret_cast<const unsigned char *>(serializedData.data());
+    ASSERT_THAT(llvm::to_vector(deserializedData.getStrings()),
+                testing::IsEmpty());
     EXPECT_FALSE(deserializedData.deserialize(p));
 
-    EXPECT_THAT(llvm::to_vector(deserializedData.getSymbolNames()),
-                ElementsAre("foo", "bar.__uniq.321"));
-    EXPECT_THAT(llvm::to_vector(deserializedData.getFileNames()),
-                ElementsAre("file1", "file2"));
+    EXPECT_THAT(llvm::to_vector(deserializedData.getStrings()),
+                ElementsAre("foo", "bar.__uniq.321", "file1", "file2"));
 
     EXPECT_THAT(
         deserializedData.getRecords(),

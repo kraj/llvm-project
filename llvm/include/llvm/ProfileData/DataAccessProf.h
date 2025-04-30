@@ -26,6 +26,7 @@
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/StringSaver.h"
 
 #include <cstdint>
 #include <variant>
@@ -68,14 +69,13 @@ public:
   using SymbolID = std::variant<StringRef, uint64_t>;
   // Use MapVector to keep input order of strings for serialization and
   // deserialization.
-  using StringToIndexMapVector = llvm::MapVector<StringRef, uint64_t>;
+  using StringToIndexMap = llvm::MapVector<StringRef, uint64_t>;
 
   DataAccessProfData() : saver(Allocator) {}
 
   /// Serialize profile data to the output stream.
   /// Storage layout:
-  /// - The encoded symbol names.
-  /// - The encoded file names.
+  /// - The encoded strings.
   /// - Records.
   Error serialize(ProfOStream &OS) const;
 
@@ -102,22 +102,15 @@ public:
       uint64_t StringContentHash, uint64_t AccessCount,
       const llvm::SmallVector<DataLocation> &Locations);
 
-  // Returns a iterable StringRef for symbols in the order they are added.
-  auto getSymbolNames() const {
+  // Returns a iterable StringRef for strings in the order they are added.
+  auto getStrings() const {
     ArrayRef<std::pair<StringRef, uint64_t>> RefSymbolNames(
-        SymbolNameIndexMap.begin(), SymbolNameIndexMap.end());
+        StrToIndexMap.begin(), StrToIndexMap.end());
     return llvm::make_first_range(RefSymbolNames);
   }
 
-  // Returns a iterable StringRef for filenames in the order they are added.
-  auto getFileNames() const {
-    ArrayRef<std::pair<StringRef, uint64_t>> RefFileNames(
-        FileNameIndexMap.begin(), FileNameIndexMap.end());
-    return llvm::make_first_range(RefFileNames);
-  }
-
   // Returns a vector view of the records.
-  ArrayRef<DataAccessProfRecord> getRecords() const;
+  inline ArrayRef<DataAccessProfRecord> getRecords() const { return Records; }
 
 private:
   /// Given \p Ptr pointing to the start of a blob of strings encoded by
@@ -132,39 +125,20 @@ private:
   /// Returns error if any.
   Error deserializeRecords(const unsigned char *&Ptr);
 
-  /// If \p Map has an entry keyed by \p Str, returns the key. Otherwise,
-  /// creates a owned copy of \p Str, adds a map entry for it and returns the
-  /// key.
-  StringRef saveStringToMap(llvm::MapVector<StringRef, uint64_t> &Map,
-                            StringRef Str);
-  /// If \p SymbolName is already a key in `SymbolNameIndexMap`, returns its
-  /// value. Otherwise insert an entry for it and return the value.
-  uint64_t addSymbolName(StringRef SymbolName);
-  ///
-  StringRef addFileName(StringRef FileName);
+  /// Returns the index for encoding for \p SymbolID.
+  uint64_t getEncodedIndex(const SymbolID SymbolID) const;
 
-  /// Returns the index to access `Record` for \p SymbolID.
-  uint64_t getSymbolIndex(const SymbolID SymbolID) const;
-
-  uint64_t getFileNameIndex(StringRef FileName) const;
-
-  // Key is symbol name, and value is index.
-  StringToIndexMapVector SymbolNameIndexMap;
-  // Key is file name, and value is index.
-  StringToIndexMapVector FileNameIndexMap;
-
-  // Key is the symbol index, value is the profile record index in `Records`.
-  DenseMap<uint64_t, size_t> SymbolIndexToRecordIndexMap;
-  // Key is the content hash of a string literal, value is profile record index
-  // in `Records`.
+  // Key is StringRef representing symbol or file, and value is index.
+  StringToIndexMap StrToIndexMap;
+  // Key is the canonicalzied symbol name, value is the profile record index.
+  DenseMap<StringRef, size_t> SymbolToRecordIndex;
+  // Key is the content hash of a string literal, value is profile record index.
   DenseMap<uint64_t, size_t> ContentHashToRecordIndexMap;
-
   // Stores the records.
   llvm::SmallVector<DataAccessProfRecord> Records;
-
-  // Keeps copies of the input strings.
+  // Keeps owned copies of the input strings.
   llvm::BumpPtrAllocator Allocator;
-  llvm::StringSaver saver;
+  llvm::UniqueStringSaver saver;
 };
 
 } // namespace data_access_prof
