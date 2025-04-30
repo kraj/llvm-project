@@ -18,20 +18,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "BitcodeReader.h"
-#include "BitcodeWriter.h"
 #include "ClangDoc.h"
 #include "Generators.h"
 #include "Representation.h"
-#include "clang/AST/AST.h"
-#include "clang/AST/Decl.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchersInternal.h"
-#include "clang/Driver/Options.h"
-#include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/AllTUsExecution.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Execution.h"
-#include "clang/Tooling/Tooling.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
@@ -110,11 +103,7 @@ static llvm::cl::opt<std::string> RepositoryCodeLinePrefix(
     llvm::cl::desc("Prefix of line code for repository."),
     llvm::cl::cat(ClangDocCategory));
 
-enum OutputFormatTy {
-  md,
-  yaml,
-  html,
-};
+enum OutputFormatTy { md, yaml, html, mhtml };
 
 static llvm::cl::opt<OutputFormatTy>
     FormatEnum("format", llvm::cl::desc("Format for outputted docs."),
@@ -123,7 +112,9 @@ static llvm::cl::opt<OutputFormatTy>
                                 clEnumValN(OutputFormatTy::md, "md",
                                            "Documentation in MD format."),
                                 clEnumValN(OutputFormatTy::html, "html",
-                                           "Documentation in HTML format.")),
+                                           "Documentation in HTML format."),
+                                clEnumValN(OutputFormatTy::mhtml, "mhtml",
+                                           "Documentation in mHTML format")),
                llvm::cl::init(OutputFormatTy::yaml),
                llvm::cl::cat(ClangDocCategory));
 
@@ -135,6 +126,8 @@ static std::string getFormatString() {
     return "md";
   case OutputFormatTy::html:
     return "html";
+  case OutputFormatTy::mhtml:
+    return "mhtml";
   }
   llvm_unreachable("Unknown OutputFormatTy");
 }
@@ -168,6 +161,14 @@ static llvm::Error getAssetFiles(clang::doc::ClangDocContext &CDCtx) {
   return llvm::Error::success();
 }
 
+static llvm::SmallString<128> appendPathNative(StringRef Path,
+                                               StringRef Asset) {
+  llvm::SmallString<128> Default;
+  llvm::sys::path::native(Path, Default);
+  llvm::sys::path::append(Default, Asset);
+  return Default;
+}
+
 static llvm::Error getDefaultAssetFiles(const char *Argv0,
                                         clang::doc::ClangDocContext &CDCtx) {
   void *MainAddr = (void *)(intptr_t)getExecutablePath;
@@ -178,13 +179,9 @@ static llvm::Error getDefaultAssetFiles(const char *Argv0,
   llvm::SmallString<128> AssetsPath;
   AssetsPath = llvm::sys::path::parent_path(NativeClangDocPath);
   llvm::sys::path::append(AssetsPath, "..", "share", "clang-doc");
-  llvm::SmallString<128> DefaultStylesheet;
-  llvm::sys::path::native(AssetsPath, DefaultStylesheet);
-  llvm::sys::path::append(DefaultStylesheet,
-                          "clang-doc-default-stylesheet.css");
-  llvm::SmallString<128> IndexJS;
-  llvm::sys::path::native(AssetsPath, IndexJS);
-  llvm::sys::path::append(IndexJS, "index.js");
+  llvm::SmallString<128> DefaultStylesheet =
+      appendPathNative(AssetsPath, "clang-doc-default-stylesheet.css");
+  llvm::SmallString<128> IndexJS = appendPathNative(AssetsPath, "index.js");
 
   if (!llvm::sys::fs::is_regular_file(IndexJS))
     return llvm::createStringError(llvm::inconvertibleErrorCode(),
@@ -213,6 +210,54 @@ static llvm::Error getHtmlAssetFiles(const char *Argv0,
   if (llvm::sys::fs::is_directory(std::string(UserAssetPath)))
     return getAssetFiles(CDCtx);
   return getDefaultAssetFiles(Argv0, CDCtx);
+}
+
+static llvm::Error getMustacheHtmlFiles(const char *Argv0,
+                                        clang::doc::ClangDocContext &CDCtx) {
+  if (!UserAssetPath.empty() &&
+      !llvm::sys::fs::is_directory(std::string(UserAssetPath)))
+    llvm::outs() << "Asset path supply is not a directory: " << UserAssetPath
+                 << " falling back to default\n";
+  if (llvm::sys::fs::is_directory(std::string(UserAssetPath)))
+    return getAssetFiles(CDCtx);
+
+  void *MainAddr = (void *)(intptr_t)getExecutablePath;
+  std::string ClangDocPath = getExecutablePath(Argv0, MainAddr);
+  llvm::SmallString<128> NativeClangDocPath;
+  llvm::sys::path::native(ClangDocPath, NativeClangDocPath);
+
+  llvm::SmallString<128> AssetsPath;
+  AssetsPath = llvm::sys::path::parent_path(NativeClangDocPath);
+  llvm::sys::path::append(AssetsPath, "..", "share", "clang-doc");
+
+  llvm::SmallString<128> DefaultStylesheet =
+      appendPathNative(AssetsPath, "clang-doc-mustache.css");
+  llvm::SmallString<128> NamespaceTemplate =
+      appendPathNative(AssetsPath, "namespace-template.mustache");
+  llvm::SmallString<128> ClassTemplate =
+      appendPathNative(AssetsPath, "class-template.mustache");
+  llvm::SmallString<128> EnumTemplate =
+      appendPathNative(AssetsPath, "enum-template.mustache");
+  llvm::SmallString<128> FunctionTemplate =
+      appendPathNative(AssetsPath, "function-template.mustache");
+  llvm::SmallString<128> CommentTemplate =
+      appendPathNative(AssetsPath, "comments-template.mustache");
+  llvm::SmallString<128> IndexJS =
+      appendPathNative(AssetsPath, "mustache-index.js");
+
+  CDCtx.JsScripts.insert(CDCtx.JsScripts.begin(), IndexJS.c_str());
+  CDCtx.UserStylesheets.insert(CDCtx.UserStylesheets.begin(),
+                               std::string(DefaultStylesheet));
+  CDCtx.MustacheTemplates.insert(
+      {"namespace-template", NamespaceTemplate.c_str()});
+  CDCtx.MustacheTemplates.insert({"class-template", ClassTemplate.c_str()});
+  CDCtx.MustacheTemplates.insert({"enum-template", EnumTemplate.c_str()});
+  CDCtx.MustacheTemplates.insert(
+      {"function-template", FunctionTemplate.c_str()});
+  CDCtx.MustacheTemplates.insert(
+      {"comments-template", CommentTemplate.c_str()});
+
+  return llvm::Error::success();
 }
 
 /// Make the output of clang-doc deterministic by sorting the children of
@@ -285,6 +330,13 @@ Example usage for a project using a compile commands database:
 
   if (Format == "html") {
     if (auto Err = getHtmlAssetFiles(argv[0], CDCtx)) {
+      llvm::errs() << toString(std::move(Err)) << "\n";
+      return 1;
+    }
+  }
+
+  if (Format == "mhtml") {
+    if (auto Err = getMustacheHtmlFiles(argv[0], CDCtx)) {
       llvm::errs() << toString(std::move(Err)) << "\n";
       return 1;
     }
