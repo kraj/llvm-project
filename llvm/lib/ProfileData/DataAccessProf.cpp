@@ -32,61 +32,90 @@ uint64_t DataAccessProfData::addSymbolName(StringRef SymbolName) {
 }
 
 StringRef DataAccessProfData::addFileName(StringRef FileName) {
+  assert(!FileName.empty() && "File name should not be empty");
   return saveStringToMap(FileNameIndexMap, FileName);
 }
 
-void DataAccessProfData::addSymbolizedDataAccessProfile(StringRef SymbolName,
-                                                        uint64_t AccessCount) {
-  StringRef CanonicalSymName = InstrProfSymtab::getCanonicalName(SymbolName);
-  Records.push_back(DataAccessProfRecord{addSymbolName(CanonicalSymName),
-                                         AccessCount,
-                                         /*IsStringLiteral=*/false});
+const DataAccessProfRecord *
+DataAccessProfData::getProfileRecord(const SymbolID SymbolID) const {
+  if (std::holds_alternative<uint64_t>(SymbolID)) {
+    auto It = ContentHashToRecordIndexMap.find(std::get<uint64_t>(SymbolID));
+    if (It == ContentHashToRecordIndexMap.end())
+      return nullptr;
+    return &Records[It->second];
+  }
+  StringRef SymbolName =
+      InstrProfSymtab::getCanonicalName(std::get<StringRef>(SymbolID));
+  auto It = SymbolNameIndexMap.find(SymbolName);
+  if (It == SymbolNameIndexMap.end())
+    return nullptr;
+  return &Records[It->second];
 }
 
-void DataAccessProfData::addSymbolizedDataAccessProfile(
+Error DataAccessProfData::addSymbolizedDataAccessProfile(StringRef SymbolName,
+                                                         uint64_t AccessCount) {
+  if (SymbolName.empty())
+    return make_error<StringError>("Empty symbol name",
+                                   llvm::errc::invalid_argument);
+  StringRef CanonicalSymName = InstrProfSymtab::getCanonicalName(SymbolName);
+  const uint64_t SymIndex = addSymbolName(CanonicalSymName);
+
+  if (SymbolIndexToRecordIndexMap.count(SymIndex) > 0)
+    return make_error<StringError>(
+        "Duplicate symbol added. User of DataAccessProfData should "
+        "aggregate count for the same symbol. ",
+        llvm::errc::invalid_argument);
+
+  Records.push_back(DataAccessProfRecord{SymIndex, AccessCount,
+                                         /*IsStringLiteral=*/false});
+  SymbolIndexToRecordIndexMap[SymIndex] = Records.size() - 1;
+  return Error::success();
+}
+
+Error DataAccessProfData::addSymbolizedDataAccessProfile(
     uint64_t StringContentHash, uint64_t AccessCount) {
+  if (ContentHashToRecordIndexMap.count(StringContentHash) > 0)
+    return make_error<StringError>(
+        "Duplicate string literal added. User of DataAccessProfData should "
+        "aggregate count for the same string literal. ",
+        llvm::errc::invalid_argument);
+
   Records.push_back(DataAccessProfRecord{StringContentHash, AccessCount,
                                          /*IsStringLiteral=*/true});
+  ContentHashToRecordIndexMap[StringContentHash] = Records.size() - 1;
+  return Error::success();
 }
 
-void DataAccessProfData::addSymbolizedDataAccessProfile(
+Error DataAccessProfData::addSymbolizedDataAccessProfile(
     StringRef SymbolName, uint64_t AccessCount,
     const llvm::SmallVector<DataLocation> &Locations) {
-  addSymbolizedDataAccessProfile(SymbolName, AccessCount);
+
+  if (Error E = addSymbolizedDataAccessProfile(SymbolName, AccessCount))
+    return E;
 
   auto &Record = Records.back();
   for (const auto &Location : Locations) {
     Record.Locations.push_back(
         {addFileName(saver.save(Location.FileName)), Location.Line});
   }
+  return Error::success();
 }
 
-void DataAccessProfData::addSymbolizedDataAccessProfile(
+Error DataAccessProfData::addSymbolizedDataAccessProfile(
     uint64_t StringContentHash, uint64_t AccessCount,
     const llvm::SmallVector<DataLocation> &Locations) {
-  addSymbolizedDataAccessProfile(StringContentHash, AccessCount);
+  if (Error E = addSymbolizedDataAccessProfile(StringContentHash, AccessCount))
+    return E;
 
   auto &Record = Records.back();
   for (const auto &Location : Locations) {
     Record.Locations.push_back(
         {addFileName(saver.save(Location.FileName)), Location.Line});
   }
+  return Error::success();
 }
 
-SmallVector<std::pair<StringRef, uint64_t>>
-DataAccessProfData::getSymbolNames() const {
-  return llvm::to_vector(
-      llvm::make_range(SymbolNameIndexMap.begin(), SymbolNameIndexMap.end()));
-}
-
-SmallVector<std::pair<StringRef, uint64_t>>
-DataAccessProfData::getFileNames() const {
-  return llvm::to_vector(
-      llvm::make_range(FileNameIndexMap.begin(), FileNameIndexMap.end()));
-}
-
-const SmallVector<DataAccessProfRecord> &
-DataAccessProfData::getRecords() const {
+ArrayRef<DataAccessProfRecord> DataAccessProfData::getRecords() const {
   return Records;
 }
 
@@ -100,13 +129,12 @@ Error DataAccessProfData::deserialize(const unsigned char *&Ptr) {
   return Error::success();
 }
 
-static Error writeStrings(
-    ProfOStream &OS,
-    const llvm::SmallVector<std::pair<llvm::StringRef, uint64_t>> &Strings) {
+template <typename StringRefIterators>
+static Error writeStrings(ProfOStream &OS, StringRefIterators Strings) {
   std::vector<std::string> StringStrs;
-  for (auto [String, Index] : Strings) {
+  for (StringRef String : Strings)
     StringStrs.push_back(String.str());
-  }
+
   std::string CompressedStrings;
   if (!Strings.empty())
     if (Error E = collectGlobalObjectNameStrings(
@@ -126,11 +154,10 @@ static Error writeStrings(
   return Error::success();
 }
 
-uint64_t DataAccessProfData::getSymbolIndex(
-    const std::variant<StringRef, uint64_t> &SymbolID) const {
-  if (std::holds_alternative<uint64_t>(SymbolID)) {
+uint64_t DataAccessProfData::getSymbolIndex(const SymbolID SymbolID) const {
+  if (std::holds_alternative<uint64_t>(SymbolID))
     return std::get<uint64_t>(SymbolID);
-  }
+
   StringRef SymbolName = std::get<StringRef>(SymbolID);
   return SymbolNameIndexMap.find(SymbolName)->second;
 }
@@ -177,8 +204,8 @@ Error DataAccessProfData::deserializeNames(
 }
 
 Error DataAccessProfData::deserializeRecords(const unsigned char *&Ptr) {
-  auto SymbolNames = this->getSymbolNames();
-  auto FileNames = this->getFileNames();
+  SmallVector<StringRef> SymbolNames = llvm::to_vector(getSymbolNames());
+  SmallVector<StringRef> FileNames = llvm::to_vector(getFileNames());
 
   uint64_t NumRecords =
       support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
@@ -193,10 +220,12 @@ Error DataAccessProfData::deserializeRecords(const unsigned char *&Ptr) {
     uint64_t AccessCount =
         support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
     if (IsStringLiteral) {
-      addSymbolizedDataAccessProfile(SymbolID, AccessCount);
-    } else {
-      addSymbolizedDataAccessProfile(SymbolNames[SymbolID].first, AccessCount);
-    }
+      if (Error E = addSymbolizedDataAccessProfile(SymbolID, AccessCount))
+        return E;
+    } else if (Error E = addSymbolizedDataAccessProfile(SymbolNames[SymbolID],
+                                                        AccessCount))
+      return E;
+
     auto &Record = Records.back();
 
     uint64_t NumLocations =
@@ -208,7 +237,7 @@ Error DataAccessProfData::deserializeRecords(const unsigned char *&Ptr) {
           support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
       uint32_t Line =
           support::endian::readNext<uint32_t, llvm::endianness::little>(Ptr);
-      Record.Locations.push_back({FileNames[FileNameIndex].first, Line});
+      Record.Locations.push_back({FileNames[FileNameIndex], Line});
     }
   }
   return Error::success();
