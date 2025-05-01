@@ -815,13 +815,13 @@ TEST(MemProf, DataAccessProfileError) {
   // Returns error when the same symbol gets added twice.
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile("foo", 100));
   EXPECT_THAT(ErrorToString(Data.addSymbolizedDataAccessProfile("foo", 100)),
-              HasSubstr("Duplicate symbol added"));
+              HasSubstr("Duplicate symbol or string literal added"));
 
   // Returns error when the same string content hash gets added twice.
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile((uint64_t)135246, 1000));
   EXPECT_THAT(ErrorToString(
                   Data.addSymbolizedDataAccessProfile((uint64_t)135246, 1000)),
-              HasSubstr("Duplicate string literal added"));
+              HasSubstr("Duplicate symbol or string literal added"));
 }
 
 // Test the following operations on DataAccessProfData:
@@ -834,24 +834,36 @@ TEST(MemProf, DataAccessProfile) {
   // In the bool conversion, Error is true if it's in a failure state and false
   // if it's in an accept state. Use ASSERT_FALSE or EXPECT_FALSE for no error.
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile("foo.llvm.123", 100));
+  ASSERT_FALSE(Data.addKnownSymbolWithoutSamples((uint64_t)789));
+  ASSERT_FALSE(Data.addKnownSymbolWithoutSamples("sym2"));
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile("bar.__uniq.321", 123,
                                                    {
                                                        DataLocation{"file2", 3},
                                                    }));
+  ASSERT_FALSE(Data.addKnownSymbolWithoutSamples("sym1"));
+  ASSERT_FALSE(Data.addKnownSymbolWithoutSamples((uint64_t)678));
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile(
       (uint64_t)135246, 1000,
       {DataLocation{"file1", 1}, DataLocation{"file2", 2}}));
 
-  // Teset that symbol names and file names are stored in the input order.
   {
+    // Test that symbol names and file names are stored in the input order.
     EXPECT_THAT(llvm::to_vector(Data.getStrings()),
                 ElementsAre("foo", "bar.__uniq.321", "file2", "file1"));
-  }
+    EXPECT_THAT(Data.getKnownColdSymbols(), ElementsAre("sym2", "sym1"));
+    EXPECT_THAT(Data.getKnownColdHashes(), ElementsAre(789, 678));
 
-  // Test profile lookups.
-  {
+    // Look up profiles.
+    EXPECT_TRUE(Data.isKnownColdSymbol((uint64_t)789));
+    EXPECT_TRUE(Data.isKnownColdSymbol((uint64_t)678));
+    EXPECT_TRUE(Data.isKnownColdSymbol("sym2"));
+    EXPECT_TRUE(Data.isKnownColdSymbol("sym1"));
+
+    EXPECT_EQ(Data.getProfileRecord("non-existence"), nullptr);
+    EXPECT_EQ(Data.getProfileRecord((uint64_t)789987), nullptr);
+
     EXPECT_THAT(
-        *Data.getProfileRecord("foo.llvm.123"),
+        Data.getProfileRecord("foo.llvm.123"),
         AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 0),
               testing::Field(&DataAccessProfRecord::AccessCount, 100),
               testing::Field(&DataAccessProfRecord::IsStringLiteral, false),
@@ -879,8 +891,6 @@ TEST(MemProf, DataAccessProfile) {
                             testing::Field(&DataLocation::Line, 1)),
                       AllOf(testing::Field(&DataLocation::FileName, "file2"),
                             testing::Field(&DataLocation::Line, 2))))));
-    EXPECT_EQ(Data.getProfileRecord("non-existence"), nullptr);
-    EXPECT_EQ(Data.getProfileRecord((uint64_t)789987), nullptr);
   }
 
   // Tests serialization and de-serialization.
@@ -900,6 +910,15 @@ TEST(MemProf, DataAccessProfile) {
 
     EXPECT_THAT(llvm::to_vector(deserializedData.getStrings()),
                 ElementsAre("foo", "bar.__uniq.321", "file2", "file1"));
+    EXPECT_THAT(deserializedData.getKnownColdSymbols(),
+                ElementsAre("sym2", "sym1"));
+    EXPECT_THAT(deserializedData.getKnownColdHashes(), ElementsAre(789, 678));
+
+    // Look up profiles after deserialization.
+    EXPECT_TRUE(deserializedData.isKnownColdSymbol((uint64_t)789));
+    EXPECT_TRUE(deserializedData.isKnownColdSymbol((uint64_t)678));
+    EXPECT_TRUE(deserializedData.isKnownColdSymbol("sym2"));
+    EXPECT_TRUE(deserializedData.isKnownColdSymbol("sym1"));
 
     EXPECT_THAT(
         deserializedData.getRecords(),

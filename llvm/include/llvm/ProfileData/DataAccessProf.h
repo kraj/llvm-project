@@ -7,8 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains common definitions used in the reading and writing of
-// data access profiles.
+// This file contains support to construct and use data access profiles.
 //
 // For the original RFC of this pass please see
 // https://discourse.llvm.org/t/rfc-profile-guided-static-data-partitioning/83744
@@ -19,6 +18,7 @@
 #define LLVM_PROFILEDATA_DATAACCESSPROF_H_
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseMapInfoVariant.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
@@ -68,17 +68,14 @@ public:
   // SymbolID is either a string representing symbol name, or a uint64_t
   // representing the content hash of a string literal.
   using SymbolID = std::variant<StringRef, uint64_t>;
-  // Use MapVector to keep input order of strings for serialization and
-  // deserialization.
   using StringToIndexMap = llvm::MapVector<StringRef, uint64_t>;
 
   DataAccessProfData() : saver(Allocator) {}
 
   /// Serialize profile data to the output stream.
   /// Storage layout:
-  /// - The encoded symbol names with sample counts.
-  /// - The encoded symbol names with no samples.
-  /// - The encoded string literal hashes with no samples.
+  /// - Serialized strings.
+  /// - The encoded hashes.
   /// - Records.
   Error serialize(ProfOStream &OS) const;
 
@@ -90,6 +87,9 @@ public:
   /// name before the lookup.
   const DataAccessProfRecord *getProfileRecord(const SymbolID SymID) const;
 
+  /// Returns true if \p SymID is seen in profiled binaries and cold.
+  bool isKnownColdSymbol(const SymbolID SymID) const;
+
   /// Methods to add symbolized data access profile. Returns error if duplicated
   /// symbol names or content hashes are seen. The user of this class should
   /// aggregate counters that corresponds to the same symbol name or with the
@@ -100,7 +100,6 @@ public:
       const llvm::SmallVector<DataLocation> &Locations);
   Error addKnownSymbolWithoutSamples(SymbolID SymbolID);
 
-
   // Returns a iterable StringRef for strings in the order they are added.
   auto getStrings() const {
     ArrayRef<std::pair<StringRef, uint64_t>> RefSymbolNames(
@@ -108,41 +107,41 @@ public:
     return llvm::make_first_range(RefSymbolNames);
   }
 
-  // Returns a vector view of the records.
+  /// Methods for unit testing only.
   inline ArrayRef<DataAccessProfRecord> getRecords() const { return Records; }
+  inline ArrayRef<StringRef> getKnownColdSymbols() const {
+    return KnownColdSymbols.getArrayRef();
+  }
+  inline ArrayRef<uint64_t> getKnownColdHashes() const {
+    return KnownColdHashes.getArrayRef();
+  }
 
 private:
-  /// Given \p Ptr pointing to the start of a blob of strings encoded by
-  /// InstrProf.cpp:collectGlobalObjectNameStrings, decode the strings and add
-  /// them to \p Map. Increment \p Ptr to the start of next payload. Returns
-  /// error if any.
-  Error deserializeNames(const unsigned char *&Ptr,
-                         MapVector<StringRef, uint64_t> &Map);
+  /// Serialize the symbol strings into the output stream.
+  Error serializeStrings(ProfOStream &OS) const;
 
-  Error deserializeColdKnownSymbols(const unsigned char *&Ptr,
-                                      SetVector<StringRef> &SetVector);
-  
-  Error deserializeColdKnownStringLiteralHashes(const unsigned char *&Ptr,
-                                              SetVector<uint64_t> &SetVector);
+  /// Deserialize the symbol strings from \p Ptr and increment \p Ptr to the
+  /// start of the next payload.
+  Error deserializeStrings(const unsigned char *&Ptr,
+                           const uint64_t NumSampledSymbols,
+                           uint64_t NumColdKnownSymbols);
 
-  /// Given \p Ptr which points to the start of a blob of records, decode the
-  /// records and store them. Increment \p Ptr to the start of the next payload.
-  /// Returns error if any.
+  /// Decode the records and increment \p Ptr to the start of the next payload.
   Error deserializeRecords(const unsigned char *&Ptr);
 
-  /// Returns the index for encoding for \p SymbolID.
+  /// A helper function to compute a storage index for \p SymbolID.
   uint64_t getEncodedIndex(const SymbolID SymbolID) const;
 
-  // Key is StringRef representing symbol or file, and value is index.
-  StringToIndexMap StrToIndexMap;
-  // Key is the canonicalzied symbol name, value is the profile record index.
-  DenseMap<StringRef, size_t> SymbolToRecordIndex;
-  // Key is the content hash of a string literal, value is profile record index.
-  DenseMap<uint64_t, size_t> ContentHashToRecordIndexMap;
-  // Stores the records with samples.
+  // `Records` stores the records and `SymbolToRecordIndex` maps a symbol ID to
+  // its record index.
   llvm::SmallVector<DataAccessProfRecord> Records;
-  llvm::SetVector<uint64_t> ColdKnownStringLiteralHashes;
-  llvm::SetVector<StringRef> ColdKnownSymbols;
+  DenseMap<SymbolID, size_t> SymbolToRecordIndex;
+
+  // Use MapVector to keep input order of strings for serialization and
+  // deserialization.
+  StringToIndexMap StrToIndexMap;
+  llvm::SetVector<uint64_t> KnownColdHashes;
+  llvm::SetVector<StringRef> KnownColdSymbols;
   // Keeps owned copies of the input strings.
   llvm::BumpPtrAllocator Allocator;
   llvm::UniqueStringSaver saver;
