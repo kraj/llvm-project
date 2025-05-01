@@ -920,8 +920,11 @@ TEST(MemProf, DataAccessProfile) {
     EXPECT_TRUE(deserializedData.isKnownColdSymbol("sym2"));
     EXPECT_TRUE(deserializedData.isKnownColdSymbol("sym1"));
 
+    auto Records =
+        llvm::to_vector(llvm::make_second_range(deserializedData.getRecords()));
+
     EXPECT_THAT(
-        deserializedData.getRecords(),
+        Records,
         ElementsAre(
             AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 0),
                   testing::Field(&DataAccessProfRecord::AccessCount, 100),

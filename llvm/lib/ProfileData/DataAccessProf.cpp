@@ -13,9 +13,9 @@
 namespace llvm {
 namespace data_access_prof {
 
-/// If \p Map has an entry keyed by \p Str, returns the entry iterator.
-/// Otherwise, creates an owned copy of \p Str, adds a map entry for it and
-/// returns the iterator.
+// If `Map` has an entry keyed by `Str`, returns the entry iterator. Otherwise,
+// creates an owned copy of `Str`, adds a map entry for it and returns the
+// iterator.
 static MapVector<StringRef, uint64_t>::iterator
 saveStringToMap(MapVector<StringRef, uint64_t> &Map,
                 llvm::UniqueStringSaver &saver, StringRef Str) {
@@ -29,9 +29,9 @@ DataAccessProfData::getProfileRecord(const SymbolID SymbolID) const {
   if (std::holds_alternative<StringRef>(SymbolID))
     Key = InstrProfSymtab::getCanonicalName(std::get<StringRef>(SymbolID));
 
-  auto It = SymbolToRecordIndex.find(Key);
-  if (It != SymbolToRecordIndex.end())
-    return &Records[It->second];
+  auto It = Records.find(Key);
+  if (It != Records.end())
+    return &It->second;
 
   return nullptr;
 }
@@ -63,14 +63,13 @@ Error DataAccessProfData::addSymbolizedDataAccessProfile(SymbolID Symbol,
     IsStringLiteral = false;
   }
 
-  auto [Iter, Inserted] = SymbolToRecordIndex.try_emplace(Key, Records.size());
+  auto [Iter, Inserted] = Records.try_emplace(
+      Key, DataAccessProfRecord{RecordID, AccessCount, IsStringLiteral});
   if (!Inserted)
     return make_error<StringError>("Duplicate symbol or string literal added. "
                                    "User of DataAccessProfData should "
                                    "aggregate count for the same symbol. ",
                                    llvm::errc::invalid_argument);
-  Records.push_back(
-      DataAccessProfRecord{RecordID, AccessCount, IsStringLiteral});
 
   return Error::success();
 }
@@ -81,12 +80,12 @@ Error DataAccessProfData::addSymbolizedDataAccessProfile(
   if (Error E = addSymbolizedDataAccessProfile(SymbolID, AccessCount))
     return E;
 
-  auto &Record = Records.back();
-  for (const auto &Location : Locations) {
+  auto &Record = Records.back().second;
+  for (const auto &Location : Locations)
     Record.Locations.push_back(
         {saveStringToMap(StrToIndexMap, saver, Location.FileName)->first,
          Location.Line});
-  }
+
   return Error::success();
 }
 
@@ -165,7 +164,7 @@ Error DataAccessProfData::serialize(ProfOStream &OS) const {
   for (const auto &Hash : KnownColdHashes)
     OS.write(Hash);
   OS.write((uint64_t)(Records.size()));
-  for (const auto &Rec : Records) {
+  for (const auto &[Key, Rec] : Records) {
     OS.write(getEncodedIndex(Rec.SymbolID));
     OS.writeByte(Rec.IsStringLiteral);
     OS.write(Rec.AccessCount);
@@ -184,6 +183,8 @@ Error DataAccessProfData::deserializeStrings(const unsigned char *&Ptr,
   uint64_t Len =
       support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
 
+  // With M=NumSampledSymbols and N=NumColdKnownSymbols, the first M strings are
+  // symbols with samples, and next N strings are known cold symbols.
   uint64_t StringCnt = 0;
   std::function<Error(StringRef)> addName = [&](StringRef Name) {
     if (StringCnt < NumSampledSymbols)
@@ -225,7 +226,7 @@ Error DataAccessProfData::deserializeRecords(const unsigned char *&Ptr) {
     if (Error E = addSymbolizedDataAccessProfile(SymbolID, AccessCount))
       return E;
 
-    auto &Record = Records.back();
+    auto &Record = Records.back().second;
 
     uint64_t NumLocations =
         support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);

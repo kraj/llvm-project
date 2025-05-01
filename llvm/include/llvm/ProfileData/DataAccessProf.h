@@ -100,15 +100,19 @@ public:
       const llvm::SmallVector<DataLocation> &Locations);
   Error addKnownSymbolWithoutSamples(SymbolID SymbolID);
 
-  // Returns a iterable StringRef for strings in the order they are added.
+  /// Returns a iterable StringRef for strings in the order they are added.
   auto getStrings() const {
     ArrayRef<std::pair<StringRef, uint64_t>> RefSymbolNames(
         StrToIndexMap.begin(), StrToIndexMap.end());
     return llvm::make_first_range(RefSymbolNames);
   }
 
-  /// Methods for unit testing only.
-  inline ArrayRef<DataAccessProfRecord> getRecords() const { return Records; }
+  /// Returns array reference for various internal data structures.
+  inline ArrayRef<
+      std::pair<std::variant<StringRef, uint64_t>, DataAccessProfRecord>>
+  getRecords() const {
+    return Records.getArrayRef();
+  }
   inline ArrayRef<StringRef> getKnownColdSymbols() const {
     return KnownColdSymbols.getArrayRef();
   }
@@ -134,8 +138,7 @@ private:
 
   // `Records` stores the records and `SymbolToRecordIndex` maps a symbol ID to
   // its record index.
-  llvm::SmallVector<DataAccessProfRecord> Records;
-  DenseMap<SymbolID, size_t> SymbolToRecordIndex;
+  MapVector<SymbolID, DataAccessProfRecord> Records;
 
   // Use MapVector to keep input order of strings for serialization and
   // deserialization.
