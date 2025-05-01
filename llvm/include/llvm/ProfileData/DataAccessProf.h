@@ -21,6 +21,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ProfileData/InstrProf.h"
@@ -75,7 +76,9 @@ public:
 
   /// Serialize profile data to the output stream.
   /// Storage layout:
-  /// - The encoded strings.
+  /// - The encoded symbol names with sample counts.
+  /// - The encoded symbol names with no samples.
+  /// - The encoded string literal hashes with no samples.
   /// - Records.
   Error serialize(ProfOStream &OS) const;
 
@@ -91,16 +94,12 @@ public:
   /// symbol names or content hashes are seen. The user of this class should
   /// aggregate counters that corresponds to the same symbol name or with the
   /// same string literal hash before calling 'add*' methods.
-  Error addSymbolizedDataAccessProfile(StringRef SymbolName,
-                                       uint64_t AccessCount);
-  Error addSymbolizedDataAccessProfile(uint64_t StringContentHash,
-                                       uint64_t AccessCount);
+  Error addSymbolizedDataAccessProfile(SymbolID SymbolID, uint64_t AccessCount);
   Error addSymbolizedDataAccessProfile(
-      StringRef SymbolName, uint64_t AccessCount,
+      SymbolID SymbolID, uint64_t AccessCount,
       const llvm::SmallVector<DataLocation> &Locations);
-  Error addSymbolizedDataAccessProfile(
-      uint64_t StringContentHash, uint64_t AccessCount,
-      const llvm::SmallVector<DataLocation> &Locations);
+  Error addKnownSymbolWithoutSamples(SymbolID SymbolID);
+
 
   // Returns a iterable StringRef for strings in the order they are added.
   auto getStrings() const {
@@ -120,6 +119,12 @@ private:
   Error deserializeNames(const unsigned char *&Ptr,
                          MapVector<StringRef, uint64_t> &Map);
 
+  Error deserializeColdKnownSymbols(const unsigned char *&Ptr,
+                                      SetVector<StringRef> &SetVector);
+  
+  Error deserializeColdKnownStringLiteralHashes(const unsigned char *&Ptr,
+                                              SetVector<uint64_t> &SetVector);
+
   /// Given \p Ptr which points to the start of a blob of records, decode the
   /// records and store them. Increment \p Ptr to the start of the next payload.
   /// Returns error if any.
@@ -134,8 +139,10 @@ private:
   DenseMap<StringRef, size_t> SymbolToRecordIndex;
   // Key is the content hash of a string literal, value is profile record index.
   DenseMap<uint64_t, size_t> ContentHashToRecordIndexMap;
-  // Stores the records.
+  // Stores the records with samples.
   llvm::SmallVector<DataAccessProfRecord> Records;
+  llvm::SetVector<uint64_t> ColdKnownStringLiteralHashes;
+  llvm::SetVector<StringRef> ColdKnownSymbols;
   // Keeps owned copies of the input strings.
   llvm::BumpPtrAllocator Allocator;
   llvm::UniqueStringSaver saver;

@@ -38,8 +38,23 @@ DataAccessProfData::getProfileRecord(const SymbolID SymbolID) const {
   return &Records[It->second];
 }
 
-Error DataAccessProfData::addSymbolizedDataAccessProfile(StringRef SymbolName,
+Error DataAccessProfData::addSymbolizedDataAccessProfile(SymbolID SymbolID,
                                                          uint64_t AccessCount) {
+  if (std::holds_alternative<uint64_t>(SymbolID)) {
+    const uint64_t StringContentHash = std::get<uint64_t>(SymbolID);
+    if (ContentHashToRecordIndexMap.count(StringContentHash) > 0)
+      return make_error<StringError>(
+          "Duplicate string literal added. User of DataAccessProfData should "
+          "aggregate count for the same string literal. ",
+          llvm::errc::invalid_argument);
+
+    Records.push_back(DataAccessProfRecord{StringContentHash, AccessCount,
+                                           /*IsStringLiteral=*/true});
+    ContentHashToRecordIndexMap[StringContentHash] = Records.size() - 1;
+    return Error::success();
+  }
+
+  StringRef SymbolName = std::get<StringRef>(SymbolID);
   if (SymbolName.empty())
     return make_error<StringError>("Empty symbol name",
                                    llvm::errc::invalid_argument);
@@ -62,24 +77,9 @@ Error DataAccessProfData::addSymbolizedDataAccessProfile(StringRef SymbolName,
 }
 
 Error DataAccessProfData::addSymbolizedDataAccessProfile(
-    uint64_t StringContentHash, uint64_t AccessCount) {
-  if (ContentHashToRecordIndexMap.count(StringContentHash) > 0)
-    return make_error<StringError>(
-        "Duplicate string literal added. User of DataAccessProfData should "
-        "aggregate count for the same string literal. ",
-        llvm::errc::invalid_argument);
-
-  Records.push_back(DataAccessProfRecord{StringContentHash, AccessCount,
-                                         /*IsStringLiteral=*/true});
-  ContentHashToRecordIndexMap[StringContentHash] = Records.size() - 1;
-  return Error::success();
-}
-
-Error DataAccessProfData::addSymbolizedDataAccessProfile(
-    StringRef SymbolName, uint64_t AccessCount,
+    SymbolID SymbolID, uint64_t AccessCount,
     const llvm::SmallVector<DataLocation> &Locations) {
-
-  if (Error E = addSymbolizedDataAccessProfile(SymbolName, AccessCount))
+  if (Error E = addSymbolizedDataAccessProfile(SymbolID, AccessCount))
     return E;
 
   auto &Record = Records.back();
@@ -91,17 +91,43 @@ Error DataAccessProfData::addSymbolizedDataAccessProfile(
   return Error::success();
 }
 
-Error DataAccessProfData::addSymbolizedDataAccessProfile(
-    uint64_t StringContentHash, uint64_t AccessCount,
-    const llvm::SmallVector<DataLocation> &Locations) {
-  if (Error E = addSymbolizedDataAccessProfile(StringContentHash, AccessCount))
-    return E;
+Error DataAccessProfData::addKnownSymbolWithoutSamples(SymbolID SymbolID) {
+  if (std::holds_alternative<uint64_t>(SymbolID)) {
+    ColdKnownStringLiteralHashes.insert(std::get<uint64_t>(SymbolID));
+    return Error::success();
+  }
+  StringRef SymbolName = std::get<StringRef>(SymbolID);
+  if (SymbolName.empty())
+    return make_error<StringError>("Empty symbol name",
+                                   llvm::errc::invalid_argument);
+  StringRef CanonicalSymName = InstrProfSymtab::getCanonicalName(SymbolName);
+  ColdKnownSymbols.insert(CanonicalSymName);
+  return Error::success();
+}
 
-  auto &Record = Records.back();
-  for (const auto &Location : Locations) {
-    Record.Locations.push_back(
-        {saveStringToMap(StrToIndexMap, saver, Location.FileName)->first,
-         Location.Line});
+Error DataAccessProfData::deserializeColdKnownSymbols(
+    const unsigned char *&Ptr, SetVector<StringRef> &SetVector) {
+  uint64_t Len =
+      support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
+  std::function<Error(StringRef)> addName = [&](StringRef Name) {
+    SetVector.insert(saveStringToMap(StrToIndexMap, saver, Name)->first);
+    return Error::success();
+  };
+  if (Error E =
+          readAndDecodeStrings(StringRef((const char *)Ptr, Len), addName))
+    return E;
+  Ptr += alignTo(Len, 8);
+  return Error::success();
+}
+
+Error DataAccessProfData::deserializeColdKnownStringLiteralHashes(
+    const unsigned char *&Ptr, SetVector<uint64_t> &SetVector) {
+  uint64_t Num =
+      support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
+  for (uint64_t I = 0; I < Num; ++I) {
+    uint64_t Hash =
+        support::endian::readNext<uint64_t, llvm::endianness::little>(Ptr);
+    SetVector.insert(Hash);
   }
   return Error::success();
 }
@@ -109,17 +135,22 @@ Error DataAccessProfData::addSymbolizedDataAccessProfile(
 Error DataAccessProfData::deserialize(const unsigned char *&Ptr) {
   if (Error E = deserializeNames(Ptr, StrToIndexMap))
     return E;
+  if (Error E = deserializeColdKnownSymbols(Ptr, ColdKnownSymbols))
+    return E;
+  if (Error E = deserializeColdKnownStringLiteralHashes(
+          Ptr, ColdKnownStringLiteralHashes))
+    return E;
   return deserializeRecords(Ptr);
 }
 
-template <typename StringRefIterators>
-static Error writeStrings(ProfOStream &OS, StringRefIterators Strings) {
+template <typename StringIterable>
+static Error serializeStrings(ProfOStream &OS, StringIterable Strings) {
   std::vector<std::string> StringStrs;
-  for (StringRef String : Strings)
-    StringStrs.push_back(String.str());
+  for (const auto &Str : Strings)
+    StringStrs.push_back(Str.str());
 
   std::string CompressedStrings;
-  if (!Strings.empty())
+  if (!StringStrs.empty())
     if (Error E = collectGlobalObjectNameStrings(
             StringStrs, compression::zlib::isAvailable(), CompressedStrings))
       return E;
@@ -145,8 +176,13 @@ uint64_t DataAccessProfData::getEncodedIndex(const SymbolID SymbolID) const {
 }
 
 Error DataAccessProfData::serialize(ProfOStream &OS) const {
-  if (Error E = writeStrings(OS, getStrings()))
+  if (Error E = serializeStrings(OS, getStrings()))
     return E;
+  if (Error E = serializeStrings(OS, ColdKnownSymbols))
+    return E;
+  OS.write(ColdKnownStringLiteralHashes.size());
+  for (const auto &Hash : ColdKnownStringLiteralHashes)
+    OS.write(Hash);
   OS.write((uint64_t)(Records.size()));
   for (const auto &Rec : Records) {
     OS.write(getEncodedIndex(Rec.SymbolID));

@@ -818,8 +818,9 @@ TEST(MemProf, DataAccessProfileError) {
               HasSubstr("Duplicate symbol added"));
 
   // Returns error when the same string content hash gets added twice.
-  ASSERT_FALSE(Data.addSymbolizedDataAccessProfile(135246, 1000));
-  EXPECT_THAT(ErrorToString(Data.addSymbolizedDataAccessProfile(135246, 1000)),
+  ASSERT_FALSE(Data.addSymbolizedDataAccessProfile((uint64_t)135246, 1000));
+  EXPECT_THAT(ErrorToString(
+                  Data.addSymbolizedDataAccessProfile((uint64_t)135246, 1000)),
               HasSubstr("Duplicate string literal added"));
 }
 
@@ -833,14 +834,18 @@ TEST(MemProf, DataAccessProfile) {
   // In the bool conversion, Error is true if it's in a failure state and false
   // if it's in an accept state. Use ASSERT_FALSE or EXPECT_FALSE for no error.
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile("foo.llvm.123", 100));
-  ASSERT_FALSE(Data.addSymbolizedDataAccessProfile("bar.__uniq.321", 123));
+  ASSERT_FALSE(Data.addSymbolizedDataAccessProfile("bar.__uniq.321", 123,
+                                                   {
+                                                       DataLocation{"file2", 3},
+                                                   }));
   ASSERT_FALSE(Data.addSymbolizedDataAccessProfile(
-      135246, 1000, {DataLocation{"file1", 1}, DataLocation{"file2", 2}}));
+      (uint64_t)135246, 1000,
+      {DataLocation{"file1", 1}, DataLocation{"file2", 2}}));
 
   // Teset that symbol names and file names are stored in the input order.
   {
     EXPECT_THAT(llvm::to_vector(Data.getStrings()),
-                ElementsAre("foo", "bar.__uniq.321", "file1", "file2"));
+                ElementsAre("foo", "bar.__uniq.321", "file2", "file1"));
   }
 
   // Test profile lookups.
@@ -854,11 +859,14 @@ TEST(MemProf, DataAccessProfile) {
                              testing::IsEmpty())));
     EXPECT_THAT(
         *Data.getProfileRecord("bar.__uniq.321"),
-        AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 1),
-              testing::Field(&DataAccessProfRecord::AccessCount, 123),
-              testing::Field(&DataAccessProfRecord::IsStringLiteral, false),
-              testing::Field(&DataAccessProfRecord::Locations,
-                             testing::IsEmpty())));
+        AllOf(
+            testing::Field(&DataAccessProfRecord::SymbolID, 1),
+            testing::Field(&DataAccessProfRecord::AccessCount, 123),
+            testing::Field(&DataAccessProfRecord::IsStringLiteral, false),
+            testing::Field(&DataAccessProfRecord::Locations,
+                           ElementsAre(AllOf(
+                               testing::Field(&DataLocation::FileName, "file2"),
+                               testing::Field(&DataLocation::Line, 3))))));
     EXPECT_THAT(
         *Data.getProfileRecord((uint64_t)135246),
         AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 135246),
@@ -891,7 +899,7 @@ TEST(MemProf, DataAccessProfile) {
     EXPECT_FALSE(deserializedData.deserialize(p));
 
     EXPECT_THAT(llvm::to_vector(deserializedData.getStrings()),
-                ElementsAre("foo", "bar.__uniq.321", "file1", "file2"));
+                ElementsAre("foo", "bar.__uniq.321", "file2", "file1"));
 
     EXPECT_THAT(
         deserializedData.getRecords(),
@@ -904,8 +912,11 @@ TEST(MemProf, DataAccessProfile) {
             AllOf(testing::Field(&DataAccessProfRecord::SymbolID, 1),
                   testing::Field(&DataAccessProfRecord::AccessCount, 123),
                   testing::Field(&DataAccessProfRecord::IsStringLiteral, false),
-                  testing::Field(&DataAccessProfRecord::Locations,
-                                 testing::IsEmpty())),
+                  testing::Field(
+                      &DataAccessProfRecord::Locations,
+                      ElementsAre(AllOf(
+                          testing::Field(&DataLocation::FileName, "file2"),
+                          testing::Field(&DataLocation::Line, 3))))),
             AllOf(
                 testing::Field(&DataAccessProfRecord::SymbolID, 135246),
                 testing::Field(&DataAccessProfRecord::AccessCount, 1000),
