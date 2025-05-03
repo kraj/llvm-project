@@ -548,6 +548,9 @@ private:
     if (isa<PHINode>(I) || I->isEHPad() || isa<AllocaInst>(I) ||
         I->getType()->isTokenTy())
       return true;
+    // Inline asm can't be sunk either.
+    if (auto *CB = dyn_cast<CallBase>(I); CB->isInlineAsm())
+      return true;
     return false;
   }
 
