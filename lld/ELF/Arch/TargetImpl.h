@@ -43,8 +43,8 @@ inline void applyBranchToBranchOptImpl(
   // reading relocations of other sections.
   for (ELFFileBase *f : ctx.objectFiles) {
     auto getRelocBranchInfo =
-        [&ctx, &getBranchInfo](Relocation &r,
-               uint64_t addend) -> std::pair<Relocation *, uint64_t> {
+        [&getBranchInfo](Relocation &r,
+                         uint64_t addend) -> std::pair<Relocation *, uint64_t> {
       auto *target = dyn_cast_or_null<Defined>(r.sym);
       // We don't allow preemptible symbols (may go somewhere else),
       // absolute symbols (runtime behavior unknown), non-executable memory
@@ -54,21 +54,21 @@ inline void applyBranchToBranchOptImpl(
           target->section->kind() != SectionBase::Regular)
         return {nullptr, 0};
       return getBranchInfo(*cast<InputSection>(target->section),
-                                       target->value + addend);
+                           target->value + addend);
     };
     for (InputSectionBase *s : f->getSections()) {
       if (!s)
         continue;
       for (Relocation &r : s->relocations) {
         if (std::optional<uint64_t> addend =
-                getControlTransferAddend(*cast<InputSection>(s),
-                                                     r)) {
+                getControlTransferAddend(*cast<InputSection>(s), r)) {
           std::pair<Relocation *, uint64_t> targetAndAddend =
               getRelocBranchInfo(r, *addend);
           if (targetAndAddend.first) {
             while (1) {
               std::pair<Relocation *, uint64_t> nextTargetAndAddend =
-                  getRelocBranchInfo(*targetAndAddend.first, targetAndAddend.second);
+                  getRelocBranchInfo(*targetAndAddend.first,
+                                     targetAndAddend.second);
               if (!nextTargetAndAddend.first)
                 break;
               targetAndAddend = nextTargetAndAddend;
