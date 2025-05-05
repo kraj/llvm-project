@@ -1263,9 +1263,6 @@ void AMDGPUPassConfig::addIRPasses() {
     addPass(createAMDGPULowerModuleLDSLegacyPass(&TM));
   }
 
-  if (TM.getOptLevel() > CodeGenOptLevel::None)
-    addPass(createInferAddressSpacesPass());
-
   // Run atomic optimizer before Atomic Expand
   if ((TM.getTargetTriple().isAMDGCN()) &&
       (TM.getOptLevel() >= CodeGenOptLevel::Less) &&
@@ -2003,9 +2000,6 @@ void AMDGPUCodeGenPassBuilder::addIRPasses(AddIRPass &addPass) const {
   // Runs before PromoteAlloca so the latter can account for function uses
   if (EnableLowerModuleLDS)
     addPass(AMDGPULowerModuleLDSPass(TM));
-
-  if (TM.getOptLevel() > CodeGenOptLevel::None)
-    addPass(InferAddressSpacesPass());
 
   // Run atomic optimizer before Atomic Expand
   if (TM.getOptLevel() >= CodeGenOptLevel::Less &&
