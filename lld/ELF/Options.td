@@ -59,7 +59,7 @@ def build_id: J<"build-id=">, HelpText<"Generate build ID note">,
   MetaVarName<"[fast,md5,sha1,uuid,0x<hexstring>]">;
 def : F<"build-id">, Alias<build_id>, AliasArgs<["sha1"]>, HelpText<"Alias for --build-id=sha1">;
 
-defm branch_to_branch: B<"branch-to-branch",
+defm branch_to_branch: BB<"branch-to-branch",
     "Enable branch-to-branch optimization (default at -O2)",
     "Disable branch-to-branch optimization (default at -O0 and -O1)">;
 

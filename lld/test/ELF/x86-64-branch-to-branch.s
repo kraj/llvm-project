@@ -5,21 +5,21 @@
  
 # RUN: llvm-mc -filetype=obj -triple=x86_64-pc-linux %s -o %t.o
 # RUN: ld.lld %t.o -o %t --branch-to-branch
-# RUN: llvm-objdump -d -s %t | FileCheck --check-prefix=B2B %s
+# RUN: llvm-objdump -d -s %t | FileCheck --check-prefixes=CHECK,B2B %s
 # RUN: ld.lld %t.o -o %t -O2
-# RUN: llvm-objdump -d -s %t | FileCheck --check-prefix=B2B %s
+# RUN: llvm-objdump -d -s %t | FileCheck --check-prefixes=CHECK,B2B %s
 
 ## Test that branch-to-branch is disabled by default.
 
 # RUN: ld.lld %t.o -o %t
-# RUN: llvm-objdump -d -s %t | FileCheck --check-prefix=NOB2B %s
+# RUN: llvm-objdump -d -s %t | FileCheck --check-prefixes=CHECK,NOB2B %s
 # RUN: ld.lld %t.o -o %t -O2 --no-branch-to-branch
-# RUN: llvm-objdump -d -s %t | FileCheck --check-prefix=NOB2B %s
+# RUN: llvm-objdump -d -s %t | FileCheck --check-prefixes=CHECK,NOB2B %s
 
 ## Test that branch-to-branch is disabled for preemptible symbols.
 
 # RUN: ld.lld %t.o -o %t --branch-to-branch -shared
-# RUN: llvm-objdump -d -s %t | FileCheck --check-prefix=NOB2B %s
+# RUN: llvm-objdump -d -s %t | FileCheck --check-prefixes=CHECK,NOB2B %s
 
 .section .rodata.vtable,"a"
 .globl vtable
@@ -34,12 +34,13 @@ vtable:
 
 .section .text._start,"ax"
 .globl _start
+# CHECK: <_start>:
 _start:
-# B2B: jmp {{.*}} <f3>
-# NOB2B: jmp {{.*}} <f1{{.*}}>
+# B2B-NEXT: jmp {{.*}} <f3>
+# NOB2B-NEXT: jmp {{.*}} <f1{{.*}}>
 jmp f1
-# B2B: jmp {{.*}} <f3>
-# NOB2B: jmp {{.*}} <f2{{.*}}>
+# B2B-NEXT: jmp {{.*}} <f3>
+# NOB2B-NEXT: jmp {{.*}} <f2{{.*}}>
 jmp f2
 
 .section .text.f1,"ax"
@@ -49,7 +50,9 @@ jmp f2
 
 .section .text.f2,"ax"
 .globl f2
+# CHECK: <f2>:
 f2:
+# CHECK-NEXT: jmp {{.*}} <f3{{.*}}>
 jmp f3
 
 .section .text.f3,"ax"
