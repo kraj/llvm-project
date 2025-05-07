@@ -3112,6 +3112,9 @@ static llvm::omp::Directive convertCancellationConstructType(
 static LogicalResult
 convertOmpCancel(omp::CancelOp op, llvm::IRBuilderBase &builder,
                  LLVM::ModuleTranslation &moduleTranslation) {
+  if (failed(checkImplementationStatus(*op.getOperation())))
+    return failure();
+
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
 
@@ -3137,6 +3140,9 @@ static LogicalResult
 convertOmpCancellationPoint(omp::CancellationPointOp op,
                             llvm::IRBuilderBase &builder,
                             LLVM::ModuleTranslation &moduleTranslation) {
+  if (failed(checkImplementationStatus(*op.getOperation())))
+    return failure();
+
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
 
