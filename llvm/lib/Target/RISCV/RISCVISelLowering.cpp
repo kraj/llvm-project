@@ -15520,18 +15520,20 @@ static SDValue performXORCombine(SDNode *N, SelectionDAG &DAG,
   return combineSelectAndUseCommutative(N, DAG, /*AllOnes*/ false, Subtarget);
 }
 
-// 2^N +/- 2^M -> (add/sub (shl X, C1), (shl X, C2))
+// X * (2^N +/- 2^M) -> (add/sub (shl X, C1), (shl X, C2))
 static SDValue expandMulToAddOrSubOfShl(SDNode *N, SelectionDAG &DAG,
                                         uint64_t MulAmt) {
   uint64_t MulAmtLowBit = MulAmt & (-MulAmt);
   ISD::NodeType Op;
-  if (isPowerOf2_64(MulAmt + MulAmtLowBit))
+  uint64_t ShiftAmt1;
+  if (isPowerOf2_64(MulAmt + MulAmtLowBit)) {
     Op = ISD::SUB;
-  else if (isPowerOf2_64(MulAmt - MulAmtLowBit))
+    ShiftAmt1 = MulAmt + MulAmtLowBit;
+  } else if (isPowerOf2_64(MulAmt - MulAmtLowBit)) {
     Op = ISD::ADD;
-  else
+    ShiftAmt1 = MulAmt - MulAmtLowBit;
+  } else
     return SDValue();
-  uint64_t ShiftAmt1 = MulAmt + MulAmtLowBit;
   SDLoc DL(N);
   SDValue Shift1 =
       DAG.getNode(ISD::SHL, DL, N->getValueType(0), N->getOperand(0),
