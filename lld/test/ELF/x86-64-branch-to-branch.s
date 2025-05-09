@@ -48,6 +48,8 @@ jmp f2
 # branching to the `jmp f3` at the start of the target section.
 # CHECK-NEXT: jmp {{.*}} <f4{{.*}}>
 jmp f4
+# B2B-NEXT: jmp 0x[[IPLT:[0-9a-f]*]]
+jmp f5
 
 .section .text.f1,"ax"
 .globl f1
@@ -71,3 +73,12 @@ jmp f3
 jmp f3
 f4:
 ret
+
+.section .text.f5,"ax"
+.type f5, @gnu_indirect_function
+.globl f5
+f5:
+jmp f3
+
+# B2B: <.iplt>:
+# B2B-NEXT: [[IPLT]]:
