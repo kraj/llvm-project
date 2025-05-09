@@ -1178,8 +1178,15 @@ static std::optional<uint64_t> getControlTransferAddend(InputSection &is,
   // to branch into the middle of a PLT. For example, relative vtable
   // relocations use PLT32 and 0 or a positive value as the addend but still are
   // used to branch to the symbol.
-  if (r.type == R_X86_64_PLT32)
+  //
+  // STT_SECTION symbols are a special case on x86 because the LLVM assembler
+  // uses them for branches to local symbols which are assembled as referring to
+  // the section symbol with the addend equal to the symbol value - 4.
+  if (r.type == R_X86_64_PLT32) {
+    if (r.sym->isSection())
+      return r.addend + 4;
     return 0;
+  }
   return std::nullopt;
 }
 
@@ -1204,11 +1211,18 @@ static std::pair<Relocation *, uint64_t> getBranchInfo(InputSection &is,
 
 static void mergeControlTransferRelocations(Relocation &r1,
                                             const Relocation &r2) {
-  r1.expr = r2.expr;
-  r1.sym = r2.sym;
+  // The isSection() check handles the STT_SECTION case described above.
+  // In that case the original addend is irrelevant because it referred to an
+  // offset within the original target section so we overwrite it.
+  //
   // The +4 is here to compensate for r2.addend which will likely be -4,
   // but may also be addend-4 in case of a PC32 branch to symbol+addend.
-  r1.addend += r2.addend + 4;
+  if (r1.sym->isSection())
+    r1.addend = r2.addend;
+  else
+    r1.addend += r2.addend + 4;
+  r1.expr = r2.expr;
+  r1.sym = r2.sym;
 }
 
 void X86_64::applyBranchToBranchOpt() const {

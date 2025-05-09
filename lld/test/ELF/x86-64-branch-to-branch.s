@@ -42,6 +42,12 @@ jmp f1
 # B2B-NEXT: jmp {{.*}} <f3>
 # NOB2B-NEXT: jmp {{.*}} <f2{{.*}}>
 jmp f2
+# This will assemble to a relocation pointing to an STT_SECTION for .text.f4
+# with an addend, which looks similar to the relative vtable cases above but
+# requires different handling of the addend so that we don't think this is
+# branching to the `jmp f3` at the start of the target section.
+# CHECK-NEXT: jmp {{.*}} <f4{{.*}}>
+jmp f4
 
 .section .text.f1,"ax"
 .globl f1
@@ -58,4 +64,10 @@ jmp f3
 .section .text.f3,"ax"
 .globl f3
 f3:
+# Test that a self-branch doesn't trigger an infinite loop.
+jmp f3
+
+.section .text.f4,"ax"
+jmp f3
+f4:
 ret

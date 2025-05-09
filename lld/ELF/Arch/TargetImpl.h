@@ -46,10 +46,11 @@ inline void applyBranchToBranchOptImpl(
         [&getBranchInfo](Relocation &r,
                          uint64_t addend) -> std::pair<Relocation *, uint64_t> {
       auto *target = dyn_cast_or_null<Defined>(r.sym);
-      // We don't allow preemptible symbols (may go somewhere else),
+      // We don't allow preemptible symbols or ifuncs (may go somewhere else),
       // absolute symbols (runtime behavior unknown), non-executable memory
       // (ditto) or non-regular sections (no section data).
-      if (!target || target->isPreemptible || !target->section ||
+      if (!target || target->isPreemptible || target->isGnuIFunc() ||
+          !target->section ||
           !(target->section->flags & llvm::ELF::SHF_EXECINSTR) ||
           target->section->kind() != SectionBase::Regular)
         return {nullptr, 0};
@@ -65,7 +66,11 @@ inline void applyBranchToBranchOptImpl(
           std::pair<Relocation *, uint64_t> targetAndAddend =
               getRelocBranchInfo(r, *addend);
           if (targetAndAddend.first) {
-            while (1) {
+            // Avoid getting stuck in an infinite loop if we encounter a branch
+            // that (possibly indirectly) branches to itself. It is unlikely
+            // that more than 5 iterations will ever be needed in practice.
+            size_t iterations = 5;
+            while (iterations--) {
               std::pair<Relocation *, uint64_t> nextTargetAndAddend =
                   getRelocBranchInfo(*targetAndAddend.first,
                                      targetAndAddend.second);
