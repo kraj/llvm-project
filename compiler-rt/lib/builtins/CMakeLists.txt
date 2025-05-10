@@ -864,6 +864,18 @@ else ()
       list(JOIN BUILTIN_CFLAGS " " CMAKE_REQUIRED_FLAGS)
       set(CMAKE_REQUIRED_FLAGS "${TARGET_${arch}_CFLAGS} ${BUILTIN_CFLAGS_${arch}}")
       message(STATUS "Performing additional configure checks with target flags: ${CMAKE_REQUIRED_FLAGS}")
+      # For ARM archs, exclude any sync builtins if dmb or mcr p15, #0, r0, c7, c10, #5
+      # is not supported
+      if (${arch} MATCHES "^(arm|armhf)$")
+        try_compile_only(COMPILER_RT_HAS_${arch}_SYNC
+                         SOURCE  "#if __ARM_ARCH < 6
+                                  #error DMB is only supported on ARMv6+ !
+                                  #endif
+                                  int main(void) { return 0; }")
+        if(NOT COMPILER_RT_HAS_${arch}_SYNC)
+          list(REMOVE_ITEM ${arch}_SOURCES ${arm_sync_SOURCES})
+        endif()
+      endif()
       # For ARM archs, exclude any VFP builtins if VFP is not supported
       if (${arch} MATCHES "^(arm|armhf|armv7|armv7s|armv7k|armv7m|armv7em|armv8m.main|armv8.1m.main)$")
         string(REPLACE ";" " " _TARGET_${arch}_CFLAGS "${TARGET_${arch}_CFLAGS}")
