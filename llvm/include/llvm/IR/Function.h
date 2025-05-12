@@ -296,11 +296,11 @@ public:
     }
   }
 
-  enum ProfileCountType { PCT_Real, PCT_Synthetic };
+  enum ProfileCountType { PCT_Real, PCT_Pseudo };
 
   /// Class to represent profile counts.
   ///
-  /// This class represents both real and synthetic profile counts.
+  /// This class represents both real and supplementary profile counts.
   class ProfileCount {
   private:
     uint64_t Count = 0;
@@ -311,7 +311,7 @@ public:
         : Count(Count), PCT(PCT) {}
     uint64_t getCount() const { return Count; }
     ProfileCountType getType() const { return PCT; }
-    bool isSynthetic() const { return PCT == PCT_Synthetic; }
+    bool isSynthetic() const { return PCT == PCT_Pseudo; }
   };
 
   /// Set the entry count for this function.
