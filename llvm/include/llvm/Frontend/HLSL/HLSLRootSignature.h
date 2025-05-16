@@ -169,6 +169,8 @@ struct DescriptorTableClause {
 struct StaticSampler {
   Register Reg;
   TextureAddressMode AddressU = TextureAddressMode::Wrap;
+  TextureAddressMode AddressV = TextureAddressMode::Wrap;
+  TextureAddressMode AddressW = TextureAddressMode::Wrap;
   float MipLODBias = 0.f;
   uint32_t MaxAnisotropy = 16;
   float MinLOD = 0.f;
