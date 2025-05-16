@@ -267,7 +267,6 @@ TEST_F(ParseHLSLRootSignatureTest, ValidParseStaticSamplerTest) {
   ASSERT_EQ(std::get<StaticSampler>(Elem).MinLOD, 4.2f);
   ASSERT_EQ(std::get<StaticSampler>(Elem).MaxLOD, 9000.f);
 
-
   ASSERT_TRUE(Consumer->isSatisfied());
 }
 
