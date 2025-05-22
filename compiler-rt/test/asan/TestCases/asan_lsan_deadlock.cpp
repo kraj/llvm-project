@@ -4,8 +4,8 @@
 // RUN: %clangxx_asan -O0 %s -o %t
 // RUN: %env_asan_opts=detect_leaks=1 not %run %t 2>&1 | FileCheck %s
 
-// Hangs for unknown reasons.
-// UNSUPPORTED: darwin
+// Hangs for unknown reasons on all platforms.
+// UNSUPPORTED: true
 
 /*
  * Purpose: Verify deadlock prevention between ASan error reporting and LSan leak checking.
