@@ -76,6 +76,14 @@ Expected<std::unique_ptr<Embedder>> Embedder::create(IR2VecKind Mode,
   return make_error<StringError>("Unknown IR2VecKind", errc::invalid_argument);
 }
 
+Expected<const Embedding &> Embedder::getBBVector(const BasicBlock &BB) const {
+  auto It = BBVecMap.find(&BB);
+  if (It == BBVecMap.end())
+    return createStringError(inconvertibleErrorCode(),
+                             "BB embedding not computed");
+  return It->second;
+}
+
 void Embedder::addVectors(Embedding &Dst, const Embedding &Src) {
   std::transform(Dst.begin(), Dst.end(), Src.begin(), Dst.begin(),
                  std::plus<double>());
@@ -132,17 +140,7 @@ Embedding SymbolicEmbedder::getOperandEmbedding(const Value *Op) const {
 
 #undef RETURN_LOOKUP_IF
 
-void SymbolicEmbedder::computeEmbeddings() {
-  if (F.isDeclaration())
-    return;
-  for (const auto &BB : F) {
-    auto [It, WasInserted] = BBVecMap.try_emplace(&BB, computeBB2Vec(BB));
-    assert(WasInserted && "Basic block already exists in the map");
-    addVectors(FuncVector, It->second);
-  }
-}
-
-Embedding SymbolicEmbedder::computeBB2Vec(const BasicBlock &BB) {
+void SymbolicEmbedder::computeEmbeddings(const BasicBlock &BB) {
   Embedding BBVector(Dimension, 0);
 
   for (const auto &I : BB) {
@@ -164,7 +162,16 @@ Embedding SymbolicEmbedder::computeBB2Vec(const BasicBlock &BB) {
     InstVecMap[&I] = InstVector;
     addVectors(BBVector, InstVector);
   }
-  return BBVector;
+  BBVecMap[&BB] = BBVector;
+}
+
+void SymbolicEmbedder::computeEmbeddings() {
+  if (F.isDeclaration())
+    return;
+  for (const auto &BB : F) {
+    computeEmbeddings(BB);
+    addVectors(FuncVector, BBVecMap[&BB]);
+  }
 }
 
 // ==----------------------------------------------------------------------===//

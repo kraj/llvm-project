@@ -105,6 +105,9 @@ public:
   /// the embeddings is specific to the kind of embeddings being computed.
   virtual void computeEmbeddings() = 0;
 
+  /// Function to compute the embedding for a given basic block.
+  virtual void computeEmbeddings(const BasicBlock &BB) = 0;
+
   /// Factory method to create an Embedder object.
   static Expected<std::unique_ptr<Embedder>> create(IR2VecKind Mode,
                                                     const Function &F,
@@ -117,6 +120,9 @@ public:
   /// Returns a map containing basic block and the corresponding embeddings.
   const BBEmbeddingsMap &getBBVecMap() const { return BBVecMap; }
 
+  /// Returns the embedding for a given basic block.
+  Expected<const Embedding &> getBBVector(const BasicBlock &BB) const;
+
   /// Returns the embedding for the current function.
   const Embedding &getFunctionVector() const { return FuncVector; }
 };
@@ -126,9 +132,6 @@ public:
 /// representations obtained from the Vocabulary.
 class SymbolicEmbedder : public Embedder {
 private:
-  /// Utility function to compute the embedding for a given basic block.
-  Embedding computeBB2Vec(const BasicBlock &BB);
-
   /// Utility function to compute the embedding for a given type.
   Embedding getTypeEmbedding(const Type *Ty) const;
 
@@ -142,6 +145,7 @@ public:
     FuncVector = Embedding(Dimension, 0);
   }
   void computeEmbeddings() override;
+  void computeEmbeddings(const BasicBlock &BB) override;
 };
 
 } // namespace ir2vec
