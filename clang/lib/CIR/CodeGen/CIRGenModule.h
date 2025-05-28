@@ -208,7 +208,7 @@ public:
                                 const clang::FunctionDecl *funcDecl);
 
   mlir::IntegerAttr getSize(CharUnits size) {
-    return builder.getSizeFromCharUnits(&getMLIRContext(), size);
+    return builder.getSizeFromCharUnits(size);
   }
 
   const llvm::Triple &getTriple() const { return target.getTriple(); }
