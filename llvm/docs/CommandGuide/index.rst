@@ -87,6 +87,7 @@ Developer Tools
    llvm-exegesis
    llvm-ifs
    llvm-locstats
+   llvm-mustachespec
    llvm-pdbutil
    llvm-profgen
    llvm-tli-checker

@@ -1,0 +1,108 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// Simple drivers to test the mustache spec found here
+// https://github.com/mustache/
+// It is used to verify that the current implementation conforms to the spec
+// Simply download the spec and pass the test files to the driver
+//
+// Currently Triple Mustache is not supported, so we expect the following spec
+// test to fail:
+//    Triple Mustache
+//    Triple Mustache Integer Interpolation
+//    Triple Mustache Decimal Interpolation
+//    Triple Mustache Null Interpolation
+//    Triple Mustache Context Miss Interpolation
+//    Dotted Names - Triple Mustache Interpolation
+//    Implicit Iterators - Triple Mustache
+//    Triple Mustache - Surrounding Whitespace
+//    Triple Mustache - Standalone
+//    Triple Mustache With Padding
+//    Standalone Indentation
+//    Implicit Iterator - Triple mustache
+//
+// Usage:
+//  mustache path/to/test/file/test.json path/to/test/file/test2.json ...
+//===----------------------------------------------------------------------===//
+
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Error.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Mustache.h"
+#include "llvm/Support/WithColor.h"
+#include <string>
+
+using namespace llvm;
+using namespace llvm::json;
+using namespace llvm::mustache;
+
+cl::list<std::string> InputFiles(cl::Positional, cl::desc("<input files>"),
+                                 cl::OneOrMore);
+
+static ExitOnError ExitOnErr;
+
+void runThroughTest(StringRef InputFile) {
+  outs() << "Running Tests: " << InputFile << "\n";
+  std::unique_ptr<MemoryBuffer> Buffer =
+      ExitOnErr(errorOrToExpected(MemoryBuffer::getFile(InputFile)));
+
+  StringRef FileContent = Buffer->getBuffer();
+  json::Value Json = ExitOnErr(parse(FileContent));
+
+  // Get test
+  Array *Obj = Json.getAsObject()->getArray("tests");
+  size_t Total = 0;
+  size_t Success = 0;
+  for (Value V : *Obj) {
+    Object *TestCase = V.getAsObject();
+    StringRef TemplateStr = TestCase->getString("template").value();
+    StringRef ExpectedStr = TestCase->getString("expected").value();
+    StringRef Name = TestCase->getString("name").value();
+    Value *Data = TestCase->get("data");
+    Value *Partials = TestCase->get("partials");
+
+    if (!Data)
+      continue;
+
+    Template T = Template(TemplateStr);
+    if (Partials) {
+      for (auto &PartialPairs : *Partials->getAsObject()) {
+        const auto &[Partial, Str] = PartialPairs;
+        T.registerPartial(Str.getAsString()->str(), Partial.str());
+      }
+    }
+
+    std::string ActualStr;
+    raw_string_ostream OS(ActualStr);
+    T.render(*Data, OS);
+    if (ExpectedStr == ActualStr) {
+      Success++;
+    } else {
+      llvm::errs() << "Template: " << TemplateStr <<"\n";
+      if (Partials)
+        Partials->print(llvm::errs());
+      llvm::errs() << "JSON Data: "; Data->print(errs()); errs() << "\n";
+      outs() << "Test Failed: " << Name << "\n"
+             << "  Expected: \'" << ExpectedStr << "\'\n"
+             << "  Actual: \'" << ActualStr << "\'\n";
+      llvm::errs() << "==========\n";
+    }
+    Total++;
+  }
+
+  outs() << "Result " << Success << "/" << Total << " succeeded\n";
+}
+
+int main(int argc, char **argv) {
+  ExitOnErr.setBanner(std::string(argv[0]) + " error:");
+  cl::ParseCommandLineOptions(argc, argv);
+  for (const auto &FileName : InputFiles) {
+    runThroughTest(FileName);
+  }
+  return 0;
+}
