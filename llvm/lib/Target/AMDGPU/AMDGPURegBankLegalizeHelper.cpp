@@ -605,17 +605,23 @@ LLT RegBankLegalizeHelper::getBTyFromID(RegBankLLTMappingApplyID ID, LLT Ty) {
   case VgprB32:
   case UniInVgprB32:
     if (Ty == LLT::scalar(32) || Ty == LLT::fixed_vector(2, 16) ||
-        Ty == LLT::pointer(3, 32) || Ty == LLT::pointer(5, 32) ||
-        Ty == LLT::pointer(6, 32))
+        isAnyPtr(Ty, 32))
       return Ty;
     return LLT();
+  case SgprPtr32:
+  case VgprPtr32:
+    return isAnyPtr(Ty, 32) ? Ty : LLT();
+  case SgprPtr64:
+  case VgprPtr64:
+    return isAnyPtr(Ty, 64) ? Ty : LLT();
+  case SgprPtr128:
+  case VgprPtr128:
+    return isAnyPtr(Ty, 128) ? Ty : LLT();
   case SgprB64:
   case VgprB64:
   case UniInVgprB64:
     if (Ty == LLT::scalar(64) || Ty == LLT::fixed_vector(2, 32) ||
-        Ty == LLT::fixed_vector(4, 16) || Ty == LLT::pointer(0, 64) ||
-        Ty == LLT::pointer(1, 64) || Ty == LLT::pointer(4, 64) ||
-        (Ty.isPointer() && Ty.getAddressSpace() > AMDGPUAS::MAX_AMDGPU_ADDRESS))
+        Ty == LLT::fixed_vector(4, 16) || isAnyPtr(Ty, 64))
       return Ty;
     return LLT();
   case SgprB96:
@@ -629,7 +635,7 @@ LLT RegBankLegalizeHelper::getBTyFromID(RegBankLLTMappingApplyID ID, LLT Ty) {
   case VgprB128:
   case UniInVgprB128:
     if (Ty == LLT::scalar(128) || Ty == LLT::fixed_vector(4, 32) ||
-        Ty == LLT::fixed_vector(2, 64))
+        Ty == LLT::fixed_vector(2, 64) || isAnyPtr(Ty, 128))
       return Ty;
     return LLT();
   case SgprB256:
@@ -668,6 +674,9 @@ RegBankLegalizeHelper::getRegBankFromID(RegBankLLTMappingApplyID ID) {
   case SgprP5:
   case SgprP6:
   case SgprP8:
+  case SgprPtr32:
+  case SgprPtr64:
+  case SgprPtr128:
   case SgprV2S16:
   case SgprV2S32:
   case SgprV4S32:
@@ -705,6 +714,9 @@ RegBankLegalizeHelper::getRegBankFromID(RegBankLLTMappingApplyID ID) {
   case VgprP5:
   case VgprP6:
   case VgprP8:
+  case VgprPtr32:
+  case VgprPtr64:
+  case VgprPtr128:
   case VgprV2S16:
   case VgprV2S32:
   case VgprV4S32:
@@ -778,12 +790,18 @@ void RegBankLegalizeHelper::applyMappingDst(
     case SgprB128:
     case SgprB256:
     case SgprB512:
+    case SgprPtr32:
+    case SgprPtr64:
+    case SgprPtr128:
     case VgprB32:
     case VgprB64:
     case VgprB96:
     case VgprB128:
     case VgprB256:
-    case VgprB512: {
+    case VgprB512:
+    case VgprPtr32:
+    case VgprPtr64:
+    case VgprPtr128: {
       assert(Ty == getBTyFromID(MethodIDs[OpIdx], Ty));
       assert(RB == getRegBankFromID(MethodIDs[OpIdx]));
       break;
@@ -892,7 +910,10 @@ void RegBankLegalizeHelper::applyMappingSrc(
     case SgprB96:
     case SgprB128:
     case SgprB256:
-    case SgprB512: {
+    case SgprB512:
+    case SgprPtr32:
+    case SgprPtr64:
+    case SgprPtr128: {
       assert(Ty == getBTyFromID(MethodIDs[i], Ty));
       assert(RB == getRegBankFromID(MethodIDs[i]));
       break;
@@ -926,7 +947,10 @@ void RegBankLegalizeHelper::applyMappingSrc(
     case VgprB96:
     case VgprB128:
     case VgprB256:
-    case VgprB512: {
+    case VgprB512:
+    case VgprPtr32:
+    case VgprPtr64:
+    case VgprPtr128: {
       assert(Ty == getBTyFromID(MethodIDs[i], Ty));
       if (RB != VgprRB) {
         auto CopyToVgpr = B.buildCopy({VgprRB, Ty}, Reg);

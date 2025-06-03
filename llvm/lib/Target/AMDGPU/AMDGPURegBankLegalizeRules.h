@@ -15,6 +15,7 @@
 
 namespace llvm {
 
+class LLT;
 class MachineRegisterInfo;
 class MachineInstr;
 class GCNSubtarget;
@@ -25,6 +26,9 @@ using MachineSSAContext = GenericSSAContext<MachineFunction>;
 using MachineUniformityInfo = GenericUniformityInfo<MachineSSAContext>;
 
 namespace AMDGPU {
+
+/// \returns true if \p Ty is a pointer type with size \p Width.
+bool isAnyPtr(LLT Ty, unsigned Width);
 
 // IDs used to build predicate for RegBankLegalizeRule. Predicate can have one
 // or more IDs and each represents a check for 'uniform or divergent' + LLT or
@@ -62,6 +66,9 @@ enum UniformityLLTOpPredicateID {
   P5,
   P6,
   P8,
+  Ptr32,
+  Ptr64,
+  Ptr128,
 
   UniP0,
   UniP1,
@@ -71,6 +78,9 @@ enum UniformityLLTOpPredicateID {
   UniP5,
   UniP6,
   UniP8,
+  UniPtr32,
+  UniPtr64,
+  UniPtr128,
 
   DivP0,
   DivP1,
@@ -80,6 +90,9 @@ enum UniformityLLTOpPredicateID {
   DivP5,
   DivP6,
   DivP8,
+  DivPtr32,
+  DivPtr64,
+  DivPtr128,
 
   // vectors
   V2S16,
@@ -138,6 +151,9 @@ enum RegBankLLTMappingApplyID {
   SgprP5,
   SgprP6,
   SgprP8,
+  SgprPtr32,
+  SgprPtr64,
+  SgprPtr128,
   SgprV2S16,
   SgprV4S32,
   SgprV2S32,
@@ -161,6 +177,9 @@ enum RegBankLLTMappingApplyID {
   VgprP5,
   VgprP6,
   VgprP8,
+  VgprPtr32,
+  VgprPtr64,
+  VgprPtr128,
   VgprV2S16,
   VgprV2S32,
   VgprB32,
