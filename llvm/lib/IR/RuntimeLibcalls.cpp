@@ -11,6 +11,25 @@
 using namespace llvm;
 using namespace RTLIB;
 
+static cl::opt<bool>
+    HexagonEnableFastMathRuntimeCalls("hexagon-fast-math", cl::Hidden,
+                                      cl::desc("Enable Fast Math processing"));
+
+static void setAArch64LibcallNames(RuntimeLibcallsInfo &Info,
+                                   const Triple &TT) {
+  if (TT.isWindowsArm64EC()) {
+    // FIXME: are there calls we need to exclude from this?
+#define HANDLE_LIBCALL(code, name)                                             \
+  {                                                                            \
+    const char *libcallName = Info.getLibcallName(RTLIB::code);                \
+    if (libcallName && libcallName[0] != '#')                                  \
+      Info.setLibcallName(RTLIB::code, "#" #name);                             \
+  }
+#include "llvm/IR/RuntimeLibcalls.def"
+#undef HANDLE_LIBCALL
+  }
+}
+
 /// Set default libcall names. If a target wants to opt-out of a libcall it
 /// should be placed here.
 void RuntimeLibcallsInfo::initLibcalls(const Triple &TT) {
@@ -248,6 +267,9 @@ void RuntimeLibcallsInfo::initLibcalls(const Triple &TT) {
       setLibcallCallingConv(LC.Op, LC.CC);
     }
   }
+
+  if (TT.getArch() == Triple::ArchType::aarch64)
+    setAArch64LibcallNames(*this, TT);
 
   if (TT.getArch() == Triple::ArchType::avr) {
     // Division rtlib functions (not supported), use divmod functions instead
