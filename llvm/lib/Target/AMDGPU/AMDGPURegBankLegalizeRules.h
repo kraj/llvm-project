@@ -39,16 +39,19 @@ enum UniformityLLTOpPredicateID {
   S16,
   S32,
   S64,
+  S128,
 
   UniS1,
   UniS16,
   UniS32,
   UniS64,
+  UniS128,
 
   DivS1,
   DivS16,
   DivS32,
   DivS64,
+  DivS128,
 
   // pointers
   P0,
@@ -126,6 +129,7 @@ enum RegBankLLTMappingApplyID {
   Sgpr16,
   Sgpr32,
   Sgpr64,
+  Sgpr128,
   SgprP0,
   SgprP1,
   SgprP2,
@@ -148,6 +152,7 @@ enum RegBankLLTMappingApplyID {
   Vgpr16,
   Vgpr32,
   Vgpr64,
+  Vgpr128,
   VgprP0,
   VgprP1,
   VgprP2,
