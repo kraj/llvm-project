@@ -165,6 +165,8 @@ enum RegBankLLTMappingApplyID {
   Sgpr32Trunc,
 
   // Src only modifiers: waterfalls, extends
+  Sgpr32_W,
+  SgprV4S32_W,
   Sgpr32AExt,
   Sgpr32AExtBoolInReg,
   Sgpr32SExt,
