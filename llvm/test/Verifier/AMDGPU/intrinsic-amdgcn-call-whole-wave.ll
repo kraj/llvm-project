@@ -51,3 +51,10 @@ define amdgpu_cs void @no_direct_calls_to_whole_wave(i32 %x) {
 
   ret void
 }
+
+define amdgpu_cs void @no_direct_calls_to_whole_wave(i32 %x) {
+  ; CHECK: calling convention does not permit calls
+  %whatever = call i32(i1, i32, i32) @good_callee(i1 poison, i32 %x, i32 %x)
+
+  ret void
+}
