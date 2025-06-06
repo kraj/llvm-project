@@ -90,10 +90,11 @@ struct RuntimeLibcallsInfo {
 
 private:
   /// Stores the name each libcall.
-  const char *LibcallRoutineNames[RTLIB::UNKNOWN_LIBCALL + 1];
+  const char *LibcallRoutineNames[RTLIB::UNKNOWN_LIBCALL + 1] = {nullptr};
 
   /// Stores the CallingConv that should be used for each libcall.
-  CallingConv::ID LibcallCallingConvs[RTLIB::UNKNOWN_LIBCALL];
+  CallingConv::ID LibcallCallingConvs[RTLIB::UNKNOWN_LIBCALL] = {
+      CallingConv::C};
 
   /// The condition type that should be used to test the result of each of the
   /// soft floating-point comparison libcall against integer zero.
@@ -101,7 +102,8 @@ private:
   // FIXME: This is only relevant for the handful of floating-point comparison
   // runtime calls; it's excessive to have a table entry for every single
   // opcode.
-  CmpInst::Predicate SoftFloatCompareLibcallPredicates[RTLIB::UNKNOWN_LIBCALL];
+  CmpInst::Predicate SoftFloatCompareLibcallPredicates[RTLIB::UNKNOWN_LIBCALL] =
+      {CmpInst::BAD_ICMP_PREDICATE};
 
   static bool darwinHasSinCosStret(const Triple &TT) {
     assert(TT.isOSDarwin() && "should be called with darwin triple");
