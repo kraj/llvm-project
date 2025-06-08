@@ -22931,9 +22931,8 @@ SDValue DAGCombiner::visitINSERT_VECTOR_ELT(SDNode *N) {
                                           IndexC->getZExtValue());
       if (DAG.isGuaranteedNotToBePoison(InVec, EltMask))
         return InVec;
-    } else if (DAG.isGuaranteedNotToBePoison(InVec)) {
-      return InVec;
     }
+    return DAG.getFreeze(InVec);
   }
 
   if (!IndexC)
@@ -27380,8 +27379,8 @@ SDValue DAGCombiner::visitINSERT_SUBVECTOR(SDNode *N) {
                                         InsIdx + SubVecNumElts);
       if (DAG.isGuaranteedNotToBePoison(N0, EltMask))
         return N0;
-    } else if (DAG.isGuaranteedNotToBePoison(N0))
-      return N0;
+    }
+    return DAG.getFreeze(N0);
   }
 
   // If this is an insert of an extracted vector into an undef/poison vector, we

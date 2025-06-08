@@ -84,7 +84,6 @@ define <16 x i8> @test_insert_v16i8_insert_2_undef_base_skip8(i32 %a0) {
 ; CHECK-NEXT:    lsr w8, w0, #5
 ; CHECK-NEXT:    dup.16b v0, w8
 ; CHECK-NEXT:    mov.b v0[5], wzr
-; CHECK-NEXT:    mov.b v0[8], w8
 ; CHECK-NEXT:    mov.b v0[9], wzr
 ; CHECK-NEXT:    ret
   %a1 = lshr exact i32 %a0, 5
@@ -145,7 +144,6 @@ define <16 x i8> @test_insert_v16i8_insert_2_undef_base_different_valeus_skip8(i
 ; CHECK-NEXT:    mov.b v0[2], w8
 ; CHECK-NEXT:    mov.b v0[5], wzr
 ; CHECK-NEXT:    mov.b v0[7], w8
-; CHECK-NEXT:    mov.b v0[8], w8
 ; CHECK-NEXT:    mov.b v0[9], wzr
 ; CHECK-NEXT:    mov.b v0[12], w8
 ; CHECK-NEXT:    mov.b v0[15], w8
