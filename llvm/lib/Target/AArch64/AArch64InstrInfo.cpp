@@ -7344,7 +7344,7 @@ static bool getLoadPatterns(MachineInstr &Root,
   auto *CurrInstr = MRI.getUniqueVRegDef(Root.getOperand(1).getReg());
   SmallSet<unsigned, 4> RemainingLanes({1, 2});
   while (RemainingLanes.begin() != RemainingLanes.end() &&
-         Root.getOpcode() == AArch64::LD1i32 &&
+         CurrInstr->getOpcode() == AArch64::LD1i32 &&
          MRI.hasOneNonDBGUse(CurrInstr->getOperand(0).getReg())) {
     RemainingLanes.erase(CurrInstr->getOperand(2).getImm());
     CurrInstr = MRI.getUniqueVRegDef(CurrInstr->getOperand(1).getReg());

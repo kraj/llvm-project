@@ -34,3 +34,19 @@ body:             |
     %9:fpr128 = LD1i32 %8, 3, killed %4
     $q0 = COPY %9
     RET_ReallyLR implicit $q0
+
+---
+name:            negative_pattern
+body:             |
+  bb.0.entry:
+    liveins: $x0, $x1
+
+    ; CHECK-LABEL: name: negative_pattern
+    ; CHECK:      [[LD1:%.*]]:fpr128 = LDRQui $x1, 0
+    ; CHECK-NEXT: [[LD2:%.*]]:fpr128 = LD1i32 [[LD1]]
+  
+    %0:gpr64common = COPY $x0
+    %1:fpr128 = LDRQui $x1, 0
+    %2:fpr128 = LD1i32 %1, 3, %0
+    $q0 = COPY %2
+    RET_ReallyLR implicit $q0
