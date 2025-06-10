@@ -7358,12 +7358,12 @@ static bool getLoadPatterns(MachineInstr &Root,
     return false;
 
   // Verify that the subreg to reg loads an i32 into the first lane.
-  auto Lane0Load = CurrInstr->getOperand(2).getReg();
-  if (TRI->getRegSizeInBits(Lane0Load, MRI) != 32)
+  auto Lane0LoadReg = CurrInstr->getOperand(2).getReg();
+  if (TRI->getRegSizeInBits(Lane0LoadReg, MRI) != 32)
     return false;
 
   // Verify that it also has a single non debug use.
-  if (!MRI.hasOneNonDBGUse(Lane0Load))
+  if (!MRI.hasOneNonDBGUse(Lane0LoadReg))
     return false;
 
   Patterns.push_back(AArch64MachineCombinerPattern::SPLIT_LD);
@@ -8747,20 +8747,9 @@ void AArch64InstrInfo::genAlternativeCodeSequence(
         MRI.getUniqueVRegDef(Lane2Load->getOperand(1).getReg());
     MachineInstr *SubregToReg =
         MRI.getUniqueVRegDef(Lane1Load->getOperand(1).getReg());
-    MachineInstr *Lane0Load =
-        MRI.getUniqueVRegDef(SubregToReg->getOperand(2).getReg());
     const TargetRegisterClass *FPR128RegClass =
         MRI.getRegClass(Root.getOperand(0).getReg());
 
-    // Some helpful lambdas to increase code reuse.
-    auto CreateImplicitDef = [&]() {
-      auto VirtReg = MRI.createVirtualRegister(FPR128RegClass);
-      auto DefInstr = BuildMI(MF, MIMetadata(Root),
-                              TII->get(TargetOpcode::IMPLICIT_DEF), VirtReg);
-      InstrIdxForVirtReg.insert(std::make_pair(VirtReg, InsInstrs.size()));
-      InsInstrs.push_back(DefInstr);
-      return VirtReg;
-    };
     auto LoadLaneToRegister = [&](MachineInstr *OriginalInstr,
                                   Register SrcRegister, unsigned Lane,
                                   Register OffsetRegister) {
@@ -8775,16 +8764,16 @@ void AArch64InstrInfo::genAlternativeCodeSequence(
       InsInstrs.push_back(LoadIndexIntoRegister);
       return NewRegister;
     };
-    // To rewrite the pattern, we first need define new registers to
-    // load our results into.
-    Register ImplicitDefForReg0 = CreateImplicitDef();
-    Register ImplicitDefForReg1 = CreateImplicitDef();
 
-    // Load index 0 into register 0 lane 0.
-    Register Index0LoadReg = LoadLaneToRegister(
-        Lane0Load, ImplicitDefForReg0, 0, Lane0Load->getOperand(2).getReg());
-    DelInstrs.push_back(Lane0Load);
-    DelInstrs.push_back(SubregToReg);
+    // To rewrite the pattern, we first need define a new register to
+    // load our results into.
+    auto ImplicitDefForReg1 = MRI.createVirtualRegister(FPR128RegClass);
+    auto DefInstr =
+        BuildMI(MF, MIMetadata(Root), TII->get(TargetOpcode::IMPLICIT_DEF),
+                ImplicitDefForReg1);
+    InstrIdxForVirtReg.insert(
+        std::make_pair(ImplicitDefForReg1, InsInstrs.size()));
+    InsInstrs.push_back(DefInstr);
 
     // Load index 1 into register 1 lane 0.
     Register Index1LoadReg = LoadLaneToRegister(
@@ -8792,8 +8781,9 @@ void AArch64InstrInfo::genAlternativeCodeSequence(
     DelInstrs.push_back(Lane1Load);
 
     // Load index 2 into register 0 lane 1.
-    auto Index2LoadReg = LoadLaneToRegister(Lane2Load, Index0LoadReg, 1,
-                                            Lane2Load->getOperand(3).getReg());
+    auto Index2LoadReg =
+        LoadLaneToRegister(Lane2Load, SubregToReg->getOperand(0).getReg(), 1,
+                           Lane2Load->getOperand(3).getReg());
     DelInstrs.push_back(Lane2Load);
 
     // Load index 3 into register 1 lane 1.
