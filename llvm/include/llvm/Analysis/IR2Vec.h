@@ -239,7 +239,7 @@ class IR2VecVocabAnalysis : public AnalysisInfoMixin<IR2VecVocabAnalysis> {
 public:
   static AnalysisKey Key;
   IR2VecVocabAnalysis() = default;
-  explicit IR2VecVocabAnalysis(ir2vec::Vocab &&Vocab);
+  explicit IR2VecVocabAnalysis(ir2vec::Vocab Vocab);
   using Result = IR2VecVocabResult;
   Result run(Module &M, ModuleAnalysisManager &MAM);
 };

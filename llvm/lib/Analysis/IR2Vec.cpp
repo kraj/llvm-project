@@ -294,8 +294,8 @@ Error IR2VecVocabAnalysis::readVocabulary() {
   return Error::success();
 }
 
-IR2VecVocabAnalysis::IR2VecVocabAnalysis(Vocab &&Vocabulary)
-    : Vocabulary(std::move(Vocabulary)) {}
+IR2VecVocabAnalysis::IR2VecVocabAnalysis(Vocab Vocabulary)
+    : Vocabulary(Vocabulary) {}
 
 void IR2VecVocabAnalysis::emitError(Error Err, LLVMContext &Ctx) {
   handleAllErrors(std::move(Err), [&](const ErrorInfoBase &EI) {

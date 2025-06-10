@@ -331,6 +331,9 @@ public:
   };
 
   Result run(Module &M, ModuleAnalysisManager &MAM) { return Result(M, MAM); }
+
+private:
+  static bool initializeIR2VecVocab(Module &M, ModuleAnalysisManager &MAM);
 };
 
 /// Printer pass for the InlineAdvisorAnalysis results.

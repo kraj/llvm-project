@@ -142,6 +142,10 @@ enum class FeatureIndex : size_t {
   INLINE_FEATURE_ITERATOR(POPULATE_INDICES)
 #undef POPULATE_INDICES
 
+// IR2Vec embeddings
+  callee_embedding,
+  caller_embedding,
+
   NumberOfFeatures
 };
 // clang-format on
@@ -154,7 +158,7 @@ inlineCostFeatureToMlFeature(InlineCostFeatureIndex Feature) {
 constexpr size_t NumberOfFeatures =
     static_cast<size_t>(FeatureIndex::NumberOfFeatures);
 
-LLVM_ABI extern const std::vector<TensorSpec> FeatureMap;
+LLVM_ABI extern std::vector<TensorSpec> FeatureMap;
 
 LLVM_ABI extern const char *const DecisionName;
 LLVM_ABI extern const TensorSpec InlineDecisionSpec;
