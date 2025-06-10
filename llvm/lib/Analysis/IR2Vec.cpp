@@ -13,7 +13,10 @@
 
 #include "llvm/Analysis/IR2Vec.h"
 
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/IR/CFG.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Support/Debug.h"
@@ -193,7 +196,8 @@ Embedding SymbolicEmbedder::getOperandEmbedding(const Value *Op) const {
 void SymbolicEmbedder::computeEmbeddings(const BasicBlock &BB) const {
   Embedding BBVector(Dimension, 0);
 
-  for (const auto &I : BB) {
+  // We consider only the non-debug and non-pseudo instructions
+  for (const auto &I : BB.instructionsWithoutDebug()) {
     Embedding InstVector(Dimension, 0);
 
     const auto OpcVec = lookupVocab(I.getOpcodeName());
@@ -218,9 +222,12 @@ void SymbolicEmbedder::computeEmbeddings(const BasicBlock &BB) const {
 void SymbolicEmbedder::computeEmbeddings() const {
   if (F.isDeclaration())
     return;
-  for (const auto &BB : F) {
-    computeEmbeddings(BB);
-    FuncVector += BBVecMap[&BB];
+
+  // Consider only the basic blocks that are reachable from entry
+  ReversePostOrderTraversal<const Function *> RPOT(&F);
+  for (const BasicBlock *BB : RPOT) {
+    computeEmbeddings(*BB);
+    FuncVector += BBVecMap[BB];
   }
 }
 
