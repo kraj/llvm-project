@@ -20,6 +20,7 @@
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/Utils/Local.h"
 #include "llvm/Analysis/VectorUtils.h"
+#include "llvm/IR/CmpPredicate.h"
 #include "llvm/IR/ConstantRange.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/InstrTypes.h"
@@ -1298,6 +1299,23 @@ Instruction *InstCombinerImpl::foldICmpWithZero(ICmpInst &Cmp) {
     // eq/ne (mul X, Y)) with (icmp eq/ne X/Y) and if X/Y is known non-zero that
     // will fold to a constant elsewhere.
   }
+
+  // (X >> C) + ((X & ((1 << C) - 1)) != 0) == 0 -> X == 0
+  if (Pred == ICmpInst::ICMP_EQ) {
+    Value *X;
+    const APInt *C1, *C2;
+    CmpPredicate PredNE;
+    if (match(Cmp.getOperand(0),
+              m_OneUse(
+                  m_Add(m_LShr(m_Value(X), m_APInt(C1)),
+                        m_ZExt(m_ICmp(PredNE, m_And(m_Deferred(X), m_APInt(C2)),
+                                      m_Zero()))))) &&
+        PredNE == CmpInst::ICMP_NE &&
+        *C2 == APInt::getLowBitsSet(C2->getBitWidth(), C1->getZExtValue()))
+      return new ICmpInst(ICmpInst::ICMP_EQ, X,
+                          ConstantInt::getNullValue(X->getType()));
+  }
+
   return nullptr;
 }
 
