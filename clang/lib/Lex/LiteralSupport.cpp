@@ -1846,7 +1846,7 @@ CharLiteralParser::CharLiteralParser(const char *begin, const char *end,
 
   llvm::TextEncodingConverter *Converter = nullptr;
   if (!isUTFLiteral(Kind) && LiteralConv)
-    Converter = LiteralConv->getConverter(ToExecCharset);
+    Converter = LiteralConv->getConverter(ToExecEncoding);
 
   while (begin != end) {
     // Is this a span of non-escape characters?
