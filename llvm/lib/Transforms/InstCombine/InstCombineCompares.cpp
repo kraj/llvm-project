@@ -1300,17 +1300,16 @@ Instruction *InstCombinerImpl::foldICmpWithZero(ICmpInst &Cmp) {
     // will fold to a constant elsewhere.
   }
 
-  // (X >> C) + ((X & ((1 << C) - 1)) != 0) == 0 -> X == 0
-  if (Pred == ICmpInst::ICMP_EQ) {
+  // (X >> C) | ((X & ((1 << C) - 1)) != 0) == 0 -> X == 0
+  if (ICmpInst::isEquality(Pred)) {
     Value *X;
     const APInt *C1, *C2;
-    CmpPredicate PredNE;
     if (match(Cmp.getOperand(0),
-              m_OneUse(
-                  m_Add(m_LShr(m_Value(X), m_APInt(C1)),
-                        m_ZExt(m_ICmp(PredNE, m_And(m_Deferred(X), m_APInt(C2)),
-                                      m_Zero()))))) &&
-        PredNE == CmpInst::ICMP_NE &&
+              m_OneUse(m_c_Or(
+                  m_LShr(m_Value(X), m_APInt(C1)),
+                  m_ZExt(m_SpecificICmp(ICmpInst::ICMP_NE,
+                                        m_And(m_Deferred(X), m_APInt(C2)),
+                                        m_Zero()))))) &&
         *C2 == APInt::getLowBitsSet(C2->getBitWidth(), C1->getZExtValue()))
       return new ICmpInst(ICmpInst::ICMP_EQ, X,
                           ConstantInt::getNullValue(X->getType()));
