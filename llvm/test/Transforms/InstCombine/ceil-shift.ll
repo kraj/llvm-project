@@ -4,46 +4,81 @@
 define i1 @ceil_shift4(i32 %arg0) {
 ; CHECK-LABEL: define i1 @ceil_shift4(
 ; CHECK-SAME: i32 [[ARG0:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[ARG0]], 0
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr i32 [[ARG0]], 4
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ARG0]], 15
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne i32 [[REM]], 0
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext i1 [[HAS_REM]] to i32
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or i32 [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[QUOT_OR_REM]], 0
 ; CHECK-NEXT:    ret i1 [[TMP1]]
 ;
-  %1 = lshr i32 %arg0, 4
-  %2 = and i32 %arg0, 15
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 4
+  %rem = and i32 %arg0, 15
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %is_zero = icmp eq i32 %quot_or_rem, 0
+  ret i1 %is_zero
+}
+
+define i1 @ceil_shift4_add(i32 %arg0) {
+; CHECK-LABEL: define i1 @ceil_shift4_add(
+; CHECK-SAME: i32 [[ARG0:%.*]]) {
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr i32 [[ARG0]], 4
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ARG0]], 15
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne i32 [[REM]], 0
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext i1 [[HAS_REM]] to i32
+; CHECK-NEXT:    [[TMP1:%.*]] = or i32 [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[TMP1]], 0
+; CHECK-NEXT:    ret i1 [[TMP6]]
+;
+  %quot = lshr i32 %arg0, 4
+  %rem = and i32 %arg0, 15
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %ceil = add i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %ceil, 0
+  ret i1 %res
 }
 
 define i1 @ceil_shift6(i32 %arg0) {
 ; CHECK-LABEL: define i1 @ceil_shift6(
 ; CHECK-SAME: i32 [[ARG0:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[ARG0]], 0
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr i32 [[ARG0]], 6
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ARG0]], 63
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne i32 [[REM]], 0
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext i1 [[HAS_REM]] to i32
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or i32 [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[QUOT_OR_REM]], 0
 ; CHECK-NEXT:    ret i1 [[TMP1]]
 ;
-  %1 = lshr i32 %arg0, 6
-  %2 = and i32 %arg0, 63
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 6
+  %rem = and i32 %arg0, 63
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
 
 define i1 @ceil_shift11(i32 %arg0) {
 ; CHECK-LABEL: define i1 @ceil_shift11(
 ; CHECK-SAME: i32 [[ARG0:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[ARG0]], 0
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr i32 [[ARG0]], 11
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ARG0]], 2047
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne i32 [[REM]], 0
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext i1 [[HAS_REM]] to i32
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or i32 [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[QUOT_OR_REM]], 0
 ; CHECK-NEXT:    ret i1 [[TMP1]]
 ;
-  %1 = lshr i32 %arg0, 11
-  %2 = and i32 %arg0, 2047
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 11
+  %rem = and i32 %arg0, 2047
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
 
 define i1 @ceil_shift0(i32 %arg0) {
@@ -52,13 +87,33 @@ define i1 @ceil_shift0(i32 %arg0) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[ARG0]], 0
 ; CHECK-NEXT:    ret i1 [[TMP1]]
 ;
-  %1 = lshr i32 %arg0, 0
-  %2 = and i32 %arg0, 0
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 0
+  %rem = and i32 %arg0, 0
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
+}
+
+define i1 @ceil_shift4_comm(i32 %arg0) {
+; CHECK-LABEL: define i1 @ceil_shift4_comm(
+; CHECK-SAME: i32 [[ARG0:%.*]]) {
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr i32 [[ARG0]], 4
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ARG0]], 15
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne i32 [[REM]], 0
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext i1 [[HAS_REM]] to i32
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or i32 [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[QUOT_OR_REM]], 0
+; CHECK-NEXT:    ret i1 [[TMP6]]
+;
+  %quot = lshr i32 %arg0, 4
+  %rem = and i32 %arg0, 15
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %zext_has_rem, %quot
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
 
 declare void @use(i32)
@@ -68,17 +123,21 @@ define i1 @ceil_shift4_used_1(i32 %arg0) {
 ; CHECK-SAME: i32 [[ARG0:%.*]]) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = lshr i32 [[ARG0]], 4
 ; CHECK-NEXT:    call void @use(i32 [[TMP1]])
-; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[ARG0]], 0
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ARG0]], 15
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne i32 [[REM]], 0
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext i1 [[HAS_REM]] to i32
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or i32 [[TMP1]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[QUOT_OR_REM]], 0
 ; CHECK-NEXT:    ret i1 [[TMP6]]
 ;
-  %1 = lshr i32 %arg0, 4
-  call void @use(i32 %1)
-  %2 = and i32 %arg0, 15
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 4
+  call void @use(i32 %quot)
+  %rem = and i32 %arg0, 15
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
 
 define i1 @ceil_shift4_used_5(i32 %arg0) {
@@ -88,49 +147,59 @@ define i1 @ceil_shift4_used_5(i32 %arg0) {
 ; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[ARG0]], 15
 ; CHECK-NEXT:    [[TMP3:%.*]] = icmp ne i32 [[TMP2]], 0
 ; CHECK-NEXT:    [[TMP4:%.*]] = zext i1 [[TMP3]] to i32
-; CHECK-NEXT:    [[TMP5:%.*]] = add nuw nsw i32 [[TMP1]], [[TMP4]]
+; CHECK-NEXT:    [[TMP5:%.*]] = or i32 [[TMP1]], [[TMP4]]
 ; CHECK-NEXT:    call void @use(i32 [[TMP5]])
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[TMP5]], 0
 ; CHECK-NEXT:    ret i1 [[TMP6]]
 ;
-  %1 = lshr i32 %arg0, 4
-  %2 = and i32 %arg0, 15
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  call void @use(i32 %5)
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 4
+  %rem = and i32 %arg0, 15
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  call void @use(i32 %quot_or_rem)
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
 
 define <4 x i1> @ceil_shift4_v4i32(<4 x i32> %arg0) {
 ; CHECK-LABEL: define <4 x i1> @ceil_shift4_v4i32(
 ; CHECK-SAME: <4 x i32> [[ARG0:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <4 x i32> [[ARG0]], zeroinitializer
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr <4 x i32> [[ARG0]], splat (i32 16)
+; CHECK-NEXT:    [[REM:%.*]] = and <4 x i32> [[ARG0]], splat (i32 65535)
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne <4 x i32> [[REM]], zeroinitializer
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext <4 x i1> [[HAS_REM]] to <4 x i32>
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or <4 x i32> [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <4 x i32> [[QUOT_OR_REM]], zeroinitializer
 ; CHECK-NEXT:    ret <4 x i1> [[TMP1]]
 ;
-  %1 = lshr <4 x i32> %arg0, splat (i32 16)
-  %2 = and <4 x i32> %arg0, splat (i32 65535)
-  %3 = icmp ne <4 x i32> %2, zeroinitializer
-  %4 = zext <4 x i1> %3 to <4 x i32>
-  %5 = add <4 x i32> %1, %4
-  %6 = icmp eq <4 x i32> %5, zeroinitializer
-  ret <4 x i1> %6
+  %quot = lshr <4 x i32> %arg0, splat (i32 16)
+  %rem = and <4 x i32> %arg0, splat (i32 65535)
+  %has_rem = icmp ne <4 x i32> %rem, zeroinitializer
+  %zext_has_rem = zext <4 x i1> %has_rem to <4 x i32>
+  %quot_or_rem = or <4 x i32> %quot, %zext_has_rem
+  %res = icmp eq <4 x i32> %quot_or_rem, zeroinitializer
+  ret <4 x i1> %res
 }
 
 define <8 x i1> @ceil_shift4_v8i16(<8 x i16> %arg0) {
 ; CHECK-LABEL: define <8 x i1> @ceil_shift4_v8i16(
 ; CHECK-SAME: <8 x i16> [[ARG0:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <8 x i16> [[ARG0]], zeroinitializer
+; CHECK-NEXT:    [[QUOT:%.*]] = lshr <8 x i16> [[ARG0]], splat (i16 4)
+; CHECK-NEXT:    [[REM:%.*]] = and <8 x i16> [[ARG0]], splat (i16 15)
+; CHECK-NEXT:    [[HAS_REM:%.*]] = icmp ne <8 x i16> [[REM]], zeroinitializer
+; CHECK-NEXT:    [[ZEXT_HAS_REM:%.*]] = zext <8 x i1> [[HAS_REM]] to <8 x i16>
+; CHECK-NEXT:    [[QUOT_OR_REM:%.*]] = or <8 x i16> [[QUOT]], [[ZEXT_HAS_REM]]
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <8 x i16> [[QUOT_OR_REM]], zeroinitializer
 ; CHECK-NEXT:    ret <8 x i1> [[TMP1]]
 ;
-  %1 = lshr <8 x i16> %arg0, splat (i16 4)
-  %2 = and <8 x i16> %arg0, splat (i16 15)
-  %3 = icmp ne <8 x i16> %2, zeroinitializer
-  %4 = zext <8 x i1> %3 to <8 x i16>
-  %5 = add <8 x i16> %1, %4
-  %6 = icmp eq <8 x i16> %5, zeroinitializer
-  ret <8 x i1> %6
+  %quot = lshr <8 x i16> %arg0, splat (i16 4)
+  %rem = and <8 x i16> %arg0, splat (i16 15)
+  %has_rem = icmp ne <8 x i16> %rem, zeroinitializer
+  %zext_has_rem = zext <8 x i1> %has_rem to <8 x i16>
+  %quot_or_rem = or <8 x i16> %quot, %zext_has_rem
+  %res = icmp eq <8 x i16> %quot_or_rem, zeroinitializer
+  ret <8 x i1> %res
 }
 
 ; negative tests
@@ -146,13 +215,13 @@ define i1 @ceil_shift_not_mask_1(i32 %arg0) {
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[TMP5]], 0
 ; CHECK-NEXT:    ret i1 [[TMP6]]
 ;
-  %1 = lshr i32 %arg0, 4
-  %2 = and i32 %arg0, 31
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 4
+  %rem = and i32 %arg0, 31
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
 
 define i1 @ceil_shift_not_mask_2(i32 %arg0) {
@@ -166,11 +235,11 @@ define i1 @ceil_shift_not_mask_2(i32 %arg0) {
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp eq i32 [[TMP5]], 0
 ; CHECK-NEXT:    ret i1 [[TMP6]]
 ;
-  %1 = lshr i32 %arg0, 5
-  %2 = and i32 %arg0, 15
-  %3 = icmp ne i32 %2, 0
-  %4 = zext i1 %3 to i32
-  %5 = add i32 %1, %4
-  %6 = icmp eq i32 %5, 0
-  ret i1 %6
+  %quot = lshr i32 %arg0, 5
+  %rem = and i32 %arg0, 15
+  %has_rem = icmp ne i32 %rem, 0
+  %zext_has_rem = zext i1 %has_rem to i32
+  %quot_or_rem = or i32 %quot, %zext_has_rem
+  %res = icmp eq i32 %quot_or_rem, 0
+  ret i1 %res
 }
