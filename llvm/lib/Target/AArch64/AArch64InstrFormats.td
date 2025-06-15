@@ -3459,6 +3459,10 @@ multiclass LogicalReg<bits<2> opc, bit N, string mnemonic,
   let isReMaterializable = 1, isAsCheapAsAMove = 1, AddedComplexity = AddedComplexityVal in {
   def Wrr : BaseLogicalRegPseudo<GPR32, OpNode>;
   def Xrr : BaseLogicalRegPseudo<GPR64, OpNode>;
+
+  def WHrr : BaseLogicalRegPseudo<FPR16, OpNode> {
+    let Predicates = [HasFullFP16];
+  }
   }
 
   def Wrs : BaseLogicalSReg<opc, N, GPR32, logical_shifted_reg32, mnemonic,
