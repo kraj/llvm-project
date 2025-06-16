@@ -248,6 +248,26 @@ static void serializeCommonChildren(const ScopeChildren &Children,
   }
 }
 
+template <typename T>
+static void serializeArray(const std::vector<T> &Records, Object &Obj,
+                           const std::string &Key) {
+  json::Value RecordsArray = Array();
+  auto &RecordsArrayRef = *RecordsArray.getAsArray();
+  RecordsArrayRef.reserve(Records.size());
+  for (const auto &Item : Records) {
+    json::Value ItemVal = Object();
+    auto &ItemObj = *ItemVal.getAsObject();
+    serializeInfo(Item, ItemObj);
+    RecordsArrayRef.push_back(ItemVal);
+  }
+  Obj[Key] = RecordsArray;
+}
+
+static void serializeInfo(const ConstraintInfo &I, Object &Obj) {
+  serializeReference(I.ConceptRef, Obj);
+  Obj["Expression"] = I.Expression;
+}
+
 static void serializeInfo(const TemplateInfo &Template, Object &Obj) {
   json::Value TemplateVal = Object();
   auto &TemplateObj = *TemplateVal.getAsObject();
@@ -277,7 +297,19 @@ static void serializeInfo(const TemplateInfo &Template, Object &Obj) {
     TemplateObj["Parameters"] = ParamsArray;
   }
 
+  if (!Template.Constraints.empty()) {
+    serializeArray(Template.Constraints, TemplateObj, "Constraints");
+  }
+
   Obj["Template"] = TemplateVal;
+}
+
+static void serializeInfo(const ConceptInfo &I, Object &Obj,
+                          std::optional<StringRef> RepositoryUrl) {
+  serializeCommonAttributes(I, Obj, RepositoryUrl);
+  Obj["IsType"] = I.IsType;
+  Obj["ConstraintExpression"] = I.ConstraintExpression;
+  serializeInfo(I.Template, Obj);
 }
 
 static void serializeInfo(const TypeInfo &I, Object &Obj) {
@@ -470,6 +502,19 @@ static void serializeInfo(const NamespaceInfo &I, json::Object &Obj,
     Obj["Functions"] = FunctionsArray;
   }
 
+  if (!I.Children.Concepts.empty()) {
+    json::Value ConceptsArray = Array();
+    auto &ConceptsArrayRef = *ConceptsArray.getAsArray();
+    ConceptsArrayRef.reserve(I.Children.Concepts.size());
+    for (const auto &Concept : I.Children.Concepts) {
+      json::Value ConceptVal = Object();
+      auto &ConceptObj = *ConceptVal.getAsObject();
+      serializeInfo(Concept, ConceptObj, RepositoryUrl);
+      ConceptsArrayRef.push_back(ConceptVal);
+    }
+    Obj["Concepts"] = ConceptsArray;
+  }
+
   serializeCommonChildren(I.Children, Obj, RepositoryUrl);
 }
 
@@ -520,6 +565,7 @@ Error JSONGenerator::generateDocForInfo(Info *I, raw_ostream &OS,
   case InfoType::IT_record:
     serializeInfo(*static_cast<RecordInfo *>(I), Obj, CDCtx.RepositoryUrl);
     break;
+  case InfoType::IT_concept:
   case InfoType::IT_enum:
   case InfoType::IT_function:
   case InfoType::IT_typedef:
