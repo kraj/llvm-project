@@ -11,6 +11,7 @@
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/UB/IR/UBOps.h"
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
+#include "mlir/IR/AffineExpr.h"
 #include "mlir/IR/AffineExprVisitor.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/IR/IntegerSet.h"
@@ -26,7 +27,9 @@
 #include "llvm/ADT/SmallVectorExtras.h"
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/LogicalResult.h"
 #include "llvm/Support/MathExtras.h"
+#include <limits>
 #include <numeric>
 #include <optional>
 
@@ -1042,6 +1045,35 @@ simplifyMapWithOperands(AffineMap &map, ArrayRef<Value> operands) {
                        map.getContext());
 }
 
+/// If dimOrSym comes from an affine_min(..., constant), detect the pattern
+///   d_k.ceildiv(constant) * constant
+/// which folds to `constant` iff the affine_min is guaranteed to be
+/// nonnegative.
+static LogicalResult
+replaceSimpleStaticBoundingBoxExpression(AffineMinOp minOp, AffineExpr dimOrSym,
+                                         AffineMap *map) {
+  auto affineMinMap = minOp.getAffineMap();
+  int64_t smallestCst = std::numeric_limits<int64_t>::max();
+  for (unsigned i = 0, e = affineMinMap.getNumResults(); i != e; ++i) {
+    auto m = affineMinMap.getSubMap(ArrayRef<unsigned>{i});
+    if (m.isSingleConstant())
+      smallestCst = std::min(smallestCst, m.getSingleConstantResult());
+  }
+
+  if (smallestCst == std::numeric_limits<int64_t>::max())
+    return failure();
+
+  DenseMap<AffineExpr, AffineExpr> repl;
+  repl[dimOrSym.ceilDiv(smallestCst) * smallestCst] =
+      getAffineConstantExpr(smallestCst, minOp.getContext());
+  auto newMap = map->replace(repl);
+  if (newMap == *map)
+    return failure();
+
+  *map = newMap;
+  return success();
+}
+
 /// Replace all occurrences of AffineExpr at position `pos` in `map` by the
 /// defining AffineApplyOp expression and operands.
 /// When `dimOrSymbolPosition < dims.size()`, AffineDimExpr@[pos] is replaced.
@@ -1063,6 +1095,13 @@ static LogicalResult replaceDimOrSym(AffineMap *map,
   Value &v = isDimReplacement ? dims[pos] : syms[pos];
   if (!v)
     return failure();
+
+  auto minOp = v.getDefiningOp<AffineMinOp>();
+  if (minOp) {
+    AffineExpr dimOrSym = isDimReplacement ? getAffineDimExpr(pos, ctx)
+                                           : getAffineSymbolExpr(pos, ctx);
+    return replaceSimpleStaticBoundingBoxExpression(minOp, dimOrSym, map);
+  }
 
   auto affineApply = v.getDefiningOp<AffineApplyOp>();
   if (!affineApply)
