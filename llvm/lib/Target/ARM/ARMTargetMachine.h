@@ -20,6 +20,7 @@
 #include "llvm/CodeGen/CodeGenTargetMachineImpl.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/TargetParser/ARMTargetParser.h"
 #include <memory>
 #include <optional>
 
@@ -27,12 +28,7 @@ namespace llvm {
 
 class ARMBaseTargetMachine : public CodeGenTargetMachineImpl {
 public:
-  enum ARMABI {
-    ARM_ABI_UNKNOWN,
-    ARM_ABI_APCS,
-    ARM_ABI_AAPCS, // ARM EABI
-    ARM_ABI_AAPCS16
-  } TargetABI;
+  ARM::ARMABI TargetABI;
 
 protected:
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
@@ -73,8 +69,7 @@ public:
            TargetTriple.getEnvironment() == Triple::EABIHF ||
            (TargetTriple.isOSBinFormatMachO() &&
             TargetTriple.getSubArch() == Triple::ARMSubArch_v7em) ||
-           TargetTriple.isOSWindows() ||
-           TargetABI == ARMBaseTargetMachine::ARM_ABI_AAPCS16;
+           TargetTriple.isOSWindows() || TargetABI == ARM::ARM_ABI_AAPCS16;
   }
 
   bool targetSchedulesPostRAScheduling() const override { return true; };

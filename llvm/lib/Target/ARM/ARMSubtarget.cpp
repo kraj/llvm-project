@@ -323,17 +323,17 @@ void ARMSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
 bool ARMSubtarget::isTargetHardFloat() const { return TM.isTargetHardFloat(); }
 
 bool ARMSubtarget::isAPCS_ABI() const {
-  assert(TM.TargetABI != ARMBaseTargetMachine::ARM_ABI_UNKNOWN);
-  return TM.TargetABI == ARMBaseTargetMachine::ARM_ABI_APCS;
+  assert(TM.TargetABI != ARM::ARM_ABI_UNKNOWN);
+  return TM.TargetABI == ARM::ARM_ABI_APCS;
 }
 bool ARMSubtarget::isAAPCS_ABI() const {
-  assert(TM.TargetABI != ARMBaseTargetMachine::ARM_ABI_UNKNOWN);
-  return TM.TargetABI == ARMBaseTargetMachine::ARM_ABI_AAPCS ||
-         TM.TargetABI == ARMBaseTargetMachine::ARM_ABI_AAPCS16;
+  assert(TM.TargetABI != ARM::ARM_ABI_UNKNOWN);
+  return TM.TargetABI == ARM::ARM_ABI_AAPCS ||
+         TM.TargetABI == ARM::ARM_ABI_AAPCS16;
 }
 bool ARMSubtarget::isAAPCS16_ABI() const {
-  assert(TM.TargetABI != ARMBaseTargetMachine::ARM_ABI_UNKNOWN);
-  return TM.TargetABI == ARMBaseTargetMachine::ARM_ABI_AAPCS16;
+  assert(TM.TargetABI != ARM::ARM_ABI_UNKNOWN);
+  return TM.TargetABI == ARM::ARM_ABI_AAPCS16;
 }
 
 bool ARMSubtarget::isROPI() const {
