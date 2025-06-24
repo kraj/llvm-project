@@ -5008,9 +5008,14 @@ void Verifier::visitProfMetadata(Instruction &I, MDNode *MD) {
       Check(mdconst::dyn_extract<ConstantInt>(MDO),
             "!prof brunch_weights operand is not a const int");
     }
-  } else {
-    Check(ProfName == "VP", "expected either branch_weights or VP profile name",
+  } else if (ProfName == "VP") {
+    Check(isValueProfileMD(MD),"invalid value profiling metadata",MD);
+    Check(isa<CallBase>(I),
+          "value profiling !prof metadata is expected to be placed on call "
+          "instructions (which may be memops)",
           MD);
+  } else {
+    CheckFailed("expected either branch_weights or VP profile name", MD);
   }
 }
 
