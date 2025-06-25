@@ -98,6 +98,9 @@ OpFoldResult getAsOpFoldResult(Value val);
 SmallVector<OpFoldResult> getAsOpFoldResult(ValueRange values);
 /// Convert `arrayAttr` to a vector of OpFoldResult.
 SmallVector<OpFoldResult> getAsOpFoldResult(ArrayAttr arrayAttr);
+// TODO: implement a mixed form of this and deprecate getMixedPadImpl.
+// SmallVector<OpFoldResult> getAsOpFoldResult(ArrayAttr arrayAttr, ValueRange
+// values);
 
 /// Convert int64_t to integer attributes of index type and return them as
 /// OpFoldResult.
