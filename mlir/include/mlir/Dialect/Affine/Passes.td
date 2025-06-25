@@ -414,6 +414,11 @@ def SimplifyAffineStructures : Pass<"affine-simplify-structures", "func::FuncOp"
   let constructor = "mlir::affine::createSimplifyAffineStructuresPass()";
 }
 
+def SimplifyAffineMinMax : InterfacePass<"affine-simplify-minmax", "FunctionOpInterface"> {
+  let summary = "Simplify affine min/max/apply";
+  let constructor = "mlir::affine::createSimplifyAffineMinMaxPass()";
+}
+
 def AffineExpandIndexOps : Pass<"affine-expand-index-ops"> {
   let summary = "Lower affine operations operating on indices into more fundamental operations";
   let constructor = "mlir::affine::createAffineExpandIndexOpsPass()";
