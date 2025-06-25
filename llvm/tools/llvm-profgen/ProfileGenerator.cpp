@@ -542,6 +542,44 @@ void ProfileGenerator::generateLineNumBasedProfile() {
   // Fill in boundary sample counts as well as call site samples for calls
   populateBoundarySamplesForAllFunctions(SC.BranchCounter);
 
+  // populateDataAccessSamples.
+  // If the <line-offset, discriminator> pair is found in both body samples
+  // and call site samples, drop annotation on both. Otherwise, pick one.
+  // This is a simplification.
+  // Or assume the compiler generates disciriminators for such cases already
+  // so it's transparent for llvm-profgen.
+  const auto &DataAccessCounters = SC.DataAccessCounter;
+  for (const auto &Entry : DataAccessCounters) {
+    uint64_t InstAddr = Entry.first.first;
+    uint64_t DataAddr = Entry.first.second;
+    // symbolize vtable here.
+    uint64_t Count = Entry.second;
+    errs() << "Data access: " << format("0x%016" PRIx64, InstAddr) << " -> "
+           << format("0x%016" PRIx64, DataAddr) << " : " << Count << "\n";
+    const SampleContextFrameVector &FrameVec =
+        Binary->getCachedFrameLocationStack(InstAddr, false);
+    for (const auto &Frame : FrameVec) {
+      errs() << "\t" << Frame.Func << "\t" << Frame.Location.LineOffset << ":"
+             << getBaseDiscriminator(Frame.Location.Discriminator) << "\n";
+    }
+    // If the leaf function sample has only one of body sample or call site
+    // sample, use one of them.
+    FunctionSamples &FunctionProfile =
+        getLeafProfileAndAddTotalSamples(FrameVec, 0);
+
+    if (FrameVec.empty()) {
+      LineLocation Loc(FrameVec.back().Location.LineOffset,
+                       FrameVec.back().Location.Discriminator);
+      SampleRecord *BodySampleRec = FunctionProfile.getBodySampleRecordAt(Loc);
+      FunctionSamplesMap *CallsiteSamples =
+          FunctionProfile.findFunctionSamplesMapAt(Loc);
+      if (BodySampleRec && !CallsiteSamples) {
+
+      } else if (CallsiteSamples && !BodySampleRec) {
+      }
+    }
+  }
+
   updateFunctionSamples();
 }
 
