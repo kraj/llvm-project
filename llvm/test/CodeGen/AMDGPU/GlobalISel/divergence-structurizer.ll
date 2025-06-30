@@ -7,11 +7,11 @@
 define amdgpu_ps void @divergent_i1_phi_if_then(ptr addrspace(1) %out, i32 %tid, i32 %cond) {
 ; GFX10-LABEL: divergent_i1_phi_if_then:
 ; GFX10:       ; %bb.0: ; %A
-; GFX10-NEXT:    v_cmp_le_u32_e64 s0, 6, v2
+; GFX10-NEXT:    v_cmp_lt_u32_e64 s0, 6, v2
 ; GFX10-NEXT:    v_cmp_eq_u32_e32 vcc_lo, 0, v3
 ; GFX10-NEXT:    s_and_saveexec_b32 s1, vcc_lo
 ; GFX10-NEXT:  ; %bb.1: ; %B
-; GFX10-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 1, v2
+; GFX10-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 1, v2
 ; GFX10-NEXT:    s_andn2_b32 s0, s0, exec_lo
 ; GFX10-NEXT:    s_and_b32 s2, exec_lo, vcc_lo
 ; GFX10-NEXT:    s_or_b32 s0, s0, s2
@@ -48,7 +48,7 @@ define amdgpu_ps void @divergent_i1_phi_if_else(ptr addrspace(1) %out, i32 %tid,
 ; GFX10-NEXT:    s_and_saveexec_b32 s1, vcc_lo
 ; GFX10-NEXT:    s_xor_b32 s1, exec_lo, s1
 ; GFX10-NEXT:  ; %bb.1: ; %B
-; GFX10-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 2, v2
+; GFX10-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 2, v2
 ; GFX10-NEXT:    s_andn2_b32 s0, s0, exec_lo
 ; GFX10-NEXT:    ; implicit-def: $vgpr2
 ; GFX10-NEXT:    s_and_b32 s2, exec_lo, vcc_lo
@@ -56,7 +56,7 @@ define amdgpu_ps void @divergent_i1_phi_if_else(ptr addrspace(1) %out, i32 %tid,
 ; GFX10-NEXT:  ; %bb.2: ; %Flow
 ; GFX10-NEXT:    s_andn2_saveexec_b32 s1, s1
 ; GFX10-NEXT:  ; %bb.3: ; %A
-; GFX10-NEXT:    v_cmp_le_u32_e32 vcc_lo, 1, v2
+; GFX10-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 1, v2
 ; GFX10-NEXT:    s_andn2_b32 s0, s0, exec_lo
 ; GFX10-NEXT:    s_and_b32 s2, exec_lo, vcc_lo
 ; GFX10-NEXT:    s_or_b32 s0, s0, s2

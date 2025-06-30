@@ -503,7 +503,7 @@ define amdgpu_kernel void @v_mul64_masked_before_and_in_branch(ptr addrspace(1) 
 ; GFX10-NEXT:    global_load_dwordx2 v[4:5], v0, s[6:7]
 ; GFX10-NEXT:    ; implicit-def: $vgpr0_vgpr1
 ; GFX10-NEXT:    s_waitcnt vmcnt(1)
-; GFX10-NEXT:    v_cmp_ge_u64_e32 vcc_lo, 0, v[2:3]
+; GFX10-NEXT:    v_cmp_gt_u64_e32 vcc_lo, 0, v[2:3]
 ; GFX10-NEXT:    s_and_saveexec_b32 s2, vcc_lo
 ; GFX10-NEXT:    s_xor_b32 s2, exec_lo, s2
 ; GFX10-NEXT:    s_cbranch_execz .LBB10_2
@@ -541,7 +541,7 @@ define amdgpu_kernel void @v_mul64_masked_before_and_in_branch(ptr addrspace(1) 
 ; GFX11-NEXT:    s_mov_b32 s2, exec_lo
 ; GFX11-NEXT:    ; implicit-def: $vgpr0_vgpr1
 ; GFX11-NEXT:    s_waitcnt vmcnt(1)
-; GFX11-NEXT:    v_cmpx_ge_u64_e32 0, v[2:3]
+; GFX11-NEXT:    v_cmpx_gt_u64_e32 0, v[2:3]
 ; GFX11-NEXT:    s_xor_b32 s2, exec_lo, s2
 ; GFX11-NEXT:    s_cbranch_execz .LBB10_2
 ; GFX11-NEXT:  ; %bb.1: ; %else

@@ -148,7 +148,7 @@ define void @divergent_br_no_metadata(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX9-LABEL: divergent_br_no_metadata:
 ; GFX9:       ; %bb.0: ; %entry
 ; GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX9-NEXT:    v_cmp_lt_i32_e32 vcc, 0, v0
+; GFX9-NEXT:    v_cmp_le_i32_e32 vcc, 0, v0
 ; GFX9-NEXT:    s_and_saveexec_b64 s[8:9], vcc
 ; GFX9-NEXT:    s_cbranch_execz .LBB3_2
 ; GFX9-NEXT:  ; %bb.1: ; %if.then
@@ -167,7 +167,7 @@ define void @divergent_br_no_metadata(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX1010-LABEL: divergent_br_no_metadata:
 ; GFX1010:       ; %bb.0: ; %entry
 ; GFX1010-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX1010-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0, v0
+; GFX1010-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0, v0
 ; GFX1010-NEXT:    s_and_saveexec_b32 s8, vcc_lo
 ; GFX1010-NEXT:    s_cbranch_execz .LBB3_2
 ; GFX1010-NEXT:  ; %bb.1: ; %if.then
@@ -188,7 +188,7 @@ define void @divergent_br_no_metadata(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX1030:       ; %bb.0: ; %entry
 ; GFX1030-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX1030-NEXT:    s_mov_b32 s8, exec_lo
-; GFX1030-NEXT:    v_cmpx_lt_i32_e32 0, v0
+; GFX1030-NEXT:    v_cmpx_le_i32_e32 0, v0
 ; GFX1030-NEXT:    s_cbranch_execz .LBB3_2
 ; GFX1030-NEXT:  ; %bb.1: ; %if.then
 ; GFX1030-NEXT:    v_mov_b32_e32 v0, s16
@@ -219,7 +219,7 @@ define void @divergent_br_same_weight(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX9-LABEL: divergent_br_same_weight:
 ; GFX9:       ; %bb.0: ; %entry
 ; GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX9-NEXT:    v_cmp_lt_i32_e32 vcc, 0, v0
+; GFX9-NEXT:    v_cmp_le_i32_e32 vcc, 0, v0
 ; GFX9-NEXT:    s_and_saveexec_b64 s[8:9], vcc
 ; GFX9-NEXT:    s_cbranch_execz .LBB4_2
 ; GFX9-NEXT:  ; %bb.1: ; %if.then
@@ -238,7 +238,7 @@ define void @divergent_br_same_weight(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX1010-LABEL: divergent_br_same_weight:
 ; GFX1010:       ; %bb.0: ; %entry
 ; GFX1010-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX1010-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0, v0
+; GFX1010-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0, v0
 ; GFX1010-NEXT:    s_and_saveexec_b32 s8, vcc_lo
 ; GFX1010-NEXT:    s_cbranch_execz .LBB4_2
 ; GFX1010-NEXT:  ; %bb.1: ; %if.then
@@ -259,7 +259,7 @@ define void @divergent_br_same_weight(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX1030:       ; %bb.0: ; %entry
 ; GFX1030-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX1030-NEXT:    s_mov_b32 s8, exec_lo
-; GFX1030-NEXT:    v_cmpx_lt_i32_e32 0, v0
+; GFX1030-NEXT:    v_cmpx_le_i32_e32 0, v0
 ; GFX1030-NEXT:    s_cbranch_execz .LBB4_2
 ; GFX1030-NEXT:  ; %bb.1: ; %if.then
 ; GFX1030-NEXT:    v_mov_b32_e32 v0, s16
@@ -290,7 +290,7 @@ define void @divergent_br_then_likely(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX9-LABEL: divergent_br_then_likely:
 ; GFX9:       ; %bb.0: ; %entry
 ; GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX9-NEXT:    v_cmp_lt_i32_e32 vcc, 0, v0
+; GFX9-NEXT:    v_cmp_le_i32_e32 vcc, 0, v0
 ; GFX9-NEXT:    s_and_saveexec_b64 s[8:9], vcc
 ; GFX9-NEXT:  ; %bb.1: ; %if.then
 ; GFX9-NEXT:    s_mov_b32 s7, s20
@@ -308,7 +308,7 @@ define void @divergent_br_then_likely(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX1010-LABEL: divergent_br_then_likely:
 ; GFX1010:       ; %bb.0: ; %entry
 ; GFX1010-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX1010-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0, v0
+; GFX1010-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0, v0
 ; GFX1010-NEXT:    s_and_saveexec_b32 s8, vcc_lo
 ; GFX1010-NEXT:  ; %bb.1: ; %if.then
 ; GFX1010-NEXT:    v_mov_b32_e32 v0, s16
@@ -328,7 +328,7 @@ define void @divergent_br_then_likely(i32 noundef inreg %value, ptr addrspace(8)
 ; GFX1030:       ; %bb.0: ; %entry
 ; GFX1030-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX1030-NEXT:    s_mov_b32 s8, exec_lo
-; GFX1030-NEXT:    v_cmpx_lt_i32_e32 0, v0
+; GFX1030-NEXT:    v_cmpx_le_i32_e32 0, v0
 ; GFX1030-NEXT:  ; %bb.1: ; %if.then
 ; GFX1030-NEXT:    v_mov_b32_e32 v0, s16
 ; GFX1030-NEXT:    v_mov_b32_e32 v1, s21

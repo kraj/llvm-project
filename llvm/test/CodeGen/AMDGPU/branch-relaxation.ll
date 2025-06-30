@@ -986,7 +986,7 @@ bb3:
 define amdgpu_kernel void @uniform_inside_divergent(ptr addrspace(1) %out, i32 %cond) #0 {
 ; GCN-LABEL: uniform_inside_divergent:
 ; GCN:       ; %bb.0: ; %entry
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc, 16, v0
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc, 16, v0
 ; GCN-NEXT:    s_and_saveexec_b64 s[6:7], vcc
 ; GCN-NEXT:    s_cbranch_execnz .LBB8_1
 ; GCN-NEXT:  ; %bb.4: ; %entry
@@ -1019,7 +1019,7 @@ define amdgpu_kernel void @uniform_inside_divergent(ptr addrspace(1) %out, i32 %
 ; GFX11-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX11-NEXT:    s_mov_b64 s[0:1], exec
 ; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-NEXT:    v_cmpx_gt_u32_e32 16, v0
+; GFX11-NEXT:    v_cmpx_ge_u32_e32 16, v0
 ; GFX11-NEXT:    s_cbranch_execz .LBB8_3
 ; GFX11-NEXT:  ; %bb.1: ; %if
 ; GFX11-NEXT:    s_clause 0x1
@@ -1043,7 +1043,7 @@ define amdgpu_kernel void @uniform_inside_divergent(ptr addrspace(1) %out, i32 %
 ; GFX12-NEXT:    v_and_b32_e32 v0, 0x3ff, v0
 ; GFX12-NEXT:    s_mov_b32 s3, exec_lo
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX12-NEXT:    v_cmpx_gt_u32_e32 16, v0
+; GFX12-NEXT:    v_cmpx_ge_u32_e32 16, v0
 ; GFX12-NEXT:    s_cbranch_execz .LBB8_3
 ; GFX12-NEXT:  ; %bb.1: ; %if
 ; GFX12-NEXT:    s_load_b96 s[0:2], s[4:5], 0x24

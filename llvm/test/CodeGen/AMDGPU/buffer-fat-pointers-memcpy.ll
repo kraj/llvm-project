@@ -579,7 +579,7 @@ define amdgpu_kernel void @memcpy_known(ptr addrspace(7) %src, ptr addrspace(7) 
 ; GISEL-GFX1100-NEXT:    buffer_store_b128 v[57:60], v65, s[12:15], 0 offen offset:224
 ; GISEL-GFX1100-NEXT:    s_waitcnt vmcnt(0)
 ; GISEL-GFX1100-NEXT:    buffer_store_b128 v[61:64], v65, s[12:15], 0 offen offset:240
-; GISEL-GFX1100-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x2000, v0
+; GISEL-GFX1100-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x2000, v0
 ; GISEL-GFX1100-NEXT:    s_cbranch_vccnz .LBB0_1
 ; GISEL-GFX1100-NEXT:  ; %bb.2: ; %memcpy-split
 ; GISEL-GFX1100-NEXT:    s_endpgm

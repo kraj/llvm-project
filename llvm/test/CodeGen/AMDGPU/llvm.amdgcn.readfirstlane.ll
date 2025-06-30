@@ -54,7 +54,7 @@ define void @test_readfirstlane_i1_select(ptr addrspace(1) %out, i32 %src, i32 %
 ; CHECK-SDAG-LABEL: test_readfirstlane_i1_select:
 ; CHECK-SDAG:       ; %bb.0:
 ; CHECK-SDAG-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-SDAG-NEXT:    v_cmp_lt_u32_e32 vcc, 42, v2
+; CHECK-SDAG-NEXT:    v_cmp_le_u32_e32 vcc, 42, v2
 ; CHECK-SDAG-NEXT:    v_cndmask_b32_e64 v4, 0, 1, vcc
 ; CHECK-SDAG-NEXT:    v_readfirstlane_b32 s4, v4
 ; CHECK-SDAG-NEXT:    s_bitcmp1_b32 s4, 0
@@ -67,7 +67,7 @@ define void @test_readfirstlane_i1_select(ptr addrspace(1) %out, i32 %src, i32 %
 ; CHECK-GISEL-LABEL: test_readfirstlane_i1_select:
 ; CHECK-GISEL:       ; %bb.0:
 ; CHECK-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-GISEL-NEXT:    v_cmp_lt_u32_e32 vcc, 42, v2
+; CHECK-GISEL-NEXT:    v_cmp_le_u32_e32 vcc, 42, v2
 ; CHECK-GISEL-NEXT:    v_cndmask_b32_e64 v4, 0, 1, vcc
 ; CHECK-GISEL-NEXT:    v_readfirstlane_b32 s4, v4
 ; CHECK-GISEL-NEXT:    s_and_b32 s4, 1, s4

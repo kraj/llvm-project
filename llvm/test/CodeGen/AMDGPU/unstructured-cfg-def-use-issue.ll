@@ -36,7 +36,7 @@ define hidden void @widget() {
 ; GCN-NEXT:    s_mov_b64 s[20:21], -1
 ; GCN-NEXT:    s_mov_b64 s[16:17], 0
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_cmp_gt_i32_e32 vcc, 21, v0
+; GCN-NEXT:    v_cmp_ge_i32_e32 vcc, 21, v0
 ; GCN-NEXT:    s_mov_b64 s[54:55], 0
 ; GCN-NEXT:    s_mov_b64 s[18:19], 0
 ; GCN-NEXT:    s_cbranch_vccz .LBB0_9
@@ -326,7 +326,7 @@ define hidden void @blam() {
 ; GCN-NEXT:    buffer_store_dword v42, off, s[0:3], 0
 ; GCN-NEXT:    s_mov_b64 s[6:7], 0
 ; GCN-NEXT:    s_waitcnt vmcnt(1)
-; GCN-NEXT:    v_cmp_lt_i32_e32 vcc, 2, v0
+; GCN-NEXT:    v_cmp_le_i32_e32 vcc, 2, v0
 ; GCN-NEXT:    s_mov_b64 s[4:5], -1
 ; GCN-NEXT:    s_and_saveexec_b64 s[8:9], vcc
 ; GCN-NEXT:    s_xor_b64 s[70:71], exec, s[8:9]

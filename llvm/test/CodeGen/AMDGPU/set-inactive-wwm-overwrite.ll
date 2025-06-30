@@ -11,7 +11,7 @@ define amdgpu_cs void @if_then(ptr addrspace(8) inreg %input, ptr addrspace(8) i
 ; GCN-NEXT:    v_mov_b32_e32 v3, 1
 ; GCN-NEXT:  ; %bb.2: ; %.merge
 ; GCN-NEXT:    s_or_b32 exec_lo, exec_lo, s0
-; GCN-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 3, v0
+; GCN-NEXT:    v_cmp_le_u32_e32 vcc_lo, 3, v0
 ; GCN-NEXT:    s_and_saveexec_b32 s0, vcc_lo
 ; GCN-NEXT:    s_cbranch_execz .LBB0_4
 ; GCN-NEXT:  ; %bb.3: ; %.then
@@ -67,7 +67,7 @@ define amdgpu_cs void @if_else_vgpr_opt(ptr addrspace(8) inreg %input, ptr addrs
 ; GCN-NEXT:    v_mov_b32_e32 v3, 1
 ; GCN-NEXT:  ; %bb.2: ; %.merge
 ; GCN-NEXT:    s_or_b32 exec_lo, exec_lo, s0
-; GCN-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 3, v0
+; GCN-NEXT:    v_cmp_le_u32_e32 vcc_lo, 3, v0
 ; GCN-NEXT:    s_and_saveexec_b32 s0, vcc_lo
 ; GCN-NEXT:    s_xor_b32 s0, exec_lo, s0
 ; GCN-NEXT:    s_cbranch_execnz .LBB1_5

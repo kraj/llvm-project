@@ -1637,7 +1637,7 @@ define i65 @v_lshr_i65(i65 %value, i65 %amount) {
 ; GFX6-NEXT:    v_lshr_b64 v[4:5], v[4:5], v2
 ; GFX6-NEXT:    v_or_b32_e32 v6, v6, v8
 ; GFX6-NEXT:    v_or_b32_e32 v7, v7, v9
-; GFX6-NEXT:    v_cmp_gt_u32_e32 vcc, 64, v3
+; GFX6-NEXT:    v_cmp_ge_u32_e32 vcc, 64, v3
 ; GFX6-NEXT:    v_cndmask_b32_e32 v2, v4, v6, vcc
 ; GFX6-NEXT:    v_cndmask_b32_e32 v4, v5, v7, vcc
 ; GFX6-NEXT:    v_cmp_eq_u32_e64 s[4:5], 0, v3
@@ -1660,7 +1660,7 @@ define i65 @v_lshr_i65(i65 %value, i65 %amount) {
 ; GFX8-NEXT:    v_lshrrev_b64 v[4:5], v2, v[4:5]
 ; GFX8-NEXT:    v_or_b32_e32 v6, v6, v8
 ; GFX8-NEXT:    v_or_b32_e32 v7, v7, v9
-; GFX8-NEXT:    v_cmp_gt_u32_e32 vcc, 64, v3
+; GFX8-NEXT:    v_cmp_ge_u32_e32 vcc, 64, v3
 ; GFX8-NEXT:    v_cndmask_b32_e32 v2, v4, v6, vcc
 ; GFX8-NEXT:    v_cndmask_b32_e32 v4, v5, v7, vcc
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[4:5], 0, v3
@@ -1683,7 +1683,7 @@ define i65 @v_lshr_i65(i65 %value, i65 %amount) {
 ; GFX9-NEXT:    v_lshrrev_b64 v[4:5], v2, v[4:5]
 ; GFX9-NEXT:    v_or_b32_e32 v6, v6, v8
 ; GFX9-NEXT:    v_or_b32_e32 v7, v7, v9
-; GFX9-NEXT:    v_cmp_gt_u32_e32 vcc, 64, v3
+; GFX9-NEXT:    v_cmp_ge_u32_e32 vcc, 64, v3
 ; GFX9-NEXT:    v_cndmask_b32_e32 v2, v4, v6, vcc
 ; GFX9-NEXT:    v_cndmask_b32_e32 v4, v5, v7, vcc
 ; GFX9-NEXT:    v_cmp_eq_u32_e64 s[4:5], 0, v3
@@ -1701,7 +1701,7 @@ define i65 @v_lshr_i65(i65 %value, i65 %amount) {
 ; GFX10-NEXT:    v_sub_nc_u32_e32 v2, 64, v3
 ; GFX10-NEXT:    v_add_nc_u32_e32 v10, 0xffffffc0, v3
 ; GFX10-NEXT:    v_lshrrev_b64 v[6:7], v3, v[0:1]
-; GFX10-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 64, v3
+; GFX10-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 64, v3
 ; GFX10-NEXT:    v_cmp_eq_u32_e64 s4, 0, v3
 ; GFX10-NEXT:    v_lshlrev_b64 v[8:9], v2, v[4:5]
 ; GFX10-NEXT:    v_lshrrev_b64 v[10:11], v10, v[4:5]
@@ -1718,7 +1718,7 @@ define i65 @v_lshr_i65(i65 %value, i65 %amount) {
 ; GFX11-LABEL: v_lshr_i65:
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 64, v3
+; GFX11-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 64, v3
 ; GFX11-NEXT:    v_mov_b32_e32 v4, 1
 ; GFX11-NEXT:    v_dual_mov_b32 v5, 0 :: v_dual_and_b32 v4, 1, v2
 ; GFX11-NEXT:    v_sub_nc_u32_e32 v2, 64, v3

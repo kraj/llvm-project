@@ -275,7 +275,7 @@ define amdgpu_kernel void @uniform_if_move_valu_commute(ptr addrspace(1) %out, f
 ; SI-NEXT:    v_mov_b32_e32 v0, 0x41200000
 ; SI-NEXT:    s_waitcnt lgkmcnt(0)
 ; SI-NEXT:    v_add_f32_e32 v0, s0, v0
-; SI-NEXT:    v_cmp_gt_u32_e32 vcc, 6, v0
+; SI-NEXT:    v_cmp_ge_u32_e32 vcc, 6, v0
 ; SI-NEXT:    s_cbranch_vccnz .LBB5_2
 ; SI-NEXT:  ; %bb.1: ; %if
 ; SI-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x9
@@ -293,7 +293,7 @@ define amdgpu_kernel void @uniform_if_move_valu_commute(ptr addrspace(1) %out, f
 ; VI-NEXT:    v_mov_b32_e32 v0, 0x41200000
 ; VI-NEXT:    s_waitcnt lgkmcnt(0)
 ; VI-NEXT:    v_add_f32_e32 v0, s0, v0
-; VI-NEXT:    v_cmp_gt_u32_e32 vcc, 6, v0
+; VI-NEXT:    v_cmp_ge_u32_e32 vcc, 6, v0
 ; VI-NEXT:    s_cbranch_vccnz .LBB5_2
 ; VI-NEXT:  ; %bb.1: ; %if
 ; VI-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
@@ -601,7 +601,7 @@ done:
 define amdgpu_kernel void @uniform_inside_divergent(ptr addrspace(1) %out, i32 %cond) {
 ; SI-LABEL: uniform_inside_divergent:
 ; SI:       ; %bb.0: ; %entry
-; SI-NEXT:    v_cmp_gt_u32_e32 vcc, 16, v0
+; SI-NEXT:    v_cmp_ge_u32_e32 vcc, 16, v0
 ; SI-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; SI-NEXT:    s_cbranch_execz .LBB11_2
 ; SI-NEXT:  ; %bb.1: ; %if
@@ -624,7 +624,7 @@ define amdgpu_kernel void @uniform_inside_divergent(ptr addrspace(1) %out, i32 %
 ;
 ; VI-LABEL: uniform_inside_divergent:
 ; VI:       ; %bb.0: ; %entry
-; VI-NEXT:    v_cmp_gt_u32_e32 vcc, 16, v0
+; VI-NEXT:    v_cmp_ge_u32_e32 vcc, 16, v0
 ; VI-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; VI-NEXT:    s_cbranch_execz .LBB11_2
 ; VI-NEXT:  ; %bb.1: ; %if
@@ -675,7 +675,7 @@ define amdgpu_kernel void @divergent_inside_uniform(ptr addrspace(1) %out, i32 %
 ; SI-NEXT:    s_mov_b32 s3, 0xf000
 ; SI-NEXT:    s_mov_b32 s2, -1
 ; SI-NEXT:    v_mov_b32_e32 v1, 0
-; SI-NEXT:    v_cmp_gt_u32_e32 vcc, 16, v0
+; SI-NEXT:    v_cmp_ge_u32_e32 vcc, 16, v0
 ; SI-NEXT:    s_waitcnt lgkmcnt(0)
 ; SI-NEXT:    buffer_store_dword v1, off, s[0:3], 0
 ; SI-NEXT:    s_and_saveexec_b64 s[4:5], vcc
@@ -698,7 +698,7 @@ define amdgpu_kernel void @divergent_inside_uniform(ptr addrspace(1) %out, i32 %
 ; VI-NEXT:    s_mov_b32 s3, 0xf000
 ; VI-NEXT:    s_mov_b32 s2, -1
 ; VI-NEXT:    v_mov_b32_e32 v1, 0
-; VI-NEXT:    v_cmp_gt_u32_e32 vcc, 16, v0
+; VI-NEXT:    v_cmp_ge_u32_e32 vcc, 16, v0
 ; VI-NEXT:    s_waitcnt lgkmcnt(0)
 ; VI-NEXT:    buffer_store_dword v1, off, s[0:3], 0
 ; VI-NEXT:    s_and_saveexec_b64 s[4:5], vcc

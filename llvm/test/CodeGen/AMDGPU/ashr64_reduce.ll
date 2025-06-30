@@ -537,10 +537,10 @@ define i64 @ashr_maxmin(i64 %arg0, i64 noundef %arg1) {
 ; CHECK-LABEL: ashr_maxmin:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[2:3]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[2:3]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v3, 0, v3, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v2, 32, v2, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[2:3]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[2:3]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v2, 63, v2, vcc
 ; CHECK-NEXT:    v_ashrrev_i64 v[0:1], v2, v[0:1]
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
@@ -554,15 +554,15 @@ define <2 x i64> @ashr_v2_maxmin(<2 x i64> %arg0, <2 x i64> noundef %arg1) {
 ; CHECK-LABEL: ashr_v2_maxmin:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[4:5]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[4:5]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v4, 32, v4, vcc
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[6:7]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[6:7]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v7, 0, v7, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v6, 32, v6, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[6:7]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[6:7]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v6, 63, v6, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[4:5]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[4:5]
 ; CHECK-NEXT:    v_ashrrev_i64 v[2:3], v6, v[2:3]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v4, 63, v4, vcc
 ; CHECK-NEXT:    v_ashrrev_i64 v[0:1], v4, v[0:1]
@@ -577,21 +577,21 @@ define <3 x i64> @ashr_v3_maxmin(<3 x i64> %arg0, <3 x i64> noundef %arg1) {
 ; CHECK-LABEL: ashr_v3_maxmin:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[6:7]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[6:7]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v7, 0, v7, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v6, 32, v6, vcc
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[8:9]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[8:9]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v9, 0, v9, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v8, 32, v8, vcc
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[10:11]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[10:11]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v11, 0, v11, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v10, 32, v10, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[10:11]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[10:11]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v10, 63, v10, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[8:9]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[8:9]
 ; CHECK-NEXT:    v_ashrrev_i64 v[4:5], v10, v[4:5]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v8, 63, v8, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[6:7]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[6:7]
 ; CHECK-NEXT:    v_ashrrev_i64 v[2:3], v8, v[2:3]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v6, 63, v6, vcc
 ; CHECK-NEXT:    v_ashrrev_i64 v[0:1], v6, v[0:1]
@@ -606,27 +606,27 @@ define <4 x i64> @ashr_v4_maxmin(<4 x i64> %arg0, <4 x i64> noundef %arg1) {
 ; CHECK-LABEL: ashr_v4_maxmin:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[8:9]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[8:9]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v9, 0, v9, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v8, 32, v8, vcc
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[10:11]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[10:11]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v11, 0, v11, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v10, 32, v10, vcc
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[12:13]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[12:13]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v13, 0, v13, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v12, 32, v12, vcc
-; CHECK-NEXT:    v_cmp_lt_u64_e32 vcc, 32, v[14:15]
+; CHECK-NEXT:    v_cmp_le_u64_e32 vcc, 32, v[14:15]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v15, 0, v15, vcc
 ; CHECK-NEXT:    v_cndmask_b32_e32 v14, 32, v14, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[14:15]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[14:15]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v14, 63, v14, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[12:13]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[12:13]
 ; CHECK-NEXT:    v_ashrrev_i64 v[6:7], v14, v[6:7]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v12, 63, v12, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[10:11]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[10:11]
 ; CHECK-NEXT:    v_ashrrev_i64 v[4:5], v12, v[4:5]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v10, 63, v10, vcc
-; CHECK-NEXT:    v_cmp_gt_u64_e32 vcc, 63, v[8:9]
+; CHECK-NEXT:    v_cmp_ge_u64_e32 vcc, 63, v[8:9]
 ; CHECK-NEXT:    v_ashrrev_i64 v[2:3], v10, v[2:3]
 ; CHECK-NEXT:    v_cndmask_b32_e32 v8, 63, v8, vcc
 ; CHECK-NEXT:    v_ashrrev_i64 v[0:1], v8, v[0:1]

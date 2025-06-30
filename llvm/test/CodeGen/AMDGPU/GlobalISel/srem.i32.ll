@@ -92,10 +92,10 @@ define amdgpu_ps i32 @s_srem_i32(i32 inreg %num, i32 inreg %den) {
 ; GISEL-NEXT:    v_mul_lo_u32 v0, v0, s1
 ; GISEL-NEXT:    v_sub_i32_e32 v0, vcc, s0, v0
 ; GISEL-NEXT:    v_subrev_i32_e32 v1, vcc, s1, v0
-; GISEL-NEXT:    v_cmp_le_u32_e32 vcc, s1, v0
+; GISEL-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v0
 ; GISEL-NEXT:    v_cndmask_b32_e32 v0, v0, v1, vcc
 ; GISEL-NEXT:    v_subrev_i32_e32 v1, vcc, s1, v0
-; GISEL-NEXT:    v_cmp_le_u32_e32 vcc, s1, v0
+; GISEL-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v0
 ; GISEL-NEXT:    v_cndmask_b32_e32 v0, v0, v1, vcc
 ; GISEL-NEXT:    v_xor_b32_e32 v0, s2, v0
 ; GISEL-NEXT:    v_subrev_i32_e32 v0, vcc, s2, v0
@@ -122,10 +122,10 @@ define amdgpu_ps i32 @s_srem_i32(i32 inreg %num, i32 inreg %den) {
 ; CGP-NEXT:    v_mul_lo_u32 v0, v0, s1
 ; CGP-NEXT:    v_sub_i32_e32 v0, vcc, s0, v0
 ; CGP-NEXT:    v_subrev_i32_e32 v1, vcc, s1, v0
-; CGP-NEXT:    v_cmp_le_u32_e32 vcc, s1, v0
+; CGP-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v0
 ; CGP-NEXT:    v_cndmask_b32_e32 v0, v0, v1, vcc
 ; CGP-NEXT:    v_subrev_i32_e32 v1, vcc, s1, v0
-; CGP-NEXT:    v_cmp_le_u32_e32 vcc, s1, v0
+; CGP-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v0
 ; CGP-NEXT:    v_cndmask_b32_e32 v0, v0, v1, vcc
 ; CGP-NEXT:    v_xor_b32_e32 v0, s2, v0
 ; CGP-NEXT:    v_subrev_i32_e32 v0, vcc, s2, v0

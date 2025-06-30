@@ -10,7 +10,7 @@ define i1 @test_srem_odd(i29 %X) nounwind {
 ; CHECK-NEXT:    v_mul_lo_u32 v0, v0, s4
 ; CHECK-NEXT:    v_add_i32_e32 v0, vcc, 0x295fad, v0
 ; CHECK-NEXT:    v_and_b32_e32 v0, 0x1fffffff, v0
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, s5, v0
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, s5, v0
 ; CHECK-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %srem = srem i29 %X, 99

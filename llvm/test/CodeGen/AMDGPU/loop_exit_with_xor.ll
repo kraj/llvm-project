@@ -23,8 +23,8 @@ define void @needs_and(i32 %arg) {
 ; GCN-NEXT:    s_cbranch_execz .LBB0_4
 ; GCN-NEXT:  .LBB0_2: ; %loop
 ; GCN-NEXT:    ; =>This Inner Loop Header: Depth=1
-; GCN-NEXT:    v_cmp_gt_u32_e64 s[4:5], s10, v0
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s10, v0
+; GCN-NEXT:    v_cmp_ge_u32_e64 s[4:5], s10, v0
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s10, v0
 ; GCN-NEXT:    s_and_saveexec_b64 s[8:9], s[4:5]
 ; GCN-NEXT:    s_cbranch_execz .LBB0_1
 ; GCN-NEXT:  ; %bb.3: ; %then
@@ -70,7 +70,7 @@ define void @doesnt_need_and(i32 %arg) {
 ; GCN-NEXT:  .LBB1_1: ; %loop
 ; GCN-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; GCN-NEXT:    s_add_i32 s6, s6, 1
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s6, v0
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s6, v0
 ; GCN-NEXT:    s_or_b64 s[4:5], vcc, s[4:5]
 ; GCN-NEXT:    s_andn2_b64 exec, exec, s[4:5]
 ; GCN-NEXT:    s_cbranch_execnz .LBB1_1
@@ -114,7 +114,7 @@ define void @break_cond_is_arg(i32 %arg, i1 %breakcond) {
 ; GCN-NEXT:    s_cbranch_execz .LBB2_4
 ; GCN-NEXT:  .LBB2_2: ; %loop
 ; GCN-NEXT:    ; =>This Inner Loop Header: Depth=1
-; GCN-NEXT:    v_cmp_gt_u32_e64 s[4:5], s10, v0
+; GCN-NEXT:    v_cmp_ge_u32_e64 s[4:5], s10, v0
 ; GCN-NEXT:    s_and_saveexec_b64 s[8:9], s[4:5]
 ; GCN-NEXT:    s_cbranch_execz .LBB2_1
 ; GCN-NEXT:  ; %bb.3: ; %then

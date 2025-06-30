@@ -57,7 +57,7 @@ define amdgpu_cs i64 @compare_int_with_constant(i32 %x) {
 ; CHECK-LABEL: compare_int_with_constant:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_movk_i32 s0, 0x62
-; CHECK-NEXT:    v_cmp_lt_i32_e64 s[0:1], s0, v0
+; CHECK-NEXT:    v_cmp_le_i32_e64 s[0:1], s0, v0
 ; CHECK-NEXT:    ; return to shader part epilog
   %cmp = icmp sge i32 %x, 99
   %ballot = call i64 @llvm.amdgcn.ballot.i64(i1 %cmp)
@@ -182,7 +182,7 @@ false:
 define amdgpu_cs i32 @branch_divergent_ballot_ne_zero_compare(i32 %v) {
 ; CHECK-LABEL: branch_divergent_ballot_ne_zero_compare:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 12, v0
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 12, v0
 ; CHECK-NEXT:    s_cbranch_vccz .LBB11_2
 ; CHECK-NEXT:  ; %bb.1: ; %true
 ; CHECK-NEXT:    s_mov_b32 s0, 42
@@ -226,7 +226,7 @@ false:
 define amdgpu_cs i32 @branch_divergent_ballot_eq_zero_compare(i32 %v) {
 ; CHECK-LABEL: branch_divergent_ballot_eq_zero_compare:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 12, v0
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 12, v0
 ; CHECK-NEXT:    s_cbranch_vccz .LBB13_2
 ; CHECK-NEXT:  ; %bb.1: ; %false
 ; CHECK-NEXT:    s_mov_b32 s0, 33
@@ -270,8 +270,8 @@ false:
 define amdgpu_cs i32 @branch_divergent_ballot_ne_zero_and(i32 %v1, i32 %v2) {
 ; CHECK-LABEL: branch_divergent_ballot_ne_zero_and:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 12, v0
-; CHECK-NEXT:    v_cmp_lt_u32_e64 s[0:1], 34, v1
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 12, v0
+; CHECK-NEXT:    v_cmp_le_u32_e64 s[0:1], 34, v1
 ; CHECK-NEXT:    s_and_b64 vcc, vcc, s[0:1]
 ; CHECK-NEXT:    s_cbranch_vccz .LBB15_2
 ; CHECK-NEXT:  ; %bb.1: ; %true
@@ -325,8 +325,8 @@ false:
 define amdgpu_cs i32 @branch_divergent_ballot_eq_zero_and(i32 %v1, i32 %v2) {
 ; CHECK-LABEL: branch_divergent_ballot_eq_zero_and:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 12, v0
-; CHECK-NEXT:    v_cmp_lt_u32_e64 s[0:1], 34, v1
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 12, v0
+; CHECK-NEXT:    v_cmp_le_u32_e64 s[0:1], 34, v1
 ; CHECK-NEXT:    s_and_b64 vcc, vcc, s[0:1]
 ; CHECK-NEXT:    s_cbranch_vccz .LBB17_2
 ; CHECK-NEXT:  ; %bb.1: ; %false
@@ -405,8 +405,8 @@ declare i64 @llvm.amdgcn.icmp.i64(i1, i1, i32)
 define amdgpu_cs i32 @branch_divergent_simulated_negated_ballot_ne_zero_and(i32 %v1, i32 %v2) {
 ; CHECK-LABEL: branch_divergent_simulated_negated_ballot_ne_zero_and:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 12, v0
-; CHECK-NEXT:    v_cmp_lt_u32_e64 s[0:1], 34, v1
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 12, v0
+; CHECK-NEXT:    v_cmp_le_u32_e64 s[0:1], 34, v1
 ; CHECK-NEXT:    s_and_b64 vcc, vcc, s[0:1]
 ; CHECK-NEXT:    s_cbranch_vccnz .LBB20_2
 ; CHECK-NEXT:  ; %bb.1: ; %true
@@ -460,8 +460,8 @@ false:
 define amdgpu_cs i32 @branch_divergent_simulated_negated_ballot_eq_zero_and(i32 %v1, i32 %v2) {
 ; CHECK-LABEL: branch_divergent_simulated_negated_ballot_eq_zero_and:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 12, v0
-; CHECK-NEXT:    v_cmp_lt_u32_e64 s[0:1], 34, v1
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 12, v0
+; CHECK-NEXT:    v_cmp_le_u32_e64 s[0:1], 34, v1
 ; CHECK-NEXT:    s_and_b64 vcc, vcc, s[0:1]
 ; CHECK-NEXT:    s_cbranch_vccnz .LBB22_2
 ; CHECK-NEXT:  ; %bb.1: ; %false
@@ -522,7 +522,7 @@ define amdgpu_ps void @non_cst_non_compare_input(ptr addrspace(1) %out, i32 %tid
 ; CHECK-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; CHECK-NEXT:    s_xor_b64 s[2:3], exec, s[2:3]
 ; CHECK-NEXT:  ; %bb.1: ; %B
-; CHECK-NEXT:    v_cmp_gt_u32_e64 s[0:1], 2, v2
+; CHECK-NEXT:    v_cmp_ge_u32_e64 s[0:1], 2, v2
 ; CHECK-NEXT:    ; implicit-def: $vgpr2
 ; CHECK-NEXT:  ; %bb.2: ; %Flow
 ; CHECK-NEXT:    s_andn2_saveexec_b64 s[2:3], s[2:3]

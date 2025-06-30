@@ -77,7 +77,7 @@ define amdgpu_kernel void @foo(ptr addrspace(5) %ptr5, ptr %p0, double %v0, <4 x
 ; CHECK-NEXT:    flat_load_dwordx2 v[0:1], v[56:57] glc
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; CHECK-NEXT:    v_mov_b32_e32 v0, s64
-; CHECK-NEXT:    v_cmp_lt_i32_e32 vcc, 0, v42
+; CHECK-NEXT:    v_cmp_le_i32_e32 vcc, 0, v42
 ; CHECK-NEXT:    flat_store_dwordx2 v[58:59], v[62:63]
 ; CHECK-NEXT:    s_waitcnt vmcnt(0)
 ; CHECK-NEXT:    flat_store_dwordx2 v[58:59], v[46:47]

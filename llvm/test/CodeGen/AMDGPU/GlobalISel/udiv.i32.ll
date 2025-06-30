@@ -74,12 +74,12 @@ define amdgpu_ps i32 @s_udiv_i32(i32 inreg %num, i32 inreg %den) {
 ; GISEL-NEXT:    v_mul_lo_u32 v1, v0, s1
 ; GISEL-NEXT:    v_add_i32_e32 v2, vcc, 1, v0
 ; GISEL-NEXT:    v_sub_i32_e32 v1, vcc, s0, v1
-; GISEL-NEXT:    v_cmp_le_u32_e32 vcc, s1, v1
+; GISEL-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v1
 ; GISEL-NEXT:    v_cndmask_b32_e32 v0, v0, v2, vcc
 ; GISEL-NEXT:    v_subrev_i32_e64 v2, s[2:3], s1, v1
 ; GISEL-NEXT:    v_cndmask_b32_e32 v1, v1, v2, vcc
 ; GISEL-NEXT:    v_add_i32_e32 v2, vcc, 1, v0
-; GISEL-NEXT:    v_cmp_le_u32_e32 vcc, s1, v1
+; GISEL-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v1
 ; GISEL-NEXT:    v_cndmask_b32_e32 v0, v0, v2, vcc
 ; GISEL-NEXT:    v_readfirstlane_b32 s0, v0
 ; GISEL-NEXT:    ; return to shader part epilog
@@ -98,12 +98,12 @@ define amdgpu_ps i32 @s_udiv_i32(i32 inreg %num, i32 inreg %den) {
 ; CGP-NEXT:    v_mul_lo_u32 v1, v0, s1
 ; CGP-NEXT:    v_add_i32_e32 v2, vcc, 1, v0
 ; CGP-NEXT:    v_sub_i32_e32 v1, vcc, s0, v1
-; CGP-NEXT:    v_cmp_le_u32_e32 vcc, s1, v1
+; CGP-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v1
 ; CGP-NEXT:    v_cndmask_b32_e32 v0, v0, v2, vcc
 ; CGP-NEXT:    v_subrev_i32_e64 v2, s[2:3], s1, v1
 ; CGP-NEXT:    v_cndmask_b32_e32 v1, v1, v2, vcc
 ; CGP-NEXT:    v_add_i32_e32 v2, vcc, 1, v0
-; CGP-NEXT:    v_cmp_le_u32_e32 vcc, s1, v1
+; CGP-NEXT:    v_cmp_lt_u32_e32 vcc, s1, v1
 ; CGP-NEXT:    v_cndmask_b32_e32 v0, v0, v2, vcc
 ; CGP-NEXT:    v_readfirstlane_b32 s0, v0
 ; CGP-NEXT:    ; return to shader part epilog

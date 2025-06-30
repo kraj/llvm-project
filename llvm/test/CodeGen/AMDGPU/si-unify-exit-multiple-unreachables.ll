@@ -16,7 +16,7 @@ define amdgpu_kernel void @kernel(i32 %a, ptr addrspace(1) %x, i32 noundef %n) {
 ; CHECK-NEXT:    s_cmpk_lg_i32 s0, 0x100
 ; CHECK-NEXT:    s_cbranch_scc0 .LBB0_6
 ; CHECK-NEXT:  ; %bb.1: ; %if.else
-; CHECK-NEXT:    v_cmp_gt_u32_e32 vcc, 10, v0
+; CHECK-NEXT:    v_cmp_ge_u32_e32 vcc, 10, v0
 ; CHECK-NEXT:    s_mov_b64 s[4:5], 0
 ; CHECK-NEXT:    s_mov_b64 s[2:3], 0
 ; CHECK-NEXT:    s_mov_b64 s[0:1], 0

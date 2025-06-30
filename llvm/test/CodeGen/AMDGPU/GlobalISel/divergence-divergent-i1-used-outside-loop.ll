@@ -78,7 +78,7 @@ define void @divergent_i1_phi_used_outside_loop_larger_loop_body(float %val, ptr
 ; GFX10-NEXT:    v_add_co_ci_u32_e64 v2, s4, 0, v2, s4
 ; GFX10-NEXT:    s_andn2_b32 s7, s5, exec_lo
 ; GFX10-NEXT:    s_and_b32 s8, exec_lo, s6
-; GFX10-NEXT:    v_cmp_le_i32_e32 vcc_lo, 10, v0
+; GFX10-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 10, v0
 ; GFX10-NEXT:    s_or_b32 s4, s7, s8
 ; GFX10-NEXT:    s_cbranch_vccz .LBB1_4
 ; GFX10-NEXT:  .LBB1_2: ; %loop.start
@@ -590,7 +590,7 @@ define amdgpu_cs void @loop_with_1break(ptr addrspace(1) %x, ptr addrspace(1) %a
 ; GFX10-NEXT:    v_add_co_u32 v7, vcc_lo, v0, v7
 ; GFX10-NEXT:    v_add_co_ci_u32_e32 v8, vcc_lo, v1, v8, vcc_lo
 ; GFX10-NEXT:    v_add_nc_u32_e32 v10, 1, v6
-; GFX10-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x64, v6
+; GFX10-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x64, v6
 ; GFX10-NEXT:    s_andn2_b32 s4, s4, exec_lo
 ; GFX10-NEXT:    global_load_dword v9, v[7:8], off
 ; GFX10-NEXT:    s_and_b32 s6, exec_lo, 0

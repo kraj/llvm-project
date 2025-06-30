@@ -9279,7 +9279,7 @@ define amdgpu_kernel void @broken_phi_bb(i32 %arg, i32 %arg1) {
 ; SI-MOVREL-NEXT:    ; =>This Loop Header: Depth=1
 ; SI-MOVREL-NEXT:    ; Child Loop BB26_4 Depth 2
 ; SI-MOVREL-NEXT:    s_waitcnt lgkmcnt(0)
-; SI-MOVREL-NEXT:    v_cmp_le_i32_e32 vcc, s0, v0
+; SI-MOVREL-NEXT:    v_cmp_lt_i32_e32 vcc, s0, v0
 ; SI-MOVREL-NEXT:    s_cbranch_vccnz .LBB26_1
 ; SI-MOVREL-NEXT:  ; %bb.3: ; %bb4
 ; SI-MOVREL-NEXT:    ; in Loop: Header=BB26_2 Depth=1
@@ -9315,7 +9315,7 @@ define amdgpu_kernel void @broken_phi_bb(i32 %arg, i32 %arg1) {
 ; VI-MOVREL-NEXT:    ; =>This Loop Header: Depth=1
 ; VI-MOVREL-NEXT:    ; Child Loop BB26_4 Depth 2
 ; VI-MOVREL-NEXT:    s_waitcnt lgkmcnt(0)
-; VI-MOVREL-NEXT:    v_cmp_le_i32_e32 vcc, s0, v0
+; VI-MOVREL-NEXT:    v_cmp_lt_i32_e32 vcc, s0, v0
 ; VI-MOVREL-NEXT:    s_cbranch_vccnz .LBB26_1
 ; VI-MOVREL-NEXT:  ; %bb.3: ; %bb4
 ; VI-MOVREL-NEXT:    ; in Loop: Header=BB26_2 Depth=1
@@ -9351,7 +9351,7 @@ define amdgpu_kernel void @broken_phi_bb(i32 %arg, i32 %arg1) {
 ; VI-IDXMODE-NEXT:    ; =>This Loop Header: Depth=1
 ; VI-IDXMODE-NEXT:    ; Child Loop BB26_4 Depth 2
 ; VI-IDXMODE-NEXT:    s_waitcnt lgkmcnt(0)
-; VI-IDXMODE-NEXT:    v_cmp_le_i32_e32 vcc, s0, v0
+; VI-IDXMODE-NEXT:    v_cmp_lt_i32_e32 vcc, s0, v0
 ; VI-IDXMODE-NEXT:    s_cbranch_vccnz .LBB26_1
 ; VI-IDXMODE-NEXT:  ; %bb.3: ; %bb4
 ; VI-IDXMODE-NEXT:    ; in Loop: Header=BB26_2 Depth=1
@@ -9388,7 +9388,7 @@ define amdgpu_kernel void @broken_phi_bb(i32 %arg, i32 %arg1) {
 ; GFX9-IDXMODE-NEXT:    ; =>This Loop Header: Depth=1
 ; GFX9-IDXMODE-NEXT:    ; Child Loop BB26_4 Depth 2
 ; GFX9-IDXMODE-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX9-IDXMODE-NEXT:    v_cmp_le_i32_e32 vcc, s0, v0
+; GFX9-IDXMODE-NEXT:    v_cmp_lt_i32_e32 vcc, s0, v0
 ; GFX9-IDXMODE-NEXT:    s_cbranch_vccnz .LBB26_1
 ; GFX9-IDXMODE-NEXT:  ; %bb.3: ; %bb4
 ; GFX9-IDXMODE-NEXT:    ; in Loop: Header=BB26_2 Depth=1

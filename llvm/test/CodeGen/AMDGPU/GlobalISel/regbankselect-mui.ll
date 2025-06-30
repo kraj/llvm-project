@@ -324,8 +324,8 @@ define amdgpu_ps void @sext(i32 inreg %a, ptr addrspace(1) %ptr) {
 define amdgpu_ps void @and_i1_vcc(i32 %a, i32 %b, ptr addrspace(1) %ptr) {
 ; OLD_RBS-LABEL: and_i1_vcc:
 ; OLD_RBS:       ; %bb.0:
-; OLD_RBS-NEXT:    v_cmp_le_u32_e32 vcc_lo, 10, v0
-; OLD_RBS-NEXT:    v_cmp_le_u32_e64 s0, 20, v1
+; OLD_RBS-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 10, v0
+; OLD_RBS-NEXT:    v_cmp_lt_u32_e64 s0, 20, v1
 ; OLD_RBS-NEXT:    s_and_b32 vcc_lo, vcc_lo, s0
 ; OLD_RBS-NEXT:    v_cndmask_b32_e32 v0, v1, v0, vcc_lo
 ; OLD_RBS-NEXT:    global_store_dword v[2:3], v0, off
@@ -333,8 +333,8 @@ define amdgpu_ps void @and_i1_vcc(i32 %a, i32 %b, ptr addrspace(1) %ptr) {
 ;
 ; NEW_RBS-LABEL: and_i1_vcc:
 ; NEW_RBS:       ; %bb.0:
-; NEW_RBS-NEXT:    v_cmp_le_u32_e32 vcc_lo, 10, v0
-; NEW_RBS-NEXT:    v_cmp_le_u32_e64 s0, 20, v1
+; NEW_RBS-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 10, v0
+; NEW_RBS-NEXT:    v_cmp_lt_u32_e64 s0, 20, v1
 ; NEW_RBS-NEXT:    s_and_b32 vcc_lo, vcc_lo, s0
 ; NEW_RBS-NEXT:    v_cndmask_b32_e32 v0, v1, v0, vcc_lo
 ; NEW_RBS-NEXT:    global_store_dword v[2:3], v0, off
@@ -532,7 +532,7 @@ define amdgpu_cs void @loop_with_2breaks(ptr addrspace(1) %x, ptr addrspace(1) %
 ; OLD_RBS-NEXT:    v_add_co_u32 v7, vcc_lo, v0, v7
 ; OLD_RBS-NEXT:    v_add_co_ci_u32_e32 v8, vcc_lo, v1, v8, vcc_lo
 ; OLD_RBS-NEXT:    v_add_nc_u32_e32 v10, 1, v6
-; OLD_RBS-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x64, v6
+; OLD_RBS-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x64, v6
 ; OLD_RBS-NEXT:    s_andn2_b32 s4, -1, exec_lo
 ; OLD_RBS-NEXT:    global_load_dword v9, v[7:8], off
 ; OLD_RBS-NEXT:    v_mov_b32_e32 v6, v10

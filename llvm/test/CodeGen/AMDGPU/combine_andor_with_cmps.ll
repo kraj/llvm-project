@@ -13,7 +13,7 @@ define i1 @test1(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_i32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_ge_i32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp slt i32 %arg1, 1000
@@ -27,7 +27,7 @@ define i1 @test2(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp ult i32 %arg1, 1000
@@ -41,7 +41,7 @@ define i1 @test3(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_i32_e32 vcc_lo, 0x3e9, v0
+; GCN-NEXT:    v_cmp_ge_i32_e32 vcc_lo, 0x3e9, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp sle i32 %arg1, 1000
@@ -55,7 +55,7 @@ define i1 @test4(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x3e9, v0
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x3e9, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp ule i32 %arg1, 1000
@@ -69,7 +69,7 @@ define i1 @test5(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp sgt i32 %arg1, 1000
@@ -83,7 +83,7 @@ define i1 @test6(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_le_u32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp ugt i32 %arg1, 1000
@@ -97,7 +97,7 @@ define i1 @test7(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0x3e7, v0
+; GCN-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0x3e7, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp sge i32 %arg1, 1000
@@ -111,7 +111,7 @@ define i1 @test8(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 0x3e7, v0
+; GCN-NEXT:    v_cmp_le_u32_e32 vcc_lo, 0x3e7, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp uge i32 %arg1, 1000
@@ -237,7 +237,7 @@ define i1 @test17(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_i32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_ge_i32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp slt i32 %arg1, 1000
@@ -251,7 +251,7 @@ define i1 @test18(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp ult i32 %arg1, 1000
@@ -265,7 +265,7 @@ define i1 @test19(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_i32_e32 vcc_lo, 0x3e9, v0
+; GCN-NEXT:    v_cmp_ge_i32_e32 vcc_lo, 0x3e9, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp sle i32 %arg1, 1000
@@ -279,7 +279,7 @@ define i1 @test20(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_max_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x3e9, v0
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x3e9, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp ule i32 %arg1, 1000
@@ -293,7 +293,7 @@ define i1 @test21(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp sgt i32 %arg1, 1000
@@ -307,7 +307,7 @@ define i1 @test22(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 0x3e8, v0
+; GCN-NEXT:    v_cmp_le_u32_e32 vcc_lo, 0x3e8, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp ugt i32 %arg1, 1000
@@ -321,7 +321,7 @@ define i1 @test23(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_i32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_i32_e32 vcc_lo, 0x3e7, v0
+; GCN-NEXT:    v_cmp_le_i32_e32 vcc_lo, 0x3e7, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp sge i32 %arg1, 1000
@@ -335,7 +335,7 @@ define i1 @test24(i32 %arg1, i32 %arg2) {
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_min_u32_e32 v0, v0, v1
-; GCN-NEXT:    v_cmp_lt_u32_e32 vcc_lo, 0x3e7, v0
+; GCN-NEXT:    v_cmp_le_u32_e32 vcc_lo, 0x3e7, v0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, vcc_lo
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %cmp1 = icmp uge i32 %arg1, 1000
@@ -2695,8 +2695,8 @@ define i1 @test124(i32 %arg1, i64 %arg2) {
 ; GCN-LABEL: test124:
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GCN-NEXT:    v_cmp_gt_i64_e32 vcc_lo, 0x3e8, v[1:2]
-; GCN-NEXT:    v_cmp_gt_i32_e64 s0, 0x3e8, v0
+; GCN-NEXT:    v_cmp_ge_i64_e32 vcc_lo, 0x3e8, v[1:2]
+; GCN-NEXT:    v_cmp_ge_i32_e64 s0, 0x3e8, v0
 ; GCN-NEXT:    s_or_b32 s0, s0, vcc_lo
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s0
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
@@ -2800,7 +2800,7 @@ define i1 @test131(i16 %arg1, i32 %arg2) {
 ; GFX11-TRUE16-LABEL: test131:
 ; GFX11-TRUE16:       ; %bb.0:
 ; GFX11-TRUE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-TRUE16-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 10, v1
+; GFX11-TRUE16-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 10, v1
 ; GFX11-TRUE16-NEXT:    v_cmp_gt_u16_e64 s0, 10, v0.l
 ; GFX11-TRUE16-NEXT:    s_or_b32 s0, s0, vcc_lo
 ; GFX11-TRUE16-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s0
@@ -2810,7 +2810,7 @@ define i1 @test131(i16 %arg1, i32 %arg2) {
 ; GFX11-FAKE16:       ; %bb.0:
 ; GFX11-FAKE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-NEXT:    v_cmp_gt_u16_e32 vcc_lo, 10, v0
-; GFX11-FAKE16-NEXT:    v_cmp_gt_u32_e64 s0, 10, v1
+; GFX11-FAKE16-NEXT:    v_cmp_ge_u32_e64 s0, 10, v1
 ; GFX11-FAKE16-NEXT:    s_or_b32 s0, vcc_lo, s0
 ; GFX11-FAKE16-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s0
 ; GFX11-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -2818,7 +2818,7 @@ define i1 @test131(i16 %arg1, i32 %arg2) {
 ; GCN-TRUE16-LABEL: test131:
 ; GCN-TRUE16:       ; %bb.0:
 ; GCN-TRUE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GCN-TRUE16-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 10, v1
+; GCN-TRUE16-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 10, v1
 ; GCN-TRUE16-NEXT:    v_cmp_gt_u16_e64 s0, 10, v0.l
 ; GCN-TRUE16-NEXT:    s_or_b32 s0, s0, vcc_lo
 ; GCN-TRUE16-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s0
@@ -2828,7 +2828,7 @@ define i1 @test131(i16 %arg1, i32 %arg2) {
 ; GCN-FAKE16:       ; %bb.0:
 ; GCN-FAKE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-FAKE16-NEXT:    v_cmp_gt_u16_e32 vcc_lo, 10, v0
-; GCN-FAKE16-NEXT:    v_cmp_gt_u32_e64 s0, 10, v1
+; GCN-FAKE16-NEXT:    v_cmp_ge_u32_e64 s0, 10, v1
 ; GCN-FAKE16-NEXT:    s_or_b32 s0, vcc_lo, s0
 ; GCN-FAKE16-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s0
 ; GCN-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -2863,8 +2863,8 @@ define i1 @test133(i32 %arg1, i32 %arg2) {
 ; GCN-LABEL: test133:
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc_lo, 0x64, v0
-; GCN-NEXT:    v_cmp_gt_u32_e64 s0, 0x3e8, v1
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc_lo, 0x64, v0
+; GCN-NEXT:    v_cmp_ge_u32_e64 s0, 0x3e8, v1
 ; GCN-NEXT:    s_or_b32 s0, vcc_lo, s0
 ; GCN-NEXT:    v_cndmask_b32_e64 v0, 0, 1, s0
 ; GCN-NEXT:    s_setpc_b64 s[30:31]

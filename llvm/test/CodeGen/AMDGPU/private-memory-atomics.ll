@@ -593,7 +593,7 @@ define i32 @atomicrmw_inc_private_i32(ptr addrspace(5) %ptr) {
 ; GCN-NEXT:    buffer_load_dword v1, v0, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    v_add_i32_e32 v2, vcc, 1, v1
-; GCN-NEXT:    v_cmp_gt_u32_e32 vcc, 4, v1
+; GCN-NEXT:    v_cmp_ge_u32_e32 vcc, 4, v1
 ; GCN-NEXT:    v_cndmask_b32_e32 v2, 0, v2, vcc
 ; GCN-NEXT:    buffer_store_dword v2, v0, s[0:3], 0 offen
 ; GCN-NEXT:    v_mov_b32_e32 v0, v1
@@ -622,7 +622,7 @@ define i32 @atomicrmw_dec_private_i32(ptr addrspace(5) %ptr) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    v_add_i32_e32 v2, vcc, -1, v1
 ; GCN-NEXT:    v_cmp_eq_u32_e32 vcc, 0, v1
-; GCN-NEXT:    v_cmp_lt_u32_e64 s[4:5], 4, v1
+; GCN-NEXT:    v_cmp_le_u32_e64 s[4:5], 4, v1
 ; GCN-NEXT:    s_or_b64 s[4:5], vcc, s[4:5]
 ; GCN-NEXT:    v_cndmask_b32_e64 v2, v2, 4, s[4:5]
 ; GCN-NEXT:    buffer_store_dword v2, v0, s[0:3], 0 offen

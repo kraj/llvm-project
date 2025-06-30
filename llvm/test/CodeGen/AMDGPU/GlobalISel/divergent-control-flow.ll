@@ -216,7 +216,7 @@ define amdgpu_kernel void @break_loop(i32 %arg) {
 ; CHECK-NEXT:    v_add_u32_e32 v1, 1, v1
 ; CHECK-NEXT:    s_andn2_b64 s[2:3], s[2:3], exec
 ; CHECK-NEXT:    s_and_b64 s[4:5], exec, -1
-; CHECK-NEXT:    v_cmp_le_i32_e32 vcc, 0, v1
+; CHECK-NEXT:    v_cmp_lt_i32_e32 vcc, 0, v1
 ; CHECK-NEXT:    s_or_b64 s[2:3], s[2:3], s[4:5]
 ; CHECK-NEXT:    s_cbranch_vccnz .LBB5_1
 ; CHECK-NEXT:  ; %bb.3: ; %bb4

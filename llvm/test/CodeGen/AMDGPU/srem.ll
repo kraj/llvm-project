@@ -1607,7 +1607,7 @@ define amdgpu_kernel void @srem_i64(ptr addrspace(1) %out, ptr addrspace(1) %in)
 ; GCN-NEXT:    s_subb_u32 s15, s7, 0
 ; GCN-NEXT:    s_cmp_ge_u32 s15, s13
 ; GCN-NEXT:    s_cselect_b32 s16, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e64 s[2:3], s12, v1
+; GCN-NEXT:    v_cmp_lt_u32_e64 s[2:3], s12, v1
 ; GCN-NEXT:    s_cmp_eq_u32 s15, s13
 ; GCN-NEXT:    v_cndmask_b32_e64 v2, 0, -1, s[2:3]
 ; GCN-NEXT:    v_mov_b32_e32 v3, s16
@@ -1627,7 +1627,7 @@ define amdgpu_kernel void @srem_i64(ptr addrspace(1) %out, ptr addrspace(1) %in)
 ; GCN-NEXT:    s_subb_u32 s0, s17, s5
 ; GCN-NEXT:    s_cmp_ge_u32 s0, s13
 ; GCN-NEXT:    s_cselect_b32 s1, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s12, v0
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s12, v0
 ; GCN-NEXT:    s_cmp_eq_u32 s0, s13
 ; GCN-NEXT:    v_cndmask_b32_e64 v3, 0, -1, vcc
 ; GCN-NEXT:    v_mov_b32_e32 v4, s1
@@ -2806,7 +2806,7 @@ define amdgpu_kernel void @srem_v2i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    s_subb_u32 s19, s13, 0
 ; GCN-NEXT:    s_cmp_ge_u32 s19, s17
 ; GCN-NEXT:    s_cselect_b32 s20, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e64 s[2:3], s16, v1
+; GCN-NEXT:    v_cmp_lt_u32_e64 s[2:3], s16, v1
 ; GCN-NEXT:    s_cmp_eq_u32 s19, s17
 ; GCN-NEXT:    v_cndmask_b32_e64 v2, 0, -1, s[2:3]
 ; GCN-NEXT:    v_mov_b32_e32 v3, s20
@@ -2826,7 +2826,7 @@ define amdgpu_kernel void @srem_v2i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    s_subb_u32 s0, s21, s11
 ; GCN-NEXT:    s_cmp_ge_u32 s0, s17
 ; GCN-NEXT:    s_cselect_b32 s1, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s16, v0
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s16, v0
 ; GCN-NEXT:    s_cmp_eq_u32 s0, s17
 ; GCN-NEXT:    v_cndmask_b32_e64 v3, 0, -1, vcc
 ; GCN-NEXT:    v_mov_b32_e32 v4, s1
@@ -2972,7 +2972,7 @@ define amdgpu_kernel void @srem_v2i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    s_subb_u32 s15, s7, 0
 ; GCN-NEXT:    s_cmp_ge_u32 s15, s13
 ; GCN-NEXT:    s_cselect_b32 s16, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e64 s[2:3], s12, v3
+; GCN-NEXT:    v_cmp_lt_u32_e64 s[2:3], s12, v3
 ; GCN-NEXT:    s_cmp_eq_u32 s15, s13
 ; GCN-NEXT:    v_cndmask_b32_e64 v4, 0, -1, s[2:3]
 ; GCN-NEXT:    v_mov_b32_e32 v5, s16
@@ -2992,7 +2992,7 @@ define amdgpu_kernel void @srem_v2i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    s_subb_u32 s0, s17, s5
 ; GCN-NEXT:    s_cmp_ge_u32 s0, s13
 ; GCN-NEXT:    s_cselect_b32 s1, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s12, v2
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s12, v2
 ; GCN-NEXT:    s_cmp_eq_u32 s0, s13
 ; GCN-NEXT:    v_cndmask_b32_e64 v5, 0, -1, vcc
 ; GCN-NEXT:    v_mov_b32_e32 v6, s1
@@ -3021,10 +3021,10 @@ define amdgpu_kernel void @srem_v2i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    v_mul_lo_u32 v2, v2, s4
 ; GCN-NEXT:    v_sub_u32_e32 v2, s6, v2
 ; GCN-NEXT:    v_subrev_u32_e32 v3, s4, v2
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s4, v2
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s4, v2
 ; GCN-NEXT:    v_cndmask_b32_e32 v2, v2, v3, vcc
 ; GCN-NEXT:    v_subrev_u32_e32 v3, s4, v2
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s4, v2
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s4, v2
 ; GCN-NEXT:    v_cndmask_b32_e32 v2, v2, v3, vcc
 ; GCN-NEXT:    v_mov_b32_e32 v3, 0
 ; GCN-NEXT:  .LBB10_6:
@@ -4980,7 +4980,7 @@ define amdgpu_kernel void @srem_v4i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    s_subb_u32 s15, s7, 0
 ; GCN-NEXT:    s_cmp_ge_u32 s15, s13
 ; GCN-NEXT:    s_cselect_b32 s16, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e64 s[2:3], s12, v9
+; GCN-NEXT:    v_cmp_lt_u32_e64 s[2:3], s12, v9
 ; GCN-NEXT:    s_cmp_eq_u32 s15, s13
 ; GCN-NEXT:    v_cndmask_b32_e64 v10, 0, -1, s[2:3]
 ; GCN-NEXT:    v_mov_b32_e32 v11, s16
@@ -5000,7 +5000,7 @@ define amdgpu_kernel void @srem_v4i64(ptr addrspace(1) %out, ptr addrspace(1) %i
 ; GCN-NEXT:    s_subb_u32 s0, s17, s5
 ; GCN-NEXT:    s_cmp_ge_u32 s0, s13
 ; GCN-NEXT:    s_cselect_b32 s1, -1, 0
-; GCN-NEXT:    v_cmp_le_u32_e32 vcc, s12, v8
+; GCN-NEXT:    v_cmp_lt_u32_e32 vcc, s12, v8
 ; GCN-NEXT:    s_cmp_eq_u32 s0, s13
 ; GCN-NEXT:    v_cndmask_b32_e64 v11, 0, -1, vcc
 ; GCN-NEXT:    v_mov_b32_e32 v14, s1

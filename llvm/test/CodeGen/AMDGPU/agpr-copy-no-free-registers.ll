@@ -603,7 +603,7 @@ define amdgpu_kernel void @introduced_copy_to_sgpr(i64 %arg, i32 %arg1, i32 %arg
 ; GFX908-NEXT:    v_add_co_u32_sdwa v2, vcc, v2, v16 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
 ; GFX908-NEXT:    v_addc_co_u32_e32 v3, vcc, 0, v3, vcc
 ; GFX908-NEXT:    s_add_u32 s20, s20, s4
-; GFX908-NEXT:    v_cmp_lt_i64_e64 s[24:25], -1, v[2:3]
+; GFX908-NEXT:    v_cmp_le_i64_e64 s[24:25], -1, v[2:3]
 ; GFX908-NEXT:    s_addc_u32 s21, s21, s5
 ; GFX908-NEXT:    s_mov_b64 s[22:23], 0
 ; GFX908-NEXT:    s_andn2_b64 vcc, exec, s[24:25]
@@ -765,7 +765,7 @@ define amdgpu_kernel void @introduced_copy_to_sgpr(i64 %arg, i32 %arg1, i32 %arg
 ; GFX90A-NEXT:    v_addc_co_u32_e32 v5, vcc, 0, v5, vcc
 ; GFX90A-NEXT:    s_add_u32 s20, s20, s4
 ; GFX90A-NEXT:    s_addc_u32 s21, s21, s5
-; GFX90A-NEXT:    v_cmp_lt_i64_e64 s[24:25], -1, v[4:5]
+; GFX90A-NEXT:    v_cmp_le_i64_e64 s[24:25], -1, v[4:5]
 ; GFX90A-NEXT:    s_mov_b64 s[22:23], 0
 ; GFX90A-NEXT:    s_andn2_b64 vcc, exec, s[24:25]
 ; GFX90A-NEXT:    s_cbranch_vccz .LBB3_9

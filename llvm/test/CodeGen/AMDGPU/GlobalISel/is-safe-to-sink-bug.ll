@@ -45,7 +45,7 @@ define amdgpu_ps void @_amdgpu_ps_main(i1 %arg) {
 ; CHECK-NEXT:    s_and_b32 s2, 1, s2
 ; CHECK-NEXT:    v_or_b32_e32 v1, 1, v0
 ; CHECK-NEXT:    v_cmp_ne_u32_e64 s2, 0, s2
-; CHECK-NEXT:    v_cmp_gt_i32_e32 vcc_lo, 0, v0
+; CHECK-NEXT:    v_cmp_ge_i32_e32 vcc_lo, 0, v0
 ; CHECK-NEXT:    v_mov_b32_e32 v0, v1
 ; CHECK-NEXT:    s_and_b32 s4, s2, s1
 ; CHECK-NEXT:    s_andn2_b32 s1, s1, exec_lo

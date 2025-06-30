@@ -70,11 +70,11 @@ define <4 x i16> @vec_8xi16_extract_4xi16(ptr addrspace(1) %p0, ptr addrspace(1)
 ; SI-NEXT:    v_mov_b32_e32 v5, 0xffff0000
 ; SI-NEXT:    v_bfrev_b32_e32 v6, 1
 ; SI-NEXT:    v_mov_b32_e32 v7, 0xffff8000
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v0
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v0
 ; SI-NEXT:    v_cndmask_b32_e32 v0, v3, v4, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v1
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v1
 ; SI-NEXT:    v_cndmask_b32_e32 v1, v5, v6, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v2
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v2
 ; SI-NEXT:    v_cndmask_b32_e32 v2, -1, v7, vcc
 ; SI-NEXT:    v_or_b32_e32 v0, v0, v1
 ; SI-NEXT:    v_lshlrev_b32_e32 v4, 16, v2
@@ -262,13 +262,13 @@ define <4 x i16> @vec_8xi16_extract_4xi16_2(ptr addrspace(1) %p0, ptr addrspace(
 ; SI-NEXT:    v_mov_b32_e32 v5, 0x8000
 ; SI-NEXT:    v_mov_b32_e32 v6, 0xffff0000
 ; SI-NEXT:    v_bfrev_b32_e32 v7, 1
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v0
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v0
 ; SI-NEXT:    v_cndmask_b32_e32 v0, v4, v5, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v1
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v1
 ; SI-NEXT:    v_cndmask_b32_e32 v1, v6, v7, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v3
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v3
 ; SI-NEXT:    v_cndmask_b32_e32 v3, v4, v5, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v2
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v2
 ; SI-NEXT:    v_cndmask_b32_e32 v4, v6, v7, vcc
 ; SI-NEXT:    v_or_b32_e32 v0, v0, v1
 ; SI-NEXT:    v_or_b32_e32 v2, v3, v4
@@ -693,11 +693,11 @@ define <4 x i16> @vec_16xi16_extract_4xi16(ptr addrspace(1) %p0, ptr addrspace(1
 ; SI-NEXT:    v_mov_b32_e32 v5, 0xffff0000
 ; SI-NEXT:    v_bfrev_b32_e32 v6, 1
 ; SI-NEXT:    v_mov_b32_e32 v7, 0xffff8000
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v0
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v0
 ; SI-NEXT:    v_cndmask_b32_e32 v0, v3, v4, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v1
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v1
 ; SI-NEXT:    v_cndmask_b32_e32 v1, v5, v6, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v2
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v2
 ; SI-NEXT:    v_cndmask_b32_e32 v2, -1, v7, vcc
 ; SI-NEXT:    v_or_b32_e32 v0, v0, v1
 ; SI-NEXT:    v_lshlrev_b32_e32 v4, 16, v2
@@ -933,13 +933,13 @@ define <4 x i16> @vec_16xi16_extract_4xi16_2(ptr addrspace(1) %p0, ptr addrspace
 ; SI-NEXT:    v_mov_b32_e32 v5, 0x8000
 ; SI-NEXT:    v_mov_b32_e32 v6, 0xffff0000
 ; SI-NEXT:    v_bfrev_b32_e32 v7, 1
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v0
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v0
 ; SI-NEXT:    v_cndmask_b32_e32 v0, v4, v5, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v1
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v1
 ; SI-NEXT:    v_cndmask_b32_e32 v1, v6, v7, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v2
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v2
 ; SI-NEXT:    v_cndmask_b32_e32 v2, v4, v5, vcc
-; SI-NEXT:    v_cmp_lt_i32_e32 vcc, -1, v3
+; SI-NEXT:    v_cmp_le_i32_e32 vcc, -1, v3
 ; SI-NEXT:    v_cndmask_b32_e32 v3, v6, v7, vcc
 ; SI-NEXT:    v_or_b32_e32 v0, v0, v1
 ; SI-NEXT:    v_or_b32_e32 v2, v2, v3
@@ -1539,21 +1539,21 @@ define amdgpu_gfx <8 x i16> @vec_16xi16_extract_8xi16_0(i1 inreg %cond, ptr addr
 ; SI-NEXT:    v_mov_b32_e32 v9, 0x3900
 ; SI-NEXT:    v_mov_b32_e32 v10, 0x3d000000
 ; SI-NEXT:    v_mov_b32_e32 v11, 0x39000000
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v0
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v0
 ; SI-NEXT:    v_cndmask_b32_e32 v0, v8, v9, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v1
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v1
 ; SI-NEXT:    v_cndmask_b32_e32 v1, v10, v11, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v5
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v5
 ; SI-NEXT:    v_cndmask_b32_e32 v5, v8, v9, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v6
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v6
 ; SI-NEXT:    v_cndmask_b32_e32 v12, v10, v11, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v3
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v3
 ; SI-NEXT:    v_cndmask_b32_e32 v3, v8, v9, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v7
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v7
 ; SI-NEXT:    v_cndmask_b32_e32 v7, v10, v11, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v2
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v2
 ; SI-NEXT:    v_cndmask_b32_e32 v2, v8, v9, vcc
-; SI-NEXT:    v_cmp_lt_u32_e32 vcc, s34, v4
+; SI-NEXT:    v_cmp_le_u32_e32 vcc, s34, v4
 ; SI-NEXT:    v_cndmask_b32_e32 v8, v10, v11, vcc
 ; SI-NEXT:    v_or_b32_e32 v0, v0, v1
 ; SI-NEXT:    v_or_b32_e32 v4, v5, v12

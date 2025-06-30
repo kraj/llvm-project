@@ -66,7 +66,7 @@ define amdgpu_cs void @memcpy_p1i8(ptr addrspace(1) %dst, ptr addrspace(1) %src)
 ; LOOP-NEXT:    v_addc_u32_e32 v7, vcc, v1, v5, vcc
 ; LOOP-NEXT:    v_add_i32_e32 v4, vcc, 32, v4
 ; LOOP-NEXT:    v_addc_u32_e32 v5, vcc, 0, v5, vcc
-; LOOP-NEXT:    v_cmp_gt_u32_e32 vcc, 32, v4
+; LOOP-NEXT:    v_cmp_ge_u32_e32 vcc, 32, v4
 ; LOOP-NEXT:    v_lshlrev_b32_e32 v11, 8, v11
 ; LOOP-NEXT:    v_lshlrev_b32_e32 v13, 24, v13
 ; LOOP-NEXT:    v_lshlrev_b32_e32 v12, 16, v12

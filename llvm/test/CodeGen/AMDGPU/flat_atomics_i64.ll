@@ -3512,7 +3512,7 @@ define amdgpu_kernel void @atomic_max_i64_offset(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -3561,7 +3561,7 @@ define amdgpu_kernel void @atomic_max_i64_offset(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -3597,7 +3597,7 @@ define amdgpu_kernel void @atomic_max_i64_offset(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -3650,7 +3650,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -3702,7 +3702,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -3742,7 +3742,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -3805,7 +3805,7 @@ define amdgpu_kernel void @atomic_max_i64_addr64_offset(ptr %out, i64 %in, i64 %
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -3858,7 +3858,7 @@ define amdgpu_kernel void @atomic_max_i64_addr64_offset(ptr %out, i64 %in, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -3899,7 +3899,7 @@ define amdgpu_kernel void @atomic_max_i64_addr64_offset(ptr %out, i64 %in, i64 %
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -3955,7 +3955,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -4009,7 +4009,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -4050,7 +4050,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_addr64_offset(ptr %out, ptr %out2,
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -4108,7 +4108,7 @@ define amdgpu_kernel void @atomic_max_i64(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -4155,7 +4155,7 @@ define amdgpu_kernel void @atomic_max_i64(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -4190,7 +4190,7 @@ define amdgpu_kernel void @atomic_max_i64(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -4240,7 +4240,7 @@ define amdgpu_kernel void @atomic_max_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -4290,7 +4290,7 @@ define amdgpu_kernel void @atomic_max_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -4329,7 +4329,7 @@ define amdgpu_kernel void @atomic_max_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -4389,7 +4389,7 @@ define amdgpu_kernel void @atomic_max_i64_addr64(ptr %out, i64 %in, i64 %index) 
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -4440,7 +4440,7 @@ define amdgpu_kernel void @atomic_max_i64_addr64(ptr %out, i64 %in, i64 %index) 
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -4479,7 +4479,7 @@ define amdgpu_kernel void @atomic_max_i64_addr64(ptr %out, i64 %in, i64 %index) 
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -4532,7 +4532,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_addr64(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_i64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_le_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -4584,7 +4584,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_addr64(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_i64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_le_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -4624,7 +4624,7 @@ define amdgpu_kernel void @atomic_max_i64_ret_addr64(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -4683,7 +4683,7 @@ define amdgpu_kernel void @atomic_umax_i64_offset(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -4732,7 +4732,7 @@ define amdgpu_kernel void @atomic_umax_i64_offset(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -4768,7 +4768,7 @@ define amdgpu_kernel void @atomic_umax_i64_offset(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -4821,7 +4821,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_offset(ptr %out, ptr %out2, i64 %
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -4873,7 +4873,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_offset(ptr %out, ptr %out2, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -4913,7 +4913,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_offset(ptr %out, ptr %out2, i64 %
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -4976,7 +4976,7 @@ define amdgpu_kernel void @atomic_umax_i64_addr64_offset(ptr %out, i64 %in, i64 
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -5029,7 +5029,7 @@ define amdgpu_kernel void @atomic_umax_i64_addr64_offset(ptr %out, i64 %in, i64 
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -5070,7 +5070,7 @@ define amdgpu_kernel void @atomic_umax_i64_addr64_offset(ptr %out, i64 %in, i64 
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -5126,7 +5126,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -5180,7 +5180,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -5221,7 +5221,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_addr64_offset(ptr %out, ptr %out2
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -5279,7 +5279,7 @@ define amdgpu_kernel void @atomic_umax_i64(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -5326,7 +5326,7 @@ define amdgpu_kernel void @atomic_umax_i64(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -5361,7 +5361,7 @@ define amdgpu_kernel void @atomic_umax_i64(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -5411,7 +5411,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -5461,7 +5461,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -5500,7 +5500,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -5560,7 +5560,7 @@ define amdgpu_kernel void @atomic_umax_i64_addr64(ptr %out, i64 %in, i64 %index)
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -5611,7 +5611,7 @@ define amdgpu_kernel void @atomic_umax_i64_addr64(ptr %out, i64 %in, i64 %index)
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -5650,7 +5650,7 @@ define amdgpu_kernel void @atomic_umax_i64_addr64(ptr %out, i64 %in, i64 %index)
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -5703,7 +5703,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_addr64(ptr %out, ptr %out2, i64 %
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_lt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -5755,7 +5755,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_addr64(ptr %out, ptr %out2, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_lt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -5795,7 +5795,7 @@ define amdgpu_kernel void @atomic_umax_i64_ret_addr64(ptr %out, ptr %out2, i64 %
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_lt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -5854,7 +5854,7 @@ define amdgpu_kernel void @atomic_min_i64_offset(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -5903,7 +5903,7 @@ define amdgpu_kernel void @atomic_min_i64_offset(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -5939,7 +5939,7 @@ define amdgpu_kernel void @atomic_min_i64_offset(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -5992,7 +5992,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -6044,7 +6044,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -6084,7 +6084,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -6147,7 +6147,7 @@ define amdgpu_kernel void @atomic_min_i64_addr64_offset(ptr %out, i64 %in, i64 %
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -6200,7 +6200,7 @@ define amdgpu_kernel void @atomic_min_i64_addr64_offset(ptr %out, i64 %in, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -6241,7 +6241,7 @@ define amdgpu_kernel void @atomic_min_i64_addr64_offset(ptr %out, i64 %in, i64 %
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -6297,7 +6297,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -6351,7 +6351,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -6392,7 +6392,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_addr64_offset(ptr %out, ptr %out2,
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -6450,7 +6450,7 @@ define amdgpu_kernel void @atomic_min_i64(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -6497,7 +6497,7 @@ define amdgpu_kernel void @atomic_min_i64(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -6532,7 +6532,7 @@ define amdgpu_kernel void @atomic_min_i64(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -6582,7 +6582,7 @@ define amdgpu_kernel void @atomic_min_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -6632,7 +6632,7 @@ define amdgpu_kernel void @atomic_min_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -6671,7 +6671,7 @@ define amdgpu_kernel void @atomic_min_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -6731,7 +6731,7 @@ define amdgpu_kernel void @atomic_min_i64_addr64(ptr %out, i64 %in, i64 %index) 
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -6782,7 +6782,7 @@ define amdgpu_kernel void @atomic_min_i64_addr64(ptr %out, i64 %in, i64 %index) 
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -6821,7 +6821,7 @@ define amdgpu_kernel void @atomic_min_i64_addr64(ptr %out, i64 %in, i64 %index) 
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -6874,7 +6874,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_addr64(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_i64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -6926,7 +6926,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_addr64(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_i64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_i64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -6966,7 +6966,7 @@ define amdgpu_kernel void @atomic_min_i64_ret_addr64(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_i64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_i64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -7025,7 +7025,7 @@ define amdgpu_kernel void @atomic_umin_i64_offset(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -7074,7 +7074,7 @@ define amdgpu_kernel void @atomic_umin_i64_offset(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -7110,7 +7110,7 @@ define amdgpu_kernel void @atomic_umin_i64_offset(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -7163,7 +7163,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_offset(ptr %out, ptr %out2, i64 %
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -7215,7 +7215,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_offset(ptr %out, ptr %out2, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -7255,7 +7255,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_offset(ptr %out, ptr %out2, i64 %
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -7318,7 +7318,7 @@ define amdgpu_kernel void @atomic_umin_i64_addr64_offset(ptr %out, i64 %in, i64 
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -7371,7 +7371,7 @@ define amdgpu_kernel void @atomic_umin_i64_addr64_offset(ptr %out, i64 %in, i64 
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -7412,7 +7412,7 @@ define amdgpu_kernel void @atomic_umin_i64_addr64_offset(ptr %out, i64 %in, i64 
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -7468,7 +7468,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -7522,7 +7522,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -7563,7 +7563,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_addr64_offset(ptr %out, ptr %out2
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -7621,7 +7621,7 @@ define amdgpu_kernel void @atomic_umin_i64(ptr %out, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -7668,7 +7668,7 @@ define amdgpu_kernel void @atomic_umin_i64(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -7703,7 +7703,7 @@ define amdgpu_kernel void @atomic_umin_i64(ptr %out, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -7753,7 +7753,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[12:15], 0 offen
@@ -7803,7 +7803,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s5
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -7842,7 +7842,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -7902,7 +7902,7 @@ define amdgpu_kernel void @atomic_umin_i64_addr64(ptr %out, i64 %in, i64 %index)
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[12:15], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v0, v2, s[12:15], 0 offen
@@ -7953,7 +7953,7 @@ define amdgpu_kernel void @atomic_umin_i64_addr64(ptr %out, i64 %in, i64 %index)
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s3
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v0, v2, s[88:91], 0 offen
@@ -7992,7 +7992,7 @@ define amdgpu_kernel void @atomic_umin_i64_addr64(ptr %out, i64 %in, i64 %index)
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v1, s3, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v0, s2, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -8045,7 +8045,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_addr64(ptr %out, ptr %out2, i64 %
 ; GCN1-NEXT:    buffer_load_dword v1, v3, s[16:19], 0 offen
 ; GCN1-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
-; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN1-NEXT:    buffer_store_dword v5, v2, s[16:19], 0 offen
@@ -8097,7 +8097,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_addr64(ptr %out, ptr %out2, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s12
 ; GCN2-NEXT:    v_mov_b32_e32 v4, s13
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
-; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v5, v0, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, v4, v1, vcc
 ; GCN2-NEXT:    buffer_store_dword v5, v2, s[88:91], 0 offen
@@ -8137,7 +8137,7 @@ define amdgpu_kernel void @atomic_umin_i64_ret_addr64(ptr %out, ptr %out2, i64 %
 ; GFX12-NEXT:    s_cselect_b32 s0, s0, -1
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s0
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
-; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_cndmask_b32_e32 v3, s5, v1, vcc_lo
 ; GFX12-NEXT:    v_cndmask_b32_e32 v2, s4, v0, vcc_lo
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -14010,7 +14010,7 @@ define amdgpu_kernel void @atomic_inc_i64_offset(ptr %out, i64 %in) {
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v1, v2, s[12:15], 0 offen
@@ -14061,7 +14061,7 @@ define amdgpu_kernel void @atomic_inc_i64_offset(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v1, v2, s[88:91], 0 offen
@@ -14100,7 +14100,7 @@ define amdgpu_kernel void @atomic_inc_i64_offset(ptr %out, i64 %in) {
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v1, 0, v3 :: v_dual_cndmask_b32 v0, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -14155,7 +14155,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v4, v2, s[12:15], 0 offen
@@ -14208,7 +14208,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v4, v2, s[88:91], 0 offen
@@ -14250,7 +14250,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v3, 0, v3 :: v_dual_cndmask_b32 v2, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -14315,7 +14315,7 @@ define amdgpu_kernel void @atomic_inc_i64_incr64_offset(ptr %out, i64 %in, i64 %
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v1, v2, s[12:15], 0 offen
@@ -14370,7 +14370,7 @@ define amdgpu_kernel void @atomic_inc_i64_incr64_offset(ptr %out, i64 %in, i64 %
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v1, v2, s[88:91], 0 offen
@@ -14414,7 +14414,7 @@ define amdgpu_kernel void @atomic_inc_i64_incr64_offset(ptr %out, i64 %in, i64 %
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v1, 0, v3 :: v_dual_cndmask_b32 v0, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -14472,7 +14472,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_incr64_offset(ptr %out, ptr %out2,
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v4, v2, s[16:19], 0 offen
@@ -14527,7 +14527,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_incr64_offset(ptr %out, ptr %out2,
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v4, v2, s[88:91], 0 offen
@@ -14570,7 +14570,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_incr64_offset(ptr %out, ptr %out2,
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v3, 0, v3 :: v_dual_cndmask_b32 v2, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -14630,7 +14630,7 @@ define amdgpu_kernel void @atomic_inc_i64(ptr %out, i64 %in) {
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v1, v2, s[12:15], 0 offen
@@ -14679,7 +14679,7 @@ define amdgpu_kernel void @atomic_inc_i64(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v1, v2, s[88:91], 0 offen
@@ -14717,7 +14717,7 @@ define amdgpu_kernel void @atomic_inc_i64(ptr %out, i64 %in) {
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v1, 0, v3 :: v_dual_cndmask_b32 v0, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -14769,7 +14769,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v4, v2, s[12:15], 0 offen
@@ -14820,7 +14820,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[4:5], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[4:5], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v4, v2, s[88:91], 0 offen
@@ -14861,7 +14861,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v3, 0, v3 :: v_dual_cndmask_b32 v2, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -14923,7 +14923,7 @@ define amdgpu_kernel void @atomic_inc_i64_incr64(ptr %out, i64 %in, i64 %index) 
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v1, v2, s[12:15], 0 offen
@@ -14976,7 +14976,7 @@ define amdgpu_kernel void @atomic_inc_i64_incr64(ptr %out, i64 %in, i64 %index) 
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[2:3], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v1, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v0, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v1, v2, s[88:91], 0 offen
@@ -15018,7 +15018,7 @@ define amdgpu_kernel void @atomic_inc_i64_incr64(ptr %out, i64 %in, i64 %index) 
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[2:3], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v1, 0, v3 :: v_dual_cndmask_b32 v0, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[0:1], s0
@@ -15073,7 +15073,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_incr64(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    v_add_i32_e32 v4, vcc, 1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN1-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN1-NEXT:    buffer_store_dword v4, v2, s[16:19], 0 offen
@@ -15126,7 +15126,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_incr64(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_add_u32_e32 v4, vcc, 1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_addc_u32_e32 v5, vcc, 0, v1, vcc
-; GCN2-NEXT:    v_cmp_gt_u64_e32 vcc, s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_ge_u64_e32 vcc, s[12:13], v[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v4, 0, v4, vcc
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, 0, v5, vcc
 ; GCN2-NEXT:    buffer_store_dword v4, v2, s[88:91], 0 offen
@@ -15168,7 +15168,7 @@ define amdgpu_kernel void @atomic_inc_i64_ret_incr64(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    v_add_co_u32 v2, vcc_lo, v0, 1
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(VALU_DEP_2)
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, 0, v1, vcc_lo
-; GFX12-NEXT:    v_cmp_gt_u64_e32 vcc_lo, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_ge_u64_e32 vcc_lo, s[4:5], v[0:1]
 ; GFX12-NEXT:    s_wait_alu 0xfffd
 ; GFX12-NEXT:    v_dual_cndmask_b32 v3, 0, v3 :: v_dual_cndmask_b32 v2, 0, v2
 ; GFX12-NEXT:    scratch_store_b64 off, v[2:3], s0
@@ -15229,7 +15229,7 @@ define amdgpu_kernel void @atomic_dec_i64_offset(ptr %out, i64 %in) {
 ; GCN1-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN1-NEXT:    v_add_i32_e64 v0, s[2:3], -1, v0
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -15283,7 +15283,7 @@ define amdgpu_kernel void @atomic_dec_i64_offset(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN2-NEXT:    v_add_u32_e64 v0, s[2:3], -1, v0
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -15323,7 +15323,7 @@ define amdgpu_kernel void @atomic_dec_i64_offset(ptr %out, i64 %in) {
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s4
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v0, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v1, null, -1, v1, s1
@@ -15385,7 +15385,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    v_add_i32_e64 v6, s[2:3], -1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[0:1], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[0:1], v[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -15442,7 +15442,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_add_u32_e64 v6, s[2:3], -1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[0:1], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[0:1], v[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -15484,7 +15484,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_offset(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s6
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v2, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, -1, v1, s1
@@ -15554,7 +15554,7 @@ define amdgpu_kernel void @atomic_dec_i64_decr64_offset(ptr %out, i64 %in, i64 %
 ; GCN1-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN1-NEXT:    v_add_i32_e64 v0, s[2:3], -1, v0
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -15612,7 +15612,7 @@ define amdgpu_kernel void @atomic_dec_i64_decr64_offset(ptr %out, i64 %in, i64 %
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN2-NEXT:    v_add_u32_e64 v0, s[2:3], -1, v0
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -15657,7 +15657,7 @@ define amdgpu_kernel void @atomic_dec_i64_decr64_offset(ptr %out, i64 %in, i64 %
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s4
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v0, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v1, null, -1, v1, s1
@@ -15722,7 +15722,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_decr64_offset(ptr %out, ptr %out2,
 ; GCN1-NEXT:    v_add_i32_e64 v6, s[2:3], -1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[12:13], v[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -15781,7 +15781,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_decr64_offset(ptr %out, ptr %out2,
 ; GCN2-NEXT:    v_add_u32_e64 v6, s[2:3], -1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[12:13], v[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -15824,7 +15824,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_decr64_offset(ptr %out, ptr %out2,
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s6
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v2, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, -1, v1, s1
@@ -15889,7 +15889,7 @@ define amdgpu_kernel void @atomic_dec_i64(ptr %out, i64 %in) {
 ; GCN1-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN1-NEXT:    v_add_i32_e64 v0, s[2:3], -1, v0
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -15941,7 +15941,7 @@ define amdgpu_kernel void @atomic_dec_i64(ptr %out, i64 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN2-NEXT:    v_add_u32_e64 v0, s[2:3], -1, v0
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -15980,7 +15980,7 @@ define amdgpu_kernel void @atomic_dec_i64(ptr %out, i64 %in) {
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s4
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v0, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v1, null, -1, v1, s1
@@ -16039,7 +16039,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN1-NEXT:    v_add_i32_e64 v6, s[2:3], -1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[0:1], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[0:1], v[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -16094,7 +16094,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GCN2-NEXT:    v_add_u32_e64 v6, s[2:3], -1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[0:1], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[0:1], v[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -16135,7 +16135,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret(ptr %out, ptr %out2, i64 %in) {
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s6
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v2, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, -1, v1, s1
@@ -16202,7 +16202,7 @@ define amdgpu_kernel void @atomic_dec_i64_decr64(ptr %out, i64 %in, i64 %index) 
 ; GCN1-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN1-NEXT:    v_add_i32_e64 v0, s[2:3], -1, v0
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -16258,7 +16258,7 @@ define amdgpu_kernel void @atomic_dec_i64_decr64(ptr %out, i64 %in, i64 %index) 
 ; GCN2-NEXT:    v_mov_b32_e32 v5, s2
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[2:3], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[2:3], v[0:1]
 ; GCN2-NEXT:    v_add_u32_e64 v0, s[2:3], -1, v0
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v1, s[2:3], -1, v1, s[2:3]
@@ -16301,7 +16301,7 @@ define amdgpu_kernel void @atomic_dec_i64_decr64(ptr %out, i64 %in, i64 %index) 
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s4
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[2:3], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[2:3], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v0, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v1, null, -1, v1, s1
@@ -16363,7 +16363,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_decr64(ptr %out, ptr %out2, i64 %i
 ; GCN1-NEXT:    v_add_i32_e64 v6, s[2:3], -1, v0
 ; GCN1-NEXT:    s_waitcnt vmcnt(0)
 ; GCN1-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN1-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[12:13], v[0:1]
+; GCN1-NEXT:    v_cmp_le_u64_e64 s[0:1], s[12:13], v[0:1]
 ; GCN1-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN1-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN1-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -16420,7 +16420,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_decr64(ptr %out, ptr %out2, i64 %i
 ; GCN2-NEXT:    v_add_u32_e64 v6, s[2:3], -1, v0
 ; GCN2-NEXT:    s_waitcnt vmcnt(0)
 ; GCN2-NEXT:    v_cmp_eq_u64_e32 vcc, 0, v[0:1]
-; GCN2-NEXT:    v_cmp_lt_u64_e64 s[0:1], s[12:13], v[0:1]
+; GCN2-NEXT:    v_cmp_le_u64_e64 s[0:1], s[12:13], v[0:1]
 ; GCN2-NEXT:    v_addc_u32_e64 v7, s[2:3], -1, v1, s[2:3]
 ; GCN2-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GCN2-NEXT:    v_cndmask_b32_e32 v5, v6, v5, vcc
@@ -16462,7 +16462,7 @@ define amdgpu_kernel void @atomic_dec_i64_ret_decr64(ptr %out, ptr %out2, i64 %i
 ; GFX12-NEXT:    scratch_load_b64 v[0:1], off, s6
 ; GFX12-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-NEXT:    v_cmp_eq_u64_e32 vcc_lo, 0, v[0:1]
-; GFX12-NEXT:    v_cmp_lt_u64_e64 s0, s[4:5], v[0:1]
+; GFX12-NEXT:    v_cmp_le_u64_e64 s0, s[4:5], v[0:1]
 ; GFX12-NEXT:    v_add_co_u32 v2, s1, v0, -1
 ; GFX12-NEXT:    s_wait_alu 0xf1ff
 ; GFX12-NEXT:    v_add_co_ci_u32_e64 v3, null, -1, v1, s1
