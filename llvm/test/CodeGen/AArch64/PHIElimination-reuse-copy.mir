@@ -117,3 +117,28 @@ body: |
 
 ...
 
+---
+name:            copy_subreg
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: copy_subreg
+  ; CHECK: bb.0:
+  ; CHECK-NEXT:   successors: %bb.1(0x80000000)
+  ; CHECK-NEXT:   liveins: $x0
+  ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   [[COPY:%[0-9]+]]:gpr64 = COPY killed $x0
+  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:gpr64 = COPY killed [[COPY]]
+  ; CHECK-NEXT:   [[COPY2:%[0-9]+]]:gpr32 = COPY [[COPY1]].sub_32
+  ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT: bb.1:
+  ; CHECK-NEXT:   [[COPY3:%[0-9]+]]:gpr32 = COPY [[COPY2]]
+  bb.0:
+    successors: %bb.1
+    liveins: $x0
+
+    %0:gpr64 = COPY killed $x0
+    %1:gpr64 = COPY killed %0
+
+  bb.1:
+    %2:gpr32 = PHI %1.sub_32, %bb.0
+...
