@@ -1,0 +1,143 @@
+# RUN: llc -start-after=early-machinelicm -mtriple=x86_64 %s -o - | FileCheck %s
+
+---
+name: test
+tracksRegLiveness: true
+isSSA: true
+body:             |
+  ; CHECK:    movq $0, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Folded Spill
+  bb.0:
+    successors: %bb.5(0x40000000), %bb.4(0x40000000)
+  
+    %80:gr32 = MOV32r0 implicit-def dead $eflags
+    %15:gr64 = SUBREG_TO_REG 0, killed %80, %subreg.sub_32bit
+    %14:gr64 = COPY %15
+    %13:gr64 = COPY %15
+    %12:gr64 = COPY %15
+    %81:gr8 = MOV8ri 1
+    TEST8rr %81, %81, implicit-def $eflags
+    JCC_1 %bb.5, 5, implicit $eflags
+    JMP_1 %bb.4
+  
+  bb.1:
+    successors: %bb.5(0x80000000)
+  
+    %16:gr64 = PHI %82, %bb.4, %48, %bb.2
+    %17:gr64 = PHI %83, %bb.4, %49, %bb.2
+    %18:gr64 = PHI %84, %bb.4, %50, %bb.2
+    %19:gr64 = PHI %85, %bb.4, %51, %bb.2
+    %20:gr64 = PHI %72, %bb.4, %44, %bb.2
+    %21:gr64 = PHI %73, %bb.4, %45, %bb.2
+    %22:gr64 = PHI %74, %bb.4, %46, %bb.2
+    %23:gr64 = PHI %75, %bb.4, %47, %bb.2
+    %105:gr64 = SHLD64rri8 %23, %22, 1, implicit-def dead $eflags
+    %106:gr64 = SHLD64rri8 %22, %21, 1, implicit-def dead $eflags
+    %107:gr64 = SHLD64rri8 %21, %20, 1, implicit-def dead $eflags
+    %108:gr64 = ADD64rr %20, %20, implicit-def dead $eflags
+    %24:gr64 = OR64rr %16, killed %108, implicit-def dead $eflags
+    %25:gr64 = OR64rr %17, killed %107, implicit-def dead $eflags
+    %26:gr64 = OR64rr %18, killed %106, implicit-def dead $eflags
+    %27:gr64 = OR64rr %19, killed %105, implicit-def dead $eflags
+    JMP_1 %bb.5
+  
+  bb.2:
+    successors: %bb.1(0x04000000), %bb.2(0x7c000000)
+  
+    %28:gr64 = PHI %88, %bb.3, %48, %bb.2
+    %29:gr64 = PHI %89, %bb.3, %49, %bb.2
+    %30:gr64 = PHI %90, %bb.3, %50, %bb.2
+    %31:gr64 = PHI %91, %bb.3, %51, %bb.2
+    %32:gr64 = PHI %68, %bb.3, %56, %bb.2
+    %33:gr64 = PHI %69, %bb.3, %57, %bb.2
+    %34:gr64 = PHI %70, %bb.3, %58, %bb.2
+    %35:gr64 = PHI %71, %bb.3, %59, %bb.2
+    %36:gr64 = PHI %60, %bb.3, %52, %bb.2
+    %37:gr64 = PHI %61, %bb.3, %53, %bb.2
+    %38:gr64 = PHI %62, %bb.3, %54, %bb.2
+    %39:gr64 = PHI %63, %bb.3, %55, %bb.2
+    %40:gr64 = PHI %72, %bb.3, %44, %bb.2
+    %41:gr64 = PHI %73, %bb.3, %45, %bb.2
+    %42:gr64 = PHI %74, %bb.3, %46, %bb.2
+    %43:gr64 = PHI %75, %bb.3, %47, %bb.2
+    %55:gr64 = SHLD64rri8 %39, %38, 1, implicit-def dead $eflags
+    %54:gr64 = SHLD64rri8 %38, %37, 1, implicit-def dead $eflags
+    %53:gr64 = SHLD64rri8 %37, %36, 1, implicit-def dead $eflags
+    %52:gr64 = SHLD64rri8 %36, %43, 1, implicit-def dead $eflags
+    %93:gr64 = SHLD64rri8 %43, %42, 1, implicit-def dead $eflags
+    %94:gr64 = SHLD64rri8 %42, %41, 1, implicit-def dead $eflags
+    %95:gr64 = SHLD64rri8 %41, %40, 1, implicit-def dead $eflags
+    %96:gr64 = ADD64rr %40, %40, implicit-def dead $eflags
+    %44:gr64 = OR64rr %28, killed %96, implicit-def dead $eflags
+    %45:gr64 = OR64rr %29, killed %95, implicit-def dead $eflags
+    %46:gr64 = OR64rr %30, killed %94, implicit-def dead $eflags
+    %47:gr64 = OR64rr %31, killed %93, implicit-def dead $eflags
+    %97:gr64 = SUB64rr %64, %52, implicit-def $eflags
+    %98:gr64 = SBB64rr %65, %53, implicit-def $eflags, implicit $eflags
+    %99:gr64 = SBB64rr %66, %54, implicit-def $eflags, implicit $eflags
+    %100:gr64 = SBB64rr %67, %55, implicit-def dead $eflags, implicit $eflags
+    %48:gr64 = SHR64ri %100, 63, implicit-def dead $eflags
+    %49:gr64 = SUBREG_TO_REG 0, %92, %subreg.sub_32bit
+    %51:gr64 = COPY %49
+    %50:gr64 = COPY %49
+    %56:gr64 = ADD64ri32 %32, -1, implicit-def $eflags
+    %57:gr64 = ADC64ri32 %33, -1, implicit-def $eflags, implicit $eflags
+    %58:gr64 = ADC64ri32 %34, -1, implicit-def $eflags, implicit $eflags
+    %59:gr64 = ADC64ri32 %35, -1, implicit-def dead $eflags, implicit $eflags
+    %102:gr64 = OR64rr %57, %59, implicit-def dead $eflags
+    %103:gr64 = OR64rr %56, %58, implicit-def dead $eflags
+    %104:gr64 = OR64rr %103, killed %102, implicit-def $eflags
+    JCC_1 %bb.1, 4, implicit $eflags
+    JMP_1 %bb.2
+  
+  bb.3:
+    successors: %bb.2(0x80000000)
+  
+    %92:gr32 = MOV32r0 implicit-def dead $eflags
+    %62:gr64 = SUBREG_TO_REG 0, %92, %subreg.sub_32bit
+    %63:gr64 = COPY %62
+    %61:gr64 = COPY %62
+    %60:gr64 = COPY %62
+    %66:gr64 = MOV64ri32 -1
+    %67:gr64 = COPY %66
+    %65:gr64 = COPY %66
+    %64:gr64 = COPY %66
+    %91:gr64 = COPY %62
+    %90:gr64 = COPY %62
+    %89:gr64 = COPY %62
+    %88:gr64 = COPY %62
+    JMP_1 %bb.2
+  
+  bb.4:
+    successors: %bb.1(0x30000000), %bb.3(0x50000000)
+  
+    %68:gr64 = MOV32ri64 1
+    %86:gr32 = MOV32r0 implicit-def dead $eflags
+    %74:gr64 = SUBREG_TO_REG 0, %86, %subreg.sub_32bit
+    %71:gr64 = COPY %74
+    %70:gr64 = COPY %74
+    %69:gr64 = COPY %74
+    %75:gr64 = COPY %74
+    %73:gr64 = COPY %74
+    %72:gr64 = COPY %74
+    %85:gr64 = COPY %74
+    %84:gr64 = COPY %74
+    %83:gr64 = COPY %74
+    %82:gr64 = COPY %74
+    %87:gr8 = COPY %86.sub_8bit
+    TEST8rr %87, %87, implicit-def $eflags
+    JCC_1 %bb.1, 5, implicit $eflags
+    JMP_1 %bb.3
+  
+  bb.5:
+    %76:gr64 = PHI %12, %bb.0, %24, %bb.1
+    %77:gr64 = PHI %13, %bb.0, %25, %bb.1
+    %78:gr64 = PHI %14, %bb.0, %26, %bb.1
+    %79:gr64 = PHI %15, %bb.0, %27, %bb.1
+    MOV64mr $noreg, 1, $noreg, 0, $noreg, %76 :: (store (s64) into `ptr null`, align 16)
+    MOV64mr $noreg, 1, $noreg, 8, $noreg, %77 :: (store (s64) into `ptr null` + 8, basealign 16)
+    MOV64mr $noreg, 1, $noreg, 16, $noreg, %78 :: (store (s64) into `ptr null` + 16, align 16)
+    MOV64mr $noreg, 1, $noreg, 24, $noreg, %79 :: (store (s64) into `ptr null` + 24, basealign 16)
+    %109:gr32 = MOV32r0 implicit-def dead $eflags
+    $eax = COPY %109
+    RET 0, $eax
+...
