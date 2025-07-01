@@ -138,11 +138,7 @@ def main():
         shlex.split("cmake --build . --target llvm-bolt"), cwd=args.build_dir
     )
 
-    # rename llvm-bolt
-    if not os.path.exists(bolt_path):
-        sys.exit(f"Failed to build the previous revision: '{bolt_path}'")
-    os.replace(bolt_path, f"{bolt_path}.old")
-
+    # A build error may have occurred, so switch back before renaming.
     if args.switch_back:
         if stash:
             subprocess.run(shlex.split("git stash pop"), cwd=source_dir)
@@ -153,6 +149,12 @@ def main():
             f"to {new_ref}. Local changes were stashed. Switch back using\n\t"
             f"git checkout {old_ref}\n"
         )
+
+    # rename llvm-bolt
+    if not os.path.exists(bolt_path):
+        sys.exit(f"Failed to build the previous revision: '{bolt_path}'")
+    os.replace(bolt_path, f"{bolt_path}.old")
+
     print(
         f"Build directory {args.build_dir} is ready to run BOLT tests, e.g.\n"
         "\tbin/llvm-lit -sv tools/bolt/test\nor\n"
