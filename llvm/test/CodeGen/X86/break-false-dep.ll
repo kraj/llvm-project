@@ -472,17 +472,17 @@ define dso_local void @loopdep3() {
 ; SSE-WIN-NEXT:    movaps %xmm6, (%rsp) # 16-byte Spill
 ; SSE-WIN-NEXT:    .seh_savexmm %xmm6, 0
 ; SSE-WIN-NEXT:    .seh_endprologue
-; SSE-WIN-NEXT:    xorl %eax, %eax
-; SSE-WIN-NEXT:    leaq v(%rip), %rcx
-; SSE-WIN-NEXT:    leaq x(%rip), %rdx
-; SSE-WIN-NEXT:    leaq y(%rip), %r8
-; SSE-WIN-NEXT:    leaq z(%rip), %r9
-; SSE-WIN-NEXT:    leaq w(%rip), %r10
+; SSE-WIN-NEXT:    leaq v(%rip), %rax
+; SSE-WIN-NEXT:    leaq x(%rip), %rcx
+; SSE-WIN-NEXT:    leaq y(%rip), %rdx
+; SSE-WIN-NEXT:    leaq z(%rip), %r8
+; SSE-WIN-NEXT:    leaq w(%rip), %r9
+; SSE-WIN-NEXT:    xorl %r10d, %r10d
 ; SSE-WIN-NEXT:    .p2align 4
 ; SSE-WIN-NEXT:  .LBB8_1: # %for.cond1.preheader
 ; SSE-WIN-NEXT:    # =>This Loop Header: Depth=1
 ; SSE-WIN-NEXT:    # Child Loop BB8_2 Depth 2
-; SSE-WIN-NEXT:    movq %rcx, %r11
+; SSE-WIN-NEXT:    movq %rax, %r11
 ; SSE-WIN-NEXT:    xorl %esi, %esi
 ; SSE-WIN-NEXT:    .p2align 4
 ; SSE-WIN-NEXT:  .LBB8_2: # %for.body3
@@ -490,10 +490,10 @@ define dso_local void @loopdep3() {
 ; SSE-WIN-NEXT:    # => This Inner Loop Header: Depth=2
 ; SSE-WIN-NEXT:    xorps %xmm0, %xmm0
 ; SSE-WIN-NEXT:    cvtsi2sdl (%r11), %xmm0
+; SSE-WIN-NEXT:    mulsd (%rsi,%rcx), %xmm0
 ; SSE-WIN-NEXT:    mulsd (%rsi,%rdx), %xmm0
 ; SSE-WIN-NEXT:    mulsd (%rsi,%r8), %xmm0
-; SSE-WIN-NEXT:    mulsd (%rsi,%r9), %xmm0
-; SSE-WIN-NEXT:    movsd %xmm0, (%rsi,%r10)
+; SSE-WIN-NEXT:    movsd %xmm0, (%rsi,%r9)
 ; SSE-WIN-NEXT:    #APP
 ; SSE-WIN-NEXT:    #NO_APP
 ; SSE-WIN-NEXT:    addq $8, %rsi
@@ -502,8 +502,8 @@ define dso_local void @loopdep3() {
 ; SSE-WIN-NEXT:    jne .LBB8_2
 ; SSE-WIN-NEXT:  # %bb.3: # %for.inc14
 ; SSE-WIN-NEXT:    # in Loop: Header=BB8_1 Depth=1
-; SSE-WIN-NEXT:    incl %eax
-; SSE-WIN-NEXT:    cmpl $100000, %eax # imm = 0x186A0
+; SSE-WIN-NEXT:    incl %r10d
+; SSE-WIN-NEXT:    cmpl $100000, %r10d # imm = 0x186A0
 ; SSE-WIN-NEXT:    jne .LBB8_1
 ; SSE-WIN-NEXT:  # %bb.4: # %for.end16
 ; SSE-WIN-NEXT:    movaps (%rsp), %xmm6 # 16-byte Reload
@@ -550,17 +550,17 @@ define dso_local void @loopdep3() {
 ; AVX-NEXT:    vmovaps %xmm6, (%rsp) # 16-byte Spill
 ; AVX-NEXT:    .seh_savexmm %xmm6, 0
 ; AVX-NEXT:    .seh_endprologue
-; AVX-NEXT:    xorl %eax, %eax
-; AVX-NEXT:    leaq v(%rip), %rcx
-; AVX-NEXT:    leaq x(%rip), %rdx
-; AVX-NEXT:    leaq y(%rip), %r8
-; AVX-NEXT:    leaq z(%rip), %r9
-; AVX-NEXT:    leaq w(%rip), %r10
+; AVX-NEXT:    leaq v(%rip), %rax
+; AVX-NEXT:    leaq x(%rip), %rcx
+; AVX-NEXT:    leaq y(%rip), %rdx
+; AVX-NEXT:    leaq z(%rip), %r8
+; AVX-NEXT:    leaq w(%rip), %r9
+; AVX-NEXT:    xorl %r10d, %r10d
 ; AVX-NEXT:    .p2align 4
 ; AVX-NEXT:  .LBB8_1: # %for.cond1.preheader
 ; AVX-NEXT:    # =>This Loop Header: Depth=1
 ; AVX-NEXT:    # Child Loop BB8_2 Depth 2
-; AVX-NEXT:    movq %rcx, %r11
+; AVX-NEXT:    movq %rax, %r11
 ; AVX-NEXT:    xorl %esi, %esi
 ; AVX-NEXT:    .p2align 4
 ; AVX-NEXT:  .LBB8_2: # %for.body3
@@ -568,10 +568,10 @@ define dso_local void @loopdep3() {
 ; AVX-NEXT:    # => This Inner Loop Header: Depth=2
 ; AVX-NEXT:    vxorps %xmm5, %xmm5, %xmm5
 ; AVX-NEXT:    vcvtsi2sdl (%r11), %xmm5, %xmm0
+; AVX-NEXT:    vmulsd (%rsi,%rcx), %xmm0, %xmm0
 ; AVX-NEXT:    vmulsd (%rsi,%rdx), %xmm0, %xmm0
 ; AVX-NEXT:    vmulsd (%rsi,%r8), %xmm0, %xmm0
-; AVX-NEXT:    vmulsd (%rsi,%r9), %xmm0, %xmm0
-; AVX-NEXT:    vmovsd %xmm0, (%rsi,%r10)
+; AVX-NEXT:    vmovsd %xmm0, (%rsi,%r9)
 ; AVX-NEXT:    #APP
 ; AVX-NEXT:    #NO_APP
 ; AVX-NEXT:    addq $8, %rsi
@@ -580,8 +580,8 @@ define dso_local void @loopdep3() {
 ; AVX-NEXT:    jne .LBB8_2
 ; AVX-NEXT:  # %bb.3: # %for.inc14
 ; AVX-NEXT:    # in Loop: Header=BB8_1 Depth=1
-; AVX-NEXT:    incl %eax
-; AVX-NEXT:    cmpl $100000, %eax # imm = 0x186A0
+; AVX-NEXT:    incl %r10d
+; AVX-NEXT:    cmpl $100000, %r10d # imm = 0x186A0
 ; AVX-NEXT:    jne .LBB8_1
 ; AVX-NEXT:  # %bb.4: # %for.end16
 ; AVX-NEXT:    vmovaps (%rsp), %xmm6 # 16-byte Reload

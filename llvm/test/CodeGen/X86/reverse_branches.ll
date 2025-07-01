@@ -72,22 +72,22 @@ define i32 @test_branches_order() uwtable ssp {
 ; CHECK-NEXT:  LBB0_7: ## %for.end11
 ; CHECK-NEXT:    leaq L_.str2(%rip), %rdi
 ; CHECK-NEXT:    callq _puts
-; CHECK-NEXT:    xorl %eax, %eax
-; CHECK-NEXT:    movq %rsp, %rcx
+; CHECK-NEXT:    movq %rsp, %rax
+; CHECK-NEXT:    xorl %ecx, %ecx
 ; CHECK-NEXT:    jmp LBB0_8
 ; CHECK-NEXT:    .p2align 4
 ; CHECK-NEXT:  LBB0_15: ## %for.inc38
 ; CHECK-NEXT:    ## in Loop: Header=BB0_8 Depth=1
-; CHECK-NEXT:    incl %eax
+; CHECK-NEXT:    incl %ecx
 ; CHECK-NEXT:  LBB0_8: ## %for.cond14
 ; CHECK-NEXT:    ## =>This Loop Header: Depth=1
 ; CHECK-NEXT:    ## Child Loop BB0_10 Depth 2
 ; CHECK-NEXT:    ## Child Loop BB0_12 Depth 3
-; CHECK-NEXT:    cmpl $999, %eax ## imm = 0x3E7
+; CHECK-NEXT:    cmpl $999, %ecx ## imm = 0x3E7
 ; CHECK-NEXT:    jg LBB0_16
 ; CHECK-NEXT:  ## %bb.9: ## %for.cond18.preheader
 ; CHECK-NEXT:    ## in Loop: Header=BB0_8 Depth=1
-; CHECK-NEXT:    movq %rcx, %rdx
+; CHECK-NEXT:    movq %rax, %rdx
 ; CHECK-NEXT:    xorl %esi, %esi
 ; CHECK-NEXT:    xorl %edi, %edi
 ; CHECK-NEXT:    jmp LBB0_10
