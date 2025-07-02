@@ -47,8 +47,10 @@ def main():
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(
             """
-            This script builds two versions of BOLT (with the current and
-            previous revision).
+            This script builds two versions of BOLT:
+            llvm-bolt.new, using the current revision, and llvm-bolt.old using
+            the previous revision. These can be used to check whether the
+            current revision changes BOLT's functional behavior.
             """
         )
     )
@@ -156,9 +158,8 @@ def main():
     os.replace(bolt_path, f"{bolt_path}.old")
 
     print(
-        f"Build directory {args.build_dir} is ready to run BOLT tests, e.g.\n"
-        "\tbin/llvm-lit -sv tools/bolt/test\nor\n"
-        "\tbin/llvm-lit -sv tools/bolttests"
+        f"Build directory {args.build_dir} is ready for NFC-Mode comparison "
+        "between the two revisions."
     )
 
 
