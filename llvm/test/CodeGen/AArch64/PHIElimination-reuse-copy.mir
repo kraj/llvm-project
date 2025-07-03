@@ -135,14 +135,15 @@ body:             |
   ; CHECK-NEXT:   liveins: $nzcv
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   dead [[COPY2:%[0-9]+]]:gpr32 = COPY killed [[COPY1]]
-  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:gpr32 = COPY [[COPY]]
+  ; CHECK-NEXT:   [[COPY3:%[0-9]+]]:gpr32 = COPY [[COPY]]
+  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:gpr32 = COPY [[COPY3]]
   ; CHECK-NEXT:   Bcc 1, %bb.1, implicit $nzcv
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.2:
   ; CHECK-NEXT:   successors: %bb.1(0x80000000)
   ; CHECK-NEXT:   liveins: $nzcv
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:gpr32 = IMPLICIT_DEF
+  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:gpr32 = COPY killed [[COPY3]]
   ; CHECK-NEXT:   B %bb.1
   bb.0:
     successors: %bb.1

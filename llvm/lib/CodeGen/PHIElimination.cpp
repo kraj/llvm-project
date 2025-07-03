@@ -541,6 +541,7 @@ void PHIEliminationImpl::LowerPHINode(MachineBasicBlock &MBB,
   // Now loop over all of the incoming arguments, changing them to copy into the
   // IncomingReg register in the corresponding predecessor basic block.
   SmallPtrSet<MachineBasicBlock *, 8> MBBsInsertedInto;
+  SmallVector<MachineInstr *, 8> InsertedCopies;
   for (int i = NumSrcs - 1; i >= 0; --i) {
     Register SrcReg = MPhi->getOperand(i * 2 + 1).getReg();
     unsigned SrcSubReg = MPhi->getOperand(i * 2 + 1).getSubReg();
@@ -581,20 +582,6 @@ void PHIEliminationImpl::LowerPHINode(MachineBasicBlock &MBB,
       continue;
     }
 
-    // Reuse an existing copy in the block if possible.
-    if (IncomingReg.isVirtual()) {
-      MachineInstr *DefMI = MRI->getUniqueVRegDef(SrcReg);
-      const TargetRegisterClass *SrcRC = MRI->getRegClass(SrcReg);
-      const TargetRegisterClass *IncomingRC = MRI->getRegClass(IncomingReg);
-      if (DefMI && DefMI->isCopy() && DefMI->getParent() == &opBlock &&
-          MRI->use_empty(SrcReg) && IncomingRC->hasSuperClassEq(SrcRC)) {
-        DefMI->getOperand(0).setReg(IncomingReg);
-        if (LV)
-          LV->getVarInfo(SrcReg).AliveBlocks.clear();
-        continue;
-      }
-    }
-
     // Find a safe location to insert the copy, this may be the first terminator
     // in the block (or end()).
     MachineBasicBlock::iterator InsertPos =
@@ -621,6 +608,7 @@ void PHIEliminationImpl::LowerPHINode(MachineBasicBlock &MBB,
         NewSrcInstr = TII->createPHISourceCopy(opBlock, InsertPos, nullptr,
                                                SrcReg, SrcSubReg, IncomingReg);
       }
+      InsertedCopies.emplace_back(NewSrcInstr);
     }
 
     // We only need to update the LiveVariables kill of SrcReg if this was the
@@ -742,6 +730,32 @@ void PHIEliminationImpl::LowerPHINode(MachineBasicBlock &MBB,
         }
       }
     }
+  }
+
+  // Remove redundant COPY instruction chains, which were potentially added by
+  // the code above. This can simplify the CFG which later on to prevent a
+  // suboptimal block layout.
+  for (MachineInstr *NewCopy : InsertedCopies) {
+    if (NewCopy->isImplicitDef())
+      continue;
+    Register IncomingReg = NewCopy->getOperand(0).getReg();
+    if (!IncomingReg.isVirtual())
+      continue;
+    Register SrcReg = NewCopy->getOperand(1).getReg();
+    if (!MRI->hasOneUse(SrcReg))
+      continue;
+    MachineInstr *DefMI = MRI->getUniqueVRegDef(SrcReg);
+    if (!DefMI || !DefMI->isCopy() ||
+        DefMI->getParent() != NewCopy->getParent())
+      continue;
+    const TargetRegisterClass *SrcRC = MRI->getRegClass(SrcReg);
+    const TargetRegisterClass *IncomingRC = MRI->getRegClass(IncomingReg);
+    if (!IncomingRC->hasSuperClassEq(SrcRC))
+      continue;
+    DefMI->getOperand(0).setReg(IncomingReg);
+    NewCopy->removeFromParent();
+    if (LV)
+      LV->getVarInfo(SrcReg).AliveBlocks.clear();
   }
 
   // Really delete the PHI instruction now, if it is not in the LoweredPHIs map.
