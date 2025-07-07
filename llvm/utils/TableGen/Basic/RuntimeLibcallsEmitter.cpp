@@ -313,25 +313,8 @@ void RuntimeLibcallEmitter::emitGetInitRuntimeLibcallNames(
 
 void RuntimeLibcallEmitter::emitGetInitRuntimeLibcallUtils(
     raw_ostream &OS) const {
-  // FIXME: Hack we shouldn't really need
   OS << "#ifdef GET_INIT_RUNTIME_LIBCALL_UTILS\n"
-        "static inline bool isAtomicLibCall(llvm::RTLIB::Libcall LC) {\n"
-        "  switch (LC) {\n";
-  for (const RuntimeLibcall &LibCall : RuntimeLibcallDefList) {
-    StringRef Name = LibCall.getName();
-    if (Name.contains("ATOMIC")) {
-      OS << "  case ";
-      LibCall.emitEnumEntry(OS);
-      OS << ":\n";
-    }
-  }
-
-  OS << "    return true;\n"
-        "  default:\n"
-        "    return false;\n"
-        "  }\n\n"
-        "  llvm_unreachable(\"covered switch over libcalls\");\n"
-        "}\n#endif\n\n";
+        "#endif\n\n";
 }
 
 void RuntimeLibcallEmitter::run(raw_ostream &OS) {

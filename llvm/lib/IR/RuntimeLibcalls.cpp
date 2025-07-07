@@ -455,10 +455,8 @@ void RuntimeLibcallsInfo::initLibcalls(const Triple &TT,
 
   // Disable most libcalls on AMDGPU and NVPTX.
   if (TT.isAMDGPU() || TT.isNVPTX()) {
-    for (RTLIB::Libcall LC : RTLIB::libcalls()) {
-      if (!isAtomicLibCall(LC))
-        setLibcallImpl(LC, RTLIB::Unsupported);
-    }
+    for (RTLIB::Libcall LC : RTLIB::libcalls())
+      setLibcallImpl(LC, RTLIB::Unsupported);
   }
 
   if (TT.isOSMSVCRT()) {
