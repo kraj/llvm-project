@@ -1673,7 +1673,7 @@ static void emitShadowCallStackEpilogue(const TargetInstrInfo &TII,
                                         MachineFunction &MF,
                                         MachineBasicBlock &MBB,
                                         MachineBasicBlock::iterator MBBI,
-                                        const DebugLoc &DL) {
+                                        const DebugLoc &DL, bool NeedsWinCFI) {
   // Shadow call stack epilog: ldr x30, [x18, #-8]!
   BuildMI(MBB, MBBI, DL, TII.get(AArch64::LDRXpre))
       .addReg(AArch64::X18, RegState::Define)
@@ -1681,6 +1681,10 @@ static void emitShadowCallStackEpilogue(const TargetInstrInfo &TII,
       .addReg(AArch64::X18)
       .addImm(-8)
       .setMIFlag(MachineInstr::FrameDestroy);
+
+  if (NeedsWinCFI)
+    BuildMI(MBB, MBBI, DL, TII.get(AArch64::SEH_Nop))
+        .setMIFlag(MachineInstr::FrameDestroy);
 
   if (MF.getInfo<AArch64FunctionInfo>()->needsAsyncDwarfUnwindInfo(MF))
     CFIInstBuilder(MBB, MBBI, MachineInstr::FrameDestroy)
@@ -1786,15 +1790,17 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
   DebugLoc DL;
 
   const auto &MFnI = *MF.getInfo<AArch64FunctionInfo>();
-  if (MFnI.needsShadowCallStackPrologueEpilogue(MF))
+  if (MFnI.needsShadowCallStackPrologueEpilogue(MF)) {
     emitShadowCallStackPrologue(*TII, MF, MBB, MBBI, DL, NeedsWinCFI,
                                 MFnI.needsDwarfUnwindInfo(MF));
+    HasWinCFI |= NeedsWinCFI;
+  }
 
   if (MFnI.shouldSignReturnAddress(MF)) {
     BuildMI(MBB, MBBI, DL, TII->get(AArch64::PAUTH_PROLOGUE))
         .setMIFlag(MachineInstr::FrameSetup);
-    if (NeedsWinCFI)
-      HasWinCFI = true; // AArch64PointerAuth pass will insert SEH_PACSignLR
+    // AArch64PointerAuth pass will insert SEH_PACSignLR
+    HasWinCFI |= NeedsWinCFI;
   }
 
   if (EmitCFI && MFnI.isMTETagged()) {
@@ -1880,8 +1886,13 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
            "unexpected function without stack frame but with SVE objects");
     // All of the stack allocation is for locals.
     AFI->setLocalStackSize(NumBytes);
-    if (!NumBytes)
+    if (!NumBytes) {
+      if (NeedsWinCFI && HasWinCFI) {
+        BuildMI(MBB, MBBI, DL, TII->get(AArch64::SEH_PrologEnd))
+            .setMIFlag(MachineInstr::FrameSetup);
+      }
       return;
+    }
     // REDZONE: If the stack size is less than 128 bytes, we don't need
     // to actually allocate.
     if (canUseRedZone(MF)) {
@@ -2354,11 +2365,14 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
       BuildMI(MBB, MBB.getFirstTerminator(), DL,
               TII->get(AArch64::PAUTH_EPILOGUE))
           .setMIFlag(MachineInstr::FrameDestroy);
-      if (NeedsWinCFI)
-        HasWinCFI = true; // AArch64PointerAuth pass will insert SEH_PACSignLR
+      // AArch64PointerAuth pass will insert SEH_PACSignLR
+      HasWinCFI |= NeedsWinCFI;
     }
-    if (AFI->needsShadowCallStackPrologueEpilogue(MF))
-      emitShadowCallStackEpilogue(*TII, MF, MBB, MBB.getFirstTerminator(), DL);
+    if (AFI->needsShadowCallStackPrologueEpilogue(MF)) {
+      emitShadowCallStackEpilogue(*TII, MF, MBB, MBB.getFirstTerminator(), DL,
+                                  NeedsWinCFI);
+      HasWinCFI |= NeedsWinCFI;
+    }
     if (EmitCFI)
       emitCalleeSavedGPRRestores(MBB, MBB.getFirstTerminator());
     if (HasWinCFI) {
