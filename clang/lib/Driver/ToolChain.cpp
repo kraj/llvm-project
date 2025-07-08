@@ -1001,7 +1001,10 @@ ToolChain::getTargetSubDirPath(StringRef BaseDir) const {
 }
 
 std::optional<std::string> ToolChain::getRuntimePath() const {
-  SmallString<128> P(D.ResourceDir);
+  SmallString<128> P(D.SysRoot);
+  StringRef ClangLibdirBasename(CLANG_INSTALL_LIBDIR_BASENAME);
+  llvm::sys::path::append(P, "/usr/", ClangLibdirBasename, "clang",
+                          CLANG_VERSION_STRING);
   llvm::sys::path::append(P, "lib");
   if (auto Ret = getTargetSubDirPath(P))
     return Ret;
@@ -1029,7 +1032,10 @@ ToolChain::path_list ToolChain::getArchSpecificLibPaths() const {
   path_list Paths;
 
   auto AddPath = [&](const ArrayRef<StringRef> &SS) {
-    SmallString<128> Path(getDriver().ResourceDir);
+    SmallString<128> Path(getDriver().SysRoot);
+    StringRef ClangLibdirBasename(CLANG_INSTALL_LIBDIR_BASENAME);
+    llvm::sys::path::append(Path, "/usr/", ClangLibdirBasename, "clang",
+                            CLANG_VERSION_STRING);
     llvm::sys::path::append(Path, "lib");
     for (auto &S : SS)
       llvm::sys::path::append(Path, S);
