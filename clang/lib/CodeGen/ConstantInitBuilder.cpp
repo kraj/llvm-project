@@ -309,7 +309,7 @@ void ConstantAggregateBuilderBase::addSignedPointer(
   if (Schema.isAddressDiscriminated()) {
     StorageAddress = getAddrOfCurrentPosition(Pointer->getType());
   }
-
+  assert(!Pointer->isNullValue());
   llvm::Constant *SignedPointer = Builder.CGM.getConstantSignedPointer(
       Pointer, Schema, StorageAddress, CalleeDecl, CalleeType);
   add(SignedPointer);

@@ -379,6 +379,8 @@ public:
     BKey
   };
 
+  using PointerAuthenticationMode = ::clang::PointerAuthenticationMode;
+
   enum class ThreadModelKind {
     /// POSIX Threads.
     POSIX,
