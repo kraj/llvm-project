@@ -532,4 +532,4 @@ template <> struct DenseMapInfo<clang::NestedNameSpecifierLoc> {
 };
 } // namespace llvm
 
-#endif // LLVM_CLANG_AST_NESTEDNAMESPECIFIER_H
+#endif // LLVM_CLANG_AST_NESTEDNAMESPECIFIERBASE_H
