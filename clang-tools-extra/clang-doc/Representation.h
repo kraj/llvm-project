@@ -378,6 +378,7 @@ struct SymbolInfo : public Info {
   std::optional<Location> DefLoc;     // Location where this decl is defined.
   llvm::SmallVector<Location, 2> Loc; // Locations where this decl is declared.
   bool IsStatic = false;
+  SmallString<16> MangledName;
 };
 
 struct FriendInfo : SymbolInfo {

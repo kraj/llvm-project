@@ -386,6 +386,7 @@ static void serializeInfo(const RecordInfo &I, json::Object &Obj,
   Obj["FullName"] = I.FullName;
   Obj["TagType"] = getTagType(I.TagType);
   Obj["IsTypedef"] = I.IsTypeDef;
+  Obj["MangledName"] = I.MangledName;
 
   if (!I.Children.Functions.empty()) {
     json::Value PubFunctionsArray = Array();
@@ -501,7 +502,6 @@ Error JSONGenerator::generateDocs(
 
     SmallString<128> Path;
     sys::path::native(RootDir, Path);
-    sys::path::append(Path, Info->getRelativeFilePath(""));
     if (!CreatedDirs.contains(Path)) {
       if (std::error_code Err = sys::fs::create_directories(Path);
           Err != std::error_code())
@@ -509,7 +509,19 @@ Error JSONGenerator::generateDocs(
       CreatedDirs.insert(Path);
     }
 
-    sys::path::append(Path, Info->getFileBaseName() + ".json");
+    SmallString<16> FileName;
+    if (Info->IT == InfoType::IT_record) {
+      auto *RecordSymbolInfo = static_cast<SymbolInfo *>(Info);
+      if (RecordSymbolInfo->MangledName.size() < 255)
+        FileName = RecordSymbolInfo->MangledName;
+      else
+        FileName = toStringRef(toHex(RecordSymbolInfo->USR));
+    } else if (Info->IT == InfoType::IT_namespace && Info->Name != "")
+      // Serialize the global namespace as index.json
+      FileName = Info->Name;
+    else
+      FileName = Info->getFileBaseName();
+    sys::path::append(Path, FileName + ".json");
     FileToInfos[Path].push_back(Info);
   }
 
