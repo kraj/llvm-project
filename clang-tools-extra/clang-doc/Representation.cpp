@@ -191,9 +191,10 @@ bool CommentInfo::operator<(const CommentInfo &Other) const {
   return false;
 }
 
-static llvm::SmallString<64>
-calculateRelativeFilePath(const InfoType &Type, const StringRef &Path,
-                          const StringRef &Name, const StringRef &CurrentPath) {
+llvm::SmallString<64> calculateRelativeFilePath(const InfoType &Type,
+                                                const StringRef &Path,
+                                                const StringRef &Name,
+                                                const StringRef &CurrentPath) {
   llvm::SmallString<64> FilePath;
 
   if (CurrentPath != Path) {
@@ -247,6 +248,8 @@ void Reference::merge(Reference &&Other) {
     Name = Other.Name;
   if (Path.empty())
     Path = Other.Path;
+  if (DocumentationFileName.empty())
+    DocumentationFileName = Other.DocumentationFileName;
 }
 
 bool FriendInfo::mergeable(const FriendInfo &Other) {

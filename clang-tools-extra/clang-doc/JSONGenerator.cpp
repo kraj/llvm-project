@@ -43,6 +43,30 @@ static auto SerializeReferenceLambda = [](const auto &Ref, Object &Object) {
   serializeReference(Ref, Object);
 };
 
+static std::string infoTypeToString(InfoType IT) {
+  switch (IT) {
+  case InfoType::IT_default:
+    return "default";
+  case InfoType::IT_namespace:
+    return "namespace";
+  case InfoType::IT_record:
+    return "record";
+  case InfoType::IT_function:
+    return "function";
+  case InfoType::IT_enum:
+    return "enum";
+  case InfoType::IT_typedef:
+    return "typedef";
+  case InfoType::IT_concept:
+    return "concept";
+  case InfoType::IT_variable:
+    return "variable";
+  case InfoType::IT_friend:
+    return "friend";
+  }
+  llvm_unreachable("Unknown InfoType encountered.");
+}
+
 static json::Object
 serializeLocation(const Location &Loc,
                   const std::optional<StringRef> RepositoryUrl) {
@@ -172,6 +196,9 @@ serializeCommonAttributes(const Info &I, json::Object &Obj,
                           const std::optional<StringRef> RepositoryUrl) {
   Obj["Name"] = I.Name;
   Obj["USR"] = toHex(toStringRef(I.USR));
+  Obj["InfoType"] = infoTypeToString(I.IT);
+  if (!I.DocumentationFileName.empty())
+    Obj["DocumentationFileName"] = I.DocumentationFileName;
 
   if (!I.Path.empty())
     Obj["Path"] = I.Path;
@@ -205,6 +232,8 @@ static void serializeReference(const Reference &Ref, Object &ReferenceObj) {
   ReferenceObj["Name"] = Ref.Name;
   ReferenceObj["QualName"] = Ref.QualName;
   ReferenceObj["USR"] = toHex(toStringRef(Ref.USR));
+  if (!Ref.DocumentationFileName.empty())
+    ReferenceObj["DocumentationFileName"] = Ref.DocumentationFileName;
 }
 
 // Although namespaces and records both have ScopeChildren, they serialize them
@@ -217,14 +246,20 @@ serializeCommonChildren(const ScopeChildren &Children, json::Object &Obj,
     serializeInfo(Info, Object, RepositoryUrl);
   };
 
-  if (!Children.Enums.empty())
+  if (!Children.Enums.empty()) {
     serializeArray(Children.Enums, Obj, "Enums", SerializeInfo);
+    Obj["HasEnums"] = true;
+  }
 
-  if (!Children.Typedefs.empty())
+  if (!Children.Typedefs.empty()) {
     serializeArray(Children.Typedefs, Obj, "Typedefs", SerializeInfo);
+    Obj["HasTypedefs"] = true;
+  }
 
-  if (!Children.Records.empty())
+  if (!Children.Records.empty()) {
     serializeArray(Children.Records, Obj, "Records", SerializeReferenceLambda);
+    Obj["HasRecords"] = true;
+  }
 }
 
 template <typename Container, typename SerializationFunc>
@@ -234,10 +269,12 @@ static void serializeArray(const Container &Records, Object &Obj,
   json::Value RecordsArray = Array();
   auto &RecordsArrayRef = *RecordsArray.getAsArray();
   RecordsArrayRef.reserve(Records.size());
-  for (const auto &Item : Records) {
+  for (size_t Index = 0; Index < Records.size(); ++Index) {
     json::Value ItemVal = Object();
     auto &ItemObj = *ItemVal.getAsObject();
-    SerializeInfo(Item, ItemObj);
+    SerializeInfo(Records[Index], ItemObj);
+    if (Index == Records.size() - 1)
+      ItemObj["End"] = true;
     RecordsArrayRef.push_back(ItemVal);
   }
   Obj[Key] = RecordsArray;
@@ -405,10 +442,14 @@ static void serializeInfo(const RecordInfo &I, json::Object &Obj,
         ProtFunctionsArrayRef.push_back(FunctionVal);
     }
 
-    if (!PubFunctionsArrayRef.empty())
+    if (!PubFunctionsArrayRef.empty()) {
       Obj["PublicFunctions"] = PubFunctionsArray;
-    if (!ProtFunctionsArrayRef.empty())
+      Obj["HasPublicFunctions"] = true;
+    }
+    if (!ProtFunctionsArrayRef.empty()) {
       Obj["ProtectedFunctions"] = ProtFunctionsArray;
+      Obj["HasProtectedFunctions"] = true;
+    }
   }
 
   if (!I.Members.empty()) {
@@ -429,10 +470,14 @@ static void serializeInfo(const RecordInfo &I, json::Object &Obj,
         ProtMembersArrayRef.push_back(MemberVal);
     }
 
-    if (!PubMembersArrayRef.empty())
+    if (!PubMembersArrayRef.empty()) {
       Obj["PublicMembers"] = PublicMembersArray;
-    if (!ProtMembersArrayRef.empty())
+      Obj["HasPublicMembers"] = true;
+    }
+    if (!ProtMembersArrayRef.empty()) {
       Obj["ProtectedMembers"] = ProtectedMembersArray;
+      Obj["HasProtectedMembers"] = true;
+    }
   }
 
   if (!I.Bases.empty())
@@ -496,10 +541,7 @@ static SmallString<16> determineFileName(Info *I, SmallString<128> &Path) {
   SmallString<16> FileName;
   if (I->IT == InfoType::IT_record) {
     auto *RecordSymbolInfo = static_cast<SymbolInfo *>(I);
-    if (RecordSymbolInfo->MangledName.size() < 255)
-      FileName = RecordSymbolInfo->MangledName;
-    else
-      FileName = toStringRef(toHex(RecordSymbolInfo->USR));
+    FileName = RecordSymbolInfo->MangledName;
   } else if (I->IT == InfoType::IT_namespace && I->Name != "")
     // Serialize the global namespace as index.json
     FileName = I->Name;
@@ -528,6 +570,7 @@ Error JSONGenerator::generateDocs(
 
     SmallString<16> FileName = determineFileName(Info, Path);
     FileToInfos[Path].push_back(Info);
+    Info->DocumentationFileName = FileName;
   }
 
   for (const auto &Group : FileToInfos) {
