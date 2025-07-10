@@ -130,7 +130,7 @@ namespace PR9226 {
 
   template<typename T, typename U>
   struct Y {
-    typedef typename T::template f<U> type; // expected-error{{template name refers to non-type template 'X::template f'}}
+    typedef typename T::template f<U> type; // expected-error{{template name refers to non-type template 'PR9226::X::template f'}}
   };
 
   Y<X, int> yxi; // expected-note{{in instantiation of template class 'PR9226::Y<PR9226::X, int>' requested here}}
