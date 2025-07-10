@@ -50,7 +50,7 @@ def : Function {
     "required for the given query."
   ];
   let params = [
-    Param<"ol_symbol_handle_t", "Event", "handle of the symbol", PARAM_IN>,
+    Param<"ol_symbol_handle_t", "Symbol", "handle of the symbol", PARAM_IN>,
     Param<"ol_symbol_info_t", "PropName", "type of the info to retrieve", PARAM_IN>,
     Param<"size_t", "PropSize", "the number of bytes pointed to by PropValue.", PARAM_IN>,
     TypeTaggedParam<"void*", "PropValue", "array of bytes holding the info. "
@@ -75,7 +75,7 @@ def : Function {
   let desc = "Returns the storage size of the given symbol query.";
   let details = [];
   let params = [
-    Param<"ol_symbol_handle_t", "Event", "handle of the symbol", PARAM_IN>,
+    Param<"ol_symbol_handle_t", "Symbol", "handle of the symbol", PARAM_IN>,
     Param<"ol_symbol_info_t", "PropName", "type of the info to query", PARAM_IN>,
     Param<"size_t*", "PropSizeRet", "pointer to the number of bytes required to store the query", PARAM_OUT>
   ];
