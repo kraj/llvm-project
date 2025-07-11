@@ -496,7 +496,108 @@ private:
 };
 
 // ========================================================================= //
-//                              The Dataflow Lattice
+//                         Generic Dataflow Framework
+// ========================================================================= //
+/// A generic, policy-based driver for forward dataflow analyses. It combines
+/// the dataflow runner and the transferer logic into a single class hierarchy.
+///
+/// The derived class is expected to provide:
+/// - A `Lattice` type.
+/// - `Lattice getInitialState()`
+/// - `Lattice join(Lattice, Lattice)`
+/// - `Lattice transfer(Lattice, const FactType&)` for relevant fact types.
+///
+/// \tparam Derived The CRTP derived class that implements the specific
+/// analysis.
+/// \tparam LatticeType The lattice type used by the analysis.
+template <typename Derived, typename LatticeType> class DataflowAnalysis {
+public:
+  using Lattice = LatticeType;
+
+private:
+  const CFG &Cfg;
+  AnalysisDeclContext &AC;
+
+  llvm::DenseMap<const CFGBlock *, Lattice> BlockEntryStates;
+  llvm::DenseMap<const CFGBlock *, Lattice> BlockExitStates;
+
+protected:
+  FactManager &AllFacts;
+
+  explicit DataflowAnalysis(const CFG &C, AnalysisDeclContext &AC,
+                            FactManager &F)
+      : Cfg(C), AC(AC), AllFacts(F) {}
+
+public:
+  void run() {
+    Derived &d = static_cast<Derived &>(*this);
+    ForwardDataflowWorklist Worklist(Cfg, AC);
+    const CFGBlock *Entry = &Cfg.getEntry();
+    BlockEntryStates[Entry] = d.getInitialState();
+    Worklist.enqueueBlock(Entry);
+
+    while (const CFGBlock *B = Worklist.dequeue()) {
+      Lattice EntryState = getEntryState(B);
+      Lattice ExitState = transferBlock(B, EntryState);
+      BlockExitStates[B] = ExitState;
+
+      for (const CFGBlock *Successor : B->succs()) {
+        auto SuccIt = BlockEntryStates.find(Successor);
+        Lattice OldSuccEntryState = (SuccIt != BlockEntryStates.end())
+                                        ? SuccIt->second
+                                        : d.getInitialState();
+        Lattice NewSuccEntryState = d.join(OldSuccEntryState, ExitState);
+
+        if (SuccIt == BlockEntryStates.end() ||
+            NewSuccEntryState != OldSuccEntryState) {
+          BlockEntryStates[Successor] = NewSuccEntryState;
+          Worklist.enqueueBlock(Successor);
+        }
+      }
+    }
+  }
+
+  Lattice getEntryState(const CFGBlock *B) const {
+    return BlockEntryStates.lookup(B);
+  }
+
+  Lattice getExitState(const CFGBlock *B) const {
+    return BlockExitStates.lookup(B);
+  }
+
+private:
+  Lattice transferBlock(const CFGBlock *Block, Lattice EntryState) {
+    Lattice BlockState = EntryState;
+    for (const Fact *F : AllFacts.getFacts(Block)) {
+      BlockState = transferFact(BlockState, F);
+    }
+    return BlockState;
+  }
+
+  Lattice transferFact(Lattice In, const Fact *F) {
+    Derived *d = static_cast<Derived *>(this);
+    switch (F->getKind()) {
+    case Fact::Kind::Issue:
+      return d->transfer(In, *F->getAs<IssueFact>());
+    case Fact::Kind::Expire:
+      return d->transfer(In, *F->getAs<ExpireFact>());
+    case Fact::Kind::AssignOrigin:
+      return d->transfer(In, *F->getAs<AssignOriginFact>());
+    case Fact::Kind::ReturnOfOrigin:
+      return d->transfer(In, *F->getAs<ReturnOfOriginFact>());
+    }
+    llvm_unreachable("Unknown fact kind");
+  }
+
+public:
+  Lattice transfer(Lattice In, const IssueFact &) { return In; }
+  Lattice transfer(Lattice In, const ExpireFact &) { return In; }
+  Lattice transfer(Lattice In, const AssignOriginFact &) { return In; }
+  Lattice transfer(Lattice In, const ReturnOfOriginFact &) { return In; }
+};
+
+// ========================================================================= //
+//                          Loan Propagation Analysis
 // ========================================================================= //
 
 // Using LLVM's immutable collections is efficient for dataflow analysis
@@ -538,51 +639,6 @@ struct LifetimeLattice {
     return !(*this == Other);
   }
 
-  LoanSet getLoans(OriginID OID) const {
-    if (auto *Loans = Origins.lookup(OID))
-      return *Loans;
-    return LoanSet(nullptr);
-  }
-
-  /// Computes the union of two lattices by performing a key-wise join of
-  /// their OriginLoanMaps.
-  // TODO(opt): This key-wise join is a performance bottleneck. A more
-  // efficient merge could be implemented using a Patricia Trie or HAMT
-  // instead of the current AVL-tree-based ImmutableMap.
-  // TODO(opt): Keep the state small by removing origins which become dead.
-  LifetimeLattice join(const LifetimeLattice &Other,
-                       LifetimeFactory &Factory) const {
-    /// Merge the smaller map into the larger one ensuring we iterate over the
-    /// smaller map.
-    if (Origins.getHeight() < Other.Origins.getHeight())
-      return Other.join(*this, Factory);
-
-    OriginLoanMap JoinedState = Origins;
-    // For each origin in the other map, union its loan set with ours.
-    for (const auto &Entry : Other.Origins) {
-      OriginID OID = Entry.first;
-      LoanSet OtherLoanSet = Entry.second;
-      JoinedState = Factory.OriginMapFactory.add(
-          JoinedState, OID, join(getLoans(OID), OtherLoanSet, Factory));
-    }
-    return LifetimeLattice(JoinedState);
-  }
-
-  LoanSet join(LoanSet a, LoanSet b, LifetimeFactory &Factory) const {
-    /// Merge the smaller set into the larger one ensuring we iterate over the
-    /// smaller set.
-    if (a.getHeight() < b.getHeight())
-      std::swap(a, b);
-    LoanSet Result = a;
-    for (LoanID LID : b) {
-      /// TODO(opt): Profiling shows that this loop is a major performance
-      /// bottleneck. Investigate using a BitVector to represent the set of
-      /// loans for improved join performance.
-      Result = Factory.LoanSetFact.add(Result, LID);
-    }
-    return Result;
-  }
-
   void dump(llvm::raw_ostream &OS) const {
     OS << "LifetimeLattice State:\n";
     if (Origins.isEmpty())
@@ -596,144 +652,128 @@ struct LifetimeLattice {
   }
 };
 
-// ========================================================================= //
-//                              The Transfer Function
-// ========================================================================= //
-class Transferer {
-  FactManager &AllFacts;
+class LoanPropagationAnalysis
+    : public DataflowAnalysis<LoanPropagationAnalysis, LifetimeLattice> {
+
   LifetimeFactory &Factory;
 
 public:
-  explicit Transferer(FactManager &F, LifetimeFactory &Factory)
-      : AllFacts(F), Factory(Factory) {}
+  LoanPropagationAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
+                          LifetimeFactory &Factory)
+      : DataflowAnalysis(C, AC, F), Factory(Factory) {}
 
-  /// Computes the exit state of a block by applying all its facts sequentially
-  /// to a given entry state.
-  /// TODO: We might need to store intermediate states per-fact in the block for
-  /// later analysis.
-  LifetimeLattice transferBlock(const CFGBlock *Block,
-                                LifetimeLattice EntryState) {
-    LifetimeLattice BlockState = EntryState;
-    llvm::ArrayRef<const Fact *> Facts = AllFacts.getFacts(Block);
+  // Make the base class's transfer overloads visible.
+  using DataflowAnalysis<LoanPropagationAnalysis, Lattice>::transfer;
 
-    for (const Fact *F : Facts) {
-      BlockState = transferFact(BlockState, F);
+  Lattice getInitialState() { return Lattice{}; }
+
+  Lattice join(Lattice L1, Lattice L2) {
+    /// Merge the smaller map into the larger one ensuring we iterate over the
+    /// smaller map.
+    if (L1.Origins.getHeight() < L2.Origins.getHeight())
+      std::swap(L1, L2);
+
+    OriginLoanMap JoinedState = L1.Origins;
+    // For each origin in the other map, union its loan set with ours.
+    for (const auto &Entry : L2.Origins) {
+      OriginID OID = Entry.first;
+      LoanSet OtherLoanSet = Entry.second;
+      JoinedState = Factory.OriginMapFactory.add(
+          JoinedState, OID, join(getLoans(L1, OID), OtherLoanSet));
     }
-    return BlockState;
+    return Lattice(JoinedState);
   }
 
-private:
-  LifetimeLattice transferFact(LifetimeLattice In, const Fact *F) {
-    switch (F->getKind()) {
-    case Fact::Kind::Issue:
-      return transfer(In, *F->getAs<IssueFact>());
-    case Fact::Kind::AssignOrigin:
-      return transfer(In, *F->getAs<AssignOriginFact>());
-    // Expire and ReturnOfOrigin facts don't modify the Origins and the State.
-    case Fact::Kind::Expire:
-    case Fact::Kind::ReturnOfOrigin:
-      return In;
-    }
-    llvm_unreachable("Unknown fact kind");
+  LoanSet join(LoanSet S1, LoanSet S2) {
+    if (S1.getHeight() < S2.getHeight())
+      std::swap(S1, S2);
+    for (LoanID L : S2)
+      S1 = Factory.LoanSetFact.add(S1, L);
+    return S1;
   }
 
-  /// A new loan is issued to the origin. Old loans are erased.
-  LifetimeLattice transfer(LifetimeLattice In, const IssueFact &F) {
+  // Overloads for specific fact types this transferer cares about.
+  Lattice transfer(Lattice In, const IssueFact &F) {
     OriginID OID = F.getOriginID();
     LoanID LID = F.getLoanID();
     return LifetimeLattice(Factory.OriginMapFactory.add(
         In.Origins, OID, Factory.createLoanSet(LID)));
   }
 
-  /// The destination origin's loan set is replaced by the source's.
-  /// This implicitly "resets" the old loans of the destination.
-  LifetimeLattice transfer(LifetimeLattice InState, const AssignOriginFact &F) {
+  Lattice transfer(Lattice In, const AssignOriginFact &F) {
     OriginID DestOID = F.getDestOriginID();
     OriginID SrcOID = F.getSrcOriginID();
-    LoanSet SrcLoans = InState.getLoans(SrcOID);
+    LoanSet SrcLoans = getLoans(In, SrcOID);
     return LifetimeLattice(
-        Factory.OriginMapFactory.add(InState.Origins, DestOID, SrcLoans));
+        Factory.OriginMapFactory.add(In.Origins, DestOID, SrcLoans));
+  }
+
+private:
+  LoanSet getLoans(Lattice L, OriginID OID) {
+    if (auto *Loans = L.Origins.lookup(OID))
+      return *Loans;
+    return Factory.LoanSetFact.getEmptySet();
   }
 };
 
 // ========================================================================= //
-//                              Dataflow analysis
+//                         Expired Loans Analysis
 // ========================================================================= //
 
-/// Drives the intra-procedural dataflow analysis.
-///
-/// Orchestrates the analysis by iterating over the CFG using a worklist
-/// algorithm. It computes a fixed point by propagating the LifetimeLattice
-/// state through each block until the state no longer changes.
-/// TODO: Maybe use the dataflow framework! The framework might need changes
-/// to support the current comparison done at block-entry.
-class LifetimeDataflow {
-  const CFG &Cfg;
-  AnalysisDeclContext &AC;
-  LifetimeFactory LifetimeFact;
+/// The lattice for tracking expired loans. It is a set of loan IDs.
+struct ExpiredLattice {
+  LoanSet Expired;
 
-  Transferer Xfer;
+  ExpiredLattice() : Expired(nullptr) {};
+  explicit ExpiredLattice(LoanSet S) : Expired(S) {}
 
-  /// Stores the merged analysis state at the entry of each CFG block.
-  llvm::DenseMap<const CFGBlock *, LifetimeLattice> BlockEntryStates;
-  /// Stores the analysis state at the exit of each CFG block, after the
-  /// transfer function has been applied.
-  llvm::DenseMap<const CFGBlock *, LifetimeLattice> BlockExitStates;
+  bool operator==(const ExpiredLattice &Other) const {
+    return Expired == Other.Expired;
+  }
+  bool operator!=(const ExpiredLattice &Other) const {
+    return !(*this == Other);
+  }
+
+  void dump(llvm::raw_ostream &OS) const {
+    OS << "ExpiredLattice State:\n";
+    if (Expired.isEmpty())
+      OS << "  <empty>\n";
+    for (const LoanID &LID : Expired)
+      OS << "  Loan " << LID << " is expired\n";
+  }
+};
+
+/// Transfer function for the expired loans analysis.
+class ExpiredLoansAnalysis
+    : public DataflowAnalysis<ExpiredLoansAnalysis, ExpiredLattice> {
+
+  LoanSet::Factory &SetFactory;
 
 public:
-  LifetimeDataflow(const CFG &C, FactManager &FS, AnalysisDeclContext &AC)
-      : Cfg(C), AC(AC), Xfer(FS, LifetimeFact) {}
+  ExpiredLoansAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
+                       LoanSet::Factory &SF)
+      : DataflowAnalysis(C, AC, F), SetFactory(SF) {}
 
-  void run() {
-    llvm::TimeTraceScope TimeProfile("Lifetime Dataflow");
-    ForwardDataflowWorklist Worklist(Cfg, AC);
-    const CFGBlock *Entry = &Cfg.getEntry();
-    BlockEntryStates[Entry] = LifetimeLattice{};
-    Worklist.enqueueBlock(Entry);
-    while (const CFGBlock *B = Worklist.dequeue()) {
-      LifetimeLattice EntryState = getEntryState(B);
-      LifetimeLattice ExitState = Xfer.transferBlock(B, EntryState);
-      BlockExitStates[B] = ExitState;
+  using DataflowAnalysis<ExpiredLoansAnalysis, Lattice>::transfer;
 
-      for (const CFGBlock *Successor : B->succs()) {
-        auto SuccIt = BlockEntryStates.find(Successor);
-        LifetimeLattice OldSuccEntryState = (SuccIt != BlockEntryStates.end())
-                                                ? SuccIt->second
-                                                : LifetimeLattice{};
-        LifetimeLattice NewSuccEntryState =
-            OldSuccEntryState.join(ExitState, LifetimeFact);
-        // Enqueue the successor if its entry state has changed.
-        // TODO(opt): Consider changing 'join' to report a change if !=
-        // comparison is found expensive.
-        if (SuccIt == BlockEntryStates.end() ||
-            NewSuccEntryState != OldSuccEntryState) {
-          BlockEntryStates[Successor] = NewSuccEntryState;
-          Worklist.enqueueBlock(Successor);
-        }
-      }
-    }
+  Lattice getInitialState() { return Lattice(SetFactory.getEmptySet()); }
+
+  Lattice join(Lattice L1, Lattice L2) const {
+    LoanSet JoinedSet = L1.Expired;
+    for (LoanID LID : L2.Expired)
+      JoinedSet = SetFactory.add(JoinedSet, LID);
+    return Lattice(JoinedSet);
   }
 
-  void dump() const {
-    llvm::dbgs() << "==========================================\n";
-    llvm::dbgs() << "       Dataflow results:\n";
-    llvm::dbgs() << "==========================================\n";
-    const CFGBlock &B = Cfg.getExit();
-    getExitState(&B).dump(llvm::dbgs());
+  // Overloads for specific fact types this transferer cares about.
+  Lattice transfer(Lattice In, const ExpireFact &F) {
+    return Lattice(SetFactory.add(In.Expired, F.getLoanID()));
   }
 
-  LifetimeLattice getEntryState(const CFGBlock *B) const {
-    return BlockEntryStates.lookup(B);
-  }
-
-  LifetimeLattice getExitState(const CFGBlock *B) const {
-    return BlockExitStates.lookup(B);
+  Lattice transfer(Lattice In, const IssueFact &F) {
+    return Lattice(SetFactory.remove(In.Expired, F.getLoanID()));
   }
 };
-
-// ========================================================================= //
-//  TODO: Analysing dataflow results and error reporting.
-// ========================================================================= //
 } // anonymous namespace
 
 void runLifetimeSafetyAnalysis(const DeclContext &DC, const CFG &Cfg,
@@ -746,17 +786,20 @@ void runLifetimeSafetyAnalysis(const DeclContext &DC, const CFG &Cfg,
   FactGen.run();
   DEBUG_WITH_TYPE("LifetimeFacts", FactMgr.dump(Cfg, AC));
 
-  /// TODO(opt): Consider optimizing individual blocks before running the
-  /// dataflow analysis.
-  /// 1. Expression Origins: These are assigned once and read at most once,
-  ///    forming simple chains. These chains can be compressed into a single
-  ///    assignment.
-  /// 2. Block-Local Loans: Origins of expressions are never read by other
-  ///    blocks; only Decls are visible.  Therefore, loans in a block that
-  ///    never reach an Origin associated with a Decl can be safely dropped by
-  ///    the analysis.
-  LifetimeDataflow Dataflow(Cfg, FactMgr, AC);
-  Dataflow.run();
-  DEBUG_WITH_TYPE("LifetimeDataflow", Dataflow.dump());
+  // Run Loan Propagation Analysis
+  LifetimeFactory LifetimeFact;
+  LoanPropagationAnalysis LoanPropagation(Cfg, AC, FactMgr, LifetimeFact);
+  LoanPropagation.run();
+  DEBUG_WITH_TYPE(
+      "LifetimeDataflow",
+      LoanPropagation.getExitState(&Cfg.getExit()).dump(llvm::dbgs()));
+
+  // Run Expired Loans Analysis
+  ExpiredLoansAnalysis ExpiredAnalysis(Cfg, AC, FactMgr,
+                                       LifetimeFact.LoanSetFact);
+  ExpiredAnalysis.run();
+  DEBUG_WITH_TYPE(
+      "ExpiredLoans",
+      ExpiredAnalysis.getExitState(&Cfg.getExit()).dump(llvm::dbgs()));
 }
 } // namespace clang
