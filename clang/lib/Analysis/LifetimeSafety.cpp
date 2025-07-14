@@ -748,6 +748,65 @@ private:
 };
 
 // ========================================================================= //
+//                         Expired Loans Analysis
+// ========================================================================= //
+
+/// The lattice for tracking expired loans. It is a set of loan IDs.
+struct ExpiredLattice {
+  LoanSet Expired;
+
+  ExpiredLattice() : Expired(nullptr) {};
+  explicit ExpiredLattice(LoanSet S) : Expired(S) {}
+
+  bool operator==(const ExpiredLattice &Other) const {
+    return Expired == Other.Expired;
+  }
+  bool operator!=(const ExpiredLattice &Other) const {
+    return !(*this == Other);
+  }
+
+  void dump(llvm::raw_ostream &OS) const {
+    OS << "ExpiredLattice State:\n";
+    if (Expired.isEmpty())
+      OS << "  <empty>\n";
+    for (const LoanID &LID : Expired)
+      OS << "  Loan " << LID << " is expired\n";
+  }
+};
+
+class ExpiredLoansAnalysis
+    : public DataflowAnalysis<ExpiredLoansAnalysis, ExpiredLattice> {
+
+  LoanSet::Factory &SetFactory;
+
+public:
+  ExpiredLoansAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
+                       LoanSet::Factory &SF)
+      : DataflowAnalysis(C, AC, F), SetFactory(SF) {}
+
+  using DataflowAnalysis<ExpiredLoansAnalysis, Lattice>::transfer;
+
+  const char *getAnalysisName() const { return "ExpiredLoans"; }
+
+  Lattice getInitialState() { return Lattice(SetFactory.getEmptySet()); }
+
+  Lattice join(Lattice L1, Lattice L2) const {
+    LoanSet JoinedSet = L1.Expired;
+    for (LoanID LID : L2.Expired)
+      JoinedSet = SetFactory.add(JoinedSet, LID);
+    return Lattice(JoinedSet);
+  }
+
+  Lattice transfer(Lattice In, const ExpireFact &F) {
+    return Lattice(SetFactory.add(In.Expired, F.getLoanID()));
+  }
+
+  Lattice transfer(Lattice In, const IssueFact &F) {
+    return Lattice(SetFactory.remove(In.Expired, F.getLoanID()));
+  }
+};
+
+// ========================================================================= //
 //  TODO:
 // - Modifying loan propagation to answer `LoanSet getLoans(Origin O, Point P)`
 // - Adding loan expiry analysis to answer `bool isExpired(Loan L, Point P)`
@@ -779,5 +838,8 @@ void runLifetimeSafetyAnalysis(const DeclContext &DC, const CFG &Cfg,
   LoanPropagationAnalysis LoanPropagation(Cfg, AC, FactMgr, LifetimeFact);
   LoanPropagation.run();
   DEBUG_WITH_TYPE("LifetimeLoanPropagation", LoanPropagation.dump());
+
+  ExpiredLoansAnalysis ExpiredAnalysis(Cfg, AC, FactMgr,
+                                       LifetimeFact.LoanSetFact);
 }
 } // namespace clang
