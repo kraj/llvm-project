@@ -23,14 +23,15 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/TimeProfiler.h"
 #include <cstdint>
+#include <memory>
 
 namespace clang::lifetimes {
 namespace internal {
 namespace {
-template <typename Tag>
-inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, ID<Tag> ID) {
-  return OS << ID.Value;
-}
+// template <typename Tag>
+// inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, ID<Tag> ID) {
+//   return OS << ID.Value;
+// }
 } // namespace
 
 /// Represents the storage location being borrowed, e.g., a specific stack
@@ -833,6 +834,65 @@ private:
 };
 
 // ========================================================================= //
+//                         Expired Loans Analysis
+// ========================================================================= //
+
+/// The dataflow lattice for tracking the set of expired loans.
+struct ExpiredLattice {
+  LoanSet Expired;
+
+  ExpiredLattice() : Expired(nullptr) {};
+  explicit ExpiredLattice(LoanSet S) : Expired(S) {}
+
+  bool operator==(const ExpiredLattice &Other) const {
+    return Expired == Other.Expired;
+  }
+  bool operator!=(const ExpiredLattice &Other) const {
+    return !(*this == Other);
+  }
+
+  void dump(llvm::raw_ostream &OS) const {
+    OS << "ExpiredLattice State:\n";
+    if (Expired.isEmpty())
+      OS << "  <empty>\n";
+    for (const LoanID &LID : Expired)
+      OS << "  Loan " << LID << " is expired\n";
+  }
+};
+
+/// The analysis that tracks which loans have expired.
+class ExpiredLoansAnalysis
+    : public DataflowAnalysis<ExpiredLoansAnalysis, ExpiredLattice,
+                              Direction::Forward> {
+
+  LoanSet::Factory &Factory;
+
+public:
+  ExpiredLoansAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
+                       LifetimeFactory &Factory)
+      : DataflowAnalysis(C, AC, F), Factory(Factory.LoanSetFactory) {}
+
+  using Base::transfer;
+
+  StringRef getAnalysisName() const { return "ExpiredLoans"; }
+
+  Lattice getInitialState() { return Lattice(Factory.getEmptySet()); }
+
+  /// Merges two lattices by taking the union of the expired loan sets.
+  Lattice join(Lattice L1, Lattice L2) const {
+    return Lattice(utils::join(L1.Expired, L2.Expired, Factory));
+  }
+
+  Lattice transfer(Lattice In, const ExpireFact &F) {
+    return Lattice(Factory.add(In.Expired, F.getLoanID()));
+  }
+
+  Lattice transfer(Lattice In, const IssueFact &F) {
+    return Lattice(Factory.remove(In.Expired, F.getLoanID()));
+  }
+};
+
+// ========================================================================= //
 //  TODO:
 // - Modify loan expiry analysis to answer `bool isExpired(Loan L, Point P)`
 // - Modify origin liveness analysis to answer `bool isLive(Origin O, Point P)`
@@ -873,12 +933,21 @@ void LifetimeSafetyAnalysis::run() {
   LoanPropagation =
       std::make_unique<LoanPropagationAnalysis>(Cfg, AC, *FactMgr, *Factory);
   LoanPropagation->run();
+
+  ExpiredLoans =
+      std::make_unique<ExpiredLoansAnalysis>(Cfg, AC, *FactMgr, *Factory);
+  ExpiredLoans->run();
 }
 
 LoanSet LifetimeSafetyAnalysis::getLoansAtPoint(OriginID OID,
                                                 ProgramPoint PP) const {
   assert(LoanPropagation && "Analysis has not been run.");
   return LoanPropagation->getLoans(OID, PP);
+}
+
+LoanSet LifetimeSafetyAnalysis::getExpiredLoansAtPoint(ProgramPoint PP) const {
+  assert(ExpiredLoans && "ExpiredLoansAnalysis has not been run.");
+  return ExpiredLoans->getState(PP).Expired;
 }
 
 std::optional<OriginID>
