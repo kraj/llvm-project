@@ -99,21 +99,15 @@ void RuntimeLibcallsInfo::initLibcalls(const Triple &TT,
       setLibcallImplCallingConv(RTLIB::__sincos_stret,
                                 CallingConv::ARM_AAPCS_VFP);
     }
-
-    if (!darwinHasExp10(TT)) {
-      // FIXME: Remove exp10 from default set
-      setLibcallImpl(RTLIB::EXP10_F32, RTLIB::Unsupported);
-      setLibcallImpl(RTLIB::EXP10_F64, RTLIB::Unsupported);
-    }
   }
 
   if (TT.isOSOpenBSD()) {
     setLibcallImpl(RTLIB::STACKPROTECTOR_CHECK_FAIL, RTLIB::Unsupported);
   }
 
-  // Skip default manual processing for targets that have been fully ported to
+  // Skip default manual processing for targets that have been mostly ported to
   // tablegen for now. Eventually the rest of this should be deleted.
-  if (TT.isX86() || TT.isAArch64() || TT.isWasm())
+  if (TT.isX86() || TT.isAArch64() || TT.isWasm() || TT.isPPC())
     return;
 
   if (TT.isARM() || TT.isThumb()) {
@@ -126,6 +120,10 @@ void RuntimeLibcallsInfo::initLibcalls(const Triple &TT,
     setLibcallImpl(RTLIB::SINCOS_F64, RTLIB::sincos);
     setLibcallImpl(RTLIB::SINCOS_F128, RTLIB::sincos_f128);
   }
+
+  setLibcallImpl(RTLIB::EXP10_F32, RTLIB::exp10f);
+  setLibcallImpl(RTLIB::EXP10_F64, RTLIB::exp10);
+  setLibcallImpl(RTLIB::EXP10_F128, RTLIB::exp10l_f128);
 
   // These libcalls are only available in compiler-rt, not libgcc.
   if (TT.isArch64Bit()) {

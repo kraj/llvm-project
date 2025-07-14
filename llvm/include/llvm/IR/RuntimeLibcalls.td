@@ -29,6 +29,9 @@ def isNotOSWindowsOrIsCygwinMinGW
 def isGNUEnvironment : RuntimeLibcallPredicate<"TT.isGNUEnvironment()">;
 def darwinHasSinCosStret : RuntimeLibcallPredicate<"darwinHasSinCosStret(TT)">;
 def darwinHasExp10 : RuntimeLibcallPredicate<"darwinHasExp10(TT)">;
+
+def hasExp10 : RuntimeLibcallPredicate<[{!TT.isOSDarwin()}]>;
+
 def hasSinCos : RuntimeLibcallPredicate<"hasSinCos(TT)">;
 
 // FIXME: Way to combine predicates
@@ -776,12 +779,6 @@ def __exp2l_finite_f80 : RuntimeLibcallImpl<EXP2_FINITE_F80, "__exp2l_finite">;
 def __exp2l_finite_f128 : RuntimeLibcallImpl<EXP2_FINITE_F128, "__exp2l_finite">;
 def __exp2l_finite_ppcf128 : RuntimeLibcallImpl<EXP2_FINITE_PPCF128, "__exp2l_finite">;
 
-def exp10f : RuntimeLibcallImpl<EXP10_F32>;
-def exp10 : RuntimeLibcallImpl<EXP10_F64>;
-def exp10l_f80 : RuntimeLibcallImpl<EXP10_F80, "exp10l">;
-def exp10l_f128 : RuntimeLibcallImpl<EXP10_F128, "exp10l">;
-def exp10l_ppcf128 : RuntimeLibcallImpl<EXP10_PPCF128, "exp10l">;
-
 def sinf : RuntimeLibcallImpl<SIN_F32>;
 def sin : RuntimeLibcallImpl<SIN_F64>;
 defm sin : LibmLongDoubleLibCall;
@@ -942,6 +939,12 @@ def calloc : RuntimeLibcallImpl<CALLOC>;
 
 } // End let IsDefault = true
 
+def exp10f : RuntimeLibcallImpl<EXP10_F32>;
+def exp10 : RuntimeLibcallImpl<EXP10_F64>;
+def exp10l_f80 : RuntimeLibcallImpl<EXP10_F80, "exp10l">;
+def exp10l_f128 : RuntimeLibcallImpl<EXP10_F128, "exp10l">;
+def exp10l_ppcf128 : RuntimeLibcallImpl<EXP10_PPCF128, "exp10l">;
+
 //--------------------------------------------------------------------
 // compiler-rt/libgcc but 64-bit only, not available by default
 //--------------------------------------------------------------------
@@ -1101,6 +1104,12 @@ defvar LibmHasSinCosF80 = LibcallImpls<(add sincos_f80), hasSinCos>;
 defvar LibmHasSinCosF128 = LibcallImpls<(add sincos_f128), hasSinCos>;
 defvar LibmHasSinCosPPCF128 = LibcallImpls<(add sincos_ppcf128), hasSinCos>;
 
+defvar LibmHasExp10F32 = LibcallImpls<(add exp10f), hasExp10>;
+defvar LibmHasExp10F64 = LibcallImpls<(add exp10), hasExp10>;
+defvar LibmHasExp10F80 = LibcallImpls<(add exp10l_f80), hasExp10>;
+defvar LibmHasExp10F128 = LibcallImpls<(add exp10l_f128), hasExp10>;
+defvar LibmHasExp10PPCF128 = LibcallImpls<(add exp10l_ppcf128), hasExp10>;
+
 defvar WindowsMathRemovals = [
   ldexpf, ldexp_f80, ldexp_f128, ldexp_ppcf128,
   frexpf, frexp_f80, frexp_f128, frexp_ppcf128
@@ -1199,7 +1208,8 @@ def AArch64SystemLibrary : SystemRuntimeLibrary<
        LibcallImpls<(add Int128RTLibcalls), isAArch64_ILP64>,
        LibcallImpls<(add bzero), isOSDarwin>,
        DarwinExp10, DarwinSinCosStret,
-       LibmHasSinCosF32, LibmHasSinCosF64, LibmHasSinCosF128)
+       LibmHasSinCosF32, LibmHasSinCosF64, LibmHasSinCosF128,
+       LibmHasExp10F32, LibmHasExp10F64, LibmHasExp10F128)
 >;
 
 // Prepend a # to every name
@@ -1470,6 +1480,7 @@ def ARMSystemLibrary
            AEABIDivRemCalls,
            DarwinSinCosStret, DarwinExp10,
            LibmHasSinCosF32, LibmHasSinCosF64, LibmHasSinCosF128,
+           LibmHasExp10F32, LibmHasExp10F64,  LibmHasExp10F128,
 
            // Use divmod compiler-rt calls for iOS 5.0 and later.
            LibcallImpls<(add __divmodsi4, __udivmodsi4),
@@ -1962,6 +1973,7 @@ def PPCSystemLibrary
                 DefaultRuntimeLibcallImpls_f128),
            __extendkftf2, __trunctfkf2,
            DefaultRuntimeLibcallImpls_ppcf128,
+           exp10f, exp10, exp10l_ppcf128,
            LibmF128Libcalls, AIX32Calls, AIX64Calls,
            LibmHasSinCosF32, LibmHasSinCosF64, LibmHasSinCosF128,
            LibmHasSinCosPPCF128,
@@ -1977,7 +1989,9 @@ def isRISCV64 : RuntimeLibcallPredicate<"TT.isRISCV64()">;
 
 def RISCVSystemLibrary
     : SystemRuntimeLibrary<isRISCV,
-      (add DefaultRuntimeLibcallImpls, __riscv_flush_icache,
+      (add DefaultRuntimeLibcallImpls,
+           exp10f, exp10, exp10l_f128,
+           __riscv_flush_icache,
            LibcallImpls<(add Int128RTLibcalls), isRISCV64>)>;
 
 //===----------------------------------------------------------------------===//
@@ -2086,6 +2100,10 @@ defvar X86CommonLibcalls =
        LibmHasFrexpF32, LibmHasLdexpF32,
        LibmHasFrexpF80, LibmHasLdexpF80,
        DefaultRuntimeLibcallImpls_f80,
+
+       LibmHasExp10F32, LibmHasExp10F64, LibmHasExp10F80,
+       LibmHasExp10F128,
+
        // MSVCRT doesn't have powi
        // FIXME: It's almost certainly correct that MSVCRT has
        // __powitf2_f128, but at least one test is relying on it.
@@ -2230,4 +2248,5 @@ def WasmSystemLibrary
     : SystemRuntimeLibrary<isWasm,
       (add DefaultRuntimeLibcallImpls, Int128RTLibcalls,
            CompilerRTOnlyInt64Libcalls, CompilerRTOnlyInt128Libcalls,
+           exp10f, exp10,
            emscripten_return_address)>;
