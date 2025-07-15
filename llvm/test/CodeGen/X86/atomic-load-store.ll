@@ -2,11 +2,11 @@
 ; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -mcpu=x86-64    | FileCheck %s --check-prefixes=CHECK,CHECK-O3
 ; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -mcpu=x86-64-v2 | FileCheck %s --check-prefixes=CHECK,CHECK-SSE-O3
 ; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -mcpu=x86-64-v3 | FileCheck %s --check-prefixes=CHECK,CHECK-AVX-O3
-; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -mcpu=x86-64-v4 | FileCheck %s --check-prefixes=CHECK,CHECK-AVX-O3
+; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -mcpu=x86-64-v4 | FileCheck %s --check-prefixes=CHECK,CHECK-AVX512-O3
 ; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -O0 -mcpu=x86-64    | FileCheck %s --check-prefixes=CHECK,CHECK-O0
 ; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -O0 -mcpu=x86-64-v2 | FileCheck %s --check-prefixes=CHECK,CHECK-SSE-O0
 ; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -O0 -mcpu=x86-64-v3 | FileCheck %s --check-prefixes=CHECK,CHECK-AVX-O0
-; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -O0 -mcpu=x86-64-v4 | FileCheck %s --check-prefixes=CHECK,CHECK-AVX-O0
+; RUN: llc < %s -mtriple=x86_64-- -verify-machineinstrs -O0 -mcpu=x86-64-v4 | FileCheck %s --check-prefixes=CHECK,CHECK-AVX512-O0
 
 define void @test1(ptr %ptr, i32 %val1) {
 ; CHECK-LABEL: test1:
@@ -60,6 +60,11 @@ define <1 x i8> @atomic_vec1_i8(ptr %x) {
 ; CHECK-AVX-O3-NEXT:    movzbl (%rdi), %eax
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_i8:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzbl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_i8:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movb (%rdi), %al
@@ -74,6 +79,11 @@ define <1 x i8> @atomic_vec1_i8(ptr %x) {
 ; CHECK-AVX-O0:       # %bb.0:
 ; CHECK-AVX-O0-NEXT:    movb (%rdi), %al
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_i8:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movb (%rdi), %al
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x i8>, ptr %x acquire, align 1
   ret <1 x i8> %ret
 }
@@ -94,6 +104,11 @@ define <1 x i16> @atomic_vec1_i16(ptr %x) {
 ; CHECK-AVX-O3-NEXT:    movzwl (%rdi), %eax
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_i16:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzwl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_i16:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movw (%rdi), %ax
@@ -108,6 +123,11 @@ define <1 x i16> @atomic_vec1_i16(ptr %x) {
 ; CHECK-AVX-O0:       # %bb.0:
 ; CHECK-AVX-O0-NEXT:    movw (%rdi), %ax
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_i16:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movw (%rdi), %ax
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x i16>, ptr %x acquire, align 2
   ret <1 x i16> %ret
 }
@@ -131,6 +151,12 @@ define <1 x i32> @atomic_vec1_i8_zext(ptr %x) {
 ; CHECK-AVX-O3-NEXT:    movzbl %al, %eax
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_i8_zext:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzbl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    movzbl %al, %eax
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_i8_zext:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movb (%rdi), %al
@@ -148,6 +174,12 @@ define <1 x i32> @atomic_vec1_i8_zext(ptr %x) {
 ; CHECK-AVX-O0-NEXT:    movb (%rdi), %al
 ; CHECK-AVX-O0-NEXT:    movzbl %al, %eax
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_i8_zext:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movb (%rdi), %al
+; CHECK-AVX512-O0-NEXT:    movzbl %al, %eax
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x i8>, ptr %x acquire, align 1
   %zret = zext <1 x i8> %ret to <1 x i32>
   ret <1 x i32> %zret
@@ -172,6 +204,12 @@ define <1 x i64> @atomic_vec1_i16_sext(ptr %x) {
 ; CHECK-AVX-O3-NEXT:    movswq %ax, %rax
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_i16_sext:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzwl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    movswq %ax, %rax
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_i16_sext:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movw (%rdi), %ax
@@ -189,6 +227,12 @@ define <1 x i64> @atomic_vec1_i16_sext(ptr %x) {
 ; CHECK-AVX-O0-NEXT:    movw (%rdi), %ax
 ; CHECK-AVX-O0-NEXT:    movswq %ax, %rax
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_i16_sext:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movw (%rdi), %ax
+; CHECK-AVX512-O0-NEXT:    movswq %ax, %rax
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x i16>, ptr %x acquire, align 2
   %sret = sext <1 x i16> %ret to <1 x i64>
   ret <1 x i64> %sret
@@ -207,28 +251,33 @@ define <1 x bfloat> @atomic_vec1_bfloat(ptr %x) {
 ; CHECK-O3-LABEL: atomic_vec1_bfloat:
 ; CHECK-O3:       # %bb.0:
 ; CHECK-O3-NEXT:    movzwl (%rdi), %eax
-; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O3-NEXT:    movd %eax, %xmm0
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec1_bfloat:
 ; CHECK-SSE-O3:       # %bb.0:
 ; CHECK-SSE-O3-NEXT:    movzwl (%rdi), %eax
-; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    movd %eax, %xmm0
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec1_bfloat:
 ; CHECK-AVX-O3:       # %bb.0:
 ; CHECK-AVX-O3-NEXT:    movzwl (%rdi), %eax
-; CHECK-AVX-O3-NEXT:    vpinsrw $0, %eax, %xmm0, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovd %eax, %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_bfloat:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzwl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec1_bfloat:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movw (%rdi), %cx
 ; CHECK-O0-NEXT:    # implicit-def: $eax
 ; CHECK-O0-NEXT:    movw %cx, %ax
-; CHECK-O0-NEXT:    # implicit-def: $xmm0
-; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O0-NEXT:    movd %eax, %xmm0
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec1_bfloat:
@@ -236,8 +285,7 @@ define <1 x bfloat> @atomic_vec1_bfloat(ptr %x) {
 ; CHECK-SSE-O0-NEXT:    movw (%rdi), %cx
 ; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
 ; CHECK-SSE-O0-NEXT:    movw %cx, %ax
-; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
-; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    movd %eax, %xmm0
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec1_bfloat:
@@ -245,9 +293,16 @@ define <1 x bfloat> @atomic_vec1_bfloat(ptr %x) {
 ; CHECK-AVX-O0-NEXT:    movw (%rdi), %cx
 ; CHECK-AVX-O0-NEXT:    # implicit-def: $eax
 ; CHECK-AVX-O0-NEXT:    movw %cx, %ax
-; CHECK-AVX-O0-NEXT:    # implicit-def: $xmm0
-; CHECK-AVX-O0-NEXT:    vpinsrw $0, %eax, %xmm0, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovd %eax, %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_bfloat:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movw (%rdi), %cx
+; CHECK-AVX512-O0-NEXT:    # implicit-def: $eax
+; CHECK-AVX512-O0-NEXT:    movw %cx, %ax
+; CHECK-AVX512-O0-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x bfloat>, ptr %x acquire, align 2
   ret <1 x bfloat> %ret
 }
@@ -289,6 +344,12 @@ define <2 x i8> @atomic_vec2_i8(ptr %x) {
 ; CHECK-AVX-O3-NEXT:    vmovd %eax, %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_i8:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzwl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec2_i8:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movw (%rdi), %cx
@@ -312,6 +373,14 @@ define <2 x i8> @atomic_vec2_i8(ptr %x) {
 ; CHECK-AVX-O0-NEXT:    movw %cx, %ax
 ; CHECK-AVX-O0-NEXT:    vmovd %eax, %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_i8:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movw (%rdi), %cx
+; CHECK-AVX512-O0-NEXT:    # implicit-def: $eax
+; CHECK-AVX512-O0-NEXT:    movw %cx, %ax
+; CHECK-AVX512-O0-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <2 x i8>, ptr %x acquire, align 4
   ret <2 x i8> %ret
 }
@@ -319,39 +388,43 @@ define <2 x i8> @atomic_vec2_i8(ptr %x) {
 define <2 x i16> @atomic_vec2_i16(ptr %x) {
 ; CHECK-O3-LABEL: atomic_vec2_i16:
 ; CHECK-O3:       # %bb.0:
-; CHECK-O3-NEXT:    movl (%rdi), %eax
-; CHECK-O3-NEXT:    movd %eax, %xmm0
+; CHECK-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec2_i16:
 ; CHECK-SSE-O3:       # %bb.0:
-; CHECK-SSE-O3-NEXT:    movl (%rdi), %eax
-; CHECK-SSE-O3-NEXT:    movd %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec2_i16:
 ; CHECK-AVX-O3:       # %bb.0:
-; CHECK-AVX-O3-NEXT:    movl (%rdi), %eax
-; CHECK-AVX-O3-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_i16:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec2_i16:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movl (%rdi), %eax
-; CHECK-O0-NEXT:    movd %eax, %xmm0
+; CHECK-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec2_i16:
 ; CHECK-SSE-O0:       # %bb.0:
-; CHECK-SSE-O0-NEXT:    movl (%rdi), %eax
-; CHECK-SSE-O0-NEXT:    movd %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec2_i16:
 ; CHECK-AVX-O0:       # %bb.0:
-; CHECK-AVX-O0-NEXT:    movl (%rdi), %eax
-; CHECK-AVX-O0-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_i16:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <2 x i16>, ptr %x acquire, align 4
   ret <2 x i16> %ret
 }
@@ -359,39 +432,43 @@ define <2 x i16> @atomic_vec2_i16(ptr %x) {
 define <2 x ptr addrspace(270)> @atomic_vec2_ptr270(ptr %x) {
 ; CHECK-O3-LABEL: atomic_vec2_ptr270:
 ; CHECK-O3:       # %bb.0:
-; CHECK-O3-NEXT:    movq (%rdi), %rax
-; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec2_ptr270:
 ; CHECK-SSE-O3:       # %bb.0:
-; CHECK-SSE-O3-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O3-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec2_ptr270:
 ; CHECK-AVX-O3:       # %bb.0:
-; CHECK-AVX-O3-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O3-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_ptr270:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec2_ptr270:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movq (%rdi), %rax
-; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec2_ptr270:
 ; CHECK-SSE-O0:       # %bb.0:
-; CHECK-SSE-O0-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O0-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec2_ptr270:
 ; CHECK-AVX-O0:       # %bb.0:
-; CHECK-AVX-O0-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O0-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_ptr270:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <2 x ptr addrspace(270)>, ptr %x acquire, align 8
   ret <2 x ptr addrspace(270)> %ret
 }
@@ -399,39 +476,43 @@ define <2 x ptr addrspace(270)> @atomic_vec2_ptr270(ptr %x) {
 define <2 x i32> @atomic_vec2_i32_align(ptr %x) {
 ; CHECK-O3-LABEL: atomic_vec2_i32_align:
 ; CHECK-O3:       # %bb.0:
-; CHECK-O3-NEXT:    movq (%rdi), %rax
-; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec2_i32_align:
 ; CHECK-SSE-O3:       # %bb.0:
-; CHECK-SSE-O3-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O3-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec2_i32_align:
 ; CHECK-AVX-O3:       # %bb.0:
-; CHECK-AVX-O3-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O3-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_i32_align:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec2_i32_align:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movq (%rdi), %rax
-; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec2_i32_align:
 ; CHECK-SSE-O0:       # %bb.0:
-; CHECK-SSE-O0-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O0-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec2_i32_align:
 ; CHECK-AVX-O0:       # %bb.0:
-; CHECK-AVX-O0-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O0-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_i32_align:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <2 x i32>, ptr %x acquire, align 8
   ret <2 x i32> %ret
 }
@@ -439,41 +520,133 @@ define <2 x i32> @atomic_vec2_i32_align(ptr %x) {
 define <2 x float> @atomic_vec2_float_align(ptr %x) {
 ; CHECK-O3-LABEL: atomic_vec2_float_align:
 ; CHECK-O3:       # %bb.0:
-; CHECK-O3-NEXT:    movq (%rdi), %rax
-; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec2_float_align:
 ; CHECK-SSE-O3:       # %bb.0:
-; CHECK-SSE-O3-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O3-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec2_float_align:
 ; CHECK-AVX-O3:       # %bb.0:
-; CHECK-AVX-O3-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O3-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_float_align:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec2_float_align:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movq (%rdi), %rax
-; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec2_float_align:
 ; CHECK-SSE-O0:       # %bb.0:
-; CHECK-SSE-O0-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O0-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec2_float_align:
 ; CHECK-AVX-O0:       # %bb.0:
-; CHECK-AVX-O0-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O0-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_float_align:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <2 x float>, ptr %x acquire, align 8
   ret <2 x float> %ret
+}
+
+define <2 x half> @atomic_vec2_half(ptr %x) {
+; CHECK-O3-LABEL: atomic_vec2_half:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec2_half:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec2_half:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_half:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec2_half:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec2_half:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec2_half:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_half:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <2 x half>, ptr %x acquire, align 4
+  ret <2 x half> %ret
+}
+
+define <2 x bfloat> @atomic_vec2_bfloat(ptr %x) {
+; CHECK-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <2 x bfloat>, ptr %x acquire, align 4
+  ret <2 x bfloat> %ret
 }
 
 define <1 x ptr> @atomic_vec1_ptr(ptr %x) nounwind {
@@ -513,6 +686,18 @@ define <1 x ptr> @atomic_vec1_ptr(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    popq %rcx
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_ptr:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    pushq %rax
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $8, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    movq (%rsp), %rax
+; CHECK-AVX512-O3-NEXT:    popq %rcx
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_ptr:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    pushq %rax
@@ -548,6 +733,18 @@ define <1 x ptr> @atomic_vec1_ptr(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    movq (%rsp), %rax
 ; CHECK-AVX-O0-NEXT:    popq %rcx
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_ptr:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    pushq %rax
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $8, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    movq (%rsp), %rax
+; CHECK-AVX512-O0-NEXT:    popq %rcx
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x ptr>, ptr %x acquire, align 4
   ret <1 x ptr> %ret
 }
@@ -556,28 +753,33 @@ define <1 x half> @atomic_vec1_half(ptr %x) {
 ; CHECK-O3-LABEL: atomic_vec1_half:
 ; CHECK-O3:       # %bb.0:
 ; CHECK-O3-NEXT:    movzwl (%rdi), %eax
-; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O3-NEXT:    movd %eax, %xmm0
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec1_half:
 ; CHECK-SSE-O3:       # %bb.0:
 ; CHECK-SSE-O3-NEXT:    movzwl (%rdi), %eax
-; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    movd %eax, %xmm0
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec1_half:
 ; CHECK-AVX-O3:       # %bb.0:
 ; CHECK-AVX-O3-NEXT:    movzwl (%rdi), %eax
-; CHECK-AVX-O3-NEXT:    vpinsrw $0, %eax, %xmm0, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovd %eax, %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_half:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movzwl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec1_half:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movw (%rdi), %cx
 ; CHECK-O0-NEXT:    # implicit-def: $eax
 ; CHECK-O0-NEXT:    movw %cx, %ax
-; CHECK-O0-NEXT:    # implicit-def: $xmm0
-; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O0-NEXT:    movd %eax, %xmm0
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec1_half:
@@ -585,8 +787,7 @@ define <1 x half> @atomic_vec1_half(ptr %x) {
 ; CHECK-SSE-O0-NEXT:    movw (%rdi), %cx
 ; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
 ; CHECK-SSE-O0-NEXT:    movw %cx, %ax
-; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
-; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    movd %eax, %xmm0
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec1_half:
@@ -594,9 +795,16 @@ define <1 x half> @atomic_vec1_half(ptr %x) {
 ; CHECK-AVX-O0-NEXT:    movw (%rdi), %cx
 ; CHECK-AVX-O0-NEXT:    # implicit-def: $eax
 ; CHECK-AVX-O0-NEXT:    movw %cx, %ax
-; CHECK-AVX-O0-NEXT:    # implicit-def: $xmm0
-; CHECK-AVX-O0-NEXT:    vpinsrw $0, %eax, %xmm0, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovd %eax, %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_half:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movw (%rdi), %cx
+; CHECK-AVX512-O0-NEXT:    # implicit-def: $eax
+; CHECK-AVX512-O0-NEXT:    movw %cx, %ax
+; CHECK-AVX512-O0-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x half>, ptr %x acquire, align 2
   ret <1 x half> %ret
 }
@@ -617,6 +825,11 @@ define <1 x float> @atomic_vec1_float(ptr %x) {
 ; CHECK-AVX-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_float:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_float:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
@@ -631,6 +844,11 @@ define <1 x float> @atomic_vec1_float(ptr %x) {
 ; CHECK-AVX-O0:       # %bb.0:
 ; CHECK-AVX-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_float:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x float>, ptr %x acquire, align 4
   ret <1 x float> %ret
 }
@@ -651,6 +869,11 @@ define <1 x double> @atomic_vec1_double_align(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_double_align:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_double_align:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
@@ -665,6 +888,11 @@ define <1 x double> @atomic_vec1_double_align(ptr %x) nounwind {
 ; CHECK-AVX-O0:       # %bb.0:
 ; CHECK-AVX-O0-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_double_align:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x double>, ptr %x acquire, align 8
   ret <1 x double> %ret
 }
@@ -706,6 +934,18 @@ define <1 x i64> @atomic_vec1_i64(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    popq %rcx
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_i64:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    pushq %rax
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $8, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    movq (%rsp), %rax
+; CHECK-AVX512-O3-NEXT:    popq %rcx
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_i64:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    pushq %rax
@@ -741,6 +981,18 @@ define <1 x i64> @atomic_vec1_i64(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    movq (%rsp), %rax
 ; CHECK-AVX-O0-NEXT:    popq %rcx
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_i64:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    pushq %rax
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $8, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    movq (%rsp), %rax
+; CHECK-AVX512-O0-NEXT:    popq %rcx
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x i64>, ptr %x acquire, align 4
   ret <1 x i64> %ret
 }
@@ -782,6 +1034,18 @@ define <1 x double> @atomic_vec1_double(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    popq %rax
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec1_double:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    pushq %rax
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $8, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
+; CHECK-AVX512-O3-NEXT:    popq %rax
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec1_double:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    pushq %rax
@@ -817,6 +1081,18 @@ define <1 x double> @atomic_vec1_double(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
 ; CHECK-AVX-O0-NEXT:    popq %rax
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec1_double:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    pushq %rax
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $8, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
+; CHECK-AVX512-O0-NEXT:    popq %rax
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <1 x double>, ptr %x acquire, align 4
   ret <1 x double> %ret
 }
@@ -858,6 +1134,18 @@ define <2 x i32> @atomic_vec2_i32(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    popq %rax
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_i32:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    pushq %rax
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $8, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
+; CHECK-AVX512-O3-NEXT:    popq %rax
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec2_i32:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    pushq %rax
@@ -893,46 +1181,118 @@ define <2 x i32> @atomic_vec2_i32(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    vmovq {{.*#+}} xmm0 = mem[0],zero
 ; CHECK-AVX-O0-NEXT:    popq %rax
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_i32:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    pushq %rax
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $8, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    vmovq {{.*#+}} xmm0 = mem[0],zero
+; CHECK-AVX512-O0-NEXT:    popq %rax
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <2 x i32>, ptr %x acquire, align 4
   ret <2 x i32> %ret
+}
+
+define <2 x ptr> @atomic_vec2_ptr_align(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec2_ptr_align:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    pushq %rax
+; CHECK-O3-NEXT:    movl $2, %esi
+; CHECK-O3-NEXT:    callq __atomic_load_16@PLT
+; CHECK-O3-NEXT:    movq %rdx, %xmm1
+; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-O3-NEXT:    popq %rax
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec2_ptr_align:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec2_ptr_align:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_ptr_align:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec2_ptr_align:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    pushq %rax
+; CHECK-O0-NEXT:    movl $2, %esi
+; CHECK-O0-NEXT:    callq __atomic_load_16@PLT
+; CHECK-O0-NEXT:    movq %rdx, %xmm1
+; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-O0-NEXT:    popq %rax
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec2_ptr_align:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    vmovapd (%rdi), %xmm0
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec2_ptr_align:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovapd (%rdi), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_ptr_align:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovapd (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <2 x ptr>, ptr %x acquire, align 16
+  ret <2 x ptr> %ret
 }
 
 define <4 x i8> @atomic_vec4_i8(ptr %x) nounwind {
 ; CHECK-O3-LABEL: atomic_vec4_i8:
 ; CHECK-O3:       # %bb.0:
-; CHECK-O3-NEXT:    movl (%rdi), %eax
-; CHECK-O3-NEXT:    movd %eax, %xmm0
+; CHECK-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec4_i8:
 ; CHECK-SSE-O3:       # %bb.0:
-; CHECK-SSE-O3-NEXT:    movl (%rdi), %eax
-; CHECK-SSE-O3-NEXT:    movd %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec4_i8:
 ; CHECK-AVX-O3:       # %bb.0:
-; CHECK-AVX-O3-NEXT:    movl (%rdi), %eax
-; CHECK-AVX-O3-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_i8:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec4_i8:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movl (%rdi), %eax
-; CHECK-O0-NEXT:    movd %eax, %xmm0
+; CHECK-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec4_i8:
 ; CHECK-SSE-O0:       # %bb.0:
-; CHECK-SSE-O0-NEXT:    movl (%rdi), %eax
-; CHECK-SSE-O0-NEXT:    movd %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec4_i8:
 ; CHECK-AVX-O0:       # %bb.0:
-; CHECK-AVX-O0-NEXT:    movl (%rdi), %eax
-; CHECK-AVX-O0-NEXT:    vmovd %eax, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_i8:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <4 x i8>, ptr %x acquire, align 4
   ret <4 x i8> %ret
 }
@@ -940,41 +1300,264 @@ define <4 x i8> @atomic_vec4_i8(ptr %x) nounwind {
 define <4 x i16> @atomic_vec4_i16(ptr %x) nounwind {
 ; CHECK-O3-LABEL: atomic_vec4_i16:
 ; CHECK-O3:       # %bb.0:
-; CHECK-O3-NEXT:    movq (%rdi), %rax
-; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O3-NEXT:    retq
 ;
 ; CHECK-SSE-O3-LABEL: atomic_vec4_i16:
 ; CHECK-SSE-O3:       # %bb.0:
-; CHECK-SSE-O3-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O3-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O3-NEXT:    retq
 ;
 ; CHECK-AVX-O3-LABEL: atomic_vec4_i16:
 ; CHECK-AVX-O3:       # %bb.0:
-; CHECK-AVX-O3-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O3-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_i16:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
 ;
 ; CHECK-O0-LABEL: atomic_vec4_i16:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movq (%rdi), %rax
-; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-O0-NEXT:    retq
 ;
 ; CHECK-SSE-O0-LABEL: atomic_vec4_i16:
 ; CHECK-SSE-O0:       # %bb.0:
-; CHECK-SSE-O0-NEXT:    movq (%rdi), %rax
-; CHECK-SSE-O0-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %xmm0
 ; CHECK-SSE-O0-NEXT:    retq
 ;
 ; CHECK-AVX-O0-LABEL: atomic_vec4_i16:
 ; CHECK-AVX-O0:       # %bb.0:
-; CHECK-AVX-O0-NEXT:    movq (%rdi), %rax
-; CHECK-AVX-O0-NEXT:    vmovq %rax, %xmm0
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_i16:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <4 x i16>, ptr %x acquire, align 8
   ret <4 x i16> %ret
+}
+
+define <4 x ptr addrspace(270)> @atomic_vec4_ptr270(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec4_ptr270:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    pushq %rax
+; CHECK-O3-NEXT:    movl $2, %esi
+; CHECK-O3-NEXT:    callq __atomic_load_16@PLT
+; CHECK-O3-NEXT:    movq %rdx, %xmm1
+; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-O3-NEXT:    popq %rax
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec4_ptr270:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec4_ptr270:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_ptr270:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec4_ptr270:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    pushq %rax
+; CHECK-O0-NEXT:    movl $2, %esi
+; CHECK-O0-NEXT:    callq __atomic_load_16@PLT
+; CHECK-O0-NEXT:    movq %rdx, %xmm1
+; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-O0-NEXT:    popq %rax
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec4_ptr270:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    vmovapd (%rdi), %xmm0
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec4_ptr270:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovapd (%rdi), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_ptr270:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovapd (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <4 x ptr addrspace(270)>, ptr %x acquire, align 16
+  ret <4 x ptr addrspace(270)> %ret
+}
+
+define <4 x half> @atomic_vec4_half(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec4_half:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movq (%rdi), %xmm0
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec4_half:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %xmm0
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec4_half:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_half:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec4_half:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movq (%rdi), %xmm0
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec4_half:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %xmm0
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec4_half:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_half:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <4 x half>, ptr %x acquire, align 8
+  ret <4 x half> %ret
+}
+
+define <4 x bfloat> @atomic_vec4_bfloat(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movq (%rdi), %xmm0
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %xmm0
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movq (%rdi), %xmm0
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %xmm0
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <4 x bfloat>, ptr %x acquire, align 8
+  ret <4 x bfloat> %ret
+}
+
+define <4 x float> @atomic_vec4_float_align(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec4_float_align:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    pushq %rax
+; CHECK-O3-NEXT:    movl $2, %esi
+; CHECK-O3-NEXT:    callq __atomic_load_16@PLT
+; CHECK-O3-NEXT:    movq %rdx, %xmm1
+; CHECK-O3-NEXT:    movq %rax, %xmm0
+; CHECK-O3-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-O3-NEXT:    popq %rax
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec4_float_align:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    pushq %rbx
+; CHECK-SSE-O3-NEXT:    xorl %eax, %eax
+; CHECK-SSE-O3-NEXT:    xorl %edx, %edx
+; CHECK-SSE-O3-NEXT:    xorl %ecx, %ecx
+; CHECK-SSE-O3-NEXT:    xorl %ebx, %ebx
+; CHECK-SSE-O3-NEXT:    lock cmpxchg16b (%rdi)
+; CHECK-SSE-O3-NEXT:    movq %rdx, %xmm1
+; CHECK-SSE-O3-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O3-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-SSE-O3-NEXT:    popq %rbx
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec4_float_align:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_float_align:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec4_float_align:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    pushq %rax
+; CHECK-O0-NEXT:    movl $2, %esi
+; CHECK-O0-NEXT:    callq __atomic_load_16@PLT
+; CHECK-O0-NEXT:    movq %rdx, %xmm1
+; CHECK-O0-NEXT:    movq %rax, %xmm0
+; CHECK-O0-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-O0-NEXT:    popq %rax
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec4_float_align:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    pushq %rbx
+; CHECK-SSE-O0-NEXT:    xorl %eax, %eax
+; CHECK-SSE-O0-NEXT:    movl %eax, %ebx
+; CHECK-SSE-O0-NEXT:    movq %rbx, %rax
+; CHECK-SSE-O0-NEXT:    movq %rbx, %rdx
+; CHECK-SSE-O0-NEXT:    movq %rbx, %rcx
+; CHECK-SSE-O0-NEXT:    lock cmpxchg16b (%rdi)
+; CHECK-SSE-O0-NEXT:    movq %rdx, %xmm1
+; CHECK-SSE-O0-NEXT:    movq %rax, %xmm0
+; CHECK-SSE-O0-NEXT:    punpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
+; CHECK-SSE-O0-NEXT:    popq %rbx
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec4_float_align:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_float_align:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovaps (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <4 x float>, ptr %x acquire, align 16
+  ret <4 x float> %ret
 }
 
 define <4 x float> @atomic_vec4_float(ptr %x) nounwind {
@@ -1014,6 +1597,18 @@ define <4 x float> @atomic_vec4_float(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    addq $24, %rsp
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_float:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    subq $24, %rsp
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $16, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    vmovaps (%rsp), %xmm0
+; CHECK-AVX512-O3-NEXT:    addq $24, %rsp
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec4_float:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    subq $24, %rsp
@@ -1049,6 +1644,18 @@ define <4 x float> @atomic_vec4_float(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    vmovaps (%rsp), %xmm0
 ; CHECK-AVX-O0-NEXT:    addq $24, %rsp
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_float:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    subq $24, %rsp
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $16, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    vmovaps (%rsp), %xmm0
+; CHECK-AVX512-O0-NEXT:    addq $24, %rsp
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <4 x float>, ptr %x acquire, align 4
   ret <4 x float> %ret
 }
@@ -1084,6 +1691,31 @@ define <8 x double> @atomic_vec8_double(ptr %x) nounwind {
 ; CHECK-SSE-O3-NEXT:    addq $72, %rsp
 ; CHECK-SSE-O3-NEXT:    retq
 ;
+; CHECK-AVX-O3-LABEL: atomic_vec8_double:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    subq $72, %rsp
+; CHECK-AVX-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX-O3-NEXT:    movl $64, %edi
+; CHECK-AVX-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX-O3-NEXT:    vmovups (%rsp), %ymm0
+; CHECK-AVX-O3-NEXT:    vmovups {{[0-9]+}}(%rsp), %ymm1
+; CHECK-AVX-O3-NEXT:    addq $72, %rsp
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec8_double:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    subq $72, %rsp
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $64, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    vmovups (%rsp), %zmm0
+; CHECK-AVX512-O3-NEXT:    addq $72, %rsp
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec8_double:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    subq $72, %rsp
@@ -1113,6 +1745,31 @@ define <8 x double> @atomic_vec8_double(ptr %x) nounwind {
 ; CHECK-SSE-O0-NEXT:    movapd {{[0-9]+}}(%rsp), %xmm3
 ; CHECK-SSE-O0-NEXT:    addq $72, %rsp
 ; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec8_double:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    subq $72, %rsp
+; CHECK-AVX-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX-O0-NEXT:    movl $64, %edi
+; CHECK-AVX-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX-O0-NEXT:    vmovupd (%rsp), %ymm0
+; CHECK-AVX-O0-NEXT:    vmovupd {{[0-9]+}}(%rsp), %ymm1
+; CHECK-AVX-O0-NEXT:    addq $72, %rsp
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec8_double:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    subq $72, %rsp
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $64, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    vmovupd (%rsp), %zmm0
+; CHECK-AVX512-O0-NEXT:    addq $72, %rsp
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <8 x double>, ptr %x acquire, align 4
   ret <8 x double> %ret
 }
@@ -1156,6 +1813,18 @@ define <16 x bfloat> @atomic_vec16_bfloat(ptr %x) nounwind {
 ; CHECK-AVX-O3-NEXT:    addq $40, %rsp
 ; CHECK-AVX-O3-NEXT:    retq
 ;
+; CHECK-AVX512-O3-LABEL: atomic_vec16_bfloat:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    subq $40, %rsp
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $32, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    vmovups (%rsp), %ymm0
+; CHECK-AVX512-O3-NEXT:    addq $40, %rsp
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec16_bfloat:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    subq $40, %rsp
@@ -1193,6 +1862,18 @@ define <16 x bfloat> @atomic_vec16_bfloat(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    vmovups (%rsp), %ymm0
 ; CHECK-AVX-O0-NEXT:    addq $40, %rsp
 ; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec16_bfloat:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    subq $40, %rsp
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $32, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    vmovups (%rsp), %ymm0
+; CHECK-AVX512-O0-NEXT:    addq $40, %rsp
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <16 x bfloat>, ptr %x acquire, align 4
   ret <16 x bfloat> %ret
 }
@@ -1228,6 +1909,31 @@ define <32 x half> @atomic_vec32_half(ptr %x) nounwind {
 ; CHECK-SSE-O3-NEXT:    addq $72, %rsp
 ; CHECK-SSE-O3-NEXT:    retq
 ;
+; CHECK-AVX-O3-LABEL: atomic_vec32_half:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    subq $72, %rsp
+; CHECK-AVX-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX-O3-NEXT:    movl $64, %edi
+; CHECK-AVX-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX-O3-NEXT:    vmovups (%rsp), %ymm0
+; CHECK-AVX-O3-NEXT:    vmovups {{[0-9]+}}(%rsp), %ymm1
+; CHECK-AVX-O3-NEXT:    addq $72, %rsp
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec32_half:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    subq $72, %rsp
+; CHECK-AVX512-O3-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O3-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O3-NEXT:    movl $64, %edi
+; CHECK-AVX512-O3-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O3-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O3-NEXT:    vmovups (%rsp), %zmm0
+; CHECK-AVX512-O3-NEXT:    addq $72, %rsp
+; CHECK-AVX512-O3-NEXT:    retq
+;
 ; CHECK-O0-LABEL: atomic_vec32_half:
 ; CHECK-O0:       # %bb.0:
 ; CHECK-O0-NEXT:    subq $72, %rsp
@@ -1257,6 +1963,31 @@ define <32 x half> @atomic_vec32_half(ptr %x) nounwind {
 ; CHECK-SSE-O0-NEXT:    movaps {{[0-9]+}}(%rsp), %xmm3
 ; CHECK-SSE-O0-NEXT:    addq $72, %rsp
 ; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec32_half:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    subq $72, %rsp
+; CHECK-AVX-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX-O0-NEXT:    movl $64, %edi
+; CHECK-AVX-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX-O0-NEXT:    vmovups (%rsp), %ymm0
+; CHECK-AVX-O0-NEXT:    vmovups {{[0-9]+}}(%rsp), %ymm1
+; CHECK-AVX-O0-NEXT:    addq $72, %rsp
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec32_half:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    subq $72, %rsp
+; CHECK-AVX512-O0-NEXT:    movq %rdi, %rsi
+; CHECK-AVX512-O0-NEXT:    movl $64, %edi
+; CHECK-AVX512-O0-NEXT:    movq %rsp, %rdx
+; CHECK-AVX512-O0-NEXT:    movl $2, %ecx
+; CHECK-AVX512-O0-NEXT:    callq __atomic_load@PLT
+; CHECK-AVX512-O0-NEXT:    vmovups (%rsp), %zmm0
+; CHECK-AVX512-O0-NEXT:    addq $72, %rsp
+; CHECK-AVX512-O0-NEXT:    retq
   %ret = load atomic <32 x half>, ptr %x acquire, align 4
   ret <32 x half> %ret
 }
