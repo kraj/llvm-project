@@ -315,7 +315,7 @@ def IndexCastUIOfExtUI :
 
 // bitcast(bitcast(x)) -> x
 def BitcastOfBitcast :
-    Pat<(Arith_BitcastOp (Arith_BitcastOp $x)), (replaceWithValue $x)>;
+    Pat<(Arith_BitcastOp (Arith_BitcastOp $x)), (Arith_BitcastOp $x)>;
 
 //===----------------------------------------------------------------------===//
 // ExtSIOp
