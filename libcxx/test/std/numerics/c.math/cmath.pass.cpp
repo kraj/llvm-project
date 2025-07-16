@@ -7,8 +7,11 @@
 //===----------------------------------------------------------------------===//
 
 // This test fails because Clang no longer enables -fdelayed-template-parsing
-// by default on Windows with C++20 (#69431).
-// XFAIL: msvc && (clang-18 || clang-19 || clang-20 || clang-21)
+// by default on Windows with C++20 (#69431). Additionally, the MSVC UCRT
+// headers, their math.h is actually intended to implement the full C++ spec
+// requirements for the header. For details see
+// https://github.com/llvm/llvm-project/issues/70225#issuecomment-1992528828
+// XFAIL: msvc
 
 // <cmath>
 
