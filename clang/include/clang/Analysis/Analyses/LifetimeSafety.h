@@ -20,11 +20,80 @@
 #include "clang/AST/DeclBase.h"
 #include "clang/Analysis/AnalysisDeclContext.h"
 #include "clang/Analysis/CFG.h"
-namespace clang {
+#include "llvm/ADT/ImmutableSet.h"
+#include "llvm/ADT/StringMap.h"
+#include <memory>
 
-void runLifetimeSafetyAnalysis(const DeclContext &DC, const CFG &Cfg,
-                               AnalysisDeclContext &AC);
+namespace clang::lifetimes {
+namespace internal {
+// Forward declarations of internal types.
+class Fact;
+class FactManager;
+class LoanPropagationAnalysis;
+struct LifetimeFactory;
 
-} // namespace clang
+/// A generic, type-safe wrapper for an ID, distinguished by its `Tag` type.
+/// Used for giving ID to loans and origins.
+template <typename Tag> struct ID {
+  uint32_t Value = 0;
+
+  bool operator==(const ID<Tag> &Other) const { return Value == Other.Value; }
+  bool operator!=(const ID<Tag> &Other) const { return !(*this == Other); }
+  bool operator<(const ID<Tag> &Other) const { return Value < Other.Value; }
+  ID<Tag> operator++(int) {
+    ID<Tag> Tmp = *this;
+    ++Value;
+    return Tmp;
+  }
+  void Profile(llvm::FoldingSetNodeID &IDBuilder) const {
+    IDBuilder.AddInteger(Value);
+  }
+};
+
+using LoanID = ID<struct LoanTag>;
+using OriginID = ID<struct OriginTag>;
+
+// Using LLVM's immutable collections is efficient for dataflow analysis
+// as it avoids deep copies during state transitions.
+// TODO(opt): Consider using a bitset to represent the set of loans.
+using LoanSet = llvm::ImmutableSet<LoanID>;
+using OriginSet = llvm::ImmutableSet<OriginID>;
+
+using ProgramPoint = std::pair<const CFGBlock *, const Fact *>;
+
+/// Running the lifetime safety analysis and querying its results. It
+/// encapsulates the various dataflow analyses.
+class LifetimeSafetyAnalysis {
+public:
+  LifetimeSafetyAnalysis(AnalysisDeclContext &AC);
+  ~LifetimeSafetyAnalysis();
+
+  void run();
+
+  /// Returns the set of loans an origin holds at a specific program point.
+  LoanSet getLoansAtPoint(OriginID OID, ProgramPoint PP) const;
+
+  /// Finds the OriginID for a given declaration.
+  /// Returns a null optional if not found.
+  std::optional<OriginID> getOriginIDForDecl(const ValueDecl *D) const;
+
+  /// Finds the LoanID for a loan created on a specific variable.
+  /// Returns a null optional if not found.
+  std::optional<LoanID> getLoanIDForVar(const VarDecl *VD) const;
+
+  llvm::StringMap<ProgramPoint> getTestPoints() const;
+
+private:
+  AnalysisDeclContext &AC;
+  std::unique_ptr<LifetimeFactory> Factory;
+  std::unique_ptr<FactManager> FactMgr;
+  std::unique_ptr<LoanPropagationAnalysis> LoanPropagation;
+};
+} // namespace internal
+
+/// The main entry point for the analysis.
+void runLifetimeSafetyAnalysis(AnalysisDeclContext &AC);
+
+} // namespace clang::lifetimes
 
 #endif // LLVM_CLANG_ANALYSIS_ANALYSES_LIFETIMESAFETY_H
