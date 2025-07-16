@@ -986,7 +986,7 @@ module attributes {transform.with_named_sequence} {
 
 func.func @test_vectorize_padded_pack(%arg0: tensor<32x7x15xf32>, %arg1: tensor<32x4x1x16x2xf32>) -> tensor<32x4x1x16x2xf32> {
   %pad = arith.constant 0.000000e+00 : f32
-  %pack = linalg.pack %arg0 padding_value(%pad : f32) inner_dims_pos = [2, 1] inner_tiles = [16, 2] into %arg1 : tensor<32x7x15xf32> -> tensor<32x4x1x16x2xf32>
+  %pack = linalg.pack %arg0 padding_value(%pad : f32) inner_dims_pos = [2, 1] inner_tiles = [16, [2]] into %arg1 : tensor<32x7x15xf32> -> tensor<32x4x1x16x2xf32>
   return %pack : tensor<32x4x1x16x2xf32>
 }
 //  CHECK-DAG: %[[cst:.*]] = arith.constant 0.000000e+00 : f32
@@ -1011,6 +1011,32 @@ module attributes {transform.with_named_sequence} {
   transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
     %0 = transform.structured.match ops{["linalg.pack"]} in %arg0 : (!transform.any_op) -> !transform.any_op
     transform.structured.vectorize %0 vector_sizes [32, 4, 1] : !transform.any_op
+    transform.yield
+  }
+}
+
+// -----
+
+func.func @test_vectorize_padded_pack(%extracted_slice: tensor<1x?xf32>, %extracted_slice_0: tensor<1x1x?x1xf32>) -> tensor<1x1x?x1xf32> {
+  %pad = arith.constant 1.23:  f32
+
+  %vs = vector.vscale
+  %c8 = arith.constant 8 : index
+  %tile_size = arith.muli %vs, %c8 : index
+
+  %pack = linalg.pack %extracted_slice
+     padding_value(%pad : f32)
+     outer_dims_perm = [1, 0]
+     inner_dims_pos = [1, 0]
+     inner_tiles = [%tile_size, 1]
+     into %extracted_slice_0  : tensor<1x?xf32> -> tensor<1x1x?x1xf32>
+  return %pack : tensor<1x1x?x1xf32>
+}
+
+module attributes {transform.with_named_sequence} {
+  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
+    %0 = transform.structured.match ops{["linalg.pack"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+    transform.structured.vectorize %0 vector_sizes [1, 1] : !transform.any_op
     transform.yield
   }
 }

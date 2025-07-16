@@ -319,6 +319,7 @@ bool vector::isLinearizableVector(VectorType type) {
 Value vector::createReadOrMaskedRead(OpBuilder &builder, Location loc,
                                      Value source,
                                      ArrayRef<int64_t> inputVectorSizes,
+                                     ArrayRef<bool> inputScalableVecSizes,
                                      Value padValue,
                                      bool useInBoundsInsteadOfMasking) {
   assert(!llvm::is_contained(inputVectorSizes, ShapedType::kDynamic) &&
@@ -327,7 +328,8 @@ Value vector::createReadOrMaskedRead(OpBuilder &builder, Location loc,
   auto sourceShape = sourceShapedType.getShape();
   assert(sourceShape.size() == inputVectorSizes.size() &&
          "expected same ranks.");
-  auto vectorType = VectorType::get(inputVectorSizes, padValue.getType());
+  auto vectorType = VectorType::get(inputVectorSizes, padValue.getType(),
+                                    inputScalableVecSizes);
   assert(padValue.getType() == sourceShapedType.getElementType() &&
          "expected same pad element type to match source element type");
   int64_t readRank = inputVectorSizes.size();
@@ -354,7 +356,8 @@ Value vector::createReadOrMaskedRead(OpBuilder &builder, Location loc,
   SmallVector<OpFoldResult> mixedSourceDims =
       tensor::getMixedSizes(builder, loc, source);
 
-  auto maskType = VectorType::get(inputVectorSizes, builder.getI1Type());
+  auto maskType = VectorType::get(inputVectorSizes, builder.getI1Type(),
+                                  inputScalableVecSizes);
   Value mask =
       builder.create<vector::CreateMaskOp>(loc, maskType, mixedSourceDims);
   return mlir::vector::maskOperation(builder, transferReadOp, mask)
