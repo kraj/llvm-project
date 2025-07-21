@@ -80,6 +80,20 @@ static cl::opt<unsigned>
     ICPCSSkip("icp-csskip", cl::init(0), cl::Hidden,
               cl::desc("Skip Callsite up to this number for this compilation"));
 
+// ICP the candidate function even when only a declaration is present.
+static cl::opt<bool> ICPAllowDeclOnly(
+    "icp-allow-decl-only", cl::init(false), cl::Hidden,
+    cl::desc("Promote the target candidate even when the defintion "
+             " is not available"));
+
+// ICP hot candidate functions only. When setting to false, non-cold functions
+// (warm functions) can also be promoted.
+static cl::opt<bool>
+    ICPAllowHotOnly("icp-allow-hot-only", cl::init(true), cl::Hidden,
+                    cl::desc("Promote the target candidate only if it is a "
+                             "hot function. Otherwise, warm functions can "
+                             "also be promoted"));
+
 // Set if the pass is called in LTO optimization. The difference for LTO mode
 // is the pass won't prefix the source module name to the internal linkage
 // symbols.
@@ -477,12 +491,23 @@ IndirectCallPromoter::getPromotionCandidatesForCallSite(
     // the case where the symbol is globally dead in the binary and removed by
     // ThinLTO.
     Function *TargetFunction = Symtab->getFunction(Target);
-    if (TargetFunction == nullptr || TargetFunction->isDeclaration()) {
+    if (TargetFunction == nullptr) {
       LLVM_DEBUG(dbgs() << " Not promote: Cannot find the target\n");
       ORE.emit([&]() {
         return OptimizationRemarkMissed(DEBUG_TYPE, "UnableToFindTarget", &CB)
                << "Cannot promote indirect call: target with md5sum "
                << ore::NV("target md5sum", Target) << " not found";
+      });
+      break;
+    }
+    if (!ICPAllowDeclOnly && TargetFunction->isDeclaration()) {
+      LLVM_DEBUG(
+          dbgs() << " Not promote: target definition is not available\n");
+      ORE.emit([&]() {
+        return OptimizationRemarkMissed(DEBUG_TYPE, "NoTargetDef", &CB)
+               << "Do not promote indirect call: target with md5sum "
+               << ore::NV("target md5sum", Target)
+               << " definition not available";
       });
       break;
     }
@@ -822,9 +847,22 @@ bool IndirectCallPromoter::processFunction(ProfileSummaryInfo *PSI) {
     uint64_t TotalCount;
     auto ICallProfDataRef = ICallAnalysis.getPromotionCandidatesForInstruction(
         CB, TotalCount, NumCandidates);
-    if (!NumCandidates ||
-        (PSI && PSI->hasProfileSummary() && !PSI->isHotCount(TotalCount)))
+    if (!NumCandidates)
       continue;
+    if (PSI && PSI->hasProfileSummary()) {
+      // Don't promote cold candidates.
+      if (PSI->isColdCount(TotalCount)) {
+        LLVM_DEBUG(dbgs() << "Don't promote the cold candidate: TotalCount="
+                          << TotalCount << "\n");
+        continue;
+      }
+      // Only pormote hot if ICPAllowHotOnly is true.
+      if (ICPAllowHotOnly && !PSI->isHotCount(TotalCount)) {
+        LLVM_DEBUG(dbgs() << "Don't promote the non-hot candidate: TotalCount="
+                          << TotalCount << "\n");
+        continue;
+      }
+    }
 
     auto PromotionCandidates = getPromotionCandidatesForCallSite(
         *CB, ICallProfDataRef, TotalCount, NumCandidates);
