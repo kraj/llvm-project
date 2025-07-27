@@ -224,3 +224,34 @@ std::array a{1,2,3};
 std::array<int,2> b{10, 11};
 using array = std::array<int, 2>;
 array c{10, 11};
+
+struct S16 {
+    int a;
+    int b;
+};
+
+using S17 = S16;
+
+S17 s171{1, 2};
+// CHECK-MESSAGES: :[[@LINE-1]]:9: warning: use designated initializer list to initialize 'S17' (aka 'S16') [modernize-use-designated-initializers]
+// CHECK-MESSAGES: :[[@LINE-9]]:1: note: aggregate type is defined here
+// CHECK-FIXES: S17 s171{.a=1, .b=2};
+// CHECK-MESSAGES-POD: :[[@LINE-4]]:9: warning: use designated initializer list to initialize 'S17' (aka 'S16') [modernize-use-designated-initializers]
+// CHECK-MESSAGES-POD: :[[@LINE-12]]:1: note: aggregate type is defined here
+// CHECK-FIXES-POD: S17 s171{.a=1, .b=2};
+
+S17 s172{.a=1, 2};
+// CHECK-MESSAGES: :[[@LINE-1]]:16: warning: use designated init expression to initialize field 'b' [modernize-use-designated-initializers]
+// CHECK-MESSAGES-POD: :[[@LINE-2]]:16: warning: use designated init expression to initialize field 'b' [modernize-use-designated-initializers]
+// CHECK-FIXES: S17 s172{.a=1, .b=2};
+
+typedef S16 S18;
+
+S18 s181{1, 2};
+// CHECK-MESSAGES: :[[@LINE-1]]:9: warning: use designated initializer list to initialize 'S18' (aka 'S16') [modernize-use-designated-initializers]
+// CHECK-MESSAGES-POD: :[[@LINE-2]]:9: warning: use designated initializer list to initialize 'S18' (aka 'S16') [modernize-use-designated-initializers]
+
+S18 s182{1, .b=2};
+// CHECK-MESSAGES: :[[@LINE-1]]:10: warning: use designated init expression to initialize field 'a' [modernize-use-designated-initializers]
+// CHECK-MESSAGES-POD: :[[@LINE-2]]:10: warning: use designated init expression to initialize field 'a' [modernize-use-designated-initializers]
+// CHECK-FIXES: S18 s182{.a=1, .b=2};
