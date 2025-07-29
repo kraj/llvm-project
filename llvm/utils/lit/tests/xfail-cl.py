@@ -5,8 +5,18 @@
 # RUN:   %{inputs}/xfail-cl \
 # RUN: | FileCheck --check-prefix=CHECK-FILTER %s
 
+# RUN: %{lit} --xfail 'false.txt;false2.txt;top-level-suite :: b :: test.txt' \
+# RUN:   --xfail-not '*' \
+# RUN:   %{inputs}/xfail-cl \
+# RUN: | FileCheck --check-prefix=CHECK-FILTER %s
+
 # RUN: env LIT_XFAIL='false.txt;false2.txt;top-level-suite :: b :: test.txt' \
 # RUN:   LIT_XFAIL_NOT='true-xfail.txt;top-level-suite :: a :: test-xfail.txt' \
+# RUN: %{lit} %{inputs}/xfail-cl \
+# RUN: | FileCheck --check-prefix=CHECK-FILTER %s
+
+# RUN: env LIT_XFAIL='false.txt;false2.txt;top-level-suite :: b :: test.txt' \
+# RUN:   LIT_XFAIL_NOT='*' \
 # RUN: %{lit} %{inputs}/xfail-cl \
 # RUN: | FileCheck --check-prefix=CHECK-FILTER %s
 
