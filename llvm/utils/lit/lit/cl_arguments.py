@@ -300,7 +300,8 @@ def parse_args():
         "--xfail-not",
         metavar="LIST",
         type=_semicolon_list,
-        help="do not XFAIL tests with paths in the semicolon separated list",
+        help="do not XFAIL tests with paths in the semicolon separated list."
+        " Can use * to apply to all such tests",
         default=os.environ.get("LIT_XFAIL_NOT", ""),
     )
     selection_group.add_argument(

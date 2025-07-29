@@ -350,11 +350,12 @@ The timing data is stored in the `test_exec_root` in a file named
 
   Do not treat the specified tests as ``XFAIL``.  The environment variable
   ``LIT_XFAIL_NOT`` can also be used in place of this option.  The syntax is the
-  same as for :option:`--xfail` and ``LIT_XFAIL``.  :option:`--xfail-not` and
-  ``LIT_XFAIL_NOT`` always override all other ``XFAIL`` specifications,
-  including an :option:`--xfail` appearing later on the command line.  The
-  primary purpose is to suppress an ``XPASS`` result without modifying a test
-  case that uses the ``XFAIL`` directive.
+  same as for :option:`--xfail` and ``LIT_XFAIL`` except that ``LIST`` can be
+  replaced with ``*`` to specify all tests marked as ``XFAIL``. 
+  :option:`--xfail-not` and ``LIT_XFAIL_NOT`` always override all other ``XFAIL``
+  specifications, including an :option:`--xfail` appearing later on the command
+  line.  The primary purpose is to suppress an ``XPASS`` result without modifying
+  a test case that uses the ``XFAIL`` directive.
 
 .. option:: --num-shards M
 
