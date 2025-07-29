@@ -18,7 +18,17 @@ from lit.llvm.subst import ToolSubst
 config.name = "LLVM"
 
 # testFormat: The test format to use to interpret tests.
-config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
+extra_substitutions = extra_substitutions = (
+    [
+        (r"\| not FileCheck .*", "| tee /dev/null"),
+        (r"\| FileCheck .*", "| tee /dev/null"),
+    ]
+    if config.enable_profcheck
+    else []
+)
+config.test_format = lit.formats.ShTest(
+    not llvm_config.use_lit_shell, extra_substitutions
+)
 
 # suffixes: A list of file extensions to treat as test files. This is overriden
 # by individual lit.local.cfg files in the test subdirectories.
@@ -277,6 +287,7 @@ tools.extend(
         ToolSubst("dxil-dis", unresolved="ignore"),
     ]
 )
+
 
 # Find (major, minor) version of ptxas
 def ptxas_version(ptxas):
@@ -602,7 +613,6 @@ def host_unwind_supports_jit():
     # compact-unwind only, and JIT'd registration is not available before
     # macOS 14.0.
     if platform.system() == "Darwin":
-
         assert "arm64" in config.host_triple or "x86_64" in config.host_triple
 
         if "x86_64" in config.host_triple:
