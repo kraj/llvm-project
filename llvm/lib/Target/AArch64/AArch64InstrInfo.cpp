@@ -7416,14 +7416,21 @@ static bool getGatherPattern(MachineInstr &Root,
   // 1. It has a single non-debug use (since we will be replacing the virtual
   // register)
   // 2. That the addressing mode only uses a single offset register.
+  // 3. The address operand does not have any users that are a COPY operation to
+  // a physical reg.
+  //    This could indicate that it is copied as part of an ABI of a function
+  //    call, which means that it may be modified in unexpected ways, see: <link
+  //    to github>
   auto *CurrInstr = MRI.getUniqueVRegDef(Root.getOperand(1).getReg());
   auto Range = llvm::seq<unsigned>(1, NumLanes - 1);
-  SmallSet<unsigned, 4> RemainingLanes(Range.begin(), Range.end());
+  SmallSet<unsigned, 16> RemainingLanes(Range.begin(), Range.end());
+  SmallSet<Register, 16> OffsetRegs = {};
   while (!RemainingLanes.empty() && CurrInstr &&
          CurrInstr->getOpcode() == LoadLaneOpCode &&
          MRI.hasOneNonDBGUse(CurrInstr->getOperand(0).getReg()) &&
          CurrInstr->getNumOperands() == 4) {
     RemainingLanes.erase(CurrInstr->getOperand(2).getImm());
+    OffsetRegs.insert(CurrInstr->getOperand(3).getReg());
     CurrInstr = MRI.getUniqueVRegDef(CurrInstr->getOperand(1).getReg());
   }
 
@@ -7442,6 +7449,36 @@ static bool getGatherPattern(MachineInstr &Root,
 
   // Verify that it also has a single non debug use.
   if (!MRI.hasOneNonDBGUse(Lane0LoadReg))
+    return false;
+
+  // Check all the users of the offset reg.
+  auto IsUsedInCall = [&MRI](const Register &OffsetReg) {
+    for (const auto User : MRI.use_nodbg_operands(OffsetReg)) {
+      const MachineInstr *UserMI = User.getParent();
+      // Check for step 1: Is this use a COPY to a physical register?
+      if (UserMI->getOpcode() != AArch64::COPY ||
+          !UserMI->getOperand(0).getReg().isPhysical())
+        continue;
+
+      Register PhysReg = UserMI->getOperand(0).getReg();
+      // Check for step 2: Is the resulting PhysReg used in a call?
+      // We only care about uses that are calls.
+      if (llvm::any_of(MRI.use_nodbg_operands(PhysReg),
+                       [](const MachineOperand &PhysUseOp) {
+                         return PhysUseOp.getParent()->isCall();
+                       }))
+        return true;
+    }
+
+    return false;
+  };
+
+  // We expect all the offset regs to be unique VRegs. If they are not,
+  // we perform a check that there is not some unsafe usage of the offset
+  // register. For example, the value of the offset may be set in a function
+  // call, so rewriting this pattern would introduce miscompiles (see: #150004).
+  if (OffsetRegs.size() < (NumLanes - 1) &&
+      llvm::any_of(OffsetRegs, IsUsedInCall)) 
     return false;
 
   switch (NumLanes) {
