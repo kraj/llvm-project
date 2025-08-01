@@ -130,7 +130,16 @@ struct ConversionValueMapping {
   ///   recently mapped values.
   /// - If there is no mapping for the given values at all, return the given
   ///   value.
-  ValueVector lookupOrDefault(Value from, TypeRange desiredTypes = {}) const;
+  ///
+  /// If `skipMaterializations` is true, materializations are not considered.
+  ValueVector lookupOrDefault(Value from, TypeRange desiredTypes = {},
+                              bool skipMaterializations = false) const;
+
+  /// Lookup a single value from the mapping. Look for actual replacements
+  /// first, then for materializations. The materializations lookup can be
+  /// skipped.
+  ValueVector lookupSingle(const ValueVector &from,
+                           bool skipMaterializations = false) const;
 
   template <typename T>
   struct IsValueVector : std::is_same<std::decay_t<T>, ValueVector> {};
@@ -138,7 +147,7 @@ struct ConversionValueMapping {
   /// Map a value vector to the one provided.
   template <typename OldVal, typename NewVal>
   std::enable_if_t<IsValueVector<OldVal>::value && IsValueVector<NewVal>::value>
-  map(OldVal &&oldVal, NewVal &&newVal) {
+  map(OldVal &&oldVal, NewVal &&newVal, bool isMaterialization = false) {
     LLVM_DEBUG({
       ValueVector next(newVal);
       while (true) {
@@ -151,33 +160,47 @@ struct ConversionValueMapping {
     });
     mappedTo.insert_range(newVal);
 
-    mapping[std::forward<OldVal>(oldVal)] = std::forward<NewVal>(newVal);
+    if (isMaterialization) {
+      // This is a materialization.
+      materializations[std::forward<OldVal>(oldVal)] =
+          std::forward<NewVal>(newVal);
+    } else {
+      mapping[std::forward<OldVal>(oldVal)] = std::forward<NewVal>(newVal);
+    }
   }
 
   /// Map a value vector or single value to the one provided.
   template <typename OldVal, typename NewVal>
   std::enable_if_t<!IsValueVector<OldVal>::value ||
                    !IsValueVector<NewVal>::value>
-  map(OldVal &&oldVal, NewVal &&newVal) {
+  map(OldVal &&oldVal, NewVal &&newVal, bool isMaterialization = false) {
     if constexpr (IsValueVector<OldVal>{}) {
-      map(std::forward<OldVal>(oldVal), ValueVector{newVal});
+      map(std::forward<OldVal>(oldVal), ValueVector{newVal}, isMaterialization);
     } else if constexpr (IsValueVector<NewVal>{}) {
-      map(ValueVector{oldVal}, std::forward<NewVal>(newVal));
+      map(ValueVector{oldVal}, std::forward<NewVal>(newVal), isMaterialization);
     } else {
-      map(ValueVector{oldVal}, ValueVector{newVal});
+      map(ValueVector{oldVal}, ValueVector{newVal}, isMaterialization);
     }
   }
 
-  void map(Value oldVal, SmallVector<Value> &&newVal) {
+  void map(Value oldVal, SmallVector<Value> &&newVal,
+           bool isMaterialization = false) {
     map(ValueVector{oldVal}, ValueVector(std::move(newVal)));
   }
 
   /// Drop the last mapping for the given values.
-  void erase(const ValueVector &value) { mapping.erase(value); }
+  void erase(const ValueVector &value) {
+    mapping.erase(value);
+    materializations.erase(value);
+  }
 
 private:
-  /// Current value mappings.
+  /// Mapping of actual replacements.
   DenseMap<ValueVector, ValueVector, ValueVectorMapInfo> mapping;
+
+  /// Mapping of materializations that are created only to resolve type
+  /// mismatches.
+  DenseMap<ValueVector, ValueVector, ValueVectorMapInfo> materializations;
 
   /// All SSA values that are mapped to. May contain false positives.
   DenseSet<Value> mappedTo;
@@ -185,8 +208,57 @@ private:
 } // namespace
 
 ValueVector
-ConversionValueMapping::lookupOrDefault(Value from,
-                                        TypeRange desiredTypes) const {
+ConversionValueMapping::lookupSingle(const ValueVector &from,
+                                     bool skipMaterializations) const {
+  ValueVector next;
+  for (Value v : from) {
+    auto it = mapping.find({v});
+    if (it != mapping.end()) {
+      llvm::append_range(next, it->second);
+      continue;
+    }
+    if (skipMaterializations) {
+      next.push_back(v);
+      continue;
+    }
+
+    it = materializations.find({v});
+    if (it != materializations.end()) {
+      llvm::append_range(next, it->second);
+      continue;
+    }
+
+    next.push_back(v);
+  }
+
+  if (next != from)
+    return next;
+
+  // Otherwise: Check if there is a mapping for the entire vector. Such
+  // mappings are materializations. (N:M mapping are not supported for value
+  // replacements.)
+  //
+  // Note: From a correctness point of view, materializations do not have to
+  // be stored (and looked up) in the mapping. But for performance reasons,
+  // we choose to reuse existing IR (when possible) instead of creating it
+  // multiple times.
+  auto it = mapping.find(from);
+  if (it != mapping.end())
+    return it->second;
+
+  if (skipMaterializations)
+    return {};
+
+  it = materializations.find(from);
+  if (it != materializations.end())
+    return it->second;
+
+  return {};
+}
+
+ValueVector
+ConversionValueMapping::lookupOrDefault(Value from, TypeRange desiredTypes,
+                                        bool skipMaterializations) const {
   // Try to find the deepest values that have the desired types. If there is no
   // such mapping, simply return the deepest values.
   ValueVector desiredValue;
@@ -196,36 +268,13 @@ ConversionValueMapping::lookupOrDefault(Value from,
     if (TypeRange(ValueRange(current)) == desiredTypes)
       desiredValue = current;
 
-    // If possible, Replace each value with (one or multiple) mapped values.
-    ValueVector next;
-    for (Value v : current) {
-      auto it = mapping.find({v});
-      if (it != mapping.end()) {
-        llvm::append_range(next, it->second);
-      } else {
-        next.push_back(v);
-      }
-    }
-    if (next != current) {
-      // If at least one value was replaced, continue the lookup from there.
-      current = std::move(next);
-      continue;
-    }
-
-    // Otherwise: Check if there is a mapping for the entire vector. Such
-    // mappings are materializations. (N:M mapping are not supported for value
-    // replacements.)
-    //
-    // Note: From a correctness point of view, materializations do not have to
-    // be stored (and looked up) in the mapping. But for performance reasons,
-    // we choose to reuse existing IR (when possible) instead of creating it
-    // multiple times.
-    auto it = mapping.find(current);
-    if (it == mapping.end()) {
+    ValueVector next = lookupSingle(current, skipMaterializations);
+    if (next.empty()) {
       // No mapping found: The lookup stops here.
       break;
     }
-    current = it->second;
+
+    current = std::move(next);
   } while (true);
 
   // If the desired values were found use them, otherwise default to the leaf
@@ -929,7 +978,10 @@ struct ConversionPatternRewriterImpl : public RewriterBase::Listener {
   ///   recently mapped values.
   /// - If there is no mapping for the given values at all, return the given
   ///   value.
-  ValueVector lookupOrDefault(Value from, TypeRange desiredTypes = {}) const;
+  ///
+  /// If `skipMaterializations` is true, materializations are not considered.
+  ValueVector lookupOrDefault(Value from, TypeRange desiredTypes = {},
+                              bool skipMaterializations = false) const;
 
   /// Lookup the given value within the map, or return an empty vector if the
   /// value is not mapped. If it is mapped, this follows the same behavior
@@ -992,11 +1044,17 @@ struct ConversionPatternRewriterImpl : public RewriterBase::Listener {
   /// If `valuesToMap` is set to a non-null Value, then that value is mapped to
   /// the results of the unresolved materialization in the conversion value
   /// mapping.
+  ///
+  /// If `isMaterialization` is true, the materialization is created to resolve
+  /// a type mismatch. (Replacement values that are created "out of thin air"
+  /// are treated like unresolved materializations, but `isMaterialization` is
+  /// set to "false" in that case.)
   ValueRange buildUnresolvedMaterialization(
       MaterializationKind kind, OpBuilder::InsertPoint ip, Location loc,
       ValueVector valuesToMap, ValueRange inputs, TypeRange outputTypes,
       Type originalType, const TypeConverter *converter,
-      UnrealizedConversionCastOp *castOp = nullptr);
+      UnrealizedConversionCastOp *castOp = nullptr,
+      bool isMaterialization = false);
 
   /// Find a replacement value for the given SSA value in the conversion value
   /// mapping. The replacement value must have the same type as the given SSA
@@ -1258,10 +1316,9 @@ void ConversionPatternRewriterImpl::applyRewrites() {
 // State Management
 //===----------------------------------------------------------------------===//
 
-ValueVector
-ConversionPatternRewriterImpl::lookupOrDefault(Value from,
-                                               TypeRange desiredTypes) const {
-  return mapping.lookupOrDefault(from, desiredTypes);
+ValueVector ConversionPatternRewriterImpl::lookupOrDefault(
+    Value from, TypeRange desiredTypes, bool skipMaterializations) const {
+  return mapping.lookupOrDefault(from, desiredTypes, skipMaterializations);
 }
 
 ValueVector
@@ -1318,10 +1375,13 @@ LogicalResult ConversionPatternRewriterImpl::remapValues(
     Location operandLoc = inputLoc ? *inputLoc : operand.getLoc();
 
     if (!currentTypeConverter) {
-      // The current pattern does not have a type converter. I.e., it does not
-      // distinguish between legal and illegal types. For each operand, simply
-      // pass through the most recently mapped values.
-      remapped.push_back(lookupOrDefault(operand));
+      // The current pattern does not have a type converter. Pass the most
+      // recently mapped values, excluding materializations. Materializations
+      // are intentionally excluded because their presence may depend on other
+      // patterns. Including materializations would make the lookup fragile
+      // and unpredictable.
+      remapped.push_back(lookupOrDefault(operand, /*desiredTypes=*/{},
+                                         /*skipMaterializations=*/true));
       continue;
     }
 
@@ -1350,11 +1410,12 @@ LogicalResult ConversionPatternRewriterImpl::remapValues(
     }
 
     // Create a materialization for the most recently mapped values.
-    repl = lookupOrDefault(operand);
+    repl = lookupOrDefault(operand, /*desiredTypes=*/{},
+                           /*skipMaterializations=*/true);
     ValueRange castValues = buildUnresolvedMaterialization(
         MaterializationKind::Target, computeInsertPoint(repl), operandLoc,
         /*valuesToMap=*/repl, /*inputs=*/repl, /*outputTypes=*/legalTypes,
-        /*originalType=*/origType, currentTypeConverter);
+        /*originalType=*/origType, currentTypeConverter, nullptr, true);
     remapped.push_back(castValues);
   }
   return success();
@@ -1517,7 +1578,7 @@ ValueRange ConversionPatternRewriterImpl::buildUnresolvedMaterialization(
     MaterializationKind kind, OpBuilder::InsertPoint ip, Location loc,
     ValueVector valuesToMap, ValueRange inputs, TypeRange outputTypes,
     Type originalType, const TypeConverter *converter,
-    UnrealizedConversionCastOp *castOp) {
+    UnrealizedConversionCastOp *castOp, bool isMaterialization) {
   assert((!originalType || kind == MaterializationKind::Target) &&
          "original type is valid only for target materializations");
   assert(TypeRange(inputs) != outputTypes &&
@@ -1530,7 +1591,7 @@ ValueRange ConversionPatternRewriterImpl::buildUnresolvedMaterialization(
   auto convertOp =
       UnrealizedConversionCastOp::create(builder, loc, outputTypes, inputs);
   if (!valuesToMap.empty())
-    mapping.map(valuesToMap, convertOp.getResults());
+    mapping.map(valuesToMap, convertOp.getResults(), isMaterialization);
   if (castOp)
     *castOp = convertOp;
   unresolvedMaterializations[convertOp] =
