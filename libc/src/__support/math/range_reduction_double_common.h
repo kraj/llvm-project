@@ -20,6 +20,10 @@
 
 namespace LIBC_NAMESPACE_DECL {
 
+namespace math {
+
+namespace range_reduction_double_internal {
+
 #ifdef LIBC_TARGET_CPU_HAS_FMA_DOUBLE
 static constexpr unsigned SPLIT = fputil::DefaultSplit<double>::VALUE;
 #else
@@ -40,7 +44,7 @@ using Float128 = LIBC_NAMESPACE::fputil::DyadicFloat<128>;
 // Error bound:
 //   |(x - k * pi/128) - (u_hi + u_lo)| <= max(ulp(ulp(u_hi)), 2^-119)
 //                                      <= 2^-111.
-LIBC_INLINE unsigned range_reduction_small(double x, DoubleDouble &u) {
+LIBC_INLINE static unsigned range_reduction_small(double x, DoubleDouble &u) {
   // Values of -pi/128 used for inputs with absolute value <= 2^16.
   // The first 3 parts are generated with (53 - 21 = 32)-bit precision, so that
   // the product k * MPI_OVER_128[i] is exact.
@@ -267,13 +271,15 @@ struct LargeRangeReduction {
   }
 #endif // !LIBC_MATH_HAS_SKIP_ACCURATE_PASS
 
+  LIBC_INLINE LargeRangeReduction() = default;
+
 private:
   // Index of x in the look-up table ONE_TWENTY_EIGHT_OVER_PI.
-  unsigned idx;
+  unsigned idx = 0;
   // x scaled down by 2^(-16 *(idx - 3))).
-  double x_reduced;
+  double x_reduced = 0;
   // Parts of (x * 128/pi) mod 1.
-  double y_hi, y_lo;
+  double y_hi = 0, y_lo = 0;
   DoubleDouble y_mid;
 };
 
@@ -368,6 +374,10 @@ static constexpr Float128 SIN_K_PI_OVER_128_F128[65] = {
     {Sign::POS, 0, 1},
 };
 #endif // !LIBC_MATH_HAS_SKIP_ACCURATE_PASS
+
+} // namespace range_reduction_double_internal
+
+} // namespace math
 
 } // namespace LIBC_NAMESPACE_DECL
 
