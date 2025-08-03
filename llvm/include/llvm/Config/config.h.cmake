@@ -287,6 +287,9 @@
 /* Define to a function implementing strdup */
 #cmakedefine strdup ${strdup}
 
+/* Define indicating opt-viewer modules */
+#cmakedefine LLVM_HAVE_OPT_VIEWER_MODULES
+
 /* Whether GlobalISel rule coverage is being collected */
 #cmakedefine01 LLVM_GISEL_COV_ENABLED
 
