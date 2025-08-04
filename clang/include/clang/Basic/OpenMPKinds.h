@@ -223,6 +223,10 @@ enum OpenMPDynGroupprivateClauseModifier {
   OMPC_DYN_GROUPPRIVATE_unknown
 };
 
+/// Number of allowed dyn_groupprivate-modifiers.
+static constexpr unsigned NumberOfOMPDynGroupprivateClauseModifiers =
+    OMPC_DYN_GROUPPRIVATE_unknown;
+
 enum OpenMPNumTasksClauseModifier {
 #define OPENMP_NUMTASKS_MODIFIER(Name) OMPC_NUMTASKS_##Name,
 #include "clang/Basic/OpenMPKinds.def"

@@ -960,7 +960,7 @@ void OMPClauseProfiler::VisitOMPXDynCGroupMemClause(
 void OMPClauseProfiler::VisitOMPDynGroupprivateClause(
     const OMPDynGroupprivateClause *C) {
   VistOMPClauseWithPreInit(C);
-  if (Expr *Size = C->getSize())
+  if (auto *Size = C->getSize())
     Profiler->VisitStmt(Size);
 }
 void OMPClauseProfiler::VisitOMPDoacrossClause(const OMPDoacrossClause *C) {

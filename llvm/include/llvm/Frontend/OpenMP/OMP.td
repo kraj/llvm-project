@@ -178,18 +178,9 @@ def OMPC_Doacross : Clause<[Spelling<"doacross">]> {
 def OMPC_DynamicAllocators : Clause<[Spelling<"dynamic_allocators">]> {
   let clangClass = "OMPDynamicAllocatorsClause";
 }
-def OMP_DYN_GROUPPRIVATE_Strict : EnumVal<"strict", 1, 1> {}
-def OMP_DYN_GROUPPRIVATE_Fallback : EnumVal<"fallback", 2, 1> {}
-def OMP_DYN_GROUPPRIVATE_Unknown : EnumVal<"unknown", 3, 0> { let isDefault = 1; }
 def OMPC_DynGroupprivate : Clause<[Spelling<"dyn_groupprivate">]> {
   let clangClass = "OMPDynGroupprivateClause";
   let flangClass = "ScalarIntExpr";
-  let enumClauseValue = "DynGroupprivateType";
-  let allowedClauseValues = [
-    OMP_DYN_GROUPPRIVATE_Strict,
-    OMP_DYN_GROUPPRIVATE_Fallback,
-    OMP_DYN_GROUPPRIVATE_Unknown
-  ];
 }
 def OMPC_Enter : Clause<[Spelling<"enter">]> {
   let flangClass = "OmpObjectList";

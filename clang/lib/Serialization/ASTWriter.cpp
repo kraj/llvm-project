@@ -8588,10 +8588,12 @@ void OMPClauseWriter::VisitOMPXDynCGroupMemClause(OMPXDynCGroupMemClause *C) {
 
 void OMPClauseWriter::VisitOMPDynGroupprivateClause(OMPDynGroupprivateClause *C) {
   VisitOMPClauseWithPreInit(C);
-  Record.writeEnum(C->getModifier());
+  Record.push_back(C->getFirstDynGroupprivateModifier());
+  Record.push_back(C->getSecondDynGroupprivateModifier());
   Record.AddStmt(C->getSize());
-  Record.AddSourceLocation(C->getModifierLoc());
   Record.AddSourceLocation(C->getLParenLoc());
+  Record.AddSourceLocation(C->getFirstDynGroupprivateModifierLoc());
+  Record.AddSourceLocation(C->getSecondDynGroupprivateModifierLoc());
 }
 
 void OMPClauseWriter::VisitOMPDoacrossClause(OMPDoacrossClause *C) {

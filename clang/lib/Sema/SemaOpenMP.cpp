@@ -16650,15 +16650,17 @@ OMPClause *SemaOpenMP::ActOnOpenMPSingleExprWithArgClause(
   OMPClause *Res = nullptr;
   switch (Kind) {
   case OMPC_schedule:
-    enum { Modifier1, Modifier2, ScheduleKind, NumberOfElements };
-    assert(Argument.size() == NumberOfElements &&
-           ArgumentLoc.size() == NumberOfElements);
-    Res = ActOnOpenMPScheduleClause(
-        static_cast<OpenMPScheduleClauseModifier>(Argument[Modifier1]),
-        static_cast<OpenMPScheduleClauseModifier>(Argument[Modifier2]),
-        static_cast<OpenMPScheduleClauseKind>(Argument[ScheduleKind]), Expr,
-        StartLoc, LParenLoc, ArgumentLoc[Modifier1], ArgumentLoc[Modifier2],
-        ArgumentLoc[ScheduleKind], DelimLoc, EndLoc);
+    {
+      enum { Modifier1, Modifier2, ScheduleKind, NumberOfElements };
+      assert(Argument.size() == NumberOfElements &&
+             ArgumentLoc.size() == NumberOfElements);
+      Res = ActOnOpenMPScheduleClause(
+          static_cast<OpenMPScheduleClauseModifier>(Argument[Modifier1]),
+          static_cast<OpenMPScheduleClauseModifier>(Argument[Modifier2]),
+          static_cast<OpenMPScheduleClauseKind>(Argument[ScheduleKind]), Expr,
+          StartLoc, LParenLoc, ArgumentLoc[Modifier1], ArgumentLoc[Modifier2],
+          ArgumentLoc[ScheduleKind], DelimLoc, EndLoc);
+    }
     break;
   case OMPC_if:
     assert(Argument.size() == 1 && ArgumentLoc.size() == 1);
@@ -16707,11 +16709,16 @@ OMPClause *SemaOpenMP::ActOnOpenMPSingleExprWithArgClause(
         StartLoc, LParenLoc, ArgumentLoc.back(), EndLoc);
     break;
   case OMPC_dyn_groupprivate:
-    assert(Argument.size() == 1 && ArgumentLoc.size() == 1 &&
-           "Modifier for dyn_groupprivate clause and its location are expected.");
-    Res = ActOnOpenMPDynGroupprivateClause(
-        static_cast<OpenMPDynGroupprivateClauseModifier>(Argument.back()), Expr,
-        StartLoc, LParenLoc, ArgumentLoc.back(), EndLoc);
+    {
+      enum { Modifier1, Modifier2, NumberOfElements };
+      assert(Argument.size() == NumberOfElements &&
+             ArgumentLoc.size() == NumberOfElements);
+      Res = ActOnOpenMPDynGroupprivateClause(
+          static_cast<OpenMPDynGroupprivateClauseModifier>(Argument[Modifier1]),
+          static_cast<OpenMPDynGroupprivateClauseModifier>(Argument[Modifier2]),
+          Expr, StartLoc, LParenLoc, ArgumentLoc[Modifier1],
+          ArgumentLoc[Modifier2], EndLoc);
+    }
     break;
   case OMPC_num_threads:
     assert(Argument.size() == 1 && ArgumentLoc.size() == 1 &&
@@ -24155,16 +24162,30 @@ OMPClause *SemaOpenMP::ActOnOpenMPXDynCGroupMemClause(Expr *Size,
 }
 
 OMPClause *SemaOpenMP::ActOnOpenMPDynGroupprivateClause(
-    OpenMPDynGroupprivateClauseModifier Modifier, Expr *Size,
-    SourceLocation StartLoc, SourceLocation LParenLoc,
-    SourceLocation ModifierLoc, SourceLocation EndLoc) {
-  assert(ModifierLoc.isInvalid());
+    OpenMPDynGroupprivateClauseModifier M1,
+    OpenMPDynGroupprivateClauseModifier M2, Expr *Size, SourceLocation StartLoc,
+    SourceLocation LParenLoc, SourceLocation M1Loc, SourceLocation M2Loc,
+    SourceLocation EndLoc) {
 
-  if (ModifierLoc.isValid() && Modifier == OMPC_DYN_GROUPPRIVATE_unknown) {
+  if ((M1Loc.isValid() && M1 == OMPC_DYN_GROUPPRIVATE_unknown) ||
+      (M2Loc.isValid() && M2 == OMPC_DYN_GROUPPRIVATE_unknown)) {
     std::string Values = getListOfPossibleValues(OMPC_dyn_groupprivate, /*First=*/0,
                                                  OMPC_DYN_GROUPPRIVATE_unknown);
-    Diag(ModifierLoc, diag::err_omp_unexpected_clause_value)
-        << Values << getOpenMPClauseName(OMPC_dyn_groupprivate);
+    Diag((M1Loc.isValid() && M1 == OMPC_DYN_GROUPPRIVATE_unknown) ? M1Loc : M2Loc,
+        diag::err_omp_unexpected_clause_value) << Values
+        << getOpenMPClauseName(OMPC_dyn_groupprivate);
+    return nullptr;
+  }
+
+  if ((M1Loc.isValid() && M2Loc.isValid() && M1 == M2) ||
+      (M1 == OMPC_DYN_GROUPPRIVATE_strict &&
+       M2 == OMPC_DYN_GROUPPRIVATE_fallback) ||
+      (M1 == OMPC_DYN_GROUPPRIVATE_fallback &&
+       M2 == OMPC_DYN_GROUPPRIVATE_strict)) {
+
+    Diag(M2Loc, diag::err_omp_unexpected_dyn_groupprivate_modifier)
+        << getOpenMPSimpleClauseTypeName(OMPC_dyn_groupprivate, M2)
+        << getOpenMPSimpleClauseTypeName(OMPC_dyn_groupprivate, M1);
     return nullptr;
   }
 
@@ -24190,8 +24211,8 @@ OMPClause *SemaOpenMP::ActOnOpenMPDynGroupprivateClause(
   }
 
   return new (getASTContext()) OMPDynGroupprivateClause(
-      Modifier, ValExpr, HelperValStmt, CaptureRegion, StartLoc, LParenLoc,
-      ModifierLoc, EndLoc);
+      StartLoc, LParenLoc, EndLoc, ValExpr, HelperValStmt, CaptureRegion, M1,
+      M1Loc, M2, M2Loc);
 }
 
 OMPClause *SemaOpenMP::ActOnOpenMPDoacrossClause(

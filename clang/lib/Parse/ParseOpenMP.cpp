@@ -3837,35 +3837,37 @@ OMPClause *Parser::ParseOpenMPSingleExprWithArgClause(OpenMPDirectiveKind DKind,
       KLoc.emplace_back();
     }
   } else if (Kind == OMPC_dyn_groupprivate) {
-    // Parse optional <dyn_groupprivate modifier> ':'
-    OpenMPDynGroupprivateClauseModifier Modifier =
-        static_cast<OpenMPDynGroupprivateClauseModifier>(getOpenMPSimpleClauseType(
-            Kind, Tok.isAnnotation() ? "" : PP.getSpelling(Tok),
-            getLangOpts()));
-    if (getLangOpts().OpenMP >= 51) {
-      if (NextToken().is(tok::colon)) {
-        Arg.push_back(Modifier);
-        KLoc.push_back(Tok.getLocation());
-        // Parse modifier
+    enum { Modifier1, Modifier2, NumberOfElements };
+    Arg.resize(NumberOfElements);
+    KLoc.resize(NumberOfElements);
+    Arg[Modifier1] = OMPC_DYN_GROUPPRIVATE_unknown;
+    Arg[Modifier2] = OMPC_DYN_GROUPPRIVATE_unknown;
+    unsigned Modifier = getOpenMPSimpleClauseType(
+        Kind, Tok.isAnnotation() ? "" : PP.getSpelling(Tok), getLangOpts());
+
+    if (Modifier < OMPC_DYN_GROUPPRIVATE_unknown) {
+      // Parse 'modifier'
+      Arg[Modifier1] = Modifier;
+      KLoc[Modifier1] = Tok.getLocation();
+      if (Tok.isNot(tok::r_paren) && Tok.isNot(tok::comma) &&
+          Tok.isNot(tok::annot_pragma_openmp_end))
         ConsumeAnyToken();
-        // Parse ':'
+      if (Tok.is(tok::comma)) {
+        // Parse ',' 'modifier'
         ConsumeAnyToken();
-      } else {
-        if (Modifier == OMPC_DYN_GROUPPRIVATE_strict) {
-          Diag(Tok, diag::err_modifier_expected_colon) << "strict";
-          // Parse modifier
+        Modifier = getOpenMPSimpleClauseType(
+            Kind, Tok.isAnnotation() ? "" : PP.getSpelling(Tok), getLangOpts());
+        Arg[Modifier2] = Modifier;
+        KLoc[Modifier2] = Tok.getLocation();
+        if (Tok.isNot(tok::r_paren) && Tok.isNot(tok::comma) &&
+            Tok.isNot(tok::annot_pragma_openmp_end))
           ConsumeAnyToken();
-        } else if (Modifier == OMPC_DYN_GROUPPRIVATE_fallback) {
-          Diag(Tok, diag::err_modifier_expected_colon) << "fallback";
-          // Parse modifier
-          ConsumeAnyToken();
-        }
-        Arg.push_back(OMPC_DYN_GROUPPRIVATE_unknown);
-        KLoc.emplace_back();
       }
-    } else {
-      Arg.push_back(OMPC_DYN_GROUPPRIVATE_unknown);
-      KLoc.emplace_back();
+      // Parse ':'
+      if (Tok.is(tok::colon))
+        ConsumeAnyToken();
+      else
+        Diag(Tok, diag::warn_pragma_expected_colon) << "dyn_groupprivate modifier";
     }
   } else if (Kind == OMPC_num_tasks) {
     // Parse optional <num_tasks modifier> ':'

@@ -12588,10 +12588,14 @@ void OMPClauseReader::VisitOMPXDynCGroupMemClause(OMPXDynCGroupMemClause *C) {
 
 void OMPClauseReader::VisitOMPDynGroupprivateClause(OMPDynGroupprivateClause *C) {
   VisitOMPClauseWithPreInit(C);
-  C->setModifier(Record.readEnum<OpenMPDynGroupprivateClauseModifier>());
+  C->setFirstDynGroupprivateModifier(
+      static_cast<OpenMPDynGroupprivateClauseModifier>(Record.readInt()));
+  C->setSecondDynGroupprivateModifier(
+      static_cast<OpenMPDynGroupprivateClauseModifier>(Record.readInt()));
   C->setSize(Record.readSubExpr());
-  C->setModifierLoc(Record.readSourceLocation());
   C->setLParenLoc(Record.readSourceLocation());
+  C->setFirstDynGroupprivateModifierLoc(Record.readSourceLocation());
+  C->setSecondDynGroupprivateModifierLoc(Record.readSourceLocation());
 }
 
 void OMPClauseReader::VisitOMPDoacrossClause(OMPDoacrossClause *C) {

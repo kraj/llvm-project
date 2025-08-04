@@ -2434,12 +2434,12 @@ public:
   ///
   /// By default, performs semantic analysis to build the new OpenMP clause.
   /// Subclasses may override this routine to provide different behavior.
-  OMPClause *RebuildOMPDynGroupprivateClause(OpenMPDynGroupprivateClauseModifier Modifier,
-                                                 Expr *Size, SourceLocation StartLoc, 
-                                                 SourceLocation LParenLoc, SourceLocation ModifierLoc,
-                                                 SourceLocation EndLoc) {
-    return getSema().OpenMP().ActOnOpenMPDynGroupprivateClause(Modifier, Size, StartLoc,
-                                                             LParenLoc, ModifierLoc, EndLoc);
+  OMPClause *RebuildOMPDynGroupprivateClause(
+      OpenMPDynGroupprivateClauseModifier M1, OpenMPDynGroupprivateClauseModifier M2,
+      Expr *Size, SourceLocation StartLoc, SourceLocation LParenLoc,
+      SourceLocation M1Loc, SourceLocation M2Loc, SourceLocation EndLoc) {
+    return getSema().OpenMP().ActOnOpenMPDynGroupprivateClause(
+        M1, M2, Size, StartLoc, LParenLoc, M1Loc, M2Loc, EndLoc);
   }
 
   /// Build a new OpenMP 'ompx_attribute' clause.
@@ -11710,8 +11710,10 @@ OMPClause *TreeTransform<Derived>::TransformOMPDynGroupprivateClause(
   if (Size.isInvalid())
     return nullptr;
   return getDerived().RebuildOMPDynGroupprivateClause(
-      C->getModifier(), Size.get(), C->getBeginLoc(), C->getLParenLoc(),
-      C->getModifierLoc(), C->getEndLoc());
+      C->getFirstDynGroupprivateModifier(),
+      C->getSecondDynGroupprivateModifier(), Size.get(), C->getBeginLoc(),
+      C->getLParenLoc(), C->getFirstDynGroupprivateModifierLoc(),
+      C->getSecondDynGroupprivateModifierLoc(), C->getEndLoc());
 }
 
 template <typename Derived>

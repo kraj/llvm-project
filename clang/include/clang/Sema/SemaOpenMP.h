@@ -1386,11 +1386,10 @@ public:
                                             SourceLocation EndLoc);
 
   /// Called on a well-formed 'dyn_groupprivate' clause.
-  OMPClause *
-  ActOnOpenMPDynGroupprivateClause(OpenMPDynGroupprivateClauseModifier Modifier,
-                                       Expr *Size, SourceLocation StartLoc,
-                                       SourceLocation LParenLoc,
-                                       SourceLocation ModifierLoc, SourceLocation EndLoc);
+  OMPClause *ActOnOpenMPDynGroupprivateClause(
+      OpenMPDynGroupprivateClauseModifier M1, OpenMPDynGroupprivateClauseModifier M2,
+      Expr *Size, SourceLocation StartLoc, SourceLocation LParenLoc,
+      SourceLocation M1Loc, SourceLocation M2Loc, SourceLocation EndLoc);
 
   /// Called on well-formed 'doacross' clause.
   OMPClause *

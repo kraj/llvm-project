@@ -9500,8 +9500,8 @@ static std::pair<llvm::Value *, bool> emitDynCGroupMem(const OMPExecutableDirect
         DynGPClause->getSize(), /*IgnoreResultAssign=*/true);
     DynGP = CGF.Builder.CreateIntCast(DynGPVal, CGF.Int32Ty,
                                       /*isSigned=*/false);
-    DynGPFallback = (DynGPClause->getModifier() == OMPC_DYN_GROUPPRIVATE_fallback ||
-        OMPC_DYN_GROUPPRIVATE_unknown);
+    DynGPFallback = (DynGPClause->getFirstDynGroupprivateModifier() != OMPC_DYN_GROUPPRIVATE_strict &&
+        DynGPClause->getSecondDynGroupprivateModifier() != OMPC_DYN_GROUPPRIVATE_strict);
   } else if (auto *OMPXDynCGClause = D.getSingleClause<OMPXDynCGroupMemClause>()) {
     CodeGenFunction::RunCleanupsScope DynCGMemScope(CGF);
     llvm::Value *DynCGMemVal = CGF.EmitScalarExpr(

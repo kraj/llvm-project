@@ -2727,13 +2727,17 @@ void OMPClausePrinter::VisitOMPXDynCGroupMemClause(
   OS << ")";
 }
 
-void OMPClausePrinter::VisitOMPDynGroupprivateClause(
-    OMPDynGroupprivateClause *Node) {
+void OMPClausePrinter::VisitOMPDynGroupprivateClause(OMPDynGroupprivateClause *Node) {
   OS << "dyn_groupprivate(";
-  OpenMPDynGroupprivateClauseModifier Modifier = Node->getModifier();
-  if (Modifier != OMPC_DYN_GROUPPRIVATE_unknown) {
-    OS << getOpenMPSimpleClauseTypeName(Node->getClauseKind(), Modifier)
-       << ": ";
+  if (Node->getFirstDynGroupprivateModifier() != OMPC_SCHEDULE_MODIFIER_unknown) {
+    OS << getOpenMPSimpleClauseTypeName(OMPC_dyn_groupprivate,
+                                        Node->getFirstDynGroupprivateModifier());
+    if (Node->getSecondDynGroupprivateModifier() != OMPC_SCHEDULE_MODIFIER_unknown) {
+      OS << ", ";
+      OS << getOpenMPSimpleClauseTypeName(OMPC_dyn_groupprivate,
+                                          Node->getSecondDynGroupprivateModifier());
+    }
+    OS << ": ";
   }
   Node->getSize()->printPretty(OS, nullptr, Policy, 0);
   OS << ")";

@@ -9772,63 +9772,155 @@ public:
 /// and '#pragma omp teams ...' directives.
 ///
 /// \code
-/// #pragma omp target [...] dyn_groupprivate(N)
+/// #pragma omp target [...] dyn_groupprivate(a,b: N)
 /// \endcode
-class OMPDynGroupprivateClause
-    : public OMPOneStmtClause<llvm::omp::OMPC_dyn_groupprivate, OMPClause>,
-      public OMPClauseWithPreInit {
+class OMPDynGroupprivateClause : public OMPClause, public OMPClauseWithPreInit {
   friend class OMPClauseReader;
 
-  /// Modifiers for 'grainsize' clause.
-  OpenMPDynGroupprivateClauseModifier Modifier = OMPC_DYN_GROUPPRIVATE_unknown;
+  /// Location of '('.
+  SourceLocation LParenLoc;
 
-  /// Location of the modifier.
-  SourceLocation ModifierLoc;
+  /// Modifiers for 'dyn_groupprivate' clause.
+  enum {FIRST, SECOND, NUM_MODIFIERS};
+  OpenMPDynGroupprivateClauseModifier Modifiers[NUM_MODIFIERS];
+
+  /// Locations of modifiers.
+  SourceLocation ModifiersLoc[NUM_MODIFIERS];
+
+  /// The size of the dyn_groupprivate.
+  Expr *Size = nullptr;
+
+  /// Set the first dyn_groupprivate modifier.
+  ///
+  /// \param M The modifier.
+  void setFirstDynGroupprivateModifier(OpenMPDynGroupprivateClauseModifier M) {
+    Modifiers[FIRST] = M;
+  }
+
+  /// Set the second dyn_groupprivate modifier.
+  ///
+  /// \param M The modifier.
+  void setSecondDynGroupprivateModifier(OpenMPDynGroupprivateClauseModifier M) {
+    Modifiers[SECOND] = M;
+  }
+
+  /// Set location of the first dyn_groupprivate modifier.
+  void setFirstDynGroupprivateModifierLoc(SourceLocation Loc) {
+    ModifiersLoc[FIRST] = Loc;
+  }
+
+  /// Set location of the second dyn_groupprivate modifier.
+  void setSecondDynGroupprivateModifierLoc(SourceLocation Loc) {
+    ModifiersLoc[SECOND] = Loc;
+  }
+
+  /// Set dyn_groupprivate modifier location.
+  ///
+  /// \param M The modifier location.
+  void setDynGroupprivateModifer(OpenMPDynGroupprivateClauseModifier M) {
+    if (Modifiers[FIRST] == OMPC_DYN_GROUPPRIVATE_unknown)
+      Modifiers[FIRST] = M;
+    else {
+      assert(Modifiers[SECOND] == OMPC_DYN_GROUPPRIVATE_unknown);
+      Modifiers[SECOND] = M;
+    }
+  }
+
+  /// Sets the location of '('.
+  ///
+  /// \param Loc Location of '('.
+  void setLParenLoc(SourceLocation Loc) { LParenLoc = Loc; }
 
   /// Set size.
-  void setSize(Expr *E) { setStmt(E); }
-
-  /// Sets modifier.
-  void setModifier(OpenMPDynGroupprivateClauseModifier M) { Modifier = M; }
-
-  /// Sets modifier location.
-  void setModifierLoc(SourceLocation Loc) { ModifierLoc = Loc; }
+  ///
+  /// \param E Size.
+  void setSize(Expr *E) { Size = E; }
 
 public:
-  /// Build 'dyn_groupprivate' clause.
+  /// Build 'dyn_groupprivate' clause with a size expression \a Size.
   ///
-  /// \param Modifier Clause modifier.
-  /// \param Size Size expression.
-  /// \param HelperSize Helper Size expression
-  /// \param CaptureRegion Innermost OpenMP region where expressions in this
   /// \param StartLoc Starting location of the clause.
   /// \param LParenLoc Location of '('.
-  /// \param ModifierLoc Modifier location.
   /// \param EndLoc Ending location of the clause.
-  OMPDynGroupprivateClause(OpenMPDynGroupprivateClauseModifier Modifier,
-                         Expr *Size, Stmt *HelperSize,
-                         OpenMPDirectiveKind CaptureRegion,
-                         SourceLocation StartLoc, SourceLocation LParenLoc,
-                         SourceLocation ModifierLoc, SourceLocation EndLoc)
-      : OMPOneStmtClause(Size, StartLoc, LParenLoc, EndLoc),
-        OMPClauseWithPreInit(this), Modifier(Modifier), ModifierLoc(ModifierLoc) {
+  /// \param Size Size.
+  /// \param M1 The first modifier applied to 'dyn_groupprivate' clause.
+  /// \param M1Loc Location of the first modifier.
+  /// \param M2 The second modifier applied to 'dyn_groupprivate' clause.
+  /// \param M2Loc Location of the second modifier.
+  OMPDynGroupprivateClause(SourceLocation StartLoc, SourceLocation LParenLoc,
+                    SourceLocation EndLoc,
+                    Expr *Size, Stmt *HelperSize,
+                    OpenMPDirectiveKind CaptureRegion,
+                    OpenMPDynGroupprivateClauseModifier M1,
+                    SourceLocation M1Loc,
+                    OpenMPDynGroupprivateClauseModifier M2,
+                    SourceLocation M2Loc)
+      : OMPClause(llvm::omp::OMPC_dyn_groupprivate, StartLoc, EndLoc),
+        OMPClauseWithPreInit(this), LParenLoc(LParenLoc), Size(Size) {
     setPreInitStmt(HelperSize, CaptureRegion);
+    Modifiers[FIRST] = M1;
+    Modifiers[SECOND] = M2;
+    ModifiersLoc[FIRST] = M1Loc;
+    ModifiersLoc[SECOND] = M2Loc;
   }
 
   /// Build an empty clause.
-  OMPDynGroupprivateClause() : OMPOneStmtClause(), OMPClauseWithPreInit(this) {}
+  explicit OMPDynGroupprivateClause()
+      : OMPClause(llvm::omp::OMPC_dyn_groupprivate, SourceLocation(), SourceLocation()),
+        OMPClauseWithPreInit(this) {
+    Modifiers[FIRST] = OMPC_DYN_GROUPPRIVATE_unknown;
+    Modifiers[SECOND] = OMPC_DYN_GROUPPRIVATE_unknown;
+  }
 
-  /// Return the size expression.
-  Expr *getSize() { return getStmtAs<Expr>(); }
+  /// Get the first modifier of the clause.
+  OpenMPDynGroupprivateClauseModifier getFirstDynGroupprivateModifier() const {
+    return Modifiers[FIRST];
+  }
 
-  /// Return the size expression.
-  Expr *getSize() const { return getStmtAs<Expr>(); }
+  /// Get the second modifier of the clause.
+  OpenMPDynGroupprivateClauseModifier getSecondDynGroupprivateModifier() const {
+    return Modifiers[SECOND];
+  }
 
-  /// Gets modifier.
-  OpenMPDynGroupprivateClauseModifier getModifier() const { return Modifier; }
+  /// Get location of '('.
+  SourceLocation getLParenLoc() { return LParenLoc; }
 
-  /// Gets modifier location.
-  SourceLocation getModifierLoc() const { return ModifierLoc; }
+  /// Get the first modifier location.
+  SourceLocation getFirstDynGroupprivateModifierLoc() const {
+    return ModifiersLoc[FIRST];
+  }
+
+  /// Get the second modifier location.
+  SourceLocation getSecondDynGroupprivateModifierLoc() const {
+    return ModifiersLoc[SECOND];
+  }
+
+  /// Get size.
+  Expr *getSize() { return Size; }
+
+  /// Get size.
+  const Expr *getSize() const { return Size; }
+
+  child_range children() {
+    return child_range(reinterpret_cast<Stmt **>(&Size),
+                       reinterpret_cast<Stmt **>(&Size) + 1);
+  }
+
+  const_child_range children() const {
+    auto Children = const_cast<OMPDynGroupprivateClause *>(this)->children();
+    return const_child_range(Children.begin(), Children.end());
+  }
+
+  child_range used_children() {
+    return child_range(child_iterator(), child_iterator());
+  }
+  const_child_range used_children() const {
+    return const_child_range(const_child_iterator(), const_child_iterator());
+  }
+
+  static bool classof(const OMPClause *T) {
+    return T->getClauseKind() == llvm::omp::OMPC_dyn_groupprivate;
+  }
 };
 
 /// This represents the 'doacross' clause for the '#pragma omp ordered'
