@@ -59,6 +59,13 @@ static cl::opt<std::string> PrintBranchProbFuncName(
     cl::desc("The option to specify the name of the function "
              "whose branch probability info is printed."));
 
+// Flag used for an ablation performance test, Issue #147390. Placing it here
+// because referencing Analysis should be feasible from anywhere. Will be
+// removed after the ablation test.
+cl::opt<bool> DisableProfilingInfoCorrectPropagation(
+    "profcheck-disable-fixes", cl::Hidden, cl::init(false),
+    cl::desc("Temporary flag, will be used for an ablation test"));
+
 INITIALIZE_PASS_BEGIN(BranchProbabilityInfoWrapperPass, "branch-prob",
                       "Branch Probability Analysis", false, true)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)

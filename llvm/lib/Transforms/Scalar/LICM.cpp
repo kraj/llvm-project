@@ -218,6 +218,8 @@ using PointersAndHasReadsOutsideSet =
 static SmallVector<PointersAndHasReadsOutsideSet, 0>
 collectPromotionCandidates(MemorySSA *MSSA, AliasAnalysis *AA, Loop *L);
 
+extern cl::opt<bool> DisableProfilingInfoCorrectPropagation;
+
 namespace {
 struct LoopInvariantCodeMotion {
   bool runOnLoop(Loop *L, AAResults *AA, LoopInfo *LI, DominatorTree *DT,
@@ -857,9 +859,18 @@ public:
     }
 
     // Now finally clone BI.
-    ReplaceInstWithInst(
-        HoistTarget->getTerminator(),
-        BranchInst::Create(HoistTrueDest, HoistFalseDest, BI->getCondition()));
+    auto *NewBI =
+        BranchInst::Create(HoistTrueDest, HoistFalseDest, BI->getCondition());
+    ReplaceInstWithInst(HoistTarget->getTerminator(), NewBI);
+    // Copy all the metadata. In particular:
+    // - debug info (critical to Sample-based profiling) should be the same as
+    // the original branch, not that of HoistTarget->getTerminator(), which is
+    // what ReplaceInstWithInst would use.
+    // - md_prof should also come from the original branch - since the condition
+    // was hoisted, the branch probabilities shouldn't change.
+    if (!DisableProfilingInfoCorrectPropagation)
+      NewBI->copyMetadata(*BI);
+
     ++NumClonedBranches;
 
     assert(CurLoop->getLoopPreheader() &&
