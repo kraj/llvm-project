@@ -352,6 +352,34 @@ void RegBankLegalizeHelper::widenLoad(MachineInstr &MI, LLT WideTy,
   MI.eraseFromParent();
 }
 
+void RegBankLegalizeHelper::widenMMO(MachineInstr &MI) {
+  MachineFunction &MF = B.getMF();
+  assert(MI.getNumMemOperands() == 1);
+  MachineMemOperand *MMO = *MI.memoperands_begin();
+
+  const unsigned MemSize = 8 * MMO->getSize().getValue();
+  Register Dst = MI.getOperand(0).getReg();
+  Register Ptr = MI.getOperand(1).getReg();
+
+  MachineMemOperand *WideMMO = MF.getMachineMemOperand(MMO, 0, S32);
+
+  if (MI.getOpcode() == G_LOAD) {
+    B.buildLoad(Dst, Ptr, *WideMMO);
+  } else {
+    auto Load = B.buildLoad(SgprRB_S32, Ptr, *WideMMO);
+
+    if (MI.getOpcode() == G_ZEXTLOAD) {
+      auto Mask =
+          B.buildConstant(SgprRB_S32, APInt::getLowBitsSet(32, MemSize));
+      B.buildAnd(Dst, Load, Mask);
+    } else {
+      B.buildSExtInReg(Dst, Load, MemSize);
+    }
+  }
+
+  MI.eraseFromParent();
+}
+
 void RegBankLegalizeHelper::lowerVccExtToSel(MachineInstr &MI) {
   Register Dst = MI.getOperand(0).getReg();
   LLT Ty = MRI.getType(Dst);
@@ -744,6 +772,9 @@ void RegBankLegalizeHelper::lower(MachineInstr &MI,
     }
     break;
   }
+  case WidenMMO: {
+    return widenMMO(MI);
+  }
   }
 
   if (!WaterfallSgprs.empty()) {
@@ -759,6 +790,7 @@ LLT RegBankLegalizeHelper::getTyFromID(RegBankLLTMappingApplyID ID) {
     return LLT::scalar(1);
   case Sgpr16:
   case Vgpr16:
+  case UniInVgprS16:
     return LLT::scalar(16);
   case Sgpr32:
   case Sgpr32_WF:
@@ -895,6 +927,7 @@ RegBankLegalizeHelper::getRegBankFromID(RegBankLLTMappingApplyID ID) {
   case SgprB256:
   case SgprB512:
   case UniInVcc:
+  case UniInVgprS16:
   case UniInVgprS32:
   case UniInVgprV2S16:
   case UniInVgprV4S32:
@@ -1013,6 +1046,18 @@ void RegBankLegalizeHelper::applyMappingDst(
       auto CopyS32_Vcc =
           B.buildInstr(AMDGPU::G_AMDGPU_COPY_SCC_VCC, {SgprRB_S32}, {NewDst});
       B.buildTrunc(Reg, CopyS32_Vcc);
+      break;
+    }
+    case UniInVgprS16: {
+      assert(Ty == getTyFromID(MethodIDs[OpIdx]));
+      assert(RB == SgprRB);
+      Register NewVgprDstS16 = MRI.createVirtualRegister({VgprRB, S16});
+      Register NewVgprDstS32 = MRI.createVirtualRegister({VgprRB, S32});
+      Register NewSgprDstS32 = MRI.createVirtualRegister({SgprRB, S32});
+      Op.setReg(NewVgprDstS16);
+      B.buildAnyExt(NewVgprDstS32, NewVgprDstS16);
+      buildReadAnyLane(B, NewSgprDstS32, NewVgprDstS32, RBI);
+      B.buildTrunc(Reg, NewSgprDstS32);
       break;
     }
     case UniInVgprS32:
@@ -1257,6 +1302,7 @@ void RegBankLegalizeHelper::applyMappingPHI(MachineInstr &MI) {
     return;
   }
 
+  MI.dump();
   LLVM_DEBUG(dbgs() << "G_PHI not handled: "; MI.dump(););
   llvm_unreachable("type not supported");
 }

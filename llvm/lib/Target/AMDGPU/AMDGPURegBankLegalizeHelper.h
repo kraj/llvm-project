@@ -107,6 +107,7 @@ private:
   void splitLoad(MachineInstr &MI, ArrayRef<LLT> LLTBreakdown,
                  LLT MergeTy = LLT());
   void widenLoad(MachineInstr &MI, LLT WideTy, LLT MergeTy = LLT());
+  void widenMMO(MachineInstr &MI);
 
   void lower(MachineInstr &MI, const RegBankLLTMapping &Mapping,
              SmallSet<Register, 4> &SgprWaterfallOperandRegs);
