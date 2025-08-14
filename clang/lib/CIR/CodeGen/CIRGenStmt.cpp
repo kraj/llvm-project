@@ -130,6 +130,9 @@ mlir::LogicalResult CIRGenFunction::emitStmt(const Stmt *s,
     return emitOpenACCCacheConstruct(cast<OpenACCCacheConstruct>(*s));
   case Stmt::OpenACCAtomicConstructClass:
     return emitOpenACCAtomicConstruct(cast<OpenACCAtomicConstruct>(*s));
+  case Stmt::GCCAsmStmtClass:
+  case Stmt::MSAsmStmtClass:
+    return emitAsmStmt(cast<AsmStmt>(*s));
   case Stmt::OMPScopeDirectiveClass:
   case Stmt::OMPErrorDirectiveClass:
   case Stmt::LabelStmtClass:
@@ -143,8 +146,6 @@ mlir::LogicalResult CIRGenFunction::emitStmt(const Stmt *s,
   case Stmt::CoreturnStmtClass:
   case Stmt::CXXTryStmtClass:
   case Stmt::IndirectGotoStmtClass:
-  case Stmt::GCCAsmStmtClass:
-  case Stmt::MSAsmStmtClass:
   case Stmt::OMPParallelDirectiveClass:
   case Stmt::OMPTaskwaitDirectiveClass:
   case Stmt::OMPTaskyieldDirectiveClass:
