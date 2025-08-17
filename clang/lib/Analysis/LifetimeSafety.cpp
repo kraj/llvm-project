@@ -419,10 +419,13 @@ public:
       VisitedStmts.clear();
       for (unsigned I = 0; I < Block->size(); ++I) {
         const CFGElement &Element = Block->Elements[I];
-        if (std::optional<CFGStmt> CS = Element.getAs<CFGStmt>())
+        if (std::optional<CFGStmt> CS = Element.getAs<CFGStmt>()) {
+          DEBUG_WITH_TYPE("PrintCFG", llvm::dbgs() << " ================== \n");
+          DEBUG_WITH_TYPE("PrintCFG", CS->dump());
+          DEBUG_WITH_TYPE("PrintCFG", CS->getStmt()->dumpColor());
           Visit(CS->getStmt());
-        else if (std::optional<CFGAutomaticObjDtor> DtorOpt =
-                     Element.getAs<CFGAutomaticObjDtor>())
+        } else if (std::optional<CFGAutomaticObjDtor> DtorOpt =
+                       Element.getAs<CFGAutomaticObjDtor>())
           handleDestructor(*DtorOpt);
       }
       FactMgr.addBlockFacts(Block, CurrentBlockFacts);
@@ -441,6 +444,31 @@ public:
         if (hasOrigin(VD->getType()))
           if (const Expr *InitExpr = VD->getInit())
             addAssignOriginFact(*VD, *InitExpr);
+  }
+
+  void VisitCXXConstructExpr(const CXXConstructExpr *CCE) {
+    if (!isGslPointerType(CCE->getType()))
+      return;
+
+    if (CCE->getNumArgs() > 0 && hasOrigin(CCE->getArg(0)->getType()))
+      // This is a propagation.
+      addAssignOriginFact(*CCE, *CCE->getArg(0));
+    else
+      // This could be a new borrow.
+      checkForBorrows(CCE, CCE->getConstructor(),
+                      {CCE->getArgs(), CCE->getNumArgs()});
+  }
+
+  void VisitCXXMemberCallExpr(const CXXMemberCallExpr *MCE) {
+    if (!isGslPointerType(MCE->getImplicitObjectArgument()->getType()))
+      return;
+    // Specifically for conversion operators, like `std::string_view p = a;`
+    if (isa<CXXConversionDecl>(MCE->getCalleeDecl())) {
+      // The argument is the implicit object itself.
+      checkForBorrows(MCE, MCE->getMethodDecl(),
+                      {MCE->getImplicitObjectArgument()});
+    }
+    // Note: A more general VisitCallExpr could also be used here.
   }
 
   void VisitCXXNullPtrLiteralExpr(const CXXNullPtrLiteralExpr *N) {
@@ -495,20 +523,13 @@ public:
   }
 
   void VisitBinaryOperator(const BinaryOperator *BO) {
-    if (BO->isAssignmentOp()) {
-      const Expr *LHSExpr = BO->getLHS();
-      const Expr *RHSExpr = BO->getRHS();
+    if (BO->isAssignmentOp())
+      handleAssignment(BO->getLHS(), BO->getRHS());
+  }
 
-      // We are interested in assignments like `ptr1 = ptr2` or `ptr = &var`
-      // LHS must be a pointer/reference type that can be an origin.
-      // RHS must also represent an origin (either another pointer/ref or an
-      // address-of).
-      if (const auto *DRE_LHS = dyn_cast<DeclRefExpr>(LHSExpr))
-        if (const auto *VD_LHS =
-                dyn_cast<ValueDecl>(DRE_LHS->getDecl()->getCanonicalDecl());
-            VD_LHS && hasOrigin(VD_LHS->getType()))
-          addAssignOriginFact(*VD_LHS, *RHSExpr);
-    }
+  void VisitCXXOperatorCallExpr(const CXXOperatorCallExpr *OCE) {
+    if (OCE->isAssignmentOp() && OCE->getNumArgs() == 2)
+      handleAssignment(OCE->getArg(0), OCE->getArg(1));
   }
 
   void VisitCXXFunctionalCastExpr(const CXXFunctionalCastExpr *FCE) {
@@ -520,13 +541,104 @@ public:
     Base::VisitCXXFunctionalCastExpr(FCE);
   }
 
+  void VisitMaterializeTemporaryExpr(const MaterializeTemporaryExpr *MTE) {
+    if (!hasOrigin(MTE->getType()))
+      return;
+    // A temporary object's origin is the same as the origin of the
+    // expression that initializes it.
+    addAssignOriginFact(*MTE, *MTE->getSubExpr());
+  }
+
 private:
+  static bool isGslPointerType(QualType QT) {
+    // if (QT->isFunctionType())
+    //   return false;
+    if (const auto *RD = QT->getAsCXXRecordDecl()) {
+      // We need to check the template definition for specializations.
+      if (auto *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(RD))
+        return CTSD->getSpecializedTemplate()
+            ->getTemplatedDecl()
+            ->hasAttr<PointerAttr>();
+      return RD->hasAttr<PointerAttr>();
+    }
+    return false;
+  }
+
   // Check if a type has an origin.
-  bool hasOrigin(QualType QT) { return QT->isPointerOrReferenceType(); }
+  static bool hasOrigin(QualType QT) {
+    if (QT->isFunctionPointerType())
+      return false;
+    return QT->isPointerOrReferenceType() || isGslPointerType(QT);
+  }
+
+  /// Checks if a call-like expression creates a borrow by passing a local
+  /// value to a reference parameter, creating an IssueFact if it does.
+  void checkForBorrows(const Expr *Call, const FunctionDecl *FD,
+                       ArrayRef<const Expr *> Args) {
+    if (!FD)
+      return;
+
+    for (unsigned I = 0; I < Args.size(); ++I) {
+      if (I >= FD->getNumParams())
+        break;
+
+      const ParmVarDecl *Param = FD->getParamDecl(I);
+      const Expr *Arg = Args[I];
+
+      // This is the core condition for a new borrow: a value type (no origin)
+      // is passed to a reference parameter.
+      if (Param->getType()->isReferenceType() && !hasOrigin(Arg->getType())) {
+        if (const Loan *L = createLoanFrom(Arg, Call)) {
+          OriginID OID = FactMgr.getOriginMgr().getOrCreate(*Call);
+          CurrentBlockFacts.push_back(
+              FactMgr.createFact<IssueFact>(L->ID, OID));
+          // For view creation, we assume the first borrow is the significant
+          // one.
+          return;
+        }
+      }
+    }
+  }
+
+  /// Attempts to create a loan by analyzing the source expression of a borrow.
+  /// This method is the single point for creating loans, allowing for future
+  /// expansion to handle temporaries, field members, etc.
+  /// \param SourceExpr The expression representing the object being borrowed
+  /// from.
+  /// \param IssueExpr The expression that triggers the borrow (e.g., a
+  /// constructor call).
+  /// \return The new Loan on success, nullptr on failure.
+  const Loan *createLoanFrom(const Expr *SourceExpr, const Expr *IssueExpr) {
+    // For now, we only handle direct borrows from local variables.
+    // In the future, this can be extended to handle MaterializeTemporaryExpr,
+    // etc.
+    if (const auto *DRE =
+            dyn_cast<DeclRefExpr>(SourceExpr->IgnoreParenImpCasts())) {
+      if (const auto *VD = dyn_cast<ValueDecl>(DRE->getDecl())) {
+        AccessPath Path(VD);
+        return &FactMgr.getLoanMgr().addLoan(Path, IssueExpr);
+      }
+    }
+    return nullptr;
+  }
+
+  void handleAssignment(const Expr *LHSExpr, const Expr *RHSExpr) {
+    // Find the underlying variable declaration for the left-hand side.
+    if (const auto *DRE_LHS =
+            dyn_cast<DeclRefExpr>(LHSExpr->IgnoreParenImpCasts()))
+      if (const auto *VD_LHS = dyn_cast<ValueDecl>(DRE_LHS->getDecl()))
+        if (hasOrigin(VD_LHS->getType()))
+          // We are interested in assignments like `ptr1 = ptr2` or `ptr = &var`
+          // LHS must be a pointer/reference type that can be an origin.
+          // RHS must also represent an origin (either another pointer/ref or an
+          // address-of).
+          addAssignOriginFact(*VD_LHS, *RHSExpr);
+  }
 
   template <typename Destination, typename Source>
   void addAssignOriginFact(const Destination &D, const Source &S) {
     OriginID DestOID = FactMgr.getOriginMgr().getOrCreate(D);
+    Visit(&S);
     OriginID SrcOID = FactMgr.getOriginMgr().get(S);
     CurrentBlockFacts.push_back(
         FactMgr.createFact<AssignOriginFact>(DestOID, SrcOID));
