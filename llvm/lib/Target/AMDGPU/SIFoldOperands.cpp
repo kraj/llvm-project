@@ -709,7 +709,10 @@ bool SIFoldOperandsImpl::updateOperand(FoldCandidate &Fold) const {
   // 16-bit SGPRs instead of 32-bit ones.
   if (Old.getSubReg() == AMDGPU::lo16 && TRI->isSGPRReg(*MRI, New->getReg()))
     Old.setSubReg(AMDGPU::NoSubRegister);
-  Old.substVirtReg(New->getReg(), New->getSubReg(), *TRI);
+  if (New->getReg().isPhysical())
+    Old.substPhysReg(New->getReg(), *TRI);
+  else
+    Old.substVirtReg(New->getReg(), New->getSubReg(), *TRI);
   Old.setIsUndef(New->isUndef());
   return true;
 }
@@ -1986,8 +1989,14 @@ bool SIFoldOperandsImpl::tryFoldFoldableCopy(
   if (!FoldingImm && !OpToFold.isReg())
     return false;
 
-  if (OpToFold.isReg() && !OpToFold.getReg().isVirtual())
-    return false;
+  // Fold virtual registers and constant physical registers.
+  if (OpToFold.isReg()) {
+    if (OpToFold.getReg().isPhysical()) {
+      if (!TRI->isConstantPhysReg(OpToFold.getReg()))
+        return false;
+    } else if (!OpToFold.getReg().isVirtual())
+      return false;
+  }
 
   // Prevent folding operands backwards in the function. For example,
   // the COPY opcode must not be replaced by 1 in this example:
