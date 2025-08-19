@@ -51,6 +51,17 @@ HistoryUnwind::DoCreateRegisterContextForFrame(StackFrame *frame) {
   return rctx;
 }
 
+static bool BehavesLikeZerothFrame(TracePCType pc_type, uint32_t frame_idx) {
+  switch (pc_type) {
+  case TracePCType::Returns:
+    return (frame_idx == 0);
+  case TracePCType::ReturnsNoZerothFrame:
+    return false;
+  case TracePCType::Calls:
+    return true;
+  }
+}
+
 bool HistoryUnwind::DoGetFrameInfoAtIndex(uint32_t frame_idx, lldb::addr_t &cfa,
                                           lldb::addr_t &pc,
                                           bool &behaves_like_zeroth_frame) {
@@ -60,10 +71,7 @@ bool HistoryUnwind::DoGetFrameInfoAtIndex(uint32_t frame_idx, lldb::addr_t &cfa,
   if (frame_idx < m_pcs.size()) {
     cfa = frame_idx;
     pc = m_pcs[frame_idx];
-    if (m_pc_type == TracePCType::Calls)
-      behaves_like_zeroth_frame = true;
-    else
-      behaves_like_zeroth_frame = (frame_idx == 0);
+    behaves_like_zeroth_frame = BehavesLikeZerothFrame(m_pc_type, frame_idx);
     return true;
   }
   return false;
