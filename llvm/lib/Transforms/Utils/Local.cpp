@@ -116,6 +116,8 @@ static cl::opt<unsigned> MaxPhiEntriesIncreaseAfterRemovingEmptyBlock(
     cl::desc("Stop removing an empty block if removing it will introduce more "
              "than this number of phi entries in its successor"));
 
+extern cl::opt<bool> ProfcheckDisableMetadataFixes;
+
 // Max recursion depth for collectBitParts used when detecting bswap and
 // bitreverse idioms.
 static const unsigned BitPartRecursionMaxDepth = 48;
@@ -3342,8 +3344,11 @@ void llvm::hoistAllInstructionsInto(BasicBlock *DomBlock, Instruction *InsertPt,
   // retain their original debug locations (DILocations) and debug intrinsic
   // instructions.
   //
-  // Doing so would degrade the debugging experience and adversely affect the
-  // accuracy of profiling information.
+  // Doing so would degrade the debugging experience.
+  //
+  // FIXME: Issue #152767: debug info should also be the same as the
+  // original branch, **if** the user explicitly indicated that (for sampling
+  // PGO)
   //
   // Currently, when hoisting the instructions, we take the following actions:
   // - Remove their debug intrinsic instructions.
@@ -3362,7 +3367,10 @@ void llvm::hoistAllInstructionsInto(BasicBlock *DomBlock, Instruction *InsertPt,
 
   for (BasicBlock::iterator II = BB->begin(), IE = BB->end(); II != IE;) {
     Instruction *I = &*II;
-    I->dropUBImplyingAttrsAndMetadata();
+    if (ProfcheckDisableMetadataFixes)
+      I->dropUBImplyingAttrsAndMetadata();
+    else
+      I->dropUBImplyingAttrsAndMetadata({LLVMContext::MD_prof});
     if (I->isUsedByMetadata())
       dropDebugUsers(*I);
     // RemoveDIs: drop debug-info too as the following code does.
