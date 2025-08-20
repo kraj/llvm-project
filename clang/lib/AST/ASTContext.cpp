@@ -654,9 +654,9 @@ comments::FullComment *ASTContext::getCommentForDecl(
       // does not have one of its own.
       QualType QT = TD->getUnderlyingType();
       if (const auto *TT = QT->getAs<TagType>())
-        if (const Decl *TD = TT->getOriginalDecl())
-          if (comments::FullComment *FC = getCommentForDecl(TD, PP))
-            return cloneFullComment(FC, D);
+        if (comments::FullComment *FC =
+                getCommentForDecl(TT->getOriginalDecl(), PP))
+          return cloneFullComment(FC, D);
     }
     else if (const auto *IC = dyn_cast<ObjCInterfaceDecl>(D)) {
       while (IC->getSuperClass()) {
@@ -1933,12 +1933,9 @@ TypeInfoChars ASTContext::getTypeInfoDataSizeInChars(QualType T) const {
   // of a base-class subobject.  We decide whether that's possible
   // during class layout, so here we can just trust the layout results.
   if (getLangOpts().CPlusPlus) {
-    if (const auto *RT = T->getAs<RecordType>()) {
-      const auto *RD = RT->getOriginalDecl()->getDefinitionOrSelf();
-      if (!RD->isInvalidDecl()) {
-        const ASTRecordLayout &layout = getASTRecordLayout(RD);
-        Info.Width = layout.getDataSize();
-      }
+    if (const auto *RD = T->getAsCXXRecordDecl(); RD && !RD->isInvalidDecl()) {
+      const ASTRecordLayout &layout = getASTRecordLayout(RD);
+      Info.Width = layout.getDataSize();
     }
   }
 
@@ -2004,8 +2001,7 @@ bool ASTContext::isPromotableIntegerType(QualType T) const {
 
   // Enumerated types are promotable to their compatible integer types
   // (C99 6.3.1.1) a.k.a. its underlying type (C++ [conv.prom]p2).
-  if (const auto *ET = T->getAs<EnumType>()) {
-    const EnumDecl *ED = ET->getOriginalDecl()->getDefinitionOrSelf();
+  if (const auto *ED = T->getAsEnumDecl()) {
     if (T->isDependentType() || ED->getPromotionType().isNull() ||
         ED->isScoped())
       return false;
@@ -2618,10 +2614,10 @@ unsigned ASTContext::getTypeUnadjustedAlign(const Type *T) const {
     return I->second;
 
   unsigned UnadjustedAlign;
-  if (const auto *RT = T->getAs<RecordType>()) {
+  if (const auto *RT = T->getAsCanonical<RecordType>()) {
     const ASTRecordLayout &Layout = getASTRecordLayout(RT->getOriginalDecl());
     UnadjustedAlign = toBits(Layout.getUnadjustedAlignment());
-  } else if (const auto *ObjCI = T->getAs<ObjCInterfaceType>()) {
+  } else if (const auto *ObjCI = T->getAsCanonical<ObjCInterfaceType>()) {
     const ASTRecordLayout &Layout = getASTObjCInterfaceLayout(ObjCI->getDecl());
     UnadjustedAlign = toBits(Layout.getUnadjustedAlignment());
   } else {
@@ -2694,9 +2690,7 @@ unsigned ASTContext::getPreferredTypeAlign(const Type *T) const {
   if (!Target->allowsLargerPreferedTypeAlignment())
     return ABIAlign;
 
-  if (const auto *RT = T->getAs<RecordType>()) {
-    const RecordDecl *RD = RT->getOriginalDecl()->getDefinitionOrSelf();
-
+  if (const auto *RD = T->getAsRecordDecl()) {
     // When used as part of a typedef, or together with a 'packed' attribute,
     // the 'aligned' attribute can be used to decrease alignment. Note that the
     // 'packed' case is already taken into consideration when computing the
@@ -2717,11 +2711,8 @@ unsigned ASTContext::getPreferredTypeAlign(const Type *T) const {
   // possible.
   if (const auto *CT = T->getAs<ComplexType>())
     T = CT->getElementType().getTypePtr();
-  if (const auto *ET = T->getAs<EnumType>())
-    T = ET->getOriginalDecl()
-            ->getDefinitionOrSelf()
-            ->getIntegerType()
-            .getTypePtr();
+  if (const auto *ED = T->getAsEnumDecl())
+    T = ED->getIntegerType().getTypePtr();
   if (T->isSpecificBuiltinType(BuiltinType::Double) ||
       T->isSpecificBuiltinType(BuiltinType::LongLong) ||
       T->isSpecificBuiltinType(BuiltinType::ULongLong) ||
@@ -2887,12 +2878,10 @@ structHasUniqueObjectRepresentations(const ASTContext &Context,
 static std::optional<int64_t>
 getSubobjectSizeInBits(const FieldDecl *Field, const ASTContext &Context,
                        bool CheckIfTriviallyCopyable) {
-  if (Field->getType()->isRecordType()) {
-    const RecordDecl *RD = Field->getType()->getAsRecordDecl();
-    if (!RD->isUnion())
-      return structHasUniqueObjectRepresentations(Context, RD,
-                                                  CheckIfTriviallyCopyable);
-  }
+  if (const auto *RD = Field->getType()->getAsRecordDecl();
+      RD && !RD->isUnion())
+    return structHasUniqueObjectRepresentations(Context, RD,
+                                                CheckIfTriviallyCopyable);
 
   // A _BitInt type may not be unique if it has padding bits
   // but if it is a bitfield the padding bits are not used.
@@ -3047,10 +3036,7 @@ bool ASTContext::hasUniqueObjectRepresentations(
   if (const auto *MPT = Ty->getAs<MemberPointerType>())
     return !ABI->getMemberPointerInfo(MPT).HasPadding;
 
-  if (Ty->isRecordType()) {
-    const RecordDecl *Record =
-        Ty->castAs<RecordType>()->getOriginalDecl()->getDefinitionOrSelf();
-
+  if (const auto *Record = Ty->getAsRecordDecl()) {
     if (Record->isInvalidDecl())
       return false;
 
@@ -3422,10 +3408,7 @@ static void encodeTypeForFunctionPointerAuth(const ASTContext &Ctx,
     //   type, or an unsigned integer type.
     //
     // So we have to treat enum types as integers.
-    QualType UnderlyingType = cast<EnumType>(T)
-                                  ->getOriginalDecl()
-                                  ->getDefinitionOrSelf()
-                                  ->getIntegerType();
+    QualType UnderlyingType = T->castAsEnumDecl()->getIntegerType();
     return encodeTypeForFunctionPointerAuth(
         Ctx, OS, UnderlyingType.isNull() ? Ctx.IntTy : UnderlyingType);
   }
@@ -3569,8 +3552,7 @@ static void encodeTypeForFunctionPointerAuth(const ASTContext &Ctx,
     llvm_unreachable("should never get here");
   }
   case Type::Record: {
-    const RecordDecl *RD =
-        T->castAs<RecordType>()->getOriginalDecl()->getDefinitionOrSelf();
+    const RecordDecl *RD = T->castAsCanonical<RecordType>()->getOriginalDecl();
     const IdentifierInfo *II = RD->getIdentifier();
 
     // In C++, an immediate typedef of an anonymous struct or union
@@ -8362,8 +8344,8 @@ QualType ASTContext::isPromotableBitField(Expr *E) const {
 QualType ASTContext::getPromotedIntegerType(QualType Promotable) const {
   assert(!Promotable.isNull());
   assert(isPromotableIntegerType(Promotable));
-  if (const auto *ET = Promotable->getAs<EnumType>())
-    return ET->getOriginalDecl()->getDefinitionOrSelf()->getPromotionType();
+  if (const auto *ED = Promotable->getAsEnumDecl())
+    return ED->getPromotionType();
 
   if (const auto *BT = Promotable->getAs<BuiltinType>()) {
     // C++ [conv.prom]: A prvalue of type char16_t, char32_t, or wchar_t
@@ -8582,10 +8564,9 @@ QualType ASTContext::getObjCSuperType() const {
 }
 
 void ASTContext::setCFConstantStringType(QualType T) {
-  const auto *TD = T->castAs<TypedefType>();
-  CFConstantStringTypeDecl = cast<TypedefDecl>(TD->getDecl());
-  const auto *TagType = TD->castAs<RecordType>();
-  CFConstantStringTagDecl = TagType->getOriginalDecl()->getDefinitionOrSelf();
+  const auto *TT = T->castAs<TypedefType>();
+  CFConstantStringTypeDecl = cast<TypedefDecl>(TT->getDecl());
+  CFConstantStringTagDecl = TT->castAsRecordDecl();
 }
 
 QualType ASTContext::getBlockDescriptorType() const {
@@ -9296,8 +9277,8 @@ static char getObjCEncodingForPrimitiveType(const ASTContext *C,
     llvm_unreachable("invalid BuiltinType::Kind value");
 }
 
-static char ObjCEncodingForEnumType(const ASTContext *C, const EnumType *ET) {
-  EnumDecl *Enum = ET->getOriginalDecl()->getDefinitionOrSelf();
+static char ObjCEncodingForEnumDecl(const ASTContext *C, const EnumDecl *ED) {
+  EnumDecl *Enum = ED->getDefinitionOrSelf();
 
   // The encoding of an non-fixed enum type is always 'i', regardless of size.
   if (!Enum->isFixed())
@@ -9340,8 +9321,8 @@ static void EncodeBitField(const ASTContext *Ctx, std::string& S,
 
     S += llvm::utostr(Offset);
 
-    if (const auto *ET = T->getAs<EnumType>())
-      S += ObjCEncodingForEnumType(Ctx, ET);
+    if (const auto *ET = T->getAsCanonical<EnumType>())
+      S += ObjCEncodingForEnumDecl(Ctx, ET->getOriginalDecl());
     else {
       const auto *BT = T->castAs<BuiltinType>();
       S += getObjCEncodingForPrimitiveType(Ctx, BT);
@@ -9398,7 +9379,7 @@ void ASTContext::getObjCEncodingForTypeImpl(QualType T, std::string &S,
     if (const auto *BT = dyn_cast<BuiltinType>(CT))
       S += getObjCEncodingForPrimitiveType(this, BT);
     else
-      S += ObjCEncodingForEnumType(this, cast<EnumType>(CT));
+      S += ObjCEncodingForEnumDecl(this, cast<EnumType>(CT)->getOriginalDecl());
     return;
 
   case Type::Complex:
@@ -9465,7 +9446,7 @@ void ASTContext::getObjCEncodingForTypeImpl(QualType T, std::string &S,
         S += '*';
         return;
       }
-    } else if (const auto *RTy = PointeeTy->getAs<RecordType>()) {
+    } else if (const auto *RTy = PointeeTy->getAsCanonical<RecordType>()) {
       const IdentifierInfo *II = RTy->getOriginalDecl()->getIdentifier();
       // GCC binary compat: Need to convert "struct objc_class *" to "#".
       if (II == &Idents.get("objc_class")) {
@@ -11672,9 +11653,8 @@ QualType ASTContext::mergeFunctionTypes(QualType lhs, QualType rhs,
 
       // Look at the converted type of enum types, since that is the type used
       // to pass enum values.
-      if (const auto *Enum = paramTy->getAs<EnumType>()) {
-        paramTy =
-            Enum->getOriginalDecl()->getDefinitionOrSelf()->getIntegerType();
+      if (const auto *ED = paramTy->getAsEnumDecl()) {
+        paramTy = ED->getIntegerType();
         if (paramTy.isNull())
           return {};
       }
@@ -11832,10 +11812,10 @@ QualType ASTContext::mergeTypes(QualType LHS, QualType RHS, bool OfBlockPointer,
   if (LHSClass != RHSClass) {
     // Note that we only have special rules for turning block enum
     // returns into block int returns, not vice-versa.
-    if (const auto *ETy = LHS->getAs<EnumType>()) {
+    if (const auto *ETy = LHS->getAsCanonical<EnumType>()) {
       return mergeEnumWithInteger(*this, ETy, RHS, false);
     }
-    if (const EnumType* ETy = RHS->getAs<EnumType>()) {
+    if (const EnumType *ETy = RHS->getAsCanonical<EnumType>()) {
       return mergeEnumWithInteger(*this, ETy, LHS, BlockReturnType);
     }
     // allow block pointer type to match an 'id' type.
@@ -12265,8 +12245,8 @@ QualType ASTContext::mergeObjCGCQualifiers(QualType LHS, QualType RHS) {
 //===----------------------------------------------------------------------===//
 
 unsigned ASTContext::getIntWidth(QualType T) const {
-  if (const auto *ET = T->getAs<EnumType>())
-    T = ET->getOriginalDecl()->getDefinitionOrSelf()->getIntegerType();
+  if (const auto *ED = T->getAsEnumDecl())
+    T = ED->getIntegerType();
   if (T->isBooleanType())
     return 1;
   if (const auto *EIT = T->getAs<BitIntType>())
@@ -12291,8 +12271,8 @@ QualType ASTContext::getCorrespondingUnsignedType(QualType T) const {
 
   // For enums, get the underlying integer type of the enum, and let the general
   // integer type signchanging code handle it.
-  if (const auto *ETy = T->getAs<EnumType>())
-    T = ETy->getOriginalDecl()->getDefinitionOrSelf()->getIntegerType();
+  if (const auto *ED = T->getAsEnumDecl())
+    T = ED->getIntegerType();
 
   switch (T->castAs<BuiltinType>()->getKind()) {
   case BuiltinType::Char_U:
@@ -12365,8 +12345,8 @@ QualType ASTContext::getCorrespondingSignedType(QualType T) const {
 
   // For enums, get the underlying integer type of the enum, and let the general
   // integer type signchanging code handle it.
-  if (const auto *ETy = T->getAs<EnumType>())
-    T = ETy->getOriginalDecl()->getDefinitionOrSelf()->getIntegerType();
+  if (const auto *ED = T->getAsEnumDecl())
+    T = ED->getIntegerType();
 
   switch (T->castAs<BuiltinType>()->getKind()) {
   case BuiltinType::Char_S:
