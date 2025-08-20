@@ -498,6 +498,7 @@ LLVM_ABI void dropDebugUsers(Instruction &I);
 ///
 /// The moved instructions receive the insertion point debug location values
 /// (DILocations) and their debug intrinsic instructions are removed.
+/// Selects and indirect calls keep their MD_prof metadata.
 LLVM_ABI void hoistAllInstructionsInto(BasicBlock *DomBlock,
                                        Instruction *InsertPt, BasicBlock *BB);
 
