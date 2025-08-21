@@ -1182,7 +1182,7 @@ static void cloneInstructionsIntoPredecessorBlockAndUpdateSSAUses(
     // only given the branch precondition.
     // Similarly strip attributes on call parameters that may cause UB in
     // location the call is moved to.
-    NewBonusInst->dropUBImplyingAttrsAndMetadata();
+    NewBonusInst->dropUBImplyingAttrsAndMetadata({LLVMContext::MD_prof});
 
     NewBonusInst->insertInto(PredBlock, PTI->getIterator());
     auto Range = NewBonusInst->cloneDebugInfoFrom(&BonusInst);
@@ -1808,7 +1808,8 @@ static void hoistConditionalLoadsStores(
     // !annotation: Not impact semantics. Keep it.
     if (const MDNode *Ranges = I->getMetadata(LLVMContext::MD_range))
       MaskedLoadStore->addRangeRetAttr(getConstantRangeFromMetadata(*Ranges));
-    I->dropUBImplyingAttrsAndUnknownMetadata({LLVMContext::MD_annotation});
+    I->dropUBImplyingAttrsAndUnknownMetadata(
+        {LLVMContext::MD_annotation, LLVMContext::MD_prof});
     // FIXME: DIAssignID is not supported for masked store yet.
     // (Verifier::visitDIAssignIDMetadata)
     at::deleteAssignmentMarkers(I);
@@ -3366,7 +3367,7 @@ bool SimplifyCFGOpt::speculativelyExecuteBB(BranchInst *BI,
     if (!SpeculatedStoreValue || &I != SpeculatedStore) {
       I.setDebugLoc(DebugLoc::getDropped());
     }
-    I.dropUBImplyingAttrsAndMetadata();
+    I.dropUBImplyingAttrsAndMetadata({LLVMContext::MD_prof});
 
     // Drop ephemeral values.
     if (EphTracker.contains(&I)) {
@@ -4404,10 +4405,12 @@ static bool mergeConditionalStoreToAddress(
 
   // OK, we're going to sink the stores to PostBB. The store has to be
   // conditional though, so first create the predicate.
-  Value *PCond = cast<BranchInst>(PFB->getSinglePredecessor()->getTerminator())
-                     ->getCondition();
-  Value *QCond = cast<BranchInst>(QFB->getSinglePredecessor()->getTerminator())
-                     ->getCondition();
+  BranchInst *const PBranch =
+      cast<BranchInst>(PFB->getSinglePredecessor()->getTerminator());
+  BranchInst *const QBranch =
+      cast<BranchInst>(QFB->getSinglePredecessor()->getTerminator());
+  Value *const PCond = PBranch->getCondition();
+  Value *const QCond = QBranch->getCondition();
 
   Value *PPHI = ensureValueAvailableInSuccessor(PStore->getValueOperand(),
                                                 PStore->getParent());
@@ -4418,19 +4421,30 @@ static bool mergeConditionalStoreToAddress(
   IRBuilder<> QB(PostBB, PostBBFirst);
   QB.SetCurrentDebugLocation(PostBBFirst->getStableDebugLoc());
 
-  Value *PPred = PStore->getParent() == PTB ? PCond : QB.CreateNot(PCond);
-  Value *QPred = QStore->getParent() == QTB ? QCond : QB.CreateNot(QCond);
+  InvertPCond = (PStore->getParent() == PTB) ^ InvertPCond;
+  InvertQCond = (QStore->getParent() == QTB) ^ InvertQCond;
+  Value *const PPred = InvertPCond ? PCond : QB.CreateNot(PCond);
+  Value *const QPred = InvertQCond ? QCond : QB.CreateNot(QCond);
 
-  if (InvertPCond)
-    PPred = QB.CreateNot(PPred);
-  if (InvertQCond)
-    QPred = QB.CreateNot(QPred);
   Value *CombinedPred = QB.CreateOr(PPred, QPred);
 
   BasicBlock::iterator InsertPt = QB.GetInsertPoint();
   auto *T = SplitBlockAndInsertIfThen(CombinedPred, InsertPt,
                                       /*Unreachable=*/false,
                                       /*BranchWeights=*/nullptr, DTU);
+  if (hasBranchWeightMD(*PBranch) && hasBranchWeightMD(*QBranch)) {
+    SmallVector<uint32_t, 2> PWeights, QWeights;
+    extractBranchWeights(*PBranch, PWeights);
+    extractBranchWeights(*QBranch, QWeights);
+    if (InvertPCond)
+      std::swap(PWeights[0], PWeights[1]);
+    if (InvertQCond)
+      std::swap(QWeights[0], QWeights[1]);
+    auto CombinedWeights = getDisjunctionWeights(PWeights, QWeights);
+    setBranchWeights(PostBB->getTerminator(), CombinedWeights[0],
+                     CombinedWeights[1],
+                     /*IsExpected=*/false);
+  }
 
   QB.SetInsertPoint(T);
   StoreInst *SI = cast<StoreInst>(QB.CreateStore(QPHI, Address));
