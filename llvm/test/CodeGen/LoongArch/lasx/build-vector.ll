@@ -602,51 +602,21 @@ define void @buildvector_v32i8_subseq_2(ptr %dst, i8 %a0, i8 %a1, i8 %a2, i8 %a3
 ; CHECK-NEXT:    ld.b $t7, $sp, 8
 ; CHECK-NEXT:    ld.b $t8, $sp, 0
 ; CHECK-NEXT:    vinsgr2vr.b $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 17
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a3
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 34
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a4
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 51
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a5
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 68
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a6
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 85
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a7
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 102
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t8
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 119
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t7
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 136
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t6
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 153
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t5
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 170
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t4
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 187
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t3
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 204
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 221
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t1
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 238
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t0
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 255
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a3, 2
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a4, 3
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a5, 4
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a6, 5
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a7, 6
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t8, 7
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t7, 8
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t6, 9
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t5, 10
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t4, 11
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t3, 12
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t2, 13
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t1, 14
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t0, 15
 ; CHECK-NEXT:    xvreplve0.q $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -692,27 +662,13 @@ define void @buildvector_v32i8_subseq_4(ptr %dst, i8 %a0, i8 %a1, i8 %a2, i8 %a3
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    ld.b $t0, $sp, 0
 ; CHECK-NEXT:    vinsgr2vr.b $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 17
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a3
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 34
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a4
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 51
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a5
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 68
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a6
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 85
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a7
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 102
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $t0
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 119
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a3, 2
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a4, 3
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a5, 4
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a6, 5
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a7, 6
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $t0, 7
 ; CHECK-NEXT:    xvreplve0.d $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -757,15 +713,9 @@ define void @buildvector_v32i8_subseq_8(ptr %dst, i8 %a0, i8 %a1, i8 %a2, i8 %a3
 ; CHECK-LABEL: buildvector_v32i8_subseq_8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vinsgr2vr.b $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 17
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a3
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 34
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a4
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 51
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a3, 2
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a4, 3
 ; CHECK-NEXT:    xvreplve0.w $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -810,9 +760,7 @@ define void @buildvector_v32i8_subseq_16(ptr %dst, i8 %a0, i8 %a1) nounwind {
 ; CHECK-LABEL: buildvector_v32i8_subseq_16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vinsgr2vr.b $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.b $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.b $xr0, $xr1, 17
+; CHECK-NEXT:    vinsgr2vr.b $vr0, $a2, 1
 ; CHECK-NEXT:    xvreplve0.h $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1032,27 +980,13 @@ define void @buildvector_v16i16_subseq_2(ptr %dst, i16 %a0, i16 %a1, i16 %a2, i1
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    ld.h $t0, $sp, 0
 ; CHECK-NEXT:    vinsgr2vr.h $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 17
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a3
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 34
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a4
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 51
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a5
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 68
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a6
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 85
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a7
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 102
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $t0
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 119
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a3, 2
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a4, 3
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a5, 4
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a6, 5
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a7, 6
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $t0, 7
 ; CHECK-NEXT:    xvreplve0.q $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1081,15 +1015,9 @@ define void @buildvector_v16i16_subseq_4(ptr %dst, i16 %a0, i16 %a1, i16 %a2, i1
 ; CHECK-LABEL: buildvector_v16i16_subseq_4:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vinsgr2vr.h $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 17
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a3
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 34
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a4
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 51
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a3, 2
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a4, 3
 ; CHECK-NEXT:    xvreplve0.d $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1118,9 +1046,7 @@ define void @buildvector_v16i16_subseq_8(ptr %dst, i16 %a0, i16 %a1) nounwind {
 ; CHECK-LABEL: buildvector_v16i16_subseq_8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vinsgr2vr.h $vr0, $a1, 0
-; CHECK-NEXT:    xvreplgr2vr.h $xr1, $a2
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 18
-; CHECK-NEXT:    xvextrins.h $xr0, $xr1, 17
+; CHECK-NEXT:    vinsgr2vr.h $vr0, $a2, 1
 ; CHECK-NEXT:    xvreplve0.w $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1220,10 +1146,10 @@ entry:
 define void @buildvector_v8i32_subseq_2(ptr %dst, i32 %a0, i32 %a1, i32 %a2, i32 %a3) nounwind {
 ; CHECK-LABEL: buildvector_v8i32_subseq_2:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    xvinsgr2vr.w $xr0, $a1, 0
-; CHECK-NEXT:    xvinsgr2vr.w $xr0, $a2, 1
-; CHECK-NEXT:    xvinsgr2vr.w $xr0, $a3, 2
-; CHECK-NEXT:    xvinsgr2vr.w $xr0, $a4, 3
+; CHECK-NEXT:    vinsgr2vr.w $vr0, $a1, 0
+; CHECK-NEXT:    vinsgr2vr.w $vr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.w $vr0, $a3, 2
+; CHECK-NEXT:    vinsgr2vr.w $vr0, $a4, 3
 ; CHECK-NEXT:    xvreplve0.q $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1243,8 +1169,8 @@ entry:
 define void @buildvector_v8i32_subseq_4(ptr %dst, i32 %a0, i32 %a1) nounwind {
 ; CHECK-LABEL: buildvector_v8i32_subseq_4:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    xvinsgr2vr.w $xr0, $a1, 0
-; CHECK-NEXT:    xvinsgr2vr.w $xr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.w $vr0, $a1, 0
+; CHECK-NEXT:    vinsgr2vr.w $vr0, $a2, 1
 ; CHECK-NEXT:    xvreplve0.d $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1315,8 +1241,8 @@ entry:
 define void @buildvector_v4i64_subseq_2(ptr %dst, i64 %a0, i64 %a1) nounwind {
 ; CHECK-LABEL: buildvector_v4i64_subseq_2:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    xvinsgr2vr.d $xr0, $a1, 0
-; CHECK-NEXT:    xvinsgr2vr.d $xr0, $a2, 1
+; CHECK-NEXT:    vinsgr2vr.d $vr0, $a1, 0
+; CHECK-NEXT:    vinsgr2vr.d $vr0, $a2, 1
 ; CHECK-NEXT:    xvreplve0.q $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1419,13 +1345,13 @@ entry:
 define void @buildvector_v8f32_subseq_2(ptr %dst, float %a0, float %a1, float %a2, float %a3) nounwind {
 ; CHECK-LABEL: buildvector_v8f32_subseq_2:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    # kill: def $f3 killed $f3 def $xr3
-; CHECK-NEXT:    # kill: def $f2 killed $f2 def $xr2
-; CHECK-NEXT:    # kill: def $f1 killed $f1 def $xr1
+; CHECK-NEXT:    # kill: def $f3 killed $f3 def $vr3
+; CHECK-NEXT:    # kill: def $f2 killed $f2 def $vr2
+; CHECK-NEXT:    # kill: def $f1 killed $f1 def $vr1
 ; CHECK-NEXT:    # kill: def $f0 killed $f0 def $xr0
-; CHECK-NEXT:    xvinsve0.w $xr0, $xr1, 1
-; CHECK-NEXT:    xvinsve0.w $xr0, $xr2, 2
-; CHECK-NEXT:    xvinsve0.w $xr0, $xr3, 3
+; CHECK-NEXT:    vextrins.w $vr0, $vr1, 16
+; CHECK-NEXT:    vextrins.w $vr0, $vr2, 32
+; CHECK-NEXT:    vextrins.w $vr0, $vr3, 48
 ; CHECK-NEXT:    xvreplve0.q $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1445,9 +1371,9 @@ entry:
 define void @buildvector_v8f32_subseq_4(ptr %dst, float %a0, float %a1) nounwind {
 ; CHECK-LABEL: buildvector_v8f32_subseq_4:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    # kill: def $f1 killed $f1 def $xr1
+; CHECK-NEXT:    # kill: def $f1 killed $f1 def $vr1
 ; CHECK-NEXT:    # kill: def $f0 killed $f0 def $xr0
-; CHECK-NEXT:    xvinsve0.w $xr0, $xr1, 1
+; CHECK-NEXT:    vextrins.w $vr0, $vr1, 16
 ; CHECK-NEXT:    xvreplve0.d $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
@@ -1524,9 +1450,9 @@ entry:
 define void @buildvector_v4f64_subseq_2(ptr %dst, double %a0, double %a1) nounwind {
 ; CHECK-LABEL: buildvector_v4f64_subseq_2:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    # kill: def $f1_64 killed $f1_64 def $xr1
+; CHECK-NEXT:    # kill: def $f1_64 killed $f1_64 def $vr1
 ; CHECK-NEXT:    # kill: def $f0_64 killed $f0_64 def $xr0
-; CHECK-NEXT:    xvinsve0.d $xr0, $xr1, 1
+; CHECK-NEXT:    vextrins.d $vr0, $vr1, 16
 ; CHECK-NEXT:    xvreplve0.q $xr0, $xr0
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
