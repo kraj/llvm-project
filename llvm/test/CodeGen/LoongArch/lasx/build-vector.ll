@@ -1065,10 +1065,9 @@ entry:
 define void @buildvector_v4i64_partial(ptr %dst, i64 %a1, i64 %a2) nounwind {
 ; CHECK-LABEL: buildvector_v4i64_partial:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    vinsgr2vr.d $vr0, $a2, 0
-; CHECK-NEXT:    vinsgr2vr.d $vr1, $a1, 1
-; CHECK-NEXT:    xvpermi.q $xr1, $xr0, 2
-; CHECK-NEXT:    xvst $xr1, $a0, 0
+; CHECK-NEXT:    xvinsgr2vr.d $xr0, $a1, 1
+; CHECK-NEXT:    xvinsgr2vr.d $xr0, $a2, 2
+; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
 entry:
   %ins0 = insertelement <4 x i64> undef, i64 undef, i32 0
@@ -1273,10 +1272,9 @@ entry:
 define void @buildvector_v4f64_partial(ptr %dst, double %a0, double %a3) nounwind {
 ; CHECK-LABEL: buildvector_v4f64_partial:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    # kill: def $f1_64 killed $f1_64 def $vr1
+; CHECK-NEXT:    # kill: def $f1_64 killed $f1_64 def $xr1
 ; CHECK-NEXT:    # kill: def $f0_64 killed $f0_64 def $xr0
-; CHECK-NEXT:    vextrins.d $vr1, $vr1, 16
-; CHECK-NEXT:    xvpermi.q $xr0, $xr1, 2
+; CHECK-NEXT:    xvinsve0.d $xr0, $xr1, 3
 ; CHECK-NEXT:    xvst $xr0, $a0, 0
 ; CHECK-NEXT:    ret
 entry:
