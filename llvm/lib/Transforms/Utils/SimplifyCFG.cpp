@@ -4387,10 +4387,12 @@ static bool mergeConditionalStoreToAddress(
 
   // OK, we're going to sink the stores to PostBB. The store has to be
   // conditional though, so first create the predicate.
-  Value *PCond = cast<BranchInst>(PFB->getSinglePredecessor()->getTerminator())
-                     ->getCondition();
-  Value *QCond = cast<BranchInst>(QFB->getSinglePredecessor()->getTerminator())
-                     ->getCondition();
+  BranchInst *const PBranch =
+      cast<BranchInst>(PFB->getSinglePredecessor()->getTerminator());
+  BranchInst *const QBranch =
+      cast<BranchInst>(QFB->getSinglePredecessor()->getTerminator());
+  Value *const PCond = PBranch->getCondition();
+  Value *const QCond = QBranch->getCondition();
 
   Value *PPHI = ensureValueAvailableInSuccessor(PStore->getValueOperand(),
                                                 PStore->getParent());
@@ -4401,13 +4403,11 @@ static bool mergeConditionalStoreToAddress(
   IRBuilder<> QB(PostBB, PostBBFirst);
   QB.SetCurrentDebugLocation(PostBBFirst->getStableDebugLoc());
 
-  Value *PPred = PStore->getParent() == PTB ? PCond : QB.CreateNot(PCond);
-  Value *QPred = QStore->getParent() == QTB ? QCond : QB.CreateNot(QCond);
+  InvertPCond = (PStore->getParent() == PTB) ^ InvertPCond;
+  InvertQCond = (QStore->getParent() == QTB) ^ InvertQCond;
+  Value *const PPred = InvertPCond ? PCond : QB.CreateNot(PCond);
+  Value *const QPred = InvertQCond ? QCond : QB.CreateNot(QCond);
 
-  if (InvertPCond)
-    PPred = QB.CreateNot(PPred);
-  if (InvertQCond)
-    QPred = QB.CreateNot(QPred);
   Value *CombinedPred = QB.CreateOr(PPred, QPred);
 
   BasicBlock::iterator InsertPt = QB.GetInsertPoint();
