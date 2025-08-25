@@ -1349,8 +1349,9 @@ static bool updateWavesPerEU(Module &M, TargetMachine &TM) {
     Min = std::max(Min, MinWavesPerEU);
     Max = std::min(Max, MaxWavesPerEU);
 
-    // Update the attribute if it is not the max.
-    if (Min != MinWavesPerEU || Max != MaxWavesPerEU) {
+    // Update the attribute if it is not the one calculated with flat workgroup
+    // size.
+    if (Min != MinFromFlatWgrpSize || Max != MaxFromFlatWgrpSize) {
       SmallString<10> Buffer;
       raw_svector_ostream OS(Buffer);
       OS << Min << ',' << Max;
