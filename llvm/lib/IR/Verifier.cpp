@@ -2527,9 +2527,6 @@ void Verifier::verifyFunctionMetadata(
     if (Pair.first == LLVMContext::MD_prof) {
       MDNode *MD = Pair.second;
       if (isExplicitlyUnknownBranchWeightsMetadata(*MD)) {
-        CheckFailed("'unknown' !prof metadata should appear only on "
-                    "instructions supporting the 'branch_weights' metadata",
-                    MD);
         continue;
       }
       Check(MD->getNumOperands() >= 2,

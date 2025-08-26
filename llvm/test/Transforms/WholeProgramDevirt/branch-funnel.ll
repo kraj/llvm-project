@@ -3,7 +3,7 @@
 
 ; RUN: opt -passes=wholeprogramdevirt -whole-program-visibility -wholeprogramdevirt-summary-action=export -wholeprogramdevirt-read-summary=%S/Inputs/export.yaml -wholeprogramdevirt-write-summary=%t -S -o - %s | FileCheck --check-prefixes=CHECK,RETP %s
 
-; RUN: opt -passes='wholeprogramdevirt,default<O3>' -whole-program-visibility -wholeprogramdevirt-summary-action=export -wholeprogramdevirt-read-summary=%S/Inputs/export.yaml -wholeprogramdevirt-write-summary=%t  -S -o - %s | FileCheck --check-prefixes=CHECK %s
+; RUN: opt -passes='wholeprogramdevirt,default<O3>' -whole-program-visibility -wholeprogramdevirt-summary-action=export -wholeprogramdevirt-read-summary=%S/Inputs/export.yaml -wholeprogramdevirt-write-summary=%t  -S -o - %s | FileCheck --check-prefixes=CHECK,O3 %s
 
 ; RUN: FileCheck --check-prefix=SUMMARY %s < %t
 
@@ -159,7 +159,7 @@ declare ptr @llvm.load.relative.i32(ptr, i32)
 
 ; CHECK-LABEL: define i32 @fn1
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn1(ptr %obj) #0 {
+define i32 @fn1(ptr %obj) #0 !prof !10 {
   %vtable = load ptr, ptr %obj
   %p = call i1 @llvm.type.test(ptr %vtable, metadata !"typeid1")
   call void @llvm.assume(i1 %p)
@@ -172,7 +172,7 @@ define i32 @fn1(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn1_rv
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn1_rv(ptr %obj) #0 {
+define i32 @fn1_rv(ptr %obj) #0 !prof !10 {
   %vtable = load ptr, ptr %obj
   %p = call i1 @llvm.type.test(ptr %vtable, metadata !"typeid1_rv")
   call void @llvm.assume(i1 %p)
@@ -185,7 +185,7 @@ define i32 @fn1_rv(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn2
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn2(ptr %obj) #0 {
+define i32 @fn2(ptr %obj) #0 !prof !10 {
   %vtable = load ptr, ptr %obj
   %p = call i1 @llvm.type.test(ptr %vtable, metadata !"typeid2")
   call void @llvm.assume(i1 %p)
@@ -197,7 +197,7 @@ define i32 @fn2(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn2_rv
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn2_rv(ptr %obj) #0 {
+define i32 @fn2_rv(ptr %obj) #0 !prof !10 {
   %vtable = load ptr, ptr %obj
   %p = call i1 @llvm.type.test(ptr %vtable, metadata !"typeid2_rv")
   call void @llvm.assume(i1 %p)
@@ -209,7 +209,7 @@ define i32 @fn2_rv(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn3
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn3(ptr %obj) #0 {
+define i32 @fn3(ptr %obj) #0 !prof !10 {
   %vtable = load ptr, ptr %obj
   %p = call i1 @llvm.type.test(ptr %vtable, metadata !4)
   call void @llvm.assume(i1 %p)
@@ -222,7 +222,7 @@ define i32 @fn3(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn3_rv
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn3_rv(ptr %obj) #0 {
+define i32 @fn3_rv(ptr %obj) #0 !prof !10 {
   %vtable = load ptr, ptr %obj
   %p = call i1 @llvm.type.test(ptr %vtable, metadata !9)
   call void @llvm.assume(i1 %p)
@@ -235,7 +235,7 @@ define i32 @fn3_rv(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn4
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn4(ptr %obj) #0 {
+define i32 @fn4(ptr %obj) #0 !prof !10 {
   %p = call i1 @llvm.type.test(ptr @vt1_1, metadata !"typeid1")
   call void @llvm.assume(i1 %p)
   %fptr = load ptr, ptr @vt1_1
@@ -247,7 +247,7 @@ define i32 @fn4(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn4_cpy
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn4_cpy(ptr %obj) #0 {
+define i32 @fn4_cpy(ptr %obj) #0 !prof !10 {
   %p = call i1 @llvm.type.test(ptr @vt1_1, metadata !"typeid1")
   call void @llvm.assume(i1 %p)
   %fptr = load ptr, ptr @vt1_1
@@ -259,7 +259,7 @@ define i32 @fn4_cpy(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn4_rv
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn4_rv(ptr %obj) #0 {
+define i32 @fn4_rv(ptr %obj) #0 !prof !10 {
   %p = call i1 @llvm.type.test(ptr @vt1_1_rv, metadata !"typeid1_rv")
   call void @llvm.assume(i1 %p)
   %fptr = call ptr @llvm.load.relative.i32(ptr @vt1_1_rv, i32 0)
@@ -271,7 +271,7 @@ define i32 @fn4_rv(ptr %obj) #0 {
 
 ; CHECK-LABEL: define i32 @fn4_rv_cpy
 ; CHECK-NOT: call void (...) @llvm.icall.branch.funnel
-define i32 @fn4_rv_cpy(ptr %obj) #0 {
+define i32 @fn4_rv_cpy(ptr %obj) #0 !prof !10 {
   %p = call i1 @llvm.type.test(ptr @vt1_1_rv, metadata !"typeid1_rv")
   call void @llvm.assume(i1 %p)
   %fptr = call ptr @llvm.load.relative.i32(ptr @vt1_1_rv, i32 0)
@@ -281,14 +281,18 @@ define i32 @fn4_rv_cpy(ptr %obj) #0 {
   ret i32 %result
 }
 
-; CHECK-LABEL: define hidden void @__typeid_typeid1_0_branch_funnel(ptr nest %0, ...)
+; CHECK-LABEL: define hidden void @__typeid_typeid1_0_branch_funnel(ptr nest %0, ...) !prof !11
 ; CHECK-NEXT: musttail call void (...) @llvm.icall.branch.funnel(ptr %0, ptr {{(nonnull )?}}@vt1_1, ptr {{(nonnull )?}}@vf1_1, ptr {{(nonnull )?}}@vt1_2, ptr {{(nonnull )?}}@vf1_2, ...)
 
-; CHECK-LABEL: define hidden void @__typeid_typeid1_rv_0_branch_funnel(ptr nest %0, ...)
+; CHECK-LABEL: define hidden void @__typeid_typeid1_rv_0_branch_funnel(ptr nest %0, ...) !prof !11
 ; CHECK-NEXT: musttail call void (...) @llvm.icall.branch.funnel(ptr %0, ptr {{(nonnull )?}}@vt1_1_rv, ptr {{(nonnull )?}}@vf1_1, ptr {{(nonnull )?}}@vt1_2_rv, ptr {{(nonnull )?}}@vf1_2, ...)
 
-; CHECK: define internal void @branch_funnel(ptr
-; CHECK: define internal void @branch_funnel.1(ptr
+; CHECK: define internal void @branch_funnel(ptr {{.*}})
+; RETP-SAME !prof !10
+; NORETP-SAME !prof !11
+; CHECK: define internal void @branch_funnel.1(ptr {{.*}})
+; RETP-SAME !prof !10
+; NORETP-SAME !prof !11
 
 declare i1 @llvm.type.test(ptr, metadata)
 declare void @llvm.assume(i1)
@@ -303,5 +307,6 @@ declare void @llvm.assume(i1)
 !7 = !{i32 0, !"typeid3_rv"}
 !8 = !{i32 0, !9}
 !9 = distinct !{}
+!10 = !{!"function_entry_count", i64 1000}
 
 attributes #0 = { "target-features"="+retpoline" }

@@ -179,6 +179,7 @@ inline uint32_t scaleBranchCount(uint64_t Count, uint64_t Scale) {
 /// bugs where the pass forgets to transfer over or otherwise specify profile
 /// info.
 LLVM_ABI void setExplicitlyUnknownBranchWeights(Instruction &I);
+LLVM_ABI void setExplicitlyUnknownFunctionEntryCount(Function &I);
 
 LLVM_ABI bool isExplicitlyUnknownBranchWeightsMetadata(const MDNode &MD);
 LLVM_ABI bool hasExplicitlyUnknownBranchWeights(const Instruction &I);

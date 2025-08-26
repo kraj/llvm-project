@@ -250,6 +250,14 @@ void setExplicitlyUnknownBranchWeights(Instruction &I) {
                   MDB.createString(MDProfLabels::UnknownBranchWeightsMarker)));
 }
 
+void setExplicitlyUnknownFunctionEntryCount(Function &F) {
+  MDBuilder MDB(F.getContext());
+  F.setMetadata(
+      LLVMContext::MD_prof,
+      MDNode::get(F.getContext(),
+                  MDB.createString(MDProfLabels::UnknownBranchWeightsMarker)));
+}
+
 bool isExplicitlyUnknownBranchWeightsMetadata(const MDNode &MD) {
   if (MD.getNumOperands() != 1)
     return false;
