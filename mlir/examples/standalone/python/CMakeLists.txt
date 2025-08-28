@@ -48,8 +48,8 @@ declare_mlir_python_extension(StandalonePythonSources.NanobindExtension
 
 add_mlir_python_common_capi_library(StandalonePythonCAPI
   INSTALL_COMPONENT StandalonePythonModules
-  INSTALL_DESTINATION python_packages/standalone/mlir_standalone/_mlir_libs
-  OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/python_packages/standalone/mlir_standalone/_mlir_libs"
+  INSTALL_DESTINATION "${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}/_mlir_libs"
+  OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}/_mlir_libs"
   RELATIVE_INSTALL_ROOT "../../../.."
   DECLARED_SOURCES
     StandalonePythonSources
@@ -64,14 +64,14 @@ add_mlir_python_common_capi_library(StandalonePythonCAPI
 ################################################################################
 
 add_mlir_python_modules(StandalonePythonModules
-  ROOT_PREFIX "${MLIR_BINARY_DIR}/python_packages/standalone/mlir_standalone"
-  INSTALL_PREFIX "python_packages/standalone/mlir_standalone"
+  ROOT_PREFIX "${MLIR_BINARY_DIR}/${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}"
+  INSTALL_PREFIX "${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}"
   DECLARED_SOURCES
     StandalonePythonSources
     # TODO: Remove this in favor of showing fine grained registration once
     # available.
     MLIRPythonExtension.RegisterEverything
-    MLIRPythonSources
+    MLIRPythonSources.Core
   COMMON_CAPI_LINK_LIBS
     StandalonePythonCAPI
   )
