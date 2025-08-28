@@ -194,7 +194,6 @@ ml-dtypes==0.5.1 ; python_version < "3.13" \
     --hash=sha256:d13755f8e8445b3870114e5b6240facaa7cb0c3361e54beba3e07fa912a6e12b \
     --hash=sha256:fd918d4e6a4e0c110e2e05be7a7814d10dc1b95872accbf6512b80a109b71ae1
     # via -r ./mlir/python/requirements.txt
-nanobind @ git+https://github.com/wjakob/nanobind
     # via -r mlir/python/requirements.txt
 numpy==2.0.2 \
     --hash=sha256:0123ffdaa88fa4ab64835dcbde75dcdf89c453c922f18dced6e27c90d1d0ec5a \
