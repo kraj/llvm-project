@@ -2,8 +2,7 @@ include(AddMLIRPython)
 
 # Specifies that all MLIR packages are co-located under the `mlir_standalone`
 # top level package (the API has been embedded in a relocatable way).
-# TODO: Add an upstream cmake param for this vs having a global here.
-add_compile_definitions("MLIR_PYTHON_PACKAGE_PREFIX=mlir_standalone.")
+add_compile_definitions("MLIR_PYTHON_PACKAGE_PREFIX=${MLIR_PYTHON_PACKAGE_PREFIX}.")
 
 
 ################################################################################
