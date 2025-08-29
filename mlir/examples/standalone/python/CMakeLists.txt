@@ -57,6 +57,7 @@ add_mlir_python_common_capi_library(StandalonePythonCAPI
     # available.
     MLIRPythonExtension.RegisterEverything
     MLIRPythonSources.Core
+    MLIRPythonSources.Dialects.builtin
 )
 
 ################################################################################
@@ -72,6 +73,7 @@ add_mlir_python_modules(StandalonePythonModules
     # available.
     MLIRPythonExtension.RegisterEverything
     MLIRPythonSources.Core
+    MLIRPythonSources.Dialects.builtin
   COMMON_CAPI_LINK_LIBS
     StandalonePythonCAPI
   )
