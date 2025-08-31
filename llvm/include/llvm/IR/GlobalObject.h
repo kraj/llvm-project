@@ -121,7 +121,8 @@ public:
   /// appropriate default object file section.
   LLVM_ABI void setSection(StringRef S);
 
-  /// Set the section prefix for this global object.
+  /// Set the section prefix for this global object. If \p Prefix is empty,
+  /// the section prefix metadata will be cleared if it exists.
   LLVM_ABI void setSectionPrefix(StringRef Prefix);
 
   /// Get the section prefix for this global object.

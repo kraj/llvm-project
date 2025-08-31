@@ -3,14 +3,15 @@
 ; Tests that data hotness is based on aggregated module-wide profile
 ; information. This way linker-mergable data is emitted once per module.
 
+; This RUN command sets `-data-sections=true -unique-section-names=true` so data
+; sections are uniqufied by numbers.
+
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
 ; The three RUN commands set `-relocation-model=pic` so `hot_relro_array` and
 ; `cold_relro_array` are placed in the .data.rel.ro-prefixed section.
 
-; This RUN command sets `-data-sections=true -unique-section-names=true` so data
-; sections are uniqufied by numbers.
 ; RUN: llc -mtriple=x86_64-unknown-linux-gnu -relocation-model=pic \
 ; RUN:     -partition-static-data-sections=true \
 ; RUN:     -data-sections=true -unique-section-names=true \
@@ -216,8 +217,9 @@ declare i32 @func_taking_arbitrary_param(...)
 
 attributes #0 = {"data-section"="bar"}
 
-!llvm.module.flags = !{!1}
+!llvm.module.flags = !{!0, !1}
 
+!0 = !{i32 2, !"HasDataAccessProf", i32 1}
 !1 = !{i32 1, !"ProfileSummary", !2}
 !2 = !{!3, !4, !5, !6, !7, !8, !9, !10}
 !3 = !{!"ProfileFormat", !"InstrProf"}
@@ -235,3 +237,4 @@ attributes #0 = {"data-section"="bar"}
 !15 = !{!"function_entry_count", i64 1}
 !16 = !{!"branch_weights", i32 1, i32 99999}
 !17 = !{!"section_prefix", !"hot"}
+

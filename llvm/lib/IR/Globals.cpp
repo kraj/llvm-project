@@ -289,6 +289,11 @@ void GlobalObject::setSection(StringRef S) {
 }
 
 void GlobalObject::setSectionPrefix(StringRef Prefix) {
+  if (Prefix.empty()) {
+    // Clear the section prefix metadata.
+    setMetadata(LLVMContext::MD_section_prefix, nullptr);
+    return;
+  }
   MDBuilder MDB(getContext());
   setMetadata(LLVMContext::MD_section_prefix,
               MDB.createGlobalObjectSectionPrefix(Prefix));
