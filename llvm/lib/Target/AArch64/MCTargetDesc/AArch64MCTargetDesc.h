@@ -67,12 +67,6 @@ bool isQForm(const MCInst &MI, const MCInstrInfo *MCII);
 bool isFpOrNEON(const MCInst &MI, const MCInstrInfo *MCII);
 }
 
-namespace AArch64 {
-enum OperandType {
-  OPERAND_IMPLICIT_IMM_0 = MCOI::OPERAND_FIRST_TARGET,
-};
-} // namespace AArch64
-
 } // End llvm namespace
 
 // Defines symbolic names for AArch64 registers.  This defines a mapping from
