@@ -130,6 +130,14 @@ DecodeMatrixTileListRegisterClass(MCInst &Inst, unsigned RegMask,
   return Success;
 }
 
+static void DecodeMPRRegisterClass(MCInst &Inst, const MCDisassembler *Decoder) {
+  Inst.addOperand(MCOperand::createReg(AArch64::ZA));
+}
+
+static void DecodeZTRRegisterClass(MCInst &Inst, const MCDisassembler *Decoder) {
+  Inst.addOperand(MCOperand::createReg(AArch64::ZT0));
+}
+
 static const MCPhysReg MatrixZATileDecoderTable[5][16] = {
     {AArch64::ZAB0},
     {AArch64::ZAH0, AArch64::ZAH1},
@@ -141,10 +149,17 @@ static const MCPhysReg MatrixZATileDecoderTable[5][16] = {
      AArch64::ZAQ10, AArch64::ZAQ11, AArch64::ZAQ12, AArch64::ZAQ13,
      AArch64::ZAQ14, AArch64::ZAQ15}};
 
+template<unsigned NumBitsForTile>
+static void DecodeMatrixTile(MCInst &Inst, const MCDisassembler *Decoder) {
+  static_assert(NumBitsForTile == 0);
+  Inst.addOperand(MCOperand::createReg(AArch64::ZAB0));
+}
+
 template <unsigned NumBitsForTile>
 static DecodeStatus DecodeMatrixTile(MCInst &Inst, unsigned RegNo,
                                      uint64_t Address,
                                      const MCDisassembler *Decoder) {
+  static_assert(NumBitsForTile != 0);
   unsigned LastReg = (1 << NumBitsForTile) - 1;
   if (RegNo > LastReg)
     return Fail;
@@ -1422,6 +1437,10 @@ DecodeSVELogicalImmInstruction(MCInst &Inst, uint32_t insn, uint64_t Addr,
   return Success;
 }
 
+static void DecodeZeroImm(MCInst &Inst, const MCDisassembler *Decoder) {
+  Inst.addOperand(MCOperand::createImm(0));
+}
+
 template <int Bits>
 static DecodeStatus DecodeSImm(MCInst &Inst, uint64_t Imm, uint64_t Address,
                                const MCDisassembler *Decoder) {
@@ -1570,7 +1589,7 @@ DecodeSMESpillFillInstruction(MCInst &Inst, uint32_t Bits, uint64_t Addr,
   unsigned RnBits = fieldFromInstruction(Bits, 5, 5);
   unsigned Imm4Bits = fieldFromInstruction(Bits, 0, 4);
 
-  Inst.addOperand(MCOperand::createReg(AArch64::ZA));
+  DecodeMPRRegisterClass(Inst, Decoder);
   DecodeSimpleRegisterClass<AArch64::MatrixIndexGPR32_12_15RegClassID, 0, 4>(
       Inst, RvBits, Addr, Decoder);
   Inst.addOperand(MCOperand::createImm(Imm4Bits));
@@ -1614,33 +1633,6 @@ DecodeStatus AArch64Disassembler::getInstruction(MCInst &MI, uint64_t &Size,
   for (const auto *Table : Tables) {
     DecodeStatus Result =
         decodeInstruction(Table, MI, Insn, Address, this, STI);
-
-    const MCInstrDesc &Desc = MCII->get(MI.getOpcode());
-
-    // For Scalable Matrix Extension (SME) instructions that have an implicit
-    // operand for the accumulator (ZA) or implicit immediate zero which isn't
-    // encoded, manually insert operand.
-    for (unsigned i = 0; i < Desc.getNumOperands(); i++) {
-      if (Desc.operands()[i].OperandType == MCOI::OPERAND_REGISTER) {
-        switch (Desc.operands()[i].RegClass) {
-        default:
-          break;
-        case AArch64::MPRRegClassID:
-          MI.insert(MI.begin() + i, MCOperand::createReg(AArch64::ZA));
-          break;
-        case AArch64::MPR8RegClassID:
-          MI.insert(MI.begin() + i, MCOperand::createReg(AArch64::ZAB0));
-          break;
-        case AArch64::ZTRRegClassID:
-          MI.insert(MI.begin() + i, MCOperand::createReg(AArch64::ZT0));
-          break;
-        }
-      } else if (Desc.operands()[i].OperandType ==
-                 AArch64::OPERAND_IMPLICIT_IMM_0) {
-        MI.insert(MI.begin() + i, MCOperand::createImm(0));
-      }
-    }
-
     if (Result != MCDisassembler::Fail)
       return Result;
   }
