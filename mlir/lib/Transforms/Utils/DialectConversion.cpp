@@ -92,6 +92,29 @@ static OpBuilder::InsertPoint computeInsertPoint(ArrayRef<Value> vals) {
   return pt;
 }
 
+static Block *getCommonAncestorBlock(ArrayRef<Operation *> ops) {
+  Block *result = ops.front()->getBlock();
+  for (Operation *op : ops.drop_front()) {
+    while (!result->findAncestorOpInBlock(*op)) {
+      result = result->getParentOp()->getBlock();
+      continue;
+    }
+  }
+  return result;
+}
+
+static OpBuilder::InsertPoint computeDominationPoint(ArrayRef<Operation *> ops) {
+  Block *common = getCommonAncestorBlock(ops);
+  Operation *result = common->findAncestorOpInBlock(*ops.front());
+  for (Operation *op : ops.drop_front()) {
+    Operation *next = result->getBlock()->findAncestorOpInBlock(*op);
+    assert(next && "expected to find a common ancestor");
+    if (next->isBeforeInBlock(result))
+      result = next;
+  }
+  return OpBuilder::InsertPoint(result->getBlock(), result->getIterator());
+}
+
 //===----------------------------------------------------------------------===//
 // ConversionValueMapping
 //===----------------------------------------------------------------------===//
@@ -1615,21 +1638,23 @@ Block *ConversionPatternRewriterImpl::applySignatureConversion(
 
     std::optional<TypeConverter::SignatureConversion::InputMapping> inputMap =
         signatureConversion.getInputMapping(i);
-    if (!inputMap) {
-      // This block argument was dropped and no replacement value was provided.
-      // Materialize a replacement value "out of thin air".
-      Value mat =
-          buildUnresolvedMaterialization(
-              MaterializationKind::Source,
-              OpBuilder::InsertPoint(newBlock, newBlock->begin()),
-              origArg.getLoc(),
-              /*valuesToMap=*/{}, /*inputs=*/ValueRange(),
-              /*outputTypes=*/origArgType, /*originalType=*/Type(), converter,
-              /*isPureTypeConversion=*/false)
-              .front();
-      replaceAllUsesWith(origArg, mat, converter);
-      continue;
-    }
+        if (!inputMap) {
+          // This block argument was dropped and no replacement value was provided.
+          // Materialize a replacement value "out of thin air".
+          // Note: Materialization must be built here because we cannot find a
+          // valid insertion point in the new block. (Will point to the old block.)
+          Value mat =
+              buildUnresolvedMaterialization(
+                  MaterializationKind::Source,
+                  OpBuilder::InsertPoint(newBlock, newBlock->begin()),
+                  origArg.getLoc(),
+                  /*valuesToMap=*/{}, /*inputs=*/ValueRange(),
+                  /*outputTypes=*/origArgType, /*originalType=*/Type(), converter,
+                  /*isPureTypeConversion=*/false)
+                  .front();
+          replaceAllUsesWith(origArg, mat, converter);
+          continue;
+        }
 
     if (inputMap->replacedWithValues()) {
       // This block argument was dropped and replacement values were provided.
@@ -1709,8 +1734,9 @@ Value ConversionPatternRewriterImpl::findOrBuildReplacementValue(
   // mapping. This includes cached materializations. We try to reuse those
   // instead of generating duplicate IR.
   ValueVector repl = lookupOrNull(value, value.getType());
-  if (!repl.empty())
+  if (!repl.empty()) {
     return repl.front();
+  }
 
   // Check if the value is dead. No replacement value is needed in that case.
   // This is an approximate check that may have false negatives but does not
@@ -1718,22 +1744,14 @@ Value ConversionPatternRewriterImpl::findOrBuildReplacementValue(
   // building source materializations that are never used and that fold away.)
   if (llvm::all_of(value.getUsers(),
                    [&](Operation *op) { return replacedOps.contains(op); }) &&
-      !mapping.isMappedTo(value))
+      !mapping.isMappedTo(value)) {
     return Value();
+      }
 
   // No replacement value was found. Get the latest replacement value
   // (regardless of the type) and build a source materialization to the
   // original type.
   repl = lookupOrNull(value);
-  if (repl.empty()) {
-    // No replacement value is registered in the mapping. This means that the
-    // value is dropped and no longer needed. (If the value were still needed,
-    // a source materialization producing a replacement value "out of thin air"
-    // would have already been created during `replaceOp` or
-    // `applySignatureConversion`.)
-    return Value();
-  }
-
   // Note: `computeInsertPoint` computes the "earliest" insertion point at
   // which all values in `repl` are defined. It is important to emit the
   // materialization at that location because the same materialization may be
@@ -1741,12 +1759,18 @@ Value ConversionPatternRewriterImpl::findOrBuildReplacementValue(
   // in the conversion value mapping.) The insertion point of the
   // materialization must be valid for all future users that may be created
   // later in the conversion process.
+  OpBuilder::InsertPoint ip;
+  if (repl.empty()) {
+    ip = computeInsertPoint(value);
+  } else {
+    ip = computeInsertPoint(repl);
+  }
   Value castValue =
       buildUnresolvedMaterialization(MaterializationKind::Source,
-                                     computeInsertPoint(repl), value.getLoc(),
+                                     ip, value.getLoc(),
                                      /*valuesToMap=*/repl, /*inputs=*/repl,
                                      /*outputTypes=*/value.getType(),
-                                     /*originalType=*/Type(), converter)
+                                     /*originalType=*/Type(), converter, /*isPureTypeConversion=*/!repl.empty())
           .front();
   return castValue;
 }
@@ -1897,23 +1921,8 @@ void ConversionPatternRewriterImpl::replaceOp(
   }
 
   // Create mappings for each of the new result values.
-  for (auto [repl, result] : llvm::zip_equal(newValues, op->getResults())) {
-    if (repl.empty()) {
-      // This result was dropped and no replacement value was provided.
-      // Materialize a replacement value "out of thin air".
-      buildUnresolvedMaterialization(
-          MaterializationKind::Source, computeInsertPoint(result),
-          result.getLoc(), /*valuesToMap=*/{result}, /*inputs=*/ValueRange(),
-          /*outputTypes=*/result.getType(), /*originalType=*/Type(),
-          currentTypeConverter, /*isPureTypeConversion=*/false);
-      continue;
-    }
-
-    // Remap result to replacement value.
-    if (repl.empty())
-      continue;
+  for (auto [repl, result] : llvm::zip_equal(newValues, op->getResults()))
     mapping.map(static_cast<Value>(result), std::move(repl));
-  }
 
   appendRewrite<ReplaceOperationRewrite>(op, currentTypeConverter);
   // Mark this operation and all nested ops as replaced.
@@ -3227,6 +3236,78 @@ legalizeUnresolvedMaterialization(RewriterBase &rewriter,
   return failure();
 }
 
+/// Erase all dead unrealized_conversion_cast ops. An op is dead if its results
+/// are not used (transitively) by any op that is not in the given list of
+/// cast ops.
+///
+/// In particular, this function erases cyclic casts that may be inserted
+/// during the dialect conversion process. E.g.:
+/// %0 = unrealized_conversion_cast(%1)
+/// %1 = unrealized_conversion_cast(%0)
+// Note: This step will become unnecessary when
+// https://github.com/llvm/llvm-project/pull/106760 has been merged.
+static void eraseDeadUnrealizedCasts(
+  ArrayRef<UnrealizedConversionCastOp> castOps,
+  SmallVectorImpl<UnrealizedConversionCastOp> *remainingCastOps) {
+// Ops that have already been visited or are currently being visited.
+DenseSet<Operation *> visited;
+// Set of all cast ops for faster lookups.
+DenseSet<Operation *> castOpSet;
+// Set of all cast ops that have been determined to be alive.
+DenseSet<Operation *> live;
+
+for (UnrealizedConversionCastOp op : castOps)
+  castOpSet.insert(op);
+
+// Visit a cast operation. Return "true" if the operation is live.
+std::function<bool(Operation *)> visit = [&](Operation *op) -> bool {
+  // No need to traverse any IR if the op was already marked as live.
+  if (live.contains(op))
+    return true;
+
+  // Do not visit ops multiple times. If we find a circle, no live user was
+  // found on the current path.
+  if (visited.contains(op))
+    return false;
+  visited.insert(op);
+
+  // Visit all users.
+  for (Operation *user : op->getUsers()) {
+    // If the user is not an unrealized_conversion_cast op, then the given op
+    // is live.
+    if (!castOpSet.contains(user)) {
+      live.insert(op);
+      return true;
+    }
+    // Otherwise, it is live if a live op can be reached from one of its
+    // users (which must all be unrealized_conversion_cast ops).
+    if (visit(user)) {
+      live.insert(op);
+      return true;
+    }
+  }
+
+  return false;
+};
+
+// Visit all cast ops.
+for (UnrealizedConversionCastOp op : castOps) {
+  visit(op);
+  visited.clear();
+}
+
+// Erase all cast ops that are dead.
+for (UnrealizedConversionCastOp op : castOps) {
+  if (live.contains(op)) {
+    if (remainingCastOps)
+      remainingCastOps->push_back(op);
+    continue;
+  }
+  op->dropAllUses();
+  op->erase();
+}
+}
+
 LogicalResult OperationConverter::convertOperations(ArrayRef<Operation *> ops) {
   const ConversionTarget &target = opLegalizer.getTarget();
 
@@ -3276,11 +3357,11 @@ LogicalResult OperationConverter::convertOperations(ArrayRef<Operation *> ops) {
   // Reconcile all UnrealizedConversionCastOps that were inserted by the
   // dialect conversion frameworks. (Not the one that were inserted by
   // patterns.)
-  SmallVector<UnrealizedConversionCastOp> remainingCastOps;
-  reconcileUnrealizedCasts(allCastOps, &remainingCastOps);
-
+  SmallVector<UnrealizedConversionCastOp> remainingCastOps1, remainingCastOps2;
+  eraseDeadUnrealizedCasts(allCastOps, &remainingCastOps1);
+  reconcileUnrealizedCasts(remainingCastOps1, &remainingCastOps2);
   // Drop markers.
-  for (UnrealizedConversionCastOp castOp : remainingCastOps)
+  for (UnrealizedConversionCastOp castOp : remainingCastOps2)
     castOp->removeAttr(kPureTypeConversionMarker);
 
   // Try to legalize all unresolved materializations.
@@ -3289,7 +3370,7 @@ LogicalResult OperationConverter::convertOperations(ArrayRef<Operation *> ops) {
     // purposes etc.
     IRRewriter irRewriter(rewriterImpl.rewriter.getContext(),
                           rewriter.getConfig().listener);
-    for (UnrealizedConversionCastOp castOp : remainingCastOps) {
+    for (UnrealizedConversionCastOp castOp : remainingCastOps2) {
       auto it = materializations.find(castOp);
       assert(it != materializations.end() && "inconsistent state");
       if (failed(legalizeUnresolvedMaterialization(irRewriter, castOp,
