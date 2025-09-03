@@ -1310,6 +1310,7 @@ def VGPROp_64 : RegisterOperand<VReg_64>;
 def VGPROp_96 : RegisterOperand<VReg_96>;
 def VGPROp_128 : RegisterOperand<VReg_128>;
 def VGPROp_256 : RegisterOperand<VReg_256>;
+def VGPROp_1024 : RegisterOperand<VReg_1024>;
 
 def VGPROp_64_Align1 : RegisterOperand<VReg_64>;
 def VGPROp_96_Align1 : RegisterOperand<VReg_96>;
