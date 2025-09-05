@@ -76,4 +76,4 @@ add_mlir_python_modules(StandalonePythonModules
     MLIRPythonSources.Dialects.builtin
   COMMON_CAPI_LINK_LIBS
     StandalonePythonCAPI
-  )
+)

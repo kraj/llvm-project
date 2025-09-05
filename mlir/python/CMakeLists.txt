@@ -1,5 +1,9 @@
 include(AddMLIRPython)
 
+# Specifies that all MLIR packages are co-located under the `mlir_standalone`
+# top level package (the API has been embedded in a relocatable way).
+add_compile_definitions("MLIR_PYTHON_PACKAGE_PREFIX=${MLIR_PYTHON_PACKAGE_PREFIX}.")
+
 ################################################################################
 # Structural groupings.
 ################################################################################
@@ -23,11 +27,6 @@ declare_mlir_python_sources(MLIRPythonSources.Core.Python
     passmanager.py
     rewrite.py
     dialects/_ods_common.py
-
-    # The main _mlir module has submodules: include stubs from each.
-    _mlir_libs/_mlir/__init__.pyi
-    _mlir_libs/_mlir/ir.pyi
-    _mlir_libs/_mlir/passmanager.pyi
 )
 
 declare_mlir_python_sources(MLIRPythonSources.Core.Python.Extras
@@ -479,28 +478,30 @@ declare_mlir_dialect_python_bindings(
 ################################################################################
 
 set(PYTHON_SOURCE_DIR "${MLIR_SOURCE_DIR}/lib/Bindings/Python")
+set(MLIRPythonExtension.Core.CPPSources
+  MainModule.cpp
+  IRAffine.cpp
+  IRAttributes.cpp
+  IRCore.cpp
+  IRInterfaces.cpp
+  IRModule.cpp
+  IRTypes.cpp
+  Pass.cpp
+  Rewrite.cpp
+
+  # Headers must be included explicitly so they are installed.
+  Globals.h
+  IRModule.h
+  Pass.h
+  NanobindUtils.h
+  Rewrite.h
+)
 declare_mlir_python_extension(MLIRPythonExtension.Core
   MODULE_NAME _mlir
   ADD_TO_PARENT MLIRPythonSources.Core
   ROOT_DIR "${PYTHON_SOURCE_DIR}"
   PYTHON_BINDINGS_LIBRARY nanobind
-  SOURCES
-    MainModule.cpp
-    IRAffine.cpp
-    IRAttributes.cpp
-    IRCore.cpp
-    IRInterfaces.cpp
-    IRModule.cpp
-    IRTypes.cpp
-    Pass.cpp
-    Rewrite.cpp
-
-    # Headers must be included explicitly so they are installed.
-    Globals.h
-    IRModule.h
-    Pass.h
-    NanobindUtils.h
-    Rewrite.h
+  SOURCES "${MLIRPythonExtension.Core.CPPSources}"
   PRIVATE_LINK_LIBS
     LLVMSupport
   EMBED_CAPI_LINK_LIBS
@@ -510,6 +511,18 @@ declare_mlir_python_extension(MLIRPythonExtension.Core
 
     # Dialects
     MLIRCAPIFunc
+)
+set(_type_stub_sources
+  _mlir_libs/_mlir/__init__.pyi
+  _mlir_libs/_mlir/ir.pyi
+  _mlir_libs/_mlir/passmanager.pyi
+  _mlir_libs/_mlir/rewrite.pyi
+)
+declare_mlir_python_sources(
+  MLIRPythonExtension.Core.type_stub_gen
+  ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/type_stubs"
+  ADD_TO_PARENT MLIRPythonSources.Core
+  SOURCES "${_type_stub_sources}"
 )
 
 # This extension exposes an API to register all dialects, extensions, and passes
@@ -663,7 +676,7 @@ if(MLIR_ENABLE_EXECUTION_ENGINE)
     MODULE_NAME _mlirExecutionEngine
     ADD_TO_PARENT MLIRPythonSources.ExecutionEngine
     ROOT_DIR "${PYTHON_SOURCE_DIR}"
-  PYTHON_BINDINGS_LIBRARY nanobind
+    PYTHON_BINDINGS_LIBRARY nanobind
     SOURCES
       ExecutionEngineModule.cpp
     PRIVATE_LINK_LIBS
@@ -817,7 +830,7 @@ endif()
 add_mlir_python_common_capi_library(MLIRPythonCAPI
   INSTALL_COMPONENT MLIRPythonModules
   INSTALL_DESTINATION "${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}/_mlir_libs"
-  OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/python_packages/mlir_core/mlir/_mlir_libs"
+  OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}/_mlir_libs"
   RELATIVE_INSTALL_ROOT "../../../.."
   DECLARED_HEADERS
     MLIRPythonCAPI.HeaderSources
@@ -845,8 +858,9 @@ endif()
 # This must come last.
 ################################################################################
 
+set(MLIRPythonModules_ROOT_PREFIX "${MLIR_BINARY_DIR}/${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}")
 add_mlir_python_modules(MLIRPythonModules
-  ROOT_PREFIX "${MLIR_BINARY_DIR}/python_packages/mlir_core/mlir"
+  ROOT_PREFIX ${MLIRPythonModules_ROOT_PREFIX}
   INSTALL_PREFIX "${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}"
   DECLARED_SOURCES
     MLIRPythonSources
@@ -855,3 +869,14 @@ add_mlir_python_modules(MLIRPythonModules
   COMMON_CAPI_LINK_LIBS
     MLIRPythonCAPI
 )
+list(TRANSFORM _type_stub_sources REPLACE "_mlir_libs/" "")
+generate_type_stubs(
+  MODULE_NAME _mlir_libs._mlir
+  DEPENDS_TARGETS
+    MLIRPythonModules.extension._mlir.dso
+  OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/type_stubs/_mlir_libs"
+  OUTPUTS "${_type_stub_sources}"
+  DEPENDS_TARGET_SRC_DEPS "${MLIRPythonExtension.Core.CPPSources}"
+  IMPORT_PATHS "${MLIRPythonModules_ROOT_PREFIX}"
+)
+add_dependencies(MLIRPythonModules "${NB_STUBGEN_CUSTOM_TARGET}")
