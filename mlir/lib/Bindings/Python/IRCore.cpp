@@ -2073,6 +2073,18 @@ PyInsertionPoint PyInsertionPoint::atBlockTerminator(PyBlock &block) {
   return PyInsertionPoint{block, std::move(terminatorOpRef)};
 }
 
+PyInsertionPoint PyInsertionPoint::after(PyOperationBase &op) {
+  PyOperation &operation = op.getOperation();
+  MlirOperation nextOperation = mlirOperationGetNextInBlock(operation);
+  if (mlirOperationIsNull(nextOperation))
+    throw nb::value_error(
+        "Operation is terminator; can't set insertion point after terminator");
+  PyOperationRef nextOpRef =
+      PyOperation::forOperation(operation.getContext(), nextOperation);
+  return PyInsertionPoint{nextOpRef->getOperation().getBlock(),
+                          std::move(nextOpRef)};
+}
+
 nb::object PyInsertionPoint::contextEnter(nb::object insertPoint) {
   return PyThreadContextEntry::pushInsertionPoint(insertPoint);
 }
@@ -3861,6 +3873,8 @@ void mlir::python::populateIRCore(nb::module_ &m) {
                   nb::arg("block"), "Inserts at the beginning of the block.")
       .def_static("at_block_terminator", &PyInsertionPoint::atBlockTerminator,
                   nb::arg("block"), "Inserts before the block terminator.")
+      .def_static("after", &PyInsertionPoint::after, nb::arg("operation"),
+                  "Inserts after the operation.")
       .def("insert", &PyInsertionPoint::insert, nb::arg("operation"),
            "Inserts an operation.")
       .def_prop_ro(

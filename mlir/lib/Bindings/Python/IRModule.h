@@ -829,6 +829,9 @@ public:
   static PyInsertionPoint atBlockBegin(PyBlock &block);
   /// Shortcut to create an insertion point before the block terminator.
   static PyInsertionPoint atBlockTerminator(PyBlock &block);
+  /// Shortcut to create an insertion point to the node after the specified
+  /// operation.
+  static PyInsertionPoint after(PyOperationBase &op);
 
   /// Inserts an operation.
   void insert(PyOperationBase &operationBase);

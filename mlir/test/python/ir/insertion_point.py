@@ -63,6 +63,33 @@ def test_insert_before_operation():
 run(test_insert_before_operation)
 
 
+# CHECK-LABEL: TEST: test_insert_after_operation
+def test_insert_after_operation():
+    ctx = Context()
+    ctx.allow_unregistered_dialects = True
+    with Location.unknown(ctx):
+        module = Module.parse(
+            r"""
+      func.func @foo() -> () {
+        "custom.op1"() : () -> ()
+        "custom.op2"() : () -> ()
+      }
+    """
+        )
+        entry_block = module.body.operations[0].regions[0].blocks[0]
+        ip = InsertionPoint.after(entry_block.operations[0])
+        assert ip.block == entry_block
+        assert ip.ref_operation == entry_block.operations[1]
+        ip.insert(Operation.create("custom.op3"))
+        # CHECK: "custom.op1"
+        # CHECK: "custom.op3"
+        # CHECK: "custom.op2"
+        module.operation.print()
+
+
+run(test_insert_after_operation)
+
+
 # CHECK-LABEL: TEST: test_insert_at_block_begin
 def test_insert_at_block_begin():
     ctx = Context()
