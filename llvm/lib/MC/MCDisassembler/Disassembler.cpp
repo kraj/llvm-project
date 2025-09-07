@@ -50,14 +50,16 @@ LLVMCreateDisasmCPUFeatures(const char *TT, const char *CPU,
   if (!TheTarget)
     return nullptr;
 
-  std::unique_ptr<const MCRegisterInfo> MRI(TheTarget->createMCRegInfo(TT));
+  Triple TheTriple(TT);
+  std::unique_ptr<const MCRegisterInfo> MRI(
+      TheTarget->createMCRegInfo(TheTriple));
   if (!MRI)
     return nullptr;
 
   MCTargetOptions MCOptions;
   // Get the assembler info needed to setup the MCContext.
   std::unique_ptr<const MCAsmInfo> MAI(
-      TheTarget->createMCAsmInfo(*MRI, TT, MCOptions));
+      TheTarget->createMCAsmInfo(*MRI, TheTriple, MCOptions));
   if (!MAI)
     return nullptr;
 
@@ -66,7 +68,7 @@ LLVMCreateDisasmCPUFeatures(const char *TT, const char *CPU,
     return nullptr;
 
   std::unique_ptr<const MCSubtargetInfo> STI(
-      TheTarget->createMCSubtargetInfo(TT, CPU, Features));
+      TheTarget->createMCSubtargetInfo(TheTriple, CPU, Features));
   if (!STI)
     return nullptr;
 
@@ -83,12 +85,13 @@ LLVMCreateDisasmCPUFeatures(const char *TT, const char *CPU,
     return nullptr;
 
   std::unique_ptr<MCRelocationInfo> RelInfo(
-      TheTarget->createMCRelocationInfo(TT, *Ctx));
+      TheTarget->createMCRelocationInfo(TheTriple, *Ctx));
   if (!RelInfo)
     return nullptr;
 
-  std::unique_ptr<MCSymbolizer> Symbolizer(TheTarget->createMCSymbolizer(
-      TT, GetOpInfo, SymbolLookUp, DisInfo, Ctx.get(), std::move(RelInfo)));
+  std::unique_ptr<MCSymbolizer> Symbolizer(
+      TheTarget->createMCSymbolizer(TheTriple, GetOpInfo, SymbolLookUp, DisInfo,
+                                    Ctx.get(), std::move(RelInfo)));
   DisAsm->setSymbolizer(std::move(Symbolizer));
 
   // Set up the instruction printer.
