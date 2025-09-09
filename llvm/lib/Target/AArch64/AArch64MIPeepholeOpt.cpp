@@ -140,6 +140,7 @@ struct AArch64MIPeepholeOpt : public MachineFunctionPass {
   bool visitINSvi64lane(MachineInstr &MI);
   bool visitFMOVDr(MachineInstr &MI);
   bool visitUBFMXri(MachineInstr &MI);
+  bool visitCBZ(MachineInstr &MI);
   bool visitCopy(MachineInstr &MI);
   bool runOnMachineFunction(MachineFunction &MF) override;
 
@@ -820,6 +821,86 @@ bool AArch64MIPeepholeOpt::visitUBFMXri(MachineInstr &MI) {
   return true;
 }
 
+bool AArch64MIPeepholeOpt::visitCBZ(MachineInstr &MI) {
+  // Optimize: fmov w0, s0; cbz w0, label
+  //       to: cmeq s1, s0, #0; fcmp s1, #0.0; b.vs label
+  // Optimize: fmov w0, s0; cbnz w0, label  
+  //       to: cmeq s1, s0, #0; fcmp s1, #0.0; b.vc label
+  // This eliminates the high-latency FMOV instruction
+
+  Register CBZReg = MI.getOperand(0).getReg();
+  if (!CBZReg.isVirtual())
+    return false;
+
+  MachineInstr *FMovMI = MRI->getUniqueVRegDef(CBZReg);
+  if (!FMovMI)
+    return false;
+
+  // Check if the defining instruction is a floating-point to GPR FMOV
+  bool Is32Bit = MI.getOpcode() == AArch64::CBZW || MI.getOpcode() == AArch64::CBNZW;
+  bool IsCBNZ = MI.getOpcode() == AArch64::CBNZW || MI.getOpcode() == AArch64::CBNZX;
+  unsigned ExpectedFMovOpc = Is32Bit ? AArch64::FMOVSWr : AArch64::FMOVDXr;
+  
+  if (FMovMI->getOpcode() != ExpectedFMovOpc)
+    return false;
+
+  // Make sure the FMOV has only one use (the CBZ/CBNZ we're optimizing)
+  if (!MRI->hasOneNonDBGUse(CBZReg))
+    return false;
+
+  Register FPReg = FMovMI->getOperand(1).getReg();
+  MachineBasicBlock *MBB = MI.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+
+  // Create a new FPR register for the CMEQ result - CMEQv2i32rz needs FPR64
+  const TargetRegisterClass *CmeqRegClass = &AArch64::FPR64RegClass;
+  Register CmeqReg = MRI->createVirtualRegister(CmeqRegClass);
+
+  // Generate: cmeq s1, s0, #0 (integer comparison, not floating-point!)
+  // This compares the integer bit pattern with zero
+  unsigned CmeqOpc = Is32Bit ? AArch64::CMEQv2i32rz : AArch64::CMEQv1i64rz;
+  
+  // For 32-bit case, we need to convert FPR32 to FPR64 for CMEQv2i32rz
+  Register CmeqInputReg = FPReg;
+  if (Is32Bit) {
+    CmeqInputReg = MRI->createVirtualRegister(&AArch64::FPR64RegClass);
+    BuildMI(*MBB, MI, DL, TII->get(TargetOpcode::SUBREG_TO_REG), CmeqInputReg)
+        .addImm(0)
+        .addReg(FPReg)
+        .addImm(AArch64::ssub);
+  }
+  
+  BuildMI(*MBB, MI, DL, TII->get(CmeqOpc), CmeqReg)
+      .addReg(CmeqInputReg);
+
+  // Generate: fcmp s1, #0.0 - this will set overflow flag if result is all 1s (NaN)
+  // For 32-bit case, extract the lower 32 bits from FPR64 result
+  Register FcmpInputReg = CmeqReg;
+  if (Is32Bit) {
+    FcmpInputReg = MRI->createVirtualRegister(&AArch64::FPR32RegClass);
+    BuildMI(*MBB, MI, DL, TII->get(TargetOpcode::COPY), FcmpInputReg)
+        .addReg(CmeqReg, 0, AArch64::ssub);
+  }
+  
+  unsigned FcmpOpc = Is32Bit ? AArch64::FCMPSri : AArch64::FCMPDri;
+  BuildMI(*MBB, MI, DL, TII->get(FcmpOpc))
+      .addReg(FcmpInputReg);
+
+  // Generate: b.vs label (CBZ) or b.vc label (CBNZ)
+  // VS = overflow set (indicates NaN from CMEQ, meaning original value was zero)
+  // VC = overflow clear (indicates normal float from CMEQ, meaning original value was non-zero)
+  AArch64CC::CondCode CC = IsCBNZ ? AArch64CC::VC : AArch64CC::VS;
+  BuildMI(*MBB, MI, DL, TII->get(AArch64::Bcc))
+      .addImm(CC)
+      .add(MI.getOperand(1)); // Branch target
+
+  // Remove the original FMOV and CBZ/CBNZ instructions
+  FMovMI->eraseFromParent();
+  MI.eraseFromParent();
+  
+  return true;
+}
+
 // Across a basic-block we might have in i32 extract from a value that only
 // operates on upper bits (for example a sxtw). We can replace the COPY with a
 // new version skipping the sxtw.
@@ -998,6 +1079,12 @@ bool AArch64MIPeepholeOpt::runOnMachineFunction(MachineFunction &MF) {
         break;
       case AArch64::UBFMXri:
         Changed |= visitUBFMXri(MI);
+        break;
+      case AArch64::CBZW:
+      case AArch64::CBZX:
+      case AArch64::CBNZW:
+      case AArch64::CBNZX:
+        Changed |= visitCBZ(MI);
         break;
       case AArch64::COPY:
         Changed |= visitCopy(MI);
