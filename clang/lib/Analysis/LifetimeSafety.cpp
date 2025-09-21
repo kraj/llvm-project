@@ -21,6 +21,7 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/TimeProfiler.h"
 #include <cstdint>
 #include <memory>
@@ -1048,17 +1049,6 @@ join(llvm::ImmutableMap<K, V> A, llvm::ImmutableMap<K, V> B,
 //                          Loan Propagation Analysis
 // ========================================================================= //
 
-using OriginLoanMap = llvm::ImmutableMap<OriginID, LoanSet>;
-using ExpiredLoanMap = llvm::ImmutableMap<LoanID, const ExpireFact *>;
-
-/// An object to hold the factories for immutable collections, ensuring
-/// that all created states share the same underlying memory management.
-struct LifetimeFactory {
-  OriginLoanMap::Factory OriginMapFactory;
-  LoanSet::Factory LoanSetFactory;
-  ExpiredLoanMap::Factory ExpiredLoanMapFactory;
-};
-
 /// Represents the dataflow lattice for loan propagation.
 ///
 /// This lattice tracks which loans each origin may hold at a given program
@@ -1102,10 +1092,10 @@ class LoanPropagationAnalysis
 
 public:
   LoanPropagationAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
-                          LifetimeFactory &LFactory)
-      : DataflowAnalysis(C, AC, F),
-        OriginLoanMapFactory(LFactory.OriginMapFactory),
-        LoanSetFactory(LFactory.LoanSetFactory) {}
+                          OriginLoanMap::Factory &OriginLoanMapFactory,
+                          LoanSet::Factory &LoanSetFactory)
+      : DataflowAnalysis(C, AC, F), OriginLoanMapFactory(OriginLoanMapFactory),
+        LoanSetFactory(LoanSetFactory) {}
 
   using Base::transfer;
 
@@ -1169,96 +1159,177 @@ private:
 };
 
 // ========================================================================= //
-//                         Expired Loans Analysis
+//                         Live Origins Analysis
 // ========================================================================= //
 
-/// The dataflow lattice for tracking the set of expired loans.
-struct ExpiredLattice {
-  /// Map from an expired `LoanID` to the `ExpireFact` that made it expire.
-  ExpiredLoanMap Expired;
+/// Information about why an origin is live at a program point.
+struct LivenessInfo {
+  // TODO: Doc.
+  const UseFact *CausingUseFact;
+  // TODO: Doc.
+  Confidence ConfidenceLevel;
 
-  ExpiredLattice() : Expired(nullptr) {};
-  explicit ExpiredLattice(ExpiredLoanMap M) : Expired(M) {}
+  LivenessInfo() : CausingUseFact(nullptr), ConfidenceLevel(Confidence::None) {}
+  LivenessInfo(const UseFact *UF, Confidence C)
+      : CausingUseFact(UF), ConfidenceLevel(C) {}
 
-  bool operator==(const ExpiredLattice &Other) const {
-    return Expired == Other.Expired;
+  bool operator==(const LivenessInfo &Other) const {
+    return CausingUseFact == Other.CausingUseFact &&
+           ConfidenceLevel == Other.ConfidenceLevel;
   }
-  bool operator!=(const ExpiredLattice &Other) const {
-    return !(*this == Other);
-  }
+  bool operator!=(const LivenessInfo &Other) const { return !(*this == Other); }
 
-  void dump(llvm::raw_ostream &OS) const {
-    OS << "ExpiredLattice State:\n";
-    if (Expired.isEmpty())
-      OS << "  <empty>\n";
-    for (const auto &[ID, _] : Expired)
-      OS << "  Loan " << ID << " is expired\n";
+  void Profile(llvm::FoldingSetNodeID &IDBuilder) const {
+    IDBuilder.AddPointer(CausingUseFact);
+    IDBuilder.Add(ConfidenceLevel);
   }
 };
 
-/// The analysis that tracks which loans have expired.
-class ExpiredLoansAnalysis
-    : public DataflowAnalysis<ExpiredLoansAnalysis, ExpiredLattice,
-                              Direction::Forward> {
+using LivenessMap = llvm::ImmutableMap<OriginID, LivenessInfo>;
 
-  ExpiredLoanMap::Factory &Factory;
+/// The dataflow lattice for origin liveness analysis.
+/// It tracks which origins are live, why they're live (which UseFact),
+/// and the confidence level of that liveness.
+struct LivenessLattice {
+  LivenessMap LiveOrigins;
+  LivenessLattice() : LiveOrigins(nullptr) {};
+  explicit LivenessLattice(LivenessMap L) : LiveOrigins(L) {}
+  bool operator==(const LivenessLattice &Other) const {
+    return LiveOrigins == Other.LiveOrigins;
+  }
+  bool operator!=(const LivenessLattice &Other) const {
+    return !(*this == Other);
+  }
+  void dump(llvm::raw_ostream &OS) const {
+    OS << "LivenessLattice State:\n";
+    if (LiveOrigins.isEmpty())
+      OS << "  <empty>\n";
+    for (const auto &Entry : LiveOrigins) {
+      OriginID OID = Entry.first;
+      const LivenessInfo &Info = Entry.second;
+      OS << "  Origin " << OID << " is ";
+      switch (Info.ConfidenceLevel) {
+      case Confidence::Definite:
+        OS << "definitely";
+        break;
+      case Confidence::Maybe:
+        OS << "maybe";
+        break;
+      case Confidence::None:
+        llvm_unreachable("liveness condidence should not be none.");
+      }
+      OS << " live at this point\n";
+    }
+  }
+};
+
+/// The analysis that tracks which origins are live, with granular information
+/// about the causing use fact and confidence level. This is a backward
+/// analysis.
+class LiveOriginAnalysis
+    : public DataflowAnalysis<LiveOriginAnalysis, LivenessLattice,
+                              Direction::Backward> {
+  FactManager &FactMgr;
+  LivenessMap::Factory &Factory;
 
 public:
-  ExpiredLoansAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
-                       LifetimeFactory &Factory)
-      : DataflowAnalysis(C, AC, F), Factory(Factory.ExpiredLoanMapFactory) {}
+  LiveOriginAnalysis(const CFG &C, AnalysisDeclContext &AC, FactManager &F,
+                     LivenessMap::Factory &SF)
+      : DataflowAnalysis(C, AC, F), FactMgr(F), Factory(SF) {}
+  using DataflowAnalysis<LiveOriginAnalysis, Lattice,
+                         Direction::Backward>::transfer;
 
-  using Base::transfer;
-
-  StringRef getAnalysisName() const { return "ExpiredLoans"; }
+  StringRef getAnalysisName() const { return "LiveOrigins"; }
 
   Lattice getInitialState() { return Lattice(Factory.getEmptyMap()); }
 
-  /// Merges two lattices by taking the union of the two expired loans.
-  Lattice join(Lattice L1, Lattice L2) {
-    return Lattice(
-        utils::join(L1.Expired, L2.Expired, Factory,
-                    // Take the last expiry fact to make this hermetic.
-                    [](const ExpireFact *F1, const ExpireFact *F2) {
-                      return F1->getExpiryLoc() > F2->getExpiryLoc() ? F1 : F2;
-                    }));
+  /// Merges two lattices by combining liveness information.
+  /// When the same origin has different confidence levels, we take the lower
+  /// one.
+  Lattice join(Lattice L1, Lattice L2) const {
+    LivenessMap Merged = L1.LiveOrigins;
+    for (const auto &Entry : L2.LiveOrigins) {
+      OriginID OID = Entry.first;
+      const LivenessInfo &Info2 = Entry.second;
+
+      if (auto *Info1 = L1.LiveOrigins.lookup(OID)) {
+        // Both lattices have this origin - merge the confidence
+        Confidence MergedConfidence;
+        if (Info1->ConfidenceLevel == Confidence::Definite &&
+            Info2.ConfidenceLevel == Confidence::Definite) {
+          MergedConfidence = Confidence::Definite;
+        } else if (Info1->ConfidenceLevel != Confidence::None &&
+                   Info2.ConfidenceLevel != Confidence::None) {
+          MergedConfidence = Confidence::Maybe;
+        } else {
+          // One is None, result is Maybe if the other isn't None
+          MergedConfidence = (Info1->ConfidenceLevel != Confidence::None ||
+                              Info2.ConfidenceLevel != Confidence::None)
+                                 ? Confidence::Maybe
+                                 : Confidence::None;
+        }
+
+        // Prefer the use fact from the higher confidence path
+        const UseFact *PreferredUse =
+            (Info1->ConfidenceLevel >= Info2.ConfidenceLevel)
+                ? Info1->CausingUseFact
+                : Info2.CausingUseFact;
+
+        Merged = Factory.add(Merged, OID,
+                             LivenessInfo(PreferredUse, MergedConfidence));
+      } else {
+        // Only L2 has this origin - add it with Maybe confidence
+        // (since it's not definite if it's only on one path)
+        Confidence AdjustedConfidence =
+            (Info2.ConfidenceLevel == Confidence::Definite)
+                ? Confidence::Maybe
+                : Info2.ConfidenceLevel;
+        Merged =
+            Factory.add(Merged, OID,
+                        LivenessInfo(Info2.CausingUseFact, AdjustedConfidence));
+      }
+    }
+
+    // Handle origins that are only in L1
+    for (const auto &Entry : L1.LiveOrigins) {
+      OriginID OID = Entry.first;
+      if (!L2.LiveOrigins.lookup(OID)) {
+        // Only L1 has this origin - add it with Maybe confidence
+        const LivenessInfo &Info1 = Entry.second;
+        Confidence AdjustedConfidence =
+            (Info1.ConfidenceLevel == Confidence::Definite)
+                ? Confidence::Maybe
+                : Info1.ConfidenceLevel;
+        Merged =
+            Factory.add(Merged, OID,
+                        LivenessInfo(Info1.CausingUseFact, AdjustedConfidence));
+      }
+    }
+
+    return Lattice(Merged);
   }
 
-  Lattice transfer(Lattice In, const ExpireFact &F) {
-    return Lattice(Factory.add(In.Expired, F.getLoanID(), &F));
+  /// TODO:Document.
+  Lattice transfer(Lattice In, const UseFact &UF) {
+    OriginID OID = UF.getUsedOrigin(FactMgr.getOriginMgr());
+    // Write kills liveness.
+    if (UF.isWritten())
+      return Lattice(Factory.remove(In.LiveOrigins, OID));
+    // Read makes origin live with definite confidence (dominates this point).
+    LivenessInfo Info(&UF, Confidence::Definite);
+    return Lattice(Factory.add(In.LiveOrigins, OID, Info));
   }
 
-  // Removes the loan from the set of expired loans.
-  //
-  // When a loan is re-issued (e.g., in a loop), it is no longer considered
-  // expired. A loan can be in the expired set at the point of issue due to
-  // the dataflow state from a previous loop iteration being propagated along
-  // a backedge in the CFG.
-  //
-  // Note: This has a subtle false-negative though where a loan from previous
-  // iteration is not overwritten by a reissue. This needs careful tracking
-  // of loans "across iterations" which can be considered for future
-  // enhancements.
-  //
-  //    void foo(int safe) {
-  //      int* p = &safe;
-  //      int* q = &safe;
-  //      while (condition()) {
-  //        int x = 1;
-  //        p = &x;    // A loan to 'x' is issued to 'p' in every iteration.
-  //        if (condition()) {
-  //          q = p;
-  //        }
-  //        (void)*p; // OK  — 'p' points to 'x' from new iteration.
-  //        (void)*q; // UaF - 'q' still points to 'x' from previous iteration
-  //                  // which is now destroyed.
-  //      }
-  // }
-  Lattice transfer(Lattice In, const IssueFact &F) {
-    return Lattice(Factory.remove(In.Expired, F.getLoanID()));
+  /// Issuing a new loan to an origin kills its liveness.
+  Lattice transfer(Lattice In, const IssueFact &IF) {
+    return Lattice(Factory.remove(In.LiveOrigins, IF.getOriginID()));
   }
 
-  ExpiredLoanMap getExpiredLoans(ProgramPoint P) { return getState(P).Expired; }
+  Lattice transfer(Lattice In, const KillOriginFact &KF) {
+    return Lattice(Factory.remove(In.LiveOrigins, KF.getOriginID()));
+  }
+
+  LivenessMap getLiveOrigins(ProgramPoint P) { return getState(P).LiveOrigins; }
 };
 
 // ========================================================================= //
@@ -1276,84 +1347,50 @@ class LifetimeChecker {
 private:
   llvm::DenseMap<LoanID, PendingWarning> FinalWarningsMap;
   LoanPropagationAnalysis &LoanPropagation;
-  ExpiredLoansAnalysis &ExpiredLoans;
+  LiveOriginAnalysis &LiveOrigins;
   FactManager &FactMgr;
   AnalysisDeclContext &ADC;
   LifetimeSafetyReporter *Reporter;
 
 public:
-  LifetimeChecker(LoanPropagationAnalysis &LPA, ExpiredLoansAnalysis &ELA,
+  LifetimeChecker(LoanPropagationAnalysis &LPA, LiveOriginAnalysis &LOA,
                   FactManager &FM, AnalysisDeclContext &ADC,
                   LifetimeSafetyReporter *Reporter)
-      : LoanPropagation(LPA), ExpiredLoans(ELA), FactMgr(FM), ADC(ADC),
+      : LoanPropagation(LPA), LiveOrigins(LOA), FactMgr(FM), ADC(ADC),
         Reporter(Reporter) {}
 
   void run() {
     llvm::TimeTraceScope TimeProfile("LifetimeChecker");
     for (const CFGBlock *B : *ADC.getAnalysis<PostOrderCFGView>())
       for (const Fact *F : FactMgr.getFacts(B))
-        if (const auto *UF = F->getAs<UseFact>())
-          checkUse(UF);
+        if (const auto *EF = F->getAs<ExpireFact>())
+          checkExpiry(EF);
     issuePendingWarnings();
   }
 
-  /// Checks for use-after-free errors for a given use of an Origin.
-  ///
-  /// This method is called for each 'UseFact' identified in the control flow
-  /// graph. It determines if the loans held by the used origin have expired
-  /// at the point of use.
-  void checkUse(const UseFact *UF) {
-    if (UF->isWritten())
-      return;
-    OriginID O = UF->getUsedOrigin(FactMgr.getOriginMgr());
-
-    // Get the set of loans that the origin might hold at this program point.
-    LoanSet HeldLoans = LoanPropagation.getLoans(O, UF);
-
-    // Get the set of all loans that have expired at this program point.
-    ExpiredLoanMap AllExpiredLoans = ExpiredLoans.getExpiredLoans(UF);
-
-    // If the pointer holds no loans or no loans have expired, there's nothing
-    // to check.
-    if (HeldLoans.isEmpty() || AllExpiredLoans.isEmpty())
-      return;
-
-    // Identify loans that which have expired but are held by the pointer. Using
-    // them is a use-after-free.
-    llvm::SmallVector<LoanID> DefaultedLoans;
-    // A definite UaF error occurs if all loans the origin might hold have
-    // expired.
-    bool IsDefiniteError = true;
-    for (LoanID L : HeldLoans) {
-      if (AllExpiredLoans.contains(L))
-        DefaultedLoans.push_back(L);
-      else
-        // If at least one loan is not expired, this use is not a definite UaF.
-        IsDefiniteError = false;
-    }
-    // If there are no defaulted loans, the use is safe.
-    if (DefaultedLoans.empty())
-      return;
-
-    // Determine the confidence level of the error (definite or maybe).
-    Confidence CurrentConfidence =
-        IsDefiniteError ? Confidence::Definite : Confidence::Maybe;
-
-    // For each expired loan, create a pending warning.
-    for (LoanID DefaultedLoan : DefaultedLoans) {
-      // If we already have a warning for this loan with a higher or equal
-      // confidence, skip this one.
-      if (FinalWarningsMap.count(DefaultedLoan) &&
-          CurrentConfidence <= FinalWarningsMap[DefaultedLoan].ConfidenceLevel)
+  void checkExpiry(const ExpireFact *EF) {
+    LoanID ExpiredLoan = EF->getLoanID();
+    LivenessMap Origins = LiveOrigins.getLiveOrigins(EF);
+    Confidence CurConfidence = Confidence::None;
+    const UseFact *BadUse = nullptr;
+    for (auto &[OID, Info] : Origins) {
+      if (Info.ConfidenceLevel != Confidence::Definite)
         continue;
-
-      auto *EF = AllExpiredLoans.lookup(DefaultedLoan);
-      assert(EF && "Could not find ExpireFact for an expired loan.");
-
-      FinalWarningsMap[DefaultedLoan] = {/*ExpiryLoc=*/(*EF)->getExpiryLoc(),
-                                         /*UseExpr=*/UF->getUseExpr(),
-                                         /*ConfidenceLevel=*/CurrentConfidence};
+      LoanSet HeldLoans = LoanPropagation.getLoans(OID, EF);
+      if (!HeldLoans.contains(ExpiredLoan))
+        continue;
+      // Loan is defaulted.
+      if (CurConfidence < Info.ConfidenceLevel) {
+        CurConfidence = Info.ConfidenceLevel;
+        BadUse = Info.CausingUseFact;
+      }
     }
+    if (CurConfidence == Confidence::None)
+      return;
+    // We have a use-after-free.
+    FinalWarningsMap[ExpiredLoan] = {/*ExpiryLoc=*/EF->getExpiryLoc(),
+                                     /*UseExpr=*/BadUse->getUseExpr(),
+                                     /*ConfidenceLevel=*/CurConfidence};
   }
 
   void issuePendingWarnings() {
@@ -1371,6 +1408,14 @@ public:
 // ========================================================================= //
 //                  LifetimeSafetyAnalysis Class Implementation
 // ========================================================================= //
+
+/// An object to hold the factories for immutable collections, ensuring
+/// that all created states share the same underlying memory management.
+struct LifetimeFactory {
+  OriginLoanMap::Factory OriginMapFactory;
+  LoanSet::Factory LoanSetFactory;
+  LivenessMap::Factory LivenessMapFactory;
+};
 
 // We need this here for unique_ptr with forward declared class.
 LifetimeSafetyAnalysis::~LifetimeSafetyAnalysis() = default;
@@ -1402,15 +1447,15 @@ void LifetimeSafetyAnalysis::run() {
   ///    the analysis.
   /// 3. Collapse ExpireFacts belonging to same source location into a single
   ///    Fact.
-  LoanPropagation =
-      std::make_unique<LoanPropagationAnalysis>(Cfg, AC, *FactMgr, *Factory);
+  LoanPropagation = std::make_unique<LoanPropagationAnalysis>(
+      Cfg, AC, *FactMgr, Factory->OriginMapFactory, Factory->LoanSetFactory);
   LoanPropagation->run();
 
-  ExpiredLoans =
-      std::make_unique<ExpiredLoansAnalysis>(Cfg, AC, *FactMgr, *Factory);
-  ExpiredLoans->run();
+  LiveOrigins = std::make_unique<LiveOriginAnalysis>(
+      Cfg, AC, *FactMgr, Factory->LivenessMapFactory);
+  LiveOrigins->run();
 
-  LifetimeChecker Checker(*LoanPropagation, *ExpiredLoans, *FactMgr, AC,
+  LifetimeChecker Checker(*LoanPropagation, *LiveOrigins, *FactMgr, AC,
                           Reporter);
   Checker.run();
 }
@@ -1419,15 +1464,6 @@ LoanSet LifetimeSafetyAnalysis::getLoansAtPoint(OriginID OID,
                                                 ProgramPoint PP) const {
   assert(LoanPropagation && "Analysis has not been run.");
   return LoanPropagation->getLoans(OID, PP);
-}
-
-std::vector<LoanID>
-LifetimeSafetyAnalysis::getExpiredLoansAtPoint(ProgramPoint PP) const {
-  assert(ExpiredLoans && "ExpiredLoansAnalysis has not been run.");
-  std::vector<LoanID> Result;
-  for (const auto &pair : ExpiredLoans->getExpiredLoans(PP))
-    Result.push_back(pair.first);
-  return Result;
 }
 
 std::optional<OriginID>
@@ -1446,6 +1482,15 @@ LifetimeSafetyAnalysis::getLoanIDForVar(const VarDecl *VD) const {
   for (const Loan &L : FactMgr->getLoanMgr().getLoans())
     if (L.Path.D == VD)
       Result.push_back(L.ID);
+  return Result;
+}
+
+std::vector<std::pair<OriginID, Confidence>>
+LifetimeSafetyAnalysis::getLiveOriginsAtPoint(ProgramPoint PP) const {
+  assert(LiveOrigins && "LiveOriginAnalysis has not been run.");
+  std::vector<std::pair<OriginID, Confidence>> Result;
+  for (auto &[OID, Info] : LiveOrigins->getLiveOrigins(PP))
+    Result.push_back({OID, Info.ConfidenceLevel});
   return Result;
 }
 
