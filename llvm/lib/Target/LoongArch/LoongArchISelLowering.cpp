@@ -1610,11 +1610,9 @@ lowerVECTOR_SHUFFLE_VREPLVEI(const SDLoc &DL, ArrayRef<int> Mask, MVT VT,
     return DAG.getUNDEF(VT);
 
   assert(SplatIndex < (int)Mask.size() && "Out of bounds mask index");
-  if (fitsRegularPattern<int>(Mask.begin(), 1, Mask.end(), SplatIndex, 0)) {
-    APInt Imm(64, SplatIndex);
+  if (fitsRegularPattern<int>(Mask.begin(), 1, Mask.end(), SplatIndex, 0))
     return DAG.getNode(LoongArchISD::VREPLVEI, DL, VT, V1,
-                       DAG.getConstant(Imm, DL, Subtarget.getGRLenVT()));
-  }
+                       DAG.getConstant(SplatIndex, DL, Subtarget.getGRLenVT()));
 
   return SDValue();
 }
