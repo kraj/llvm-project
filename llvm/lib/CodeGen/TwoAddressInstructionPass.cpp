@@ -1665,6 +1665,22 @@ void TwoAddressInstructionImpl::processTiedPairs(MachineInstr *MI,
     // by SubRegB is compatible with RegA with no subregister. So regardless of
     // whether the dest oper writes a subreg, the source oper should not.
     MO.setSubReg(0);
+
+    // Update uses of RegB to uses of RegA inside the bundle.
+    if (MI->isBundle()) {
+      for (MachineInstr *InnerMI = MI; InnerMI->isBundledWithSucc();) {
+        InnerMI = InnerMI->getNextNode();
+
+        for (MachineOperand &MO : InnerMI->all_uses()) {
+          if (MO.isReg() && MO.getReg() == RegB) {
+            assert(
+                MO.getSubReg() == 0 &&
+                "tied subregister uses in bundled instructions not supported");
+            MO.setReg(RegA);
+          }
+        }
+      }
+    }
   }
 
   if (AllUsesCopied) {
