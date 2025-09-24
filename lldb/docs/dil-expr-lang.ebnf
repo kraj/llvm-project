@@ -57,6 +57,8 @@ numeric_literal = ? Integer constant: hexademical, decimal, octal, binary ?
 
 boolean_literal = "true" | "false" ;
 
+pointer_literal = "nullptr" ;
+
 register = "$" ? Register name ? ;
 
 nested_name_specifier = type_name "::"

@@ -391,6 +391,8 @@ ASTNodeUP DILParser::ParsePrimaryExpression() {
     return ParseNumericLiteral();
   if (CurToken().IsOneOf({Token::kw_true, Token::kw_false}))
     return ParseBooleanLiteral();
+  if (CurToken().Is(Token::kw_nullptr))
+    return ParsePointerLiteral();
   if (CurToken().IsOneOf(
           {Token::coloncolon, Token::identifier, Token::l_paren})) {
     // Save the source location for the diagnostics message.
@@ -842,6 +844,18 @@ ASTNodeUP DILParser::ParseFloatingPointLiteral() {
   if (!errorToBool(StatusOrErr.takeError()))
     return std::make_unique<FloatLiteralNode>(token.GetLocation(), raw_float);
   return std::make_unique<ErrorNode>();
+}
+
+// Parse a pointer_literal.
+//
+//  pointer_literal:
+//    "nullptr"
+//
+ASTNodeUP DILParser::ParsePointerLiteral() {
+  Expect(Token::kw_nullptr);
+  uint32_t loc = CurToken().GetLocation();
+  m_dil_lexer.Advance();
+  return std::make_unique<PointerLiteralNode>(loc);
 }
 
 void DILParser::Expect(Token::Kind kind) {

@@ -1382,6 +1382,20 @@ Interpreter::Visit(const BooleanLiteralNode &node) {
                                                 value, "result");
 }
 
+llvm::Expected<lldb::ValueObjectSP>
+Interpreter::Visit(const PointerLiteralNode &node) {
+  llvm::Expected<lldb::TypeSystemSP> type_system =
+      GetTypeSystemFromCU(m_stack_frame);
+  if (!type_system)
+    return type_system.takeError();
+  type_system.get()->GetPointerByteSize();
+  llvm::APInt ptr_value(type_system.get()->GetPointerByteSize() * CHAR_BIT, 0);
+  Scalar scalar(ptr_value);
+  CompilerType type = GetBasicType(*type_system, lldb::eBasicTypeNullPtr);
+  return ValueObject::CreateValueObjectFromScalar(m_stack_frame, scalar, type,
+                                                  "result");
+}
+
 llvm::Expected<CastKind>
 Interpreter::VerifyArithmeticCast(CompilerType source_type,
                                   CompilerType target_type, int location) {
