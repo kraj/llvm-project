@@ -144,6 +144,7 @@ add_llvm_component_library(LLVMCodeGen
   MachineRegionInfo.cpp
   MachineRegisterInfo.cpp
   MachineScheduler.cpp
+  EarlyMemoryScheduler.cpp
   MachineSink.cpp
   MachineSizeOpts.cpp
   MachineSSAContext.cpp

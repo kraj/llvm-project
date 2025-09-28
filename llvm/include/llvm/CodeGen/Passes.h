@@ -162,12 +162,19 @@ LLVM_ABI extern char &RegisterCoalescerID;
 /// MachineScheduler - This pass schedules machine instructions.
 LLVM_ABI extern char &MachineSchedulerID;
 
+/// EarlyMemoryScheduler - This pass schedules memory operations early.
+LLVM_ABI extern char &EarlyMemorySchedulerID;
+
 /// PostMachineScheduler - This pass schedules machine instructions postRA.
 LLVM_ABI extern char &PostMachineSchedulerID;
 
 /// SpillPlacement analysis. Suggest optimal placement of spill code between
 /// basic blocks.
 LLVM_ABI extern char &SpillPlacementID;
+
+/// createEarlyMemorySchedulerPass - This pass moves memory operations
+/// to the earliest possible position in their basic blocks.
+LLVM_ABI FunctionPass *createEarlyMemorySchedulerPass();
 
 /// ShrinkWrap pass. Look for the best place to insert save and restore
 // instruction and update the MachineFunctionInfo with that information.

@@ -1495,6 +1495,9 @@ void TargetPassConfig::addOptimizedRegAlloc() {
   // separate vregs before. Splitting can also improve reg. allocation quality.
   addPass(&RenameIndependentSubregsID);
 
+  // Early memory scheduling - move memory operations early before general scheduling
+  addPass(&EarlyMemorySchedulerID);
+
   // PreRA instruction scheduling.
   addPass(&MachineSchedulerID);
 
