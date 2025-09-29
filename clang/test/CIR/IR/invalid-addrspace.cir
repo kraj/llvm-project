@@ -34,3 +34,40 @@ cir.func @address_space3(%p : !cir.ptr<!u64i, addrspace(target)>) {
 cir.func @address_space4(%p : !cir.ptr<!u64i, addrspace(foobar)>) {
   cir.return
 }
+
+// -----
+
+!u32i = !cir.int<u, 32>
+!u64i = !cir.int<u, 64>
+cir.func @cast25(%p : !cir.ptr<!u32i, addrspace(target<1>)>) {
+  %0 = cir.cast(address_space, %p : !cir.ptr<!u32i, addrspace(target<1>)>), !cir.ptr<!u64i, addrspace(target<2>)> // expected-error {{requires two types differ in addrspace only}}
+  cir.return
+}
+
+// -----
+
+!u64i = !cir.int<u, 64>
+cir.func @cast26(%p : !cir.ptr<!u64i, addrspace(target<1>)>) {
+  %0 = cir.cast(address_space, %p : !cir.ptr<!u64i, addrspace(target<1>)>), !u64i // expected-error {{requires !cir.ptr type for source and result}}
+  cir.return
+}
+
+// -----
+
+!u64i = !cir.int<u, 64>
+cir.func @cast27(%p : !u64i) {
+  %0 = cir.cast(address_space, %p : !u64i), !cir.ptr<!u64i, addrspace(target<1>)> // expected-error {{requires !cir.ptr type for source and result}}
+  cir.return
+}
+
+// -----
+
+!s32i = !cir.int<s, 32>
+
+module {
+  cir.func @test_bitcast_addrspace() {
+    %0 = cir.alloca !s32i, !cir.ptr<!s32i>, ["tmp"] {alignment = 4 : i64}
+    // expected-error@+1 {{'cir.cast' op result type address space does not match the address space of the operand}}
+    %1 = cir.cast(bitcast, %0 : !cir.ptr<!s32i>), !cir.ptr<!s32i, addrspace(offload_local)>
+  }
+}
