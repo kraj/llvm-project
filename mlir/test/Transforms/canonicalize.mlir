@@ -1256,4 +1256,4 @@ func.func @test_materialize_failure() -> i64 {
 // CHECK: %[[c0:.*]] = arith.constant 0 : index
 %c0 = arith.constant 0 : index
 // CHECK: %[[add:.*]] = arith.addi %[[c0]], %[[add]] : index
-%0 = arith.addi %c0, %0 : index
+%0 = arith.addi %0, %c0 : index
