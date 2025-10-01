@@ -748,6 +748,13 @@ def s16imm  : Operand<i32> {
   let DecoderMethod = "decodeSImmOperand<16>";
   let OperandType = "OPERAND_IMMEDIATE";
 }
+def s16imm64 : Operand<i64> {
+  let PrintMethod = "printS16ImmOperand";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_half16>";
+  let ParserMatchClass = PPCS16ImmAsmOperand;
+  let DecoderMethod = "decodeSImmOperand<16>";
+  let OperandType = "OPERAND_IMMEDIATE";
+}
 def PPCU16ImmAsmOperand : AsmOperandClass {
   let Name = "U16Imm"; let PredicateMethod = "isU16Imm";
   let RenderMethod = "addU16ImmOperands";
@@ -759,11 +766,28 @@ def u16imm  : Operand<i32> {
   let DecoderMethod = "decodeUImmOperand<16>";
   let OperandType = "OPERAND_IMMEDIATE";
 }
+def u16imm64 : Operand<i64> {
+  let PrintMethod = "printU16ImmOperand";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_half16>";
+  let ParserMatchClass = PPCU16ImmAsmOperand;
+  let DecoderMethod = "decodeUImmOperand<16>";
+  let OperandType = "OPERAND_IMMEDIATE";
+}
 def PPCS17ImmAsmOperand : AsmOperandClass {
   let Name = "S17Imm"; let PredicateMethod = "isS17Imm";
   let RenderMethod = "addS16ImmOperands";
 }
 def s17imm  : Operand<i32> {
+  // This operand type is used for addis/lis to allow the assembler parser
+  // to accept immediates in the range -65536..65535 for compatibility with
+  // the GNU assembler.  The operand is treated as 16-bit otherwise.
+  let PrintMethod = "printS16ImmOperand";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_half16>";
+  let ParserMatchClass = PPCS17ImmAsmOperand;
+  let DecoderMethod = "decodeSImmOperand<16>";
+  let OperandType = "OPERAND_IMMEDIATE";
+}
+def s17imm64 : Operand<i64> {
   // This operand type is used for addis/lis to allow the assembler parser
   // to accept immediates in the range -65536..65535 for compatibility with
   // the GNU assembler.  The operand is treated as 16-bit otherwise.
