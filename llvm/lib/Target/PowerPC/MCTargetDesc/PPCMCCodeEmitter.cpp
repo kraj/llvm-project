@@ -206,6 +206,24 @@ PPCMCCodeEmitter::getVSRpEvenEncoding(const MCInst &MI, unsigned OpNo,
   return RegBits;
 }
 
+template <MCFixupKind Fixup>
+uint64_t PPCMCCodeEmitter::getImmEncoding(const MCInst &MI, unsigned OpNo,
+                                          SmallVectorImpl<MCFixup> &Fixups,
+                                          const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  assert(!MO.isReg() && "Not expecting a register for this operand.");
+  if (MO.isImm())
+    return getMachineOpValue(MI, MO, Fixups, STI);
+
+  uint32_t Offset=0;
+  if (Fixup == PPC::fixup_ppc_half16)
+    Offset = IsLittleEndian ? 0 : 2;
+
+  // Add a fixup for the immediate field.
+  addFixup(Fixups, Offset, MO.getExpr(), Fixup);
+  return 0;
+}
+
 unsigned PPCMCCodeEmitter::getImm16Encoding(const MCInst &MI, unsigned OpNo,
                                        SmallVectorImpl<MCFixup> &Fixups,
                                        const MCSubtargetInfo &STI) const {

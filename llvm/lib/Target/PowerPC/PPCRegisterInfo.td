@@ -743,7 +743,7 @@ def PPCS16ImmAsmOperand : AsmOperandClass {
 }
 def s16imm  : Operand<i32> {
   let PrintMethod = "printS16ImmOperand";
-  let EncoderMethod = "getImm16Encoding";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_half16>";
   let ParserMatchClass = PPCS16ImmAsmOperand;
   let DecoderMethod = "decodeSImmOperand<16>";
   let OperandType = "OPERAND_IMMEDIATE";
@@ -754,7 +754,7 @@ def PPCU16ImmAsmOperand : AsmOperandClass {
 }
 def u16imm  : Operand<i32> {
   let PrintMethod = "printU16ImmOperand";
-  let EncoderMethod = "getImm16Encoding";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_half16>";
   let ParserMatchClass = PPCU16ImmAsmOperand;
   let DecoderMethod = "decodeUImmOperand<16>";
   let OperandType = "OPERAND_IMMEDIATE";
@@ -768,7 +768,7 @@ def s17imm  : Operand<i32> {
   // to accept immediates in the range -65536..65535 for compatibility with
   // the GNU assembler.  The operand is treated as 16-bit otherwise.
   let PrintMethod = "printS16ImmOperand";
-  let EncoderMethod = "getImm16Encoding";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_half16>";
   let ParserMatchClass = PPCS17ImmAsmOperand;
   let DecoderMethod = "decodeSImmOperand<16>";
   let OperandType = "OPERAND_IMMEDIATE";
@@ -780,14 +780,14 @@ def PPCS34ImmAsmOperand : AsmOperandClass {
 }
 def s34imm : Operand<i64> {
   let PrintMethod = "printS34ImmOperand";
-  let EncoderMethod = "getImm34EncodingNoPCRel";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_imm34>";
   let ParserMatchClass = PPCS34ImmAsmOperand;
   let DecoderMethod = "decodeSImmOperand<34>";
   let OperandType = "OPERAND_IMMEDIATE";
 }
 def s34imm_pcrel : Operand<i64> {
   let PrintMethod = "printS34ImmOperand";
-  let EncoderMethod = "getImm34EncodingPCRel";
+  let EncoderMethod = "getImmEncoding<PPC::fixup_ppc_pcrel34>";
   let ParserMatchClass = PPCS34ImmAsmOperand;
   let DecoderMethod = "decodeSImmOperand<34>";
   let OperandType = "OPERAND_IMMEDIATE";
