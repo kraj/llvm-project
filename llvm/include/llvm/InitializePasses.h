@@ -220,6 +220,8 @@ LLVM_ABI void initializeMachinePostDominatorTreeWrapperPassPass(PassRegistry &);
 LLVM_ABI void initializeMachineRegionInfoPassPass(PassRegistry &);
 LLVM_ABI void
 initializeMachineSanitizerBinaryMetadataLegacyPass(PassRegistry &);
+LLVM_ABI void initializeMIR2VecVocabAnalysisPass(PassRegistry &);
+LLVM_ABI void initializeMIR2VecVocabPrinterPassPass(PassRegistry &);
 LLVM_ABI void initializeMachineSchedulerLegacyPass(PassRegistry &);
 LLVM_ABI void initializeMachineSinkingLegacyPass(PassRegistry &);
 LLVM_ABI void initializeMachineTraceMetricsWrapperPassPass(PassRegistry &);

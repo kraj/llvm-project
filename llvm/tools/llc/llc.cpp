@@ -167,6 +167,11 @@ static cl::opt<bool> DiscardValueNames(
     cl::desc("Discard names from Value (other than GlobalValue)."),
     cl::init(false), cl::Hidden);
 
+static cl::opt<bool>
+    PrintMIR2VecVocab("print-mir2vec-vocab", cl::Hidden,
+                      cl::desc("Print MIR2Vec vocabulary contents"),
+                      cl::init(false));
+
 static cl::list<std::string> IncludeDirs("I", cl::desc("include search path"));
 
 static cl::opt<bool> RemarksWithHotness(
@@ -725,12 +730,25 @@ static int compileModule(char **argv, LLVMContext &Context) {
       }
       TPC.setInitialized();
       PM.add(createPrintMIRPass(*OS));
+
+      // Add MIR2Vec vocabulary printer if requested
+      if (PrintMIR2VecVocab) {
+        PM.add(createMIR2VecVocabPrinterPass(errs()));
+      }
+
       PM.add(createFreeMachineFunctionPass());
-    } else if (Target->addPassesToEmitFile(
-                   PM, *OS, DwoOut ? &DwoOut->os() : nullptr,
-                   codegen::getFileType(), NoVerify, MMIWP)) {
-      if (!HasMCErrors)
-        reportError("target does not support generation of this file type");
+    } else {
+      if (Target->addPassesToEmitFile(PM, *OS, DwoOut ? &DwoOut->os() : nullptr,
+                                      codegen::getFileType(), NoVerify,
+                                      MMIWP)) {
+        if (!HasMCErrors)
+          reportError("target does not support generation of this file type");
+      }
+
+      // Add MIR2Vec vocabulary printer if requested
+      if (PrintMIR2VecVocab) {
+        PM.add(createMIR2VecVocabPrinterPass(errs()));
+      }
     }
 
     Target->getObjFileLowering()->Initialize(MMIWP->getMMI().getContext(),
