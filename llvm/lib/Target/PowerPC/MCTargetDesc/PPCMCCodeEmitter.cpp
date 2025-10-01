@@ -215,7 +215,7 @@ uint64_t PPCMCCodeEmitter::getImmEncoding(const MCInst &MI, unsigned OpNo,
   if (MO.isImm())
     return getMachineOpValue(MI, MO, Fixups, STI);
 
-  uint32_t Offset=0;
+  uint32_t Offset = 0;
   if (Fixup == PPC::fixup_ppc_half16)
     Offset = IsLittleEndian ? 0 : 2;
 
