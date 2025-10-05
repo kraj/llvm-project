@@ -1577,12 +1577,7 @@ static bool isValidRegPrefix(char C) {
   return C == 'v' || C == 's' || C == 'a';
 }
 
-std::tuple<char, unsigned, unsigned>
-parseAsmConstraintPhysReg(StringRef Constraint) {
-  StringRef RegName = Constraint;
-  if (!RegName.consume_front("{") || !RegName.consume_back("}"))
-    return {};
-
+std::tuple<char, unsigned, unsigned> parseAsmPhysRegName(StringRef RegName) {
   char Kind = RegName.front();
   if (!isValidRegPrefix(Kind))
     return {};
@@ -1607,6 +1602,14 @@ parseAsmConstraintPhysReg(StringRef Constraint) {
   }
 
   return {};
+}
+
+std::tuple<char, unsigned, unsigned>
+parseAsmConstraintPhysReg(StringRef Constraint) {
+  StringRef RegName = Constraint;
+  if (!RegName.consume_front("{") || !RegName.consume_back("}"))
+    return {};
+  return parseAsmPhysRegName(RegName);
 }
 
 std::pair<unsigned, unsigned>
