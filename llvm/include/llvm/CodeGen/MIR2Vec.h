@@ -51,11 +51,21 @@ class LLVMContext;
 class MIR2VecVocabLegacyAnalysis;
 class TargetInstrInfo;
 
+enum class MIR2VecKind { Symbolic };
+
 namespace mir2vec {
+
+// Forward declarations
+class MIREmbedder;
+class SymbolicMIREmbedder;
+
 extern llvm::cl::OptionCategory MIR2VecCategory;
 extern cl::opt<float> OpcWeight;
 
 using Embedding = ir2vec::Embedding;
+using MachineInstEmbeddingsMap = DenseMap<const MachineInstr *, Embedding>;
+using MachineBlockEmbeddingsMap =
+    DenseMap<const MachineBasicBlock *, Embedding>;
 
 /// Class for storing and accessing the MIR2Vec vocabulary.
 /// The MIRVocabulary class manages seed embeddings for LLVM Machine IR
@@ -132,6 +142,79 @@ public:
     assert(isValid() && "Invalid vocabulary");
     return Storage.size();
   }
+
+  /// Create a dummy vocabulary for testing purposes.
+  static MIRVocabulary createDummyVocabForTest(const TargetInstrInfo &TII,
+                                               unsigned Dim = 1);
+};
+
+/// Base class for MIR embedders
+class MIREmbedder {
+protected:
+  const MachineFunction &MF;
+  const MIRVocabulary &Vocab;
+
+  /// Dimension of the embeddings; Captured from the vocabulary
+  const unsigned Dimension;
+
+  /// Weight for opcode embeddings
+  const float OpcWeight;
+
+  // Utility maps - these are used to store the vector representations of
+  // instructions, basic blocks and functions.
+  mutable Embedding MFuncVector;
+  mutable MachineBlockEmbeddingsMap MBBVecMap;
+  mutable MachineInstEmbeddingsMap MInstVecMap;
+
+  MIREmbedder(const MachineFunction &MF, const MIRVocabulary &Vocab);
+
+  /// Function to compute embeddings. It generates embeddings for all
+  /// the instructions and basic blocks in the function F.
+  void computeEmbeddings() const;
+
+  /// Function to compute the embedding for a given basic block.
+  /// Specific to the kind of embeddings being computed.
+  virtual void computeEmbeddings(const MachineBasicBlock &MBB) const = 0;
+
+public:
+  virtual ~MIREmbedder() = default;
+
+  /// Factory method to create an Embedder object of the specified kind
+  /// Returns nullptr if the requested kind is not supported.
+  static std::unique_ptr<MIREmbedder> create(MIR2VecKind Mode,
+                                             const MachineFunction &MF,
+                                             const MIRVocabulary &Vocab);
+
+  /// Returns a map containing machine instructions and the corresponding
+  /// embeddings for the machine function MF if it has been computed. If not, it
+  /// computes the embeddings for MF and returns the map.
+  const MachineInstEmbeddingsMap &getMInstVecMap() const;
+
+  /// Returns a map containing machine basic block and the corresponding
+  /// embeddings for the machine function MF if it has been computed. If not, it
+  /// computes the embeddings for MF and returns the map.
+  const MachineBlockEmbeddingsMap &getMBBVecMap() const;
+
+  /// Returns the embedding for a given machine basic block in the machine
+  /// function MF if it has been computed. If not, it computes the embedding for
+  /// MBB and returns it.
+  const Embedding &getMBBVector(const MachineBasicBlock &MBB) const;
+
+  /// Computes and returns the embedding for the current machine function.
+  const Embedding &getMFunctionVector() const;
+};
+
+/// Class for computing Symbolic embeddings
+/// Symbolic embeddings are constructed based on the entity-level
+/// representations obtained from the MIR Vocabulary.
+class SymbolicMIREmbedder : public MIREmbedder {
+private:
+  void computeEmbeddings(const MachineBasicBlock &MBB) const override;
+
+public:
+  SymbolicMIREmbedder(const MachineFunction &F, const MIRVocabulary &Vocab);
+  static std::unique_ptr<SymbolicMIREmbedder>
+  create(const MachineFunction &MF, const MIRVocabulary &Vocab);
 };
 
 } // namespace mir2vec
@@ -180,6 +263,31 @@ public:
     return "MIR2Vec Vocabulary Printer Pass";
   }
 };
+
+/// This pass prints the MIR2Vec embeddings for machine functions, basic blocks,
+/// and instructions
+class MIR2VecPrinterLegacyPass : public MachineFunctionPass {
+  raw_ostream &OS;
+
+public:
+  static char ID;
+  explicit MIR2VecPrinterLegacyPass(raw_ostream &OS)
+      : MachineFunctionPass(ID), OS(OS) {}
+
+  bool runOnMachineFunction(MachineFunction &MF) override;
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<MIR2VecVocabLegacyAnalysis>();
+    AU.setPreservesAll();
+    MachineFunctionPass::getAnalysisUsage(AU);
+  }
+
+  StringRef getPassName() const override {
+    return "MIR2Vec Embedder Printer Pass";
+  }
+};
+
+/// Create a machine pass that prints MIR2Vec embeddings
+MachineFunctionPass *createMIR2VecPrinterLegacyPass(raw_ostream &OS);
 
 } // namespace llvm
 

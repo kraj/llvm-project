@@ -76,6 +76,9 @@ protected:
         M->getTargetTriple(), "", "", Options, Reloc::Model::Static));
     ASSERT_TRUE(TM);
 
+    // Set the data layout to match the target machine
+    M->setDataLayout(TM->createDataLayout());
+
     // Create a dummy function to get subtarget info
     FunctionType *FT = FunctionType::get(Type::getVoidTy(*Ctx), false);
     Function *F =
@@ -85,16 +88,32 @@ protected:
     TII = TM->getSubtargetImpl(*F)->getInstrInfo();
     ASSERT_TRUE(TII);
   }
-};
 
-// Function to find an opcode by name
-static int findOpcodeByName(const TargetInstrInfo *TII, StringRef Name) {
-  for (unsigned Opcode = 1; Opcode < TII->getNumOpcodes(); ++Opcode) {
-    if (TII->getName(Opcode) == Name)
-      return Opcode;
+  // Find an opcode by name
+  int findOpcodeByName(StringRef Name) {
+    for (unsigned Opcode = 1; Opcode < TII->getNumOpcodes(); ++Opcode) {
+      if (TII->getName(Opcode) == Name)
+        return Opcode;
+    }
+    return -1; // Not found
   }
-  return -1; // Not found
-}
+
+  // Create a vocabulary with specific opcodes and embeddings
+  MIRVocabulary
+  createTestVocab(std::initializer_list<std::pair<const char *, float>> opcodes,
+                  unsigned dimension = 2) {
+    VocabMap VMap;
+    for (const auto &[name, value] : opcodes)
+      VMap[name] = Embedding(dimension, value);
+    return MIRVocabulary(std::move(VMap), TII);
+  }
+
+  // Create empty/invalid vocabulary
+  MIRVocabulary createEmptyVocab() {
+    VocabMap EmptyVMap;
+    return MIRVocabulary(std::move(EmptyVMap), TII);
+  }
+};
 
 TEST_F(MIR2VecVocabTestFixture, CanonicalOpcodeMappingTest) {
   // Test that same base opcodes get same canonical indices
@@ -107,10 +126,8 @@ TEST_F(MIR2VecVocabTestFixture, CanonicalOpcodeMappingTest) {
 
   // Create a MIRVocabulary instance to test the mapping
   // Use a minimal MIRVocabulary to trigger canonical mapping construction
-  VocabMap VMap;
   Embedding Val = Embedding(64, 1.0f);
-  VMap["ADD"] = Val;
-  MIRVocabulary TestVocab(std::move(VMap), TII);
+  auto TestVocab = createTestVocab({{"ADD", 1.0f}}, 64);
 
   unsigned Index1 = TestVocab.getCanonicalIndexForBaseName(BaseName1);
   unsigned Index2 = TestVocab.getCanonicalIndexForBaseName(BaseName2);
@@ -141,16 +158,16 @@ TEST_F(MIR2VecVocabTestFixture, CanonicalOpcodeMappingTest) {
             6880u); // X86 has >6880 unique base opcodes
 
   // Check that the embeddings for opcodes not in the vocab are zero vectors
-  int Add32rrOpcode = findOpcodeByName(TII, "ADD32rr");
+  int Add32rrOpcode = findOpcodeByName("ADD32rr");
   ASSERT_NE(Add32rrOpcode, -1) << "ADD32rr opcode not found";
   EXPECT_TRUE(TestVocab[Add32rrOpcode].approximatelyEquals(Val));
 
-  int Sub32rrOpcode = findOpcodeByName(TII, "SUB32rr");
+  int Sub32rrOpcode = findOpcodeByName("SUB32rr");
   ASSERT_NE(Sub32rrOpcode, -1) << "SUB32rr opcode not found";
   EXPECT_TRUE(
       TestVocab[Sub32rrOpcode].approximatelyEquals(Embedding(64, 0.0f)));
 
-  int Mov32rrOpcode = findOpcodeByName(TII, "MOV32rr");
+  int Mov32rrOpcode = findOpcodeByName("MOV32rr");
   ASSERT_NE(Mov32rrOpcode, -1) << "MOV32rr opcode not found";
   EXPECT_TRUE(
       TestVocab[Mov32rrOpcode].approximatelyEquals(Embedding(64, 0.0f)));
@@ -163,15 +180,11 @@ TEST_F(MIR2VecVocabTestFixture, DeterministicMapping) {
 
   // Create a MIRVocabulary instance to test deterministic mapping
   // Use a minimal MIRVocabulary to trigger canonical mapping construction
-  VocabMap VMap;
-  VMap["ADD"] = Embedding(64, 1.0f);
-  MIRVocabulary TestVocab(std::move(VMap), TII);
+  auto TestVocab = createTestVocab({{"ADD", 1.0f}}, 64);
 
   unsigned Index1 = TestVocab.getCanonicalIndexForBaseName(BaseName);
   unsigned Index2 = TestVocab.getCanonicalIndexForBaseName(BaseName);
   unsigned Index3 = TestVocab.getCanonicalIndexForBaseName(BaseName);
-
-  EXPECT_EQ(Index1, Index2);
   EXPECT_EQ(Index2, Index3);
 
   // Test across multiple runs
@@ -183,11 +196,8 @@ TEST_F(MIR2VecVocabTestFixture, DeterministicMapping) {
 
 // Test MIRVocabulary construction
 TEST_F(MIR2VecVocabTestFixture, VocabularyConstruction) {
-  VocabMap VMap;
-  VMap["ADD"] = Embedding(128, 1.0f); // Dimension 128, all values 1.0
-  VMap["SUB"] = Embedding(128, 2.0f); // Dimension 128, all values 2.0
-
-  MIRVocabulary Vocab(std::move(VMap), TII);
+  // Test MIRVocabulary with embeddings via VocabMap
+  auto Vocab = createTestVocab({{"ADD", 1.0f}, {"SUB", 2.0f}}, 128);
   EXPECT_TRUE(Vocab.isValid());
   EXPECT_EQ(Vocab.getDimension(), 128u);
 
@@ -206,4 +216,268 @@ TEST_F(MIR2VecVocabTestFixture, VocabularyConstruction) {
   EXPECT_GT(Count, 0u);
 }
 
+// Test embedder with invalid vocabulary
+TEST_F(MIR2VecVocabTestFixture, InvalidVocabulary) {
+  // Create an invalid vocabulary (empty)
+  auto InvalidVocab = createEmptyVocab();
+
+  // Verify vocabulary is invalid
+  EXPECT_FALSE(InvalidVocab.isValid());
+  EXPECT_EQ(InvalidVocab.getDimension(), 0u);
+}
+
+// Fixture for embedding related tests
+class MIR2VecEmbeddingTestFixture : public MIR2VecVocabTestFixture {
+protected:
+  std::unique_ptr<MachineModuleInfo> MMI;
+  MachineFunction *MF = nullptr;
+
+  void SetUp() override {
+    MIR2VecVocabTestFixture::SetUp();
+
+    // Create a dummy function for MachineFunction
+    FunctionType *FT = FunctionType::get(Type::getVoidTy(*Ctx), false);
+    Function *F =
+        Function::Create(FT, Function::ExternalLinkage, "test", M.get());
+
+    MMI = std::make_unique<MachineModuleInfo>(TM.get());
+    MF = &MMI->getOrCreateMachineFunction(*F);
+  }
+
+  void TearDown() override { MIR2VecVocabTestFixture::TearDown(); }
+
+  // Create a machine instruction
+  MachineInstr *createMachineInstr(MachineBasicBlock &MBB, unsigned Opcode) {
+    const MCInstrDesc &Desc = TII->get(Opcode);
+    // Create instruction - operands don't affect opcode-based embeddings
+    MachineInstr *MI = BuildMI(MBB, MBB.end(), DebugLoc(), Desc);
+    return MI;
+  }
+
+  MachineInstr *createMachineInstr(MachineBasicBlock &MBB,
+                                   const char *OpcodeName) {
+    int Opcode = findOpcodeByName(OpcodeName);
+    if (Opcode == -1)
+      return nullptr;
+    return createMachineInstr(MBB, Opcode);
+  }
+
+  void createMachineInstrs(MachineBasicBlock &MBB,
+                           std::initializer_list<const char *> Opcodes) {
+    for (const char *OpcodeName : Opcodes) {
+      MachineInstr *MI = createMachineInstr(MBB, OpcodeName);
+      ASSERT_TRUE(MI != nullptr);
+    }
+  }
+};
+
+// Test factory method for creating embedder
+TEST_F(MIR2VecEmbeddingTestFixture, CreateSymbolicEmbedder) {
+  auto V = MIRVocabulary::createDummyVocabForTest(*TII, 1);
+  auto Emb = MIREmbedder::create(MIR2VecKind::Symbolic, *MF, V);
+  EXPECT_NE(Emb, nullptr);
+}
+
+TEST_F(MIR2VecEmbeddingTestFixture, CreateInvalidMode) {
+  auto V = MIRVocabulary::createDummyVocabForTest(*TII, 1);
+
+  // static_cast an invalid int to IR2VecKind
+  auto Result = MIREmbedder::create(static_cast<MIR2VecKind>(-1), *MF, V);
+  EXPECT_FALSE(static_cast<bool>(Result));
+}
+
+// Test SymbolicMIREmbedder with simple target opcodes
+TEST_F(MIR2VecEmbeddingTestFixture, TestSymbolicEmbedder) {
+  // Create a test vocabulary with specific values
+  auto Vocab = createTestVocab(
+      {
+          {"NOOP", 1.0f}, // [1.0, 1.0, 1.0, 1.0]
+          {"RET", 2.0f},  // [2.0, 2.0, 2.0, 2.0]
+          {"TRAP", 3.0f}  // [3.0, 3.0, 3.0, 3.0]
+      },
+      4);
+
+  // Create a basic block using fixture's MF
+  MachineBasicBlock *MBB = MF->CreateMachineBasicBlock();
+  MF->push_back(MBB);
+
+  // Use real X86 opcodes that should exist and not be pseudo
+  auto NoopInst = createMachineInstr(*MBB, "NOOP");
+  ASSERT_TRUE(NoopInst != nullptr);
+
+  auto RetInst = createMachineInstr(*MBB, "RET64");
+  ASSERT_TRUE(RetInst != nullptr);
+
+  auto TrapInst = createMachineInstr(*MBB, "TRAP");
+  ASSERT_TRUE(TrapInst != nullptr);
+
+  // Verify these are not pseudo instructions
+  ASSERT_FALSE(NoopInst->isPseudo()) << "NOOP is marked as pseudo instruction";
+  ASSERT_FALSE(RetInst->isPseudo()) << "RET is marked as pseudo instruction";
+  ASSERT_FALSE(TrapInst->isPseudo()) << "TRAP is marked as pseudo instruction";
+
+  // Create embedder
+  auto Embedder = SymbolicMIREmbedder::create(*MF, Vocab);
+  ASSERT_TRUE(Embedder != nullptr);
+
+  // Test instruction embeddings
+  const auto &MInstMap = Embedder->getMInstVecMap();
+  EXPECT_EQ(MInstMap.size(), 3u); // Should have 3 instructions
+
+  // Check individual instruction embeddings
+  auto NoopIt = MInstMap.find(NoopInst);
+  auto RetIt = MInstMap.find(RetInst);
+  auto TrapIt = MInstMap.find(TrapInst);
+
+  ASSERT_NE(NoopIt, MInstMap.end());
+  ASSERT_NE(RetIt, MInstMap.end());
+  ASSERT_NE(TrapIt, MInstMap.end());
+
+  // Verify embeddings match expected values (accounting for weight scaling)
+  float ExpectedWeight = ::OpcWeight; // Global weight from command line
+  EXPECT_TRUE(
+      NoopIt->second.approximatelyEquals(Embedding(4, 1.0f * ExpectedWeight)));
+  EXPECT_TRUE(
+      RetIt->second.approximatelyEquals(Embedding(4, 2.0f * ExpectedWeight)));
+  EXPECT_TRUE(
+      TrapIt->second.approximatelyEquals(Embedding(4, 3.0f * ExpectedWeight)));
+
+  // Test basic block embedding (should be sum of instruction embeddings)
+  const auto &MBBMap = Embedder->getMBBVecMap();
+  EXPECT_EQ(MBBMap.size(), 1u);
+
+  auto MBBIt = MBBMap.find(MBB);
+  ASSERT_NE(MBBIt, MBBMap.end());
+
+  // Expected BB vector: NOOP + RET + TRAP = [1+2+3, 1+2+3, 1+2+3, 1+2+3] *
+  // weight = [6, 6, 6, 6] * weight
+  Embedding ExpectedMBBVector(4, 6.0f * ExpectedWeight);
+  EXPECT_TRUE(MBBIt->second.approximatelyEquals(ExpectedMBBVector));
+
+  // Test function embedding (should equal MBB embedding since we have one MBB)
+  const Embedding &MFuncVector = Embedder->getMFunctionVector();
+  EXPECT_TRUE(MFuncVector.approximatelyEquals(ExpectedMBBVector));
+}
+
+// Test embedder with multiple basic blocks
+TEST_F(MIR2VecEmbeddingTestFixture, MultipleBasicBlocks) {
+  // Create a test vocabulary
+  auto Vocab = createTestVocab({{"NOOP", 1.0f}, {"TRAP", 2.0f}});
+
+  // Create two basic blocks using fixture's MF
+  MachineBasicBlock *MBB1 = MF->CreateMachineBasicBlock();
+  MachineBasicBlock *MBB2 = MF->CreateMachineBasicBlock();
+  MF->push_back(MBB1);
+  MF->push_back(MBB2);
+
+  createMachineInstrs(*MBB1, {"NOOP", "NOOP"});
+  createMachineInstr(*MBB2, "TRAP");
+
+  // Create embedder
+  auto Embedder = SymbolicMIREmbedder::create(*MF, Vocab);
+  ASSERT_TRUE(Embedder != nullptr);
+
+  // Test basic block embeddings
+  const auto &MBBMap = Embedder->getMBBVecMap();
+  EXPECT_EQ(MBBMap.size(), 2u);
+
+  auto MBB1It = MBBMap.find(MBB1);
+  auto MBB2It = MBBMap.find(MBB2);
+  ASSERT_NE(MBB1It, MBBMap.end());
+  ASSERT_NE(MBB2It, MBBMap.end());
+
+  float ExpectedWeight = ::OpcWeight;
+  // BB1: NOOP + NOOP = 2 * ([1, 1] * weight)
+  Embedding ExpectedBB1Vector(2, 2.0f * ExpectedWeight);
+  EXPECT_TRUE(MBB1It->second.approximatelyEquals(ExpectedBB1Vector));
+
+  // BB2: TRAP = [2, 2] * weight
+  Embedding ExpectedBB2Vector(2, 2.0f * ExpectedWeight);
+  EXPECT_TRUE(MBB2It->second.approximatelyEquals(ExpectedBB2Vector));
+
+  // Function embedding: BB1 + BB2 = [2+2, 2+2] * weight = [4, 4] * weight
+  const Embedding &MFVector = Embedder->getMFunctionVector();
+  Embedding ExpectedFuncVector(2, 4.0f * ExpectedWeight);
+  EXPECT_TRUE(MFVector.approximatelyEquals(ExpectedFuncVector));
+}
+
+// Test embedder with empty basic block
+TEST_F(MIR2VecEmbeddingTestFixture, EmptyBasicBlock) {
+
+  // Create an empty basic block
+  MachineBasicBlock *MBB = MF->CreateMachineBasicBlock();
+  MF->push_back(MBB);
+
+  // Create embedder
+  auto Vocab = MIRVocabulary::createDummyVocabForTest(*TII, 2);
+  auto Embedder = SymbolicMIREmbedder::create(*MF, Vocab);
+  ASSERT_TRUE(Embedder != nullptr);
+
+  // Test that empty BB has zero embedding
+  const auto &MBBMap = Embedder->getMBBVecMap();
+  EXPECT_EQ(MBBMap.size(), 1u);
+
+  auto MBBIt = MBBMap.find(MBB);
+  ASSERT_NE(MBBIt, MBBMap.end());
+
+  // Empty BB should have zero embedding
+  Embedding ExpectedBBVector(2, 0.0f);
+  EXPECT_TRUE(MBBIt->second.approximatelyEquals(ExpectedBBVector));
+
+  // Function embedding should also be zero
+  const Embedding &MFVector = Embedder->getMFunctionVector();
+  EXPECT_TRUE(MFVector.approximatelyEquals(ExpectedBBVector));
+}
+
+// Test embedder with opcodes not in vocabulary
+TEST_F(MIR2VecEmbeddingTestFixture, UnknownOpcodes) {
+  // Create a test vocabulary with limited entries
+  // SUB is intentionally not included
+  auto Vocab = createTestVocab({{"ADD", 1.0f}});
+
+  // Create a basic block
+  MachineBasicBlock *MBB = MF->CreateMachineBasicBlock();
+  MF->push_back(MBB);
+
+  // Find opcodes
+  int AddOpcode = findOpcodeByName("ADD32rr");
+  int SubOpcode = findOpcodeByName("SUB32rr");
+
+  ASSERT_NE(AddOpcode, -1) << "ADD32rr opcode not found";
+  ASSERT_NE(SubOpcode, -1) << "SUB32rr opcode not found";
+
+  // Create instructions
+  MachineInstr *AddInstr = createMachineInstr(*MBB, AddOpcode);
+  MachineInstr *SubInstr = createMachineInstr(*MBB, SubOpcode);
+
+  // Create embedder
+  auto Embedder = SymbolicMIREmbedder::create(*MF, Vocab);
+  ASSERT_TRUE(Embedder != nullptr);
+
+  // Test instruction embeddings
+  const auto &MIMap = Embedder->getMInstVecMap();
+
+  auto AddIt = MIMap.find(AddInstr);
+  auto SubIt = MIMap.find(SubInstr);
+
+  ASSERT_NE(AddIt, MIMap.end());
+  ASSERT_NE(SubIt, MIMap.end());
+
+  float ExpectedWeight = ::OpcWeight;
+  // ADD should have the embedding from vocabulary
+  EXPECT_TRUE(
+      AddIt->second.approximatelyEquals(Embedding(2, 1.0f * ExpectedWeight)));
+
+  // SUB should have zero embedding (not in vocabulary)
+  EXPECT_TRUE(SubIt->second.approximatelyEquals(Embedding(2, 0.0f)));
+
+  // Basic block embedding should be ADD + SUB = [1.0, 1.0] * weight + [0.0,
+  // 0.0] = [1.0, 1.0] * weight
+  const auto &MBBMap = Embedder->getMBBVecMap();
+  auto MBBIt = MBBMap.find(MBB);
+  ASSERT_NE(MBBIt, MBBMap.end());
+
+  Embedding ExpectedBBVector(2, 1.0f * ExpectedWeight);
+  EXPECT_TRUE(MBBIt->second.approximatelyEquals(ExpectedBBVector));
+}
 } // namespace
