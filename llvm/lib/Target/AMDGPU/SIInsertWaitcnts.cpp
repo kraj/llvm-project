@@ -1086,12 +1086,11 @@ void WaitcntBrackets::print(raw_ostream &OS) const {
       break;
     }
 
-
     if (SR != 0) {
       // Print vgpr scores.
       unsigned LB = getScoreLB(T);
 
-      for (auto &[ID, Info]: VMem) {
+      for (auto &[ID, Info] : VMem) {
         unsigned RegScore = Info.Scores[T];
         if (RegScore <= LB)
           continue;
@@ -1105,10 +1104,10 @@ void WaitcntBrackets::print(raw_ostream &OS) const {
 
       // Also need to print sgpr scores for lgkm_cnt or xcnt.
       if (isSmemCounter(T)) {
-        for (auto &[ID, Info]: SGPRs) {
+        for (auto &[ID, Info] : SGPRs) {
           unsigned RegScore = Info.Scores[getSgprScoresIdx(T)];
           if (RegScore <= LB)
-          continue;
+            continue;
           unsigned RelScore = RegScore - LB - 1;
           OS << RelScore << ":sRU" << ID << " ";
         }
