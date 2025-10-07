@@ -4869,7 +4869,8 @@ public:
 
   llvm::Value *BuildVector(ArrayRef<llvm::Value *> Ops);
   llvm::Value *EmitX86BuiltinExpr(unsigned BuiltinID, const CallExpr *E);
-  llvm::Value *EmitPPCBuiltinCpu(unsigned BuiltinID, llvm::Type *ReturnType, StringRef CPUStr);
+  llvm::Value *EmitPPCBuiltinCpu(unsigned BuiltinID, llvm::Type *ReturnType,
+                                 StringRef CPUStr);
   llvm::Value *EmitPPCBuiltinExpr(unsigned BuiltinID, const CallExpr *E);
   llvm::Value *EmitAMDGPUBuiltinExpr(unsigned BuiltinID, const CallExpr *E);
   llvm::Value *EmitHLSLBuiltinExpr(unsigned BuiltinID, const CallExpr *E,
@@ -5538,7 +5539,7 @@ public:
                                      ArrayRef<FMVResolverOption> Options);
 
   void EmitPPCAIXMultiVersionResolver(llvm::Function *Resolver,
-                                     ArrayRef<FMVResolverOption> Options);
+                                      ArrayRef<FMVResolverOption> Options);
 
 private:
   QualType getVarArgType(const Expr *Arg);

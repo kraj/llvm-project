@@ -691,8 +691,7 @@ ParsedTargetAttr PPCTargetInfo::parseTargetAttr(StringRef Features) const {
         Ret.Duplicate = "cpu=";
       else
         Ret.CPU = Feature.split("=").second.trim();
-    }
-    else if (Feature.starts_with("tune=")) {
+    } else if (Feature.starts_with("tune=")) {
       if (!Ret.Tune.empty())
         Ret.Duplicate = "tune=";
       else
