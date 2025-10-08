@@ -133,7 +133,7 @@ Error MarkRAStates::runOnFunctions(BinaryContext &BC) {
 
   int Total = llvm::count_if(
       BC.getBinaryFunctions(),
-      [&](std::pair<const unsigned long, BinaryFunction> &P) {
+      [&](auto &P) {
         return P.second.containedNegateRAState() && !P.second.isIgnored();
       });
 
