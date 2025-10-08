@@ -31,12 +31,4 @@ return:                                           ; preds = %if.else, %if.then
   ret i32 %4
 }
 
-; CHECK: Basic block vectors:
-; CHECK-NEXT: Basic block: entry:
-; CHECK-NEXT: [ 816.20  825.20  834.20 ]
-; CHECK-NEXT: Basic block: if.then:
-; CHECK-NEXT: [ 195.00  198.00  201.00 ]
-; CHECK-NEXT: Basic block: if.else:
-; CHECK-NEXT: [ 195.00  198.00  201.00 ]
-; CHECK-NEXT: Basic block: return:
-; CHECK-NEXT: [ 95.00  97.00  99.00 ]
+; CHECK: Function vector:  [ 1301.20  1318.20  1335.20 ]
