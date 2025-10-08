@@ -381,16 +381,6 @@ TEST_F(IR2VecTestFixture, MultipleComputeEmbeddingsConsistency_Symbolic) {
   EXPECT_TRUE(FuncVec1.approximatelyEquals(FuncVec2));
   EXPECT_TRUE(FuncVec1.approximatelyEquals(FuncVec3));
   EXPECT_TRUE(FuncVec2.approximatelyEquals(FuncVec3));
-
-  // Also check that instruction vectors remain consistent
-  // const auto &InstMap1 = Emb->getInstVecMap();
-  // const auto &InstMap2 = Emb->getInstVecMap();
-
-  // EXPECT_EQ(InstMap1.size(), InstMap2.size());
-  // for (const auto &[Inst, Vec1] : InstMap1) {
-  //   ASSERT_TRUE(InstMap2.count(Inst));
-  //   EXPECT_TRUE(Vec1.approximatelyEquals(InstMap2.at(Inst)));
-  // }
 }
 
 TEST_F(IR2VecTestFixture, MultipleComputeEmbeddingsConsistency_FlowAware) {
