@@ -470,6 +470,7 @@ private:
   Value *simplifyNonNullOperand(Value *V, bool HasDereferenceable,
                                 unsigned Depth = 0);
 
+public:
   /// Create `select C, S1, S2` and copy metadata from MDFrom.
   SelectInst *createSelectInst(Value *C, Value *S1, Value *S2,
                                const Instruction &MDFrom,
@@ -490,7 +491,6 @@ private:
     return Sel;
   }
 
-public:
   /// Create and insert the idiom we use to indicate a block is unreachable
   /// without having to rewrite the CFG from within InstCombine.
   void CreateNonTerminatorUnreachable(Instruction *InsertAt) {
