@@ -470,15 +470,24 @@ private:
   Value *simplifyNonNullOperand(Value *V, bool HasDereferenceable,
                                 unsigned Depth = 0);
 
+  /// Create `select C, S1, S2` and copy metadata from MDFrom.
   SelectInst *createSelectInst(Value *C, Value *S1, Value *S2,
+                               const Instruction &MDFrom,
                                const Twine &NameStr = "",
-                               InsertPosition InsertBefore = nullptr,
-                               Instruction *MDFrom = nullptr) {
-    SelectInst *SI =
-        SelectInst::Create(C, S1, S2, NameStr, InsertBefore, MDFrom);
-    if (!MDFrom)
-      setExplicitlyUnknownBranchWeightsIfProfiled(*SI, F, DEBUG_TYPE);
-    return SI;
+                               InsertPosition InsertBefore = nullptr) {
+    return SelectInst::Create(C, S1, S2, NameStr, InsertBefore, &MDFrom);
+  }
+
+  /// Use instead of createSelectInst if the profile cannot be calculated from
+  /// existing profile metadata. If the Function has profiles, set the profile
+  /// of this select to "unknown".
+  SelectInst *
+  createSelectInstWithUnknownProfile(Value *C, Value *S1, Value *S2,
+                                     const Twine &NameStr = "",
+                                     InsertPosition InsertBefore = nullptr) {
+    auto *Sel = SelectInst::Create(C, S1, S2, NameStr, InsertBefore, nullptr);
+    setExplicitlyUnknownBranchWeightsIfProfiled(*Sel, F, DEBUG_TYPE);
+    return Sel;
   }
 
 public:
