@@ -299,3 +299,5 @@ add_header(EFI_SYSTEM_TABLE
 )
 
 add_header(errno_t HDR errno_t.h)
+
+add_header(constraint_handler_t HDR constraint_handler_t.h DEPENDS .errno_t)
