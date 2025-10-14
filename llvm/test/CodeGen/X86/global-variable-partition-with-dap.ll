@@ -1,17 +1,41 @@
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
-;; A minimal test case. Subsequent PRs will expand on this test case
-;; (e.g., with more functions, variables and profiles) and test the hotness
-;; reconcillation implementation.
+; REQUIRES: asserts
+
+; RUN: rm -rf %t && split-file %s %t && cd %t
+
 ; RUN: llc -mtriple=x86_64-unknown-linux-gnu -relocation-model=pic \
 ; RUN:     -partition-static-data-sections=true \
+; RUN:     -debug-only=static-data-profile-info \
 ; RUN:     -data-sections=true  -unique-section-names=false \
-; RUN:     %s -o - 2>&1 | FileCheck %s --check-prefix=IR
+; RUN:     input-with-dap-enabled.ll -o - 2>&1 | FileCheck %s --check-prefixes=LOG,IR
 
-; IR: .section .bss.hot.,"aw"
+; LOG: hot_bss has section prefix hot, the max from DAP as hot and PGO counters as hot
+; LOG: data_unknown_hotness has section prefix <empty>, the max from DAP as <empty> and PGO counters as unlikely
+; LOG: external_relro_arrayhas section prefix unlikely, solely from data access profiles
 
+; IR:          .type   hot_bss,@object
+; IR-NEXT:     .section .bss.hot.,"aw"
+
+; IR:          .type   data_unknown_hotness,@object
+; IR-NEXT:    .section .data,"aw"
+
+; IR:          .type   external_relro_array,@object
+; IR-NEXT:     .section        .data.rel.ro.unlikely.,"aw"
+
+;--- input-with-dap-enabled.ll
+; Internal vars
 @hot_bss = internal global i32 0, !section_prefix !17
+@data_unknown_hotness = internal global i32 1
+; External vars
+@external_relro_array = constant [2 x ptr] [ptr @hot_bss, ptr @data_unknown_hotness], !section_prefix !18
+
+define void @cold_func() !prof !15 {
+  %9 = load i32, ptr @data_unknown_hotness
+  %11 = call i32 (...) @func_taking_arbitrary_param(i32 %9)
+  ret void
+}
 
 define void @hot_func() !prof !14 {
   %9 = load i32, ptr @hot_bss
@@ -21,8 +45,9 @@ define void @hot_func() !prof !14 {
 
 declare i32 @func_taking_arbitrary_param(...)
 
-!llvm.module.flags = !{!1}
+!llvm.module.flags = !{!0, !1}
 
+!0 = !{i32 2, !"EnableDataAccessProf", i32 1}
 !1 = !{i32 1, !"ProfileSummary", !2}
 !2 = !{!3, !4, !5, !6, !7, !8, !9, !10}
 !3 = !{!"ProfileFormat", !"InstrProf"}
@@ -40,3 +65,4 @@ declare i32 @func_taking_arbitrary_param(...)
 !15 = !{!"function_entry_count", i64 1}
 !16 = !{!"branch_weights", i32 1, i32 99999}
 !17 = !{!"section_prefix", !"hot"}
+!18 = !{!"section_prefix", !"unlikely"}
