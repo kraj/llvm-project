@@ -13,9 +13,9 @@ using namespace llvm;
 
 llvm::TextEncodingConverter *
 LiteralConverter::getConverter(ConversionAction Action) {
-  if (Action == ToSystemEncoding)
+  if (Action == CA_ToSystemEncoding)
     return ToSystemEncodingConverter;
-  else if (Action == ToExecEncoding)
+  else if (Action == CA_ToExecEncoding)
     return ToExecEncodingConverter;
   else
     return nullptr;
@@ -26,7 +26,7 @@ void LiteralConverter::setConvertersFromOptions(
     clang::DiagnosticsEngine &Diags) {
   using namespace llvm;
   InternalEncoding = "UTF-8";
-  SystemEncoding = TInfo.getTriple().getDefaultTextEncoding();
+  SystemEncoding = TInfo.getTriple().getDefaultNarrowTextEncoding();
   ExecEncoding =
       Opts.ExecEncoding.empty() ? InternalEncoding : Opts.ExecEncoding;
   // Create converter between internal and system encoding

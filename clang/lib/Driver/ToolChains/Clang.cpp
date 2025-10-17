@@ -7366,7 +7366,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   // Set the default fexec-charset as the system charset.
   CmdArgs.push_back("-fexec-charset");
-  CmdArgs.push_back(Args.MakeArgString(Triple.getDefaultTextEncoding()));
+  CmdArgs.push_back(Args.MakeArgString(Triple.getDefaultNarrowTextEncoding()));
   if (Arg *execEncoding = Args.getLastArg(options::OPT_fexec_charset_EQ)) {
     StringRef value = execEncoding->getValue();
     llvm::ErrorOr<llvm::TextEncodingConverter> ErrorOrConverter =
