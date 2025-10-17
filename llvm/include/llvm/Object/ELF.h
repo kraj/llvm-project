@@ -278,16 +278,26 @@ private:
   std::vector<Elf_Shdr> FakeSections;
   SmallString<0> FakeSectionStrings;
 
-  Elf_Word RealPhNum;
-  Elf_Word RealShNum;
-  Elf_Word RealShStrNdx;
+  //
+  // According to the ELF gABI, these three fields can be recorded in section 0
+  // when possible. Therefore, we store this information when it is available.
+  //
+  std::optional<uint32_t> RealPhNum;
+  std::optional<uint32_t> RealShNum;
+  std::optional<uint32_t> RealShStrNdx;
 
   ELFFile(StringRef Object);
 
 public:
-  Elf_Word getPhNum() const { return RealPhNum; }
-  Elf_Word getShNum() const { return RealShNum; }
-  Elf_Word getShStrNdx() const { return RealShStrNdx; }
+  uint32_t getPhNum() const {
+    return RealPhNum ? *RealPhNum : getHeader().e_phnum;
+  }
+  uint32_t getShNum() const {
+    return RealShNum ? *RealShNum : getHeader().e_shnum;
+  }
+  uint32_t getShStrNdx() const {
+    return RealShStrNdx ? *RealShStrNdx : getHeader().e_shstrndx;
+  }
   const Elf_Ehdr &getHeader() const {
     return *reinterpret_cast<const Elf_Ehdr *>(base());
   }
@@ -386,21 +396,21 @@ public:
 
   /// Iterate over program header table.
   Expected<Elf_Phdr_Range> program_headers() const {
-    if (RealPhNum && getHeader().e_phentsize != sizeof(Elf_Phdr))
+    if (getPhNum() && getHeader().e_phentsize != sizeof(Elf_Phdr))
       return createError("invalid e_phentsize: " +
                          Twine(getHeader().e_phentsize));
 
-    uint64_t HeadersSize = (uint64_t)RealPhNum * getHeader().e_phentsize;
+    uint64_t HeadersSize = (uint64_t)getPhNum() * getHeader().e_phentsize;
     uint64_t PhOff = getHeader().e_phoff;
     if (PhOff + HeadersSize < PhOff || PhOff + HeadersSize > getBufSize())
       return createError("program headers are longer than binary of size " +
                          Twine(getBufSize()) + ": e_phoff = 0x" +
                          Twine::utohexstr(getHeader().e_phoff) +
-                         ", e_phnum = " + Twine(RealPhNum) +
+                         ", e_phnum = " + Twine(getPhNum()) +
                          ", e_phentsize = " + Twine(getHeader().e_phentsize));
 
     auto *Begin = reinterpret_cast<const Elf_Phdr *>(base() + PhOff);
-    return ArrayRef(Begin, Begin + RealPhNum);
+    return ArrayRef(Begin, Begin + getPhNum());
   }
 
   /// Get an iterator over notes in a program header.
@@ -778,11 +788,11 @@ template <class ELFT>
 Expected<StringRef>
 ELFFile<ELFT>::getSectionStringTable(Elf_Shdr_Range Sections,
                                      WarningHandler WarnHandler) const {
-  uint32_t Index = RealShStrNdx;
-  if (Index == ELF::SHN_XINDEX)
+  if (getHeader().e_shstrndx == ELF::SHN_XINDEX && !RealShStrNdx)
     return createError(
         "e_shstrndx == SHN_XINDEX, but the section header table is empty");
 
+  uint32_t Index = getShStrNdx();
   // There is no section name string table. Return FakeSectionStrings which
   // is non-empty if we have created fake sections.
   if (!Index)
@@ -889,14 +899,11 @@ Expected<uint64_t> ELFFile<ELFT>::getDynSymtabSize() const {
 
 template <class ELFT> ELFFile<ELFT>::ELFFile(StringRef Object) : Buf(Object) {
   const Elf_Ehdr &Header = getHeader();
-  RealPhNum = Header.e_phnum;
-  RealShNum = Header.e_shnum;
-  RealShStrNdx = Header.e_shstrndx;
   if (!Header.hasPhdrNumExtension())
     return;
 
-  // An ELF binary may report `hasExtendedHeader` as true but not actually
-  // include an extended header. For example, a core dump can contain 65,535
+  // An ELF binary may report `hasPhdrNumExtension` as true but not actually
+  // include an section 0. For example, a core dump can contain 65,535
   // segments but no sections at all. We defer reporting an error until section
   // 0 is accessed. Consumers should handle and emit the error themselves when
   // they attempt to access it.
@@ -905,11 +912,11 @@ template <class ELFT> ELFFile<ELFT>::ELFFile(StringRef Object) : Buf(Object) {
     consumeError(SecOrErr.takeError());
     return;
   }
-  if (RealPhNum == 0xFFFF)
+  if (Header.e_phnum == 0xFFFF)
     RealPhNum = (*SecOrErr)->sh_info;
-  if (RealShNum == ELF::SHN_UNDEF)
+  if (Header.e_shnum == ELF::SHN_UNDEF)
     RealShNum = (*SecOrErr)->sh_size;
-  if (RealShStrNdx == ELF::SHN_XINDEX)
+  if (Header.e_shstrndx == ELF::SHN_XINDEX)
     RealShStrNdx = (*SecOrErr)->sh_link;
 }
 
@@ -978,7 +985,7 @@ Expected<typename ELFT::ShdrRange> ELFFile<ELFT>::sections() const {
   const Elf_Shdr *First =
       reinterpret_cast<const Elf_Shdr *>(base() + SectionTableOffset);
 
-  uintX_t NumSections = RealShNum;
+  uintX_t NumSections = getShNum();
   if (NumSections == 0)
     NumSections = First->sh_size;
 
