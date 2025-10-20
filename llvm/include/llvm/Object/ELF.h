@@ -806,9 +806,12 @@ template <class ELFT>
 Expected<StringRef>
 ELFFile<ELFT>::getSectionStringTable(Elf_Shdr_Range Sections,
                                      WarningHandler WarnHandler) const {
-  if (getHeader().e_shstrndx == ELF::SHN_XINDEX && !RealShStrNdx)
+  Expected<uint32_t> ShStrNdxOrErr = getShStrNdx();
+  if (!ShStrNdxOrErr || (*ShStrNdxOrErr == ELF::SHN_XINDEX && RealShNum == 0)) {
+    consumeError(ShStrNdxOrErr.takeError());
     return createError(
         "e_shstrndx == SHN_XINDEX, but the section header table is empty");
+  }
 
   uint32_t Index;
   if (Expected<uint32_t> IndexOrErr = getShStrNdx())
@@ -932,15 +935,29 @@ template <class ELFT> Error ELFFile<ELFT>::readShdrZero() {
     // Pretend we have section 0 or sections() would call getShNum and thus
     // become an infinite recursion
     RealShNum = 0;
-    auto SecOrErr = getSection(0);
-    if (!SecOrErr) {
+    auto SecsOrErr = sections();
+    if (!SecsOrErr) {
       RealShNum = std::nullopt;
-      return SecOrErr.takeError();
+      return SecsOrErr.takeError();
     }
+
+    // We can really have 0 number of seciton
+    if ((*SecsOrErr).size() == 0) {
+      if (Header.e_phnum == ELF::PN_XNUM ||
+          Header.e_shstrndx == ELF::SHN_XINDEX) {
+        return createError("Unable to find Section 0");
+      }
+      RealShNum = 0;
+      RealPhNum = Header.e_phnum;
+      RealShStrNdx = Header.e_shstrndx;
+      return Error::success();
+    }
+
+    auto &Section = (*SecsOrErr)[0];
     RealPhNum =
-        Header.e_phnum == ELF::PN_XNUM ? (*SecOrErr)->sh_info : Header.e_phnum;
-    RealShNum = Header.e_shnum == 0 ? (*SecOrErr)->sh_size : Header.e_shnum;
-    RealShStrNdx = Header.e_shstrndx == ELF::SHN_XINDEX ? (*SecOrErr)->sh_link
+        Header.e_phnum == ELF::PN_XNUM ? Section.sh_info : Header.e_phnum;
+    RealShNum = Header.e_shnum == 0 ? Section.sh_size : Header.e_shnum;
+    RealShStrNdx = Header.e_shstrndx == ELF::SHN_XINDEX ? Section.sh_link
                                                         : Header.e_shstrndx;
   } else {
     RealPhNum = Header.e_phnum;
