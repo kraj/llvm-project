@@ -255,11 +255,12 @@ define <2 x i32> @concat_v2i32(<1 x i32> %op1, <1 x i32> %op2)  {
 ; NONEON-NOSVE:       // %bb.0:
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #32
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
-; NONEON-NOSVE-NEXT:    stp d0, d1, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr w9, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    stp w8, w9, [sp, #24]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
+; NONEON-NOSVE-NEXT:    str d1, [sp, #8]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldr w9, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    stp w8, w9, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
   %res = shufflevector <1 x i32> %op1, <1 x i32> %op2, <2 x i32> <i32 0, i32 1>
@@ -418,11 +419,12 @@ define <4 x half> @concat_v4f16(<2 x half> %op1, <2 x half> %op2)  {
 ; NONEON-NOSVE:       // %bb.0:
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #32
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
-; NONEON-NOSVE-NEXT:    stp d0, d1, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr w9, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    stp w8, w9, [sp, #24]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
+; NONEON-NOSVE-NEXT:    str d1, [sp, #8]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldr w9, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    stp w8, w9, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
   %res = shufflevector <2 x half> %op1, <2 x half> %op2, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
@@ -515,11 +517,12 @@ define <2 x float> @concat_v2f32(<1 x float> %op1, <1 x float> %op2)  {
 ; NONEON-NOSVE:       // %bb.0:
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #32
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
-; NONEON-NOSVE-NEXT:    stp d0, d1, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr w9, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    stp w8, w9, [sp, #24]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
+; NONEON-NOSVE-NEXT:    str d1, [sp, #8]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldr w9, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    stp w8, w9, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
   %res = shufflevector <1 x float> %op1, <1 x float> %op2, <2 x i32> <i32 0, i32 1>

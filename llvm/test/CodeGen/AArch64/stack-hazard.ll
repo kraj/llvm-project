@@ -1557,15 +1557,15 @@ define i32 @f128_libcall(fp128 %v0, fp128 %v1, fp128 %v2, fp128 %v3, i32 %a, i32
 ; CHECK0-NEXT:    .cfi_offset b15, -128
 ; CHECK0-NEXT:    mov w19, w1
 ; CHECK0-NEXT:    mov w20, w0
-; CHECK0-NEXT:    stp q0, q1, [sp] // 32-byte Folded Spill
-; CHECK0-NEXT:    stp q2, q3, [sp, #32] // 32-byte Folded Spill
+; CHECK0-NEXT:    stp q2, q3, [sp] // 32-byte Folded Spill
+; CHECK0-NEXT:    stp q0, q1, [sp, #32] // 32-byte Folded Spill
 ; CHECK0-NEXT:    bl __arm_sme_state
 ; CHECK0-NEXT:    mov x21, x0
 ; CHECK0-NEXT:    tbz w21, #0, .LBB27_2
 ; CHECK0-NEXT:  // %bb.1:
 ; CHECK0-NEXT:    smstop sm
 ; CHECK0-NEXT:  .LBB27_2:
-; CHECK0-NEXT:    ldp q0, q1, [sp] // 32-byte Folded Reload
+; CHECK0-NEXT:    ldp q0, q1, [sp, #32] // 32-byte Folded Reload
 ; CHECK0-NEXT:    bl __lttf2
 ; CHECK0-NEXT:    tbz w21, #0, .LBB27_4
 ; CHECK0-NEXT:  // %bb.3:
@@ -1577,7 +1577,7 @@ define i32 @f128_libcall(fp128 %v0, fp128 %v1, fp128 %v2, fp128 %v3, i32 %a, i32
 ; CHECK0-NEXT:  // %bb.5:
 ; CHECK0-NEXT:    smstop sm
 ; CHECK0-NEXT:  .LBB27_6:
-; CHECK0-NEXT:    ldp q0, q1, [sp, #32] // 32-byte Folded Reload
+; CHECK0-NEXT:    ldp q0, q1, [sp] // 32-byte Folded Reload
 ; CHECK0-NEXT:    bl __getf2
 ; CHECK0-NEXT:    tbz w21, #0, .LBB27_8
 ; CHECK0-NEXT:  // %bb.7:
@@ -1644,15 +1644,15 @@ define i32 @f128_libcall(fp128 %v0, fp128 %v1, fp128 %v2, fp128 %v3, i32 %a, i32
 ; CHECK64-NEXT:    .cfi_offset b15, -192
 ; CHECK64-NEXT:    mov w19, w1
 ; CHECK64-NEXT:    mov w20, w0
-; CHECK64-NEXT:    stp q0, q1, [sp, #64] // 32-byte Folded Spill
-; CHECK64-NEXT:    stp q2, q3, [sp, #96] // 32-byte Folded Spill
+; CHECK64-NEXT:    stp q2, q3, [sp, #64] // 32-byte Folded Spill
+; CHECK64-NEXT:    stp q0, q1, [sp, #96] // 32-byte Folded Spill
 ; CHECK64-NEXT:    bl __arm_sme_state
 ; CHECK64-NEXT:    mov x21, x0
 ; CHECK64-NEXT:    tbz w21, #0, .LBB27_2
 ; CHECK64-NEXT:  // %bb.1:
 ; CHECK64-NEXT:    smstop sm
 ; CHECK64-NEXT:  .LBB27_2:
-; CHECK64-NEXT:    ldp q0, q1, [sp, #64] // 32-byte Folded Reload
+; CHECK64-NEXT:    ldp q0, q1, [sp, #96] // 32-byte Folded Reload
 ; CHECK64-NEXT:    bl __lttf2
 ; CHECK64-NEXT:    tbz w21, #0, .LBB27_4
 ; CHECK64-NEXT:  // %bb.3:
@@ -1664,7 +1664,7 @@ define i32 @f128_libcall(fp128 %v0, fp128 %v1, fp128 %v2, fp128 %v3, i32 %a, i32
 ; CHECK64-NEXT:  // %bb.5:
 ; CHECK64-NEXT:    smstop sm
 ; CHECK64-NEXT:  .LBB27_6:
-; CHECK64-NEXT:    ldp q0, q1, [sp, #96] // 32-byte Folded Reload
+; CHECK64-NEXT:    ldp q0, q1, [sp, #64] // 32-byte Folded Reload
 ; CHECK64-NEXT:    bl __getf2
 ; CHECK64-NEXT:    tbz w21, #0, .LBB27_8
 ; CHECK64-NEXT:  // %bb.7:
@@ -1739,18 +1739,18 @@ define i32 @f128_libcall(fp128 %v0, fp128 %v1, fp128 %v2, fp128 %v3, i32 %a, i32
 ; CHECK1024-NEXT:    .cfi_def_cfa_offset 2240
 ; CHECK1024-NEXT:    mov w19, w1
 ; CHECK1024-NEXT:    mov w20, w0
-; CHECK1024-NEXT:    str q3, [sp, #1072] // 16-byte Folded Spill
-; CHECK1024-NEXT:    str q2, [sp, #1056] // 16-byte Folded Spill
-; CHECK1024-NEXT:    str q1, [sp, #1040] // 16-byte Folded Spill
-; CHECK1024-NEXT:    str q0, [sp, #1024] // 16-byte Folded Spill
+; CHECK1024-NEXT:    str q3, [sp, #1040] // 16-byte Folded Spill
+; CHECK1024-NEXT:    str q2, [sp, #1024] // 16-byte Folded Spill
+; CHECK1024-NEXT:    str q1, [sp, #1072] // 16-byte Folded Spill
+; CHECK1024-NEXT:    str q0, [sp, #1056] // 16-byte Folded Spill
 ; CHECK1024-NEXT:    bl __arm_sme_state
 ; CHECK1024-NEXT:    mov x21, x0
 ; CHECK1024-NEXT:    tbz w21, #0, .LBB27_2
 ; CHECK1024-NEXT:  // %bb.1:
 ; CHECK1024-NEXT:    smstop sm
 ; CHECK1024-NEXT:  .LBB27_2:
-; CHECK1024-NEXT:    ldr q0, [sp, #1024] // 16-byte Folded Reload
-; CHECK1024-NEXT:    ldr q1, [sp, #1040] // 16-byte Folded Reload
+; CHECK1024-NEXT:    ldr q0, [sp, #1056] // 16-byte Folded Reload
+; CHECK1024-NEXT:    ldr q1, [sp, #1072] // 16-byte Folded Reload
 ; CHECK1024-NEXT:    bl __lttf2
 ; CHECK1024-NEXT:    tbz w21, #0, .LBB27_4
 ; CHECK1024-NEXT:  // %bb.3:
@@ -1762,8 +1762,8 @@ define i32 @f128_libcall(fp128 %v0, fp128 %v1, fp128 %v2, fp128 %v3, i32 %a, i32
 ; CHECK1024-NEXT:  // %bb.5:
 ; CHECK1024-NEXT:    smstop sm
 ; CHECK1024-NEXT:  .LBB27_6:
-; CHECK1024-NEXT:    ldr q0, [sp, #1056] // 16-byte Folded Reload
-; CHECK1024-NEXT:    ldr q1, [sp, #1072] // 16-byte Folded Reload
+; CHECK1024-NEXT:    ldr q0, [sp, #1024] // 16-byte Folded Reload
+; CHECK1024-NEXT:    ldr q1, [sp, #1040] // 16-byte Folded Reload
 ; CHECK1024-NEXT:    bl __getf2
 ; CHECK1024-NEXT:    tbz w21, #0, .LBB27_8
 ; CHECK1024-NEXT:  // %bb.7:

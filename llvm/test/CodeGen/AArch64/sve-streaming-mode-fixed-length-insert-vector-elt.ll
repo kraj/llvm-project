@@ -29,16 +29,16 @@ define <4 x i8> @insertelement_v4i8(<4 x i8> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str d0, [sp]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #4]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #20]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #28]
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #22]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #16]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #30]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <4 x i8> %op1, i8 5, i64 3
@@ -65,18 +65,18 @@ define <8 x i8> @insertelement_v8i8(<8 x i8> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str d0, [sp]
-; NONEON-NOSVE-NEXT:    strb w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    strb w8, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldrb w8, [sp, #6]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    strb w8, [sp, #22]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
+; NONEON-NOSVE-NEXT:    strb w8, [sp, #30]
 ; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #4]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #20]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #28]
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldrb w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    strb w8, [sp, #23]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldrb w8, [sp, #16]
+; NONEON-NOSVE-NEXT:    strb w8, [sp, #31]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <8 x i8> %op1, i8 5, i64 7
@@ -184,13 +184,13 @@ define <2 x i16> @insertelement_v2i16(<2 x i16> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str d0, [sp]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldr w9, [sp]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #16]
+; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #24]
 ; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <2 x i16> %op1, i16 5, i64 1
@@ -217,16 +217,16 @@ define <4 x i16> @insertelement_v4i16(<4 x i16> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str d0, [sp]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #4]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #20]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #28]
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #22]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #16]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #30]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <4 x i16> %op1, i16 5, i64 3
@@ -253,18 +253,18 @@ define <8 x i16> @insertelement_v8i16(<8 x i16> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str q0, [sp]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #48]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #12]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #44]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #60]
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #40]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #56]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #46]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #32]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #62]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <8 x i16> %op1, i16 5, i64 7
@@ -291,18 +291,18 @@ define <16 x i16> @insertelement_v16i16(<16 x i16> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str q1, [sp]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #48]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #12]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #44]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #16]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #60]
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    str q1, [sp, #16]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #40]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #56]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    strh w8, [sp, #46]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldrh w8, [sp, #32]
+; NONEON-NOSVE-NEXT:    strh w8, [sp, #62]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <16 x i16> %op1, i16 5, i64 15
@@ -330,13 +330,13 @@ define <2 x i32> @insertelement_v2i32(<2 x i32> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str d0, [sp]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldr w9, [sp]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #16]
+; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #24]
 ; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <2 x i32> %op1, i32 5, i64 1
@@ -363,15 +363,15 @@ define <4 x i32> @insertelement_v4i32(<4 x i32> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str q0, [sp]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #48]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
 ; NONEON-NOSVE-NEXT:    ldr w9, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #32]
+; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #56]
 ; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #40]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <4 x i32> %op1, i32 5, i64 3
@@ -396,17 +396,18 @@ define <8 x i32> @insertelement_v8i32(ptr %a) {
 ; NONEON-NOSVE:       // %bb.0:
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #64
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
+; NONEON-NOSVE-NEXT:    ldp q0, q1, [x0]
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
-; NONEON-NOSVE-NEXT:    ldp q0, q2, [x0]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
-; NONEON-NOSVE-NEXT:    stp q2, q1, [sp]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #16]
+; NONEON-NOSVE-NEXT:    str q1, [sp]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
 ; NONEON-NOSVE-NEXT:    ldr w9, [sp, #8]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #40]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr w8, [sp, #32]
+; NONEON-NOSVE-NEXT:    stp w9, w8, [sp, #56]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %op1 = load <8 x i32>, ptr %a
@@ -454,13 +455,13 @@ define <2 x i64> @insertelement_v2i64(<2 x i64> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
 ; NONEON-NOSVE-NEXT:    str q0, [sp]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr x9, [sp]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #32]
+; NONEON-NOSVE-NEXT:    stp x9, x8, [sp, #48]
 ; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp x9, x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <2 x i64> %op1, i64 5, i64 1
@@ -485,15 +486,16 @@ define <4 x i64> @insertelement_v4i64(ptr %a) {
 ; NONEON-NOSVE:       // %bb.0:
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #64
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
+; NONEON-NOSVE-NEXT:    ldp q0, q1, [x0]
 ; NONEON-NOSVE-NEXT:    mov w8, #5 // =0x5
-; NONEON-NOSVE-NEXT:    ldp q0, q2, [x0]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
-; NONEON-NOSVE-NEXT:    stp q2, q1, [sp]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    str q1, [sp]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr x9, [sp]
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp x9, x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #32]
+; NONEON-NOSVE-NEXT:    stp x9, x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %op1 = load <4 x i64>, ptr %a
@@ -551,13 +553,13 @@ define <4 x half> @insertelement_v4f16(<4 x half> %op1) {
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp]
 ; NONEON-NOSVE-NEXT:    str h1, [sp, #24]
 ; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #16]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #8]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr h0, [sp, #4]
-; NONEON-NOSVE-NEXT:    str h0, [sp, #20]
-; NONEON-NOSVE-NEXT:    ldr h0, [sp, #8]
-; NONEON-NOSVE-NEXT:    str h0, [sp, #22]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str h0, [sp, #12]
+; NONEON-NOSVE-NEXT:    ldr h0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str h0, [sp, #14]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <4 x half> %op1, half 5.0, i64 3
@@ -588,15 +590,15 @@ define <8 x half> @insertelement_v8f16(<8 x half> %op1) {
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
 ; NONEON-NOSVE-NEXT:    str h1, [sp, #48]
 ; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #40]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #32]
 ; NONEON-NOSVE-NEXT:    ldr h0, [sp, #12]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    str h0, [sp, #44]
-; NONEON-NOSVE-NEXT:    ldr h0, [sp, #16]
-; NONEON-NOSVE-NEXT:    str h0, [sp, #46]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    str h0, [sp, #28]
+; NONEON-NOSVE-NEXT:    ldr h0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str h0, [sp, #30]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <8 x half> %op1, half 5.0, i64 7
@@ -626,16 +628,17 @@ define <16 x half> @insertelement_v16f16(ptr %a) {
 ; NONEON-NOSVE-NEXT:    ldr h1, [x8, :lo12:.LCPI17_0]
 ; NONEON-NOSVE-NEXT:    str h1, [sp, #48]
 ; NONEON-NOSVE-NEXT:    ldr q1, [sp, #48]
-; NONEON-NOSVE-NEXT:    stp q2, q1, [sp]
-; NONEON-NOSVE-NEXT:    ldr h1, [sp, #12]
+; NONEON-NOSVE-NEXT:    str q2, [sp]
 ; NONEON-NOSVE-NEXT:    ldr w8, [sp, #8]
-; NONEON-NOSVE-NEXT:    str h1, [sp, #44]
-; NONEON-NOSVE-NEXT:    ldr h1, [sp, #16]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #40]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr h1, [sp, #12]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
-; NONEON-NOSVE-NEXT:    str h1, [sp, #46]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str h1, [sp, #28]
+; NONEON-NOSVE-NEXT:    ldr h1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    str h1, [sp, #30]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %op1 = load <16 x half>, ptr %a
@@ -663,14 +666,14 @@ define <2 x float> @insertelement_v2f32(<2 x float> %op1) {
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #32
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 32
 ; NONEON-NOSVE-NEXT:    mov w8, #1084227584 // =0x40a00000
-; NONEON-NOSVE-NEXT:    str d0, [sp]
+; NONEON-NOSVE-NEXT:    str d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    str w8, [sp, #24]
-; NONEON-NOSVE-NEXT:    ldr s1, [sp]
+; NONEON-NOSVE-NEXT:    ldr s1, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr d0, [sp, #24]
-; NONEON-NOSVE-NEXT:    str d0, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr s0, [sp, #8]
-; NONEON-NOSVE-NEXT:    stp s1, s0, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str d0, [sp]
+; NONEON-NOSVE-NEXT:    ldr s0, [sp]
+; NONEON-NOSVE-NEXT:    stp s1, s0, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp, #8]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #32
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <2 x float> %op1, float 5.0, i64 1
@@ -697,15 +700,15 @@ define <4 x float> @insertelement_v4f32(<4 x float> %op1) {
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov w8, #1084227584 // =0x40a00000
 ; NONEON-NOSVE-NEXT:    str q0, [sp]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #48]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #32]
 ; NONEON-NOSVE-NEXT:    ldr s1, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr s0, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp s1, s0, [sp, #40]
 ; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr s0, [sp, #48]
+; NONEON-NOSVE-NEXT:    stp s1, s0, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <4 x float> %op1, float 5.0, i64 3
@@ -731,17 +734,18 @@ define <8 x float> @insertelement_v8f32(ptr %a) {
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #64
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov w8, #1084227584 // =0x40a00000
-; NONEON-NOSVE-NEXT:    ldr q1, [x0, #16]
-; NONEON-NOSVE-NEXT:    str w8, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    stp q1, q0, [sp]
+; NONEON-NOSVE-NEXT:    ldr q0, [x0, #16]
+; NONEON-NOSVE-NEXT:    str w8, [sp, #32]
+; NONEON-NOSVE-NEXT:    str q0, [sp]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
 ; NONEON-NOSVE-NEXT:    ldr s1, [sp, #8]
 ; NONEON-NOSVE-NEXT:    ldr x8, [sp]
-; NONEON-NOSVE-NEXT:    ldr s0, [sp, #16]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    stp s1, s0, [sp, #40]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr s0, [sp, #48]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    stp s1, s0, [sp, #24]
 ; NONEON-NOSVE-NEXT:    ldr q0, [x0]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %op1 = load <8 x float>, ptr %a
@@ -788,14 +792,14 @@ define <2 x double> @insertelement_v2f64(<2 x double> %op1) {
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #64
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov x8, #4617315517961601024 // =0x4014000000000000
-; NONEON-NOSVE-NEXT:    str q0, [sp]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #32]
 ; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldr d1, [sp]
+; NONEON-NOSVE-NEXT:    ldr d1, [sp, #32]
 ; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp d1, d0, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str q0, [sp]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp]
+; NONEON-NOSVE-NEXT:    stp d1, d0, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %r = insertelement <2 x double> %op1, double 5.0, i64 1
@@ -821,15 +825,16 @@ define <4 x double> @insertelement_v4f64(ptr %a) {
 ; NONEON-NOSVE-NEXT:    sub sp, sp, #64
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 64
 ; NONEON-NOSVE-NEXT:    mov x8, #4617315517961601024 // =0x4014000000000000
-; NONEON-NOSVE-NEXT:    ldr q1, [x0, #16]
+; NONEON-NOSVE-NEXT:    ldr q0, [x0, #16]
 ; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #32]
 ; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    stp q1, q0, [sp]
-; NONEON-NOSVE-NEXT:    ldr d1, [sp]
-; NONEON-NOSVE-NEXT:    ldr d0, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp d1, d0, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr d1, [sp, #32]
+; NONEON-NOSVE-NEXT:    str q0, [sp]
+; NONEON-NOSVE-NEXT:    ldr d0, [sp]
+; NONEON-NOSVE-NEXT:    stp d1, d0, [sp, #16]
 ; NONEON-NOSVE-NEXT:    ldr q0, [x0]
-; NONEON-NOSVE-NEXT:    ldr q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr q1, [sp, #16]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #64
 ; NONEON-NOSVE-NEXT:    ret
     %op1 = load <4 x double>, ptr %a

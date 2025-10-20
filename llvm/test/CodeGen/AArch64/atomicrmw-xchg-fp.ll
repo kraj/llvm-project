@@ -94,10 +94,9 @@ define fp128 @test_rmw_xchg_f128(ptr %dst, fp128 %new) {
 ;
 ; LSE-LABEL: test_rmw_xchg_f128:
 ; LSE:       // %bb.0:
-; LSE-NEXT:    sub sp, sp, #32
+; LSE-NEXT:    str q0, [sp, #-32]!
 ; LSE-NEXT:    .cfi_def_cfa_offset 32
-; LSE-NEXT:    str q0, [sp, #16]
-; LSE-NEXT:    ldp x2, x3, [sp, #16]
+; LSE-NEXT:    ldp x2, x3, [sp]
 ; LSE-NEXT:    ldp x4, x5, [x0]
 ; LSE-NEXT:  .LBB3_1: // %atomicrmw.start
 ; LSE-NEXT:    // =>This Inner Loop Header: Depth=1
@@ -110,8 +109,9 @@ define fp128 @test_rmw_xchg_f128(ptr %dst, fp128 %new) {
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
 ; LSE-NEXT:    b.ne .LBB3_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
-; LSE-NEXT:    stp x4, x5, [sp]
-; LSE-NEXT:    ldr q0, [sp], #32
+; LSE-NEXT:    stp x4, x5, [sp, #16]
+; LSE-NEXT:    ldr q0, [sp, #16]
+; LSE-NEXT:    add sp, sp, #32
 ; LSE-NEXT:    ret
   %res = atomicrmw xchg ptr %dst, fp128 %new seq_cst
   ret fp128 %res

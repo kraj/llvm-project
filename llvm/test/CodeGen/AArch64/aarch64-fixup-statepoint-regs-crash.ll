@@ -14,11 +14,12 @@ define dso_local ptr addrspace(1) @foo(ptr addrspace(1) %arg) gc "statepoint-exa
 ; CHECK-NEXT:    .cfi_offset w19, -8
 ; CHECK-NEXT:    .cfi_offset w30, -16
 ; CHECK-NEXT:    ldr q0, [x0]
-; CHECK-NEXT:    str q0, [sp, #16]
-; CHECK-NEXT:    str d0, [sp, #8] // 8-byte Folded Spill
+; CHECK-NEXT:    str q0, [sp]
+; CHECK-NEXT:    str d0, [sp, #24] // 8-byte Folded Spill
 ; CHECK-NEXT:    bl baz // 8-byte Folded Reload
 ; CHECK-NEXT:  .Ltmp0:
-; CHECK-NEXT:    ldp x19, x0, [sp, #8] // 8-byte Folded Reload
+; CHECK-NEXT:    ldr x19, [sp, #24] // 8-byte Folded Reload
+; CHECK-NEXT:    ldr x0, [sp]
 ; CHECK-NEXT:    ldp x30, x19, [sp, #32] // 16-byte Folded Reload
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret

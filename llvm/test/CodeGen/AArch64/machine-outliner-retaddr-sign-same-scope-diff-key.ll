@@ -11,15 +11,15 @@ define void @a() "sign-return-address"="all" {
 ; V8A-NEXT:    .cfi_negate_ra_state
 ; V8A-NEXT:    sub sp, sp, #32
 ; V8A-NEXT:    .cfi_def_cfa_offset 32
-; V8A-NEXT:    mov w8, #1 // =0x1
 ; V8A-NEXT:    mov w9, #2 // =0x2
-; V8A-NEXT:    stp w9, w8, [sp, #24]
-; V8A-NEXT:    mov w9, #3 // =0x3
-; V8A-NEXT:    mov w8, #4 // =0x4
+; V8A-NEXT:    mov w8, #3 // =0x3
+; V8A-NEXT:    mov w10, #1 // =0x1
 ; V8A-NEXT:    stp w8, w9, [sp, #16]
-; V8A-NEXT:    mov w9, #5 // =0x5
-; V8A-NEXT:    mov w8, #6 // =0x6
+; V8A-NEXT:    mov w9, #4 // =0x4
+; V8A-NEXT:    mov w8, #5 // =0x5
 ; V8A-NEXT:    stp w8, w9, [sp, #8]
+; V8A-NEXT:    mov w8, #6 // =0x6
+; V8A-NEXT:    stp w8, w10, [sp, #24]
 ; V8A-NEXT:    add sp, sp, #32
 ; V8A-NEXT:    hint #29
 ; V8A-NEXT:    ret
@@ -30,15 +30,15 @@ define void @a() "sign-return-address"="all" {
 ; V83A-NEXT:    .cfi_negate_ra_state
 ; V83A-NEXT:    sub sp, sp, #32
 ; V83A-NEXT:    .cfi_def_cfa_offset 32
-; V83A-NEXT:    mov w8, #1 // =0x1
 ; V83A-NEXT:    mov w9, #2 // =0x2
-; V83A-NEXT:    stp w9, w8, [sp, #24]
-; V83A-NEXT:    mov w9, #3 // =0x3
-; V83A-NEXT:    mov w8, #4 // =0x4
+; V83A-NEXT:    mov w8, #3 // =0x3
+; V83A-NEXT:    mov w10, #1 // =0x1
 ; V83A-NEXT:    stp w8, w9, [sp, #16]
-; V83A-NEXT:    mov w9, #5 // =0x5
-; V83A-NEXT:    mov w8, #6 // =0x6
+; V83A-NEXT:    mov w9, #4 // =0x4
+; V83A-NEXT:    mov w8, #5 // =0x5
 ; V83A-NEXT:    stp w8, w9, [sp, #8]
+; V83A-NEXT:    mov w8, #6 // =0x6
+; V83A-NEXT:    stp w8, w10, [sp, #24]
 ; V83A-NEXT:    add sp, sp, #32
 ; V83A-NEXT:    retaa
   %1 = alloca i32, align 4
@@ -64,15 +64,15 @@ define void @b() "sign-return-address"="all" "sign-return-address-key"="b_key" {
 ; V8A-NEXT:    .cfi_negate_ra_state
 ; V8A-NEXT:    sub sp, sp, #32
 ; V8A-NEXT:    .cfi_def_cfa_offset 32
-; V8A-NEXT:    mov w8, #1 // =0x1
 ; V8A-NEXT:    mov w9, #2 // =0x2
-; V8A-NEXT:    stp w9, w8, [sp, #24]
-; V8A-NEXT:    mov w9, #3 // =0x3
-; V8A-NEXT:    mov w8, #4 // =0x4
+; V8A-NEXT:    mov w8, #3 // =0x3
+; V8A-NEXT:    mov w10, #1 // =0x1
 ; V8A-NEXT:    stp w8, w9, [sp, #16]
-; V8A-NEXT:    mov w9, #5 // =0x5
-; V8A-NEXT:    mov w8, #6 // =0x6
+; V8A-NEXT:    mov w9, #4 // =0x4
+; V8A-NEXT:    mov w8, #5 // =0x5
 ; V8A-NEXT:    stp w8, w9, [sp, #8]
+; V8A-NEXT:    mov w8, #6 // =0x6
+; V8A-NEXT:    stp w8, w10, [sp, #24]
 ; V8A-NEXT:    add sp, sp, #32
 ; V8A-NEXT:    hint #31
 ; V8A-NEXT:    ret
@@ -84,15 +84,15 @@ define void @b() "sign-return-address"="all" "sign-return-address-key"="b_key" {
 ; V83A-NEXT:    .cfi_negate_ra_state
 ; V83A-NEXT:    sub sp, sp, #32
 ; V83A-NEXT:    .cfi_def_cfa_offset 32
-; V83A-NEXT:    mov w8, #1 // =0x1
 ; V83A-NEXT:    mov w9, #2 // =0x2
-; V83A-NEXT:    stp w9, w8, [sp, #24]
-; V83A-NEXT:    mov w9, #3 // =0x3
-; V83A-NEXT:    mov w8, #4 // =0x4
+; V83A-NEXT:    mov w8, #3 // =0x3
+; V83A-NEXT:    mov w10, #1 // =0x1
 ; V83A-NEXT:    stp w8, w9, [sp, #16]
-; V83A-NEXT:    mov w9, #5 // =0x5
-; V83A-NEXT:    mov w8, #6 // =0x6
+; V83A-NEXT:    mov w9, #4 // =0x4
+; V83A-NEXT:    mov w8, #5 // =0x5
 ; V83A-NEXT:    stp w8, w9, [sp, #8]
+; V83A-NEXT:    mov w8, #6 // =0x6
+; V83A-NEXT:    stp w8, w10, [sp, #24]
 ; V83A-NEXT:    add sp, sp, #32
 ; V83A-NEXT:    retab
   %1 = alloca i32, align 4
@@ -117,15 +117,15 @@ define void @c() "sign-return-address"="all" {
 ; V8A-NEXT:    .cfi_negate_ra_state
 ; V8A-NEXT:    sub sp, sp, #32
 ; V8A-NEXT:    .cfi_def_cfa_offset 32
-; V8A-NEXT:    mov w8, #1 // =0x1
 ; V8A-NEXT:    mov w9, #2 // =0x2
-; V8A-NEXT:    stp w9, w8, [sp, #24]
-; V8A-NEXT:    mov w9, #3 // =0x3
-; V8A-NEXT:    mov w8, #4 // =0x4
+; V8A-NEXT:    mov w8, #3 // =0x3
+; V8A-NEXT:    mov w10, #1 // =0x1
 ; V8A-NEXT:    stp w8, w9, [sp, #16]
-; V8A-NEXT:    mov w9, #5 // =0x5
-; V8A-NEXT:    mov w8, #6 // =0x6
+; V8A-NEXT:    mov w9, #4 // =0x4
+; V8A-NEXT:    mov w8, #5 // =0x5
 ; V8A-NEXT:    stp w8, w9, [sp, #8]
+; V8A-NEXT:    mov w8, #6 // =0x6
+; V8A-NEXT:    stp w8, w10, [sp, #24]
 ; V8A-NEXT:    add sp, sp, #32
 ; V8A-NEXT:    hint #29
 ; V8A-NEXT:    ret
@@ -136,15 +136,15 @@ define void @c() "sign-return-address"="all" {
 ; V83A-NEXT:    .cfi_negate_ra_state
 ; V83A-NEXT:    sub sp, sp, #32
 ; V83A-NEXT:    .cfi_def_cfa_offset 32
-; V83A-NEXT:    mov w8, #1 // =0x1
 ; V83A-NEXT:    mov w9, #2 // =0x2
-; V83A-NEXT:    stp w9, w8, [sp, #24]
-; V83A-NEXT:    mov w9, #3 // =0x3
-; V83A-NEXT:    mov w8, #4 // =0x4
+; V83A-NEXT:    mov w8, #3 // =0x3
+; V83A-NEXT:    mov w10, #1 // =0x1
 ; V83A-NEXT:    stp w8, w9, [sp, #16]
-; V83A-NEXT:    mov w9, #5 // =0x5
-; V83A-NEXT:    mov w8, #6 // =0x6
+; V83A-NEXT:    mov w9, #4 // =0x4
+; V83A-NEXT:    mov w8, #5 // =0x5
 ; V83A-NEXT:    stp w8, w9, [sp, #8]
+; V83A-NEXT:    mov w8, #6 // =0x6
+; V83A-NEXT:    stp w8, w10, [sp, #24]
 ; V83A-NEXT:    add sp, sp, #32
 ; V83A-NEXT:    retaa
   %1 = alloca i32, align 4

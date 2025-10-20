@@ -469,15 +469,15 @@ define void @call_to_non_streaming_pass_args(ptr nocapture noundef readnone %ptr
 ; CHECK-NEXT:    .cfi_offset b13, -80
 ; CHECK-NEXT:    .cfi_offset b14, -88
 ; CHECK-NEXT:    .cfi_offset b15, -96
-; CHECK-NEXT:    stp d2, d3, [sp, #16] // 16-byte Folded Spill
-; CHECK-NEXT:    stp s0, s1, [sp, #8] // 8-byte Folded Spill
+; CHECK-NEXT:    stp d2, d3, [sp, #8] // 16-byte Folded Spill
+; CHECK-NEXT:    stp s0, s1, [sp, #24] // 8-byte Folded Spill
 ; CHECK-NEXT:    mrs x19, SVCR
 ; CHECK-NEXT:    tbz w19, #0, .LBB10_2
 ; CHECK-NEXT:  // %bb.1: // %entry
 ; CHECK-NEXT:    smstop sm
 ; CHECK-NEXT:  .LBB10_2: // %entry
-; CHECK-NEXT:    ldp s0, s1, [sp, #8] // 8-byte Folded Reload
-; CHECK-NEXT:    ldp d2, d3, [sp, #16] // 16-byte Folded Reload
+; CHECK-NEXT:    ldp s0, s1, [sp, #24] // 8-byte Folded Reload
+; CHECK-NEXT:    ldp d2, d3, [sp, #8] // 16-byte Folded Reload
 ; CHECK-NEXT:    bl bar
 ; CHECK-NEXT:    tbz w19, #0, .LBB10_4
 ; CHECK-NEXT:  // %bb.3: // %entry

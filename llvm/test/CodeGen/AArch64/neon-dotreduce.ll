@@ -8915,10 +8915,10 @@ define i32 @test_usdot_v64i8_double(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c, <6
 ; CHECK-GI-NEXT:    ushll v31.8h, v0.8b, #0
 ; CHECK-GI-NEXT:    ushll2 v8.8h, v0.16b, #0
 ; CHECK-GI-NEXT:    ldr x29, [sp, #224] // 8-byte Folded Reload
-; CHECK-GI-NEXT:    sshll v11.8h, v4.8b, #0
-; CHECK-GI-NEXT:    sshll2 v12.8h, v4.16b, #0
 ; CHECK-GI-NEXT:    ushll v9.8h, v1.8b, #0
 ; CHECK-GI-NEXT:    ushll2 v10.8h, v1.16b, #0
+; CHECK-GI-NEXT:    sshll v11.8h, v4.8b, #0
+; CHECK-GI-NEXT:    sshll2 v12.8h, v4.16b, #0
 ; CHECK-GI-NEXT:    ldp q25, q22, [sp, #240]
 ; CHECK-GI-NEXT:    sshll v13.8h, v5.8b, #0
 ; CHECK-GI-NEXT:    sshll2 v14.8h, v5.16b, #0
@@ -8927,38 +8927,36 @@ define i32 @test_usdot_v64i8_double(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c, <6
 ; CHECK-GI-NEXT:    ldp q21, q18, [sp, #272]
 ; CHECK-GI-NEXT:    smull v20.4s, v8.4h, v12.4h
 ; CHECK-GI-NEXT:    sshll v4.8h, v6.8b, #0
-; CHECK-GI-NEXT:    sshll2 v5.8h, v6.16b, #0
+; CHECK-GI-NEXT:    ushll2 v1.8h, v2.16b, #0
 ; CHECK-GI-NEXT:    smull v28.4s, v9.4h, v13.4h
 ; CHECK-GI-NEXT:    ldp q17, q16, [sp, #304]
 ; CHECK-GI-NEXT:    smull v27.4s, v10.4h, v14.4h
-; CHECK-GI-NEXT:    sshll v6.8h, v7.8b, #0
-; CHECK-GI-NEXT:    ushll2 v1.8h, v2.16b, #0
-; CHECK-GI-NEXT:    smlal2 v19.4s, v31.8h, v11.8h
 ; CHECK-GI-NEXT:    ldp q30, q29, [sp, #336]
-; CHECK-GI-NEXT:    smlal2 v20.4s, v8.8h, v12.8h
+; CHECK-GI-NEXT:    smlal2 v19.4s, v31.8h, v11.8h
 ; CHECK-GI-NEXT:    ushll v2.8h, v3.8b, #0
-; CHECK-GI-NEXT:    ushll2 v3.8h, v3.16b, #0
+; CHECK-GI-NEXT:    sshll2 v5.8h, v6.16b, #0
+; CHECK-GI-NEXT:    smlal2 v20.4s, v8.8h, v12.8h
+; CHECK-GI-NEXT:    sshll v6.8h, v7.8b, #0
+; CHECK-GI-NEXT:    stp q0, q4, [sp, #128] // 32-byte Folded Spill
 ; CHECK-GI-NEXT:    smlal2 v28.4s, v9.8h, v13.8h
-; CHECK-GI-NEXT:    stp q0, q6, [sp, #48] // 32-byte Folded Spill
+; CHECK-GI-NEXT:    ushll2 v3.8h, v3.16b, #0
 ; CHECK-GI-NEXT:    sshll2 v7.8h, v7.16b, #0
 ; CHECK-GI-NEXT:    smlal2 v27.4s, v10.8h, v14.8h
+; CHECK-GI-NEXT:    stp q2, q1, [sp, #64] // 32-byte Folded Spill
 ; CHECK-GI-NEXT:    smull v26.4s, v0.4h, v4.4h
 ; CHECK-GI-NEXT:    ushll v31.8h, v25.8b, #0
-; CHECK-GI-NEXT:    str q19, [sp, #144] // 16-byte Folded Spill
+; CHECK-GI-NEXT:    stp q6, q5, [sp, #32] // 32-byte Folded Spill
 ; CHECK-GI-NEXT:    ushll2 v25.8h, v25.16b, #0
+; CHECK-GI-NEXT:    stp q20, q19, [sp, #96] // 32-byte Folded Spill
 ; CHECK-GI-NEXT:    ushll v8.8h, v22.8b, #0
-; CHECK-GI-NEXT:    stp q2, q1, [sp] // 32-byte Folded Spill
 ; CHECK-GI-NEXT:    ushll2 v22.8h, v22.16b, #0
 ; CHECK-GI-NEXT:    ushll v9.8h, v21.8b, #0
-; CHECK-GI-NEXT:    stp q5, q28, [sp, #80] // 32-byte Folded Spill
 ; CHECK-GI-NEXT:    ushll2 v21.8h, v21.16b, #0
 ; CHECK-GI-NEXT:    ushll v10.8h, v18.8b, #0
-; CHECK-GI-NEXT:    stp q4, q20, [sp, #112] // 32-byte Folded Spill
+; CHECK-GI-NEXT:    stp q27, q28, [sp] // 32-byte Folded Spill
+; CHECK-GI-NEXT:    ldp q27, q28, [sp, #128] // 32-byte Folded Reload
 ; CHECK-GI-NEXT:    ushll2 v20.8h, v18.16b, #0
 ; CHECK-GI-NEXT:    sshll v11.8h, v17.8b, #0
-; CHECK-GI-NEXT:    str q27, [sp, #32] // 16-byte Folded Spill
-; CHECK-GI-NEXT:    ldr q28, [sp, #112] // 16-byte Folded Reload
-; CHECK-GI-NEXT:    ldr q27, [sp, #48] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    sshll2 v19.8h, v17.16b, #0
 ; CHECK-GI-NEXT:    sshll v12.8h, v16.8b, #0
 ; CHECK-GI-NEXT:    sshll2 v18.8h, v16.16b, #0
@@ -8978,46 +8976,45 @@ define i32 @test_usdot_v64i8_double(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c, <6
 ; CHECK-GI-NEXT:    smull v1.4s, v10.4h, v14.4h
 ; CHECK-GI-NEXT:    smull v0.4s, v20.4h, v29.4h
 ; CHECK-GI-NEXT:    smlal2 v26.4s, v27.8h, v28.8h
-; CHECK-GI-NEXT:    ldr q28, [sp, #80] // 16-byte Folded Reload
-; CHECK-GI-NEXT:    ldr q27, [sp, #16] // 16-byte Folded Reload
+; CHECK-GI-NEXT:    ldr q28, [sp, #48] // 16-byte Folded Reload
+; CHECK-GI-NEXT:    ldr q27, [sp, #80] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    smlal2 v15.4s, v3.8h, v7.8h
-; CHECK-GI-NEXT:    ldp q7, q3, [sp, #128] // 32-byte Folded Reload
-; CHECK-GI-NEXT:    smlal2 v23.4s, v27.8h, v28.8h
-; CHECK-GI-NEXT:    ldr q28, [sp, #64] // 16-byte Folded Reload
-; CHECK-GI-NEXT:    ldr q27, [sp] // 16-byte Folded Reload
+; CHECK-GI-NEXT:    ldp q7, q3, [sp, #96] // 32-byte Folded Reload
 ; CHECK-GI-NEXT:    smlal2 v17.4s, v31.8h, v11.8h
+; CHECK-GI-NEXT:    smlal2 v23.4s, v27.8h, v28.8h
+; CHECK-GI-NEXT:    ldr q28, [sp, #32] // 16-byte Folded Reload
+; CHECK-GI-NEXT:    ldr q27, [sp, #64] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    smlal2 v6.4s, v25.8h, v19.8h
 ; CHECK-GI-NEXT:    smlal2 v16.4s, v8.8h, v12.8h
-; CHECK-GI-NEXT:    smlal2 v24.4s, v27.8h, v28.8h
 ; CHECK-GI-NEXT:    smlal2 v4.4s, v22.8h, v18.8h
-; CHECK-GI-NEXT:    ldr q18, [sp, #32] // 16-byte Folded Reload
+; CHECK-GI-NEXT:    smlal2 v24.4s, v27.8h, v28.8h
 ; CHECK-GI-NEXT:    smlal2 v5.4s, v9.8h, v13.8h
-; CHECK-GI-NEXT:    ldp d9, d8, [sp, #208] // 16-byte Folded Reload
-; CHECK-GI-NEXT:    ldp d13, d12, [sp, #176] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    smlal2 v2.4s, v21.8h, v30.8h
+; CHECK-GI-NEXT:    ldp d9, d8, [sp, #208] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    smlal2 v1.4s, v10.8h, v14.8h
 ; CHECK-GI-NEXT:    ldp d11, d10, [sp, #192] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    smlal2 v0.4s, v20.8h, v29.8h
+; CHECK-GI-NEXT:    ldp d13, d12, [sp, #176] // 16-byte Folded Reload
 ; CHECK-GI-NEXT:    add v3.4s, v3.4s, v7.4s
-; CHECK-GI-NEXT:    ldr q7, [sp, #96] // 16-byte Folded Reload
+; CHECK-GI-NEXT:    ldp q18, q7, [sp] // 32-byte Folded Reload
 ; CHECK-GI-NEXT:    add v19.4s, v24.4s, v15.4s
 ; CHECK-GI-NEXT:    ldp d15, d14, [sp, #160] // 16-byte Folded Reload
-; CHECK-GI-NEXT:    add v7.4s, v7.4s, v18.4s
-; CHECK-GI-NEXT:    add v18.4s, v26.4s, v23.4s
 ; CHECK-GI-NEXT:    add v6.4s, v17.4s, v6.4s
 ; CHECK-GI-NEXT:    add v4.4s, v16.4s, v4.4s
 ; CHECK-GI-NEXT:    add v2.4s, v5.4s, v2.4s
 ; CHECK-GI-NEXT:    add v0.4s, v1.4s, v0.4s
-; CHECK-GI-NEXT:    add v1.4s, v3.4s, v7.4s
-; CHECK-GI-NEXT:    add v3.4s, v18.4s, v19.4s
+; CHECK-GI-NEXT:    add v7.4s, v7.4s, v18.4s
+; CHECK-GI-NEXT:    add v18.4s, v26.4s, v23.4s
 ; CHECK-GI-NEXT:    add v4.4s, v6.4s, v4.4s
 ; CHECK-GI-NEXT:    add v0.4s, v2.4s, v0.4s
-; CHECK-GI-NEXT:    add v1.4s, v1.4s, v3.4s
+; CHECK-GI-NEXT:    add v1.4s, v3.4s, v7.4s
+; CHECK-GI-NEXT:    add v3.4s, v18.4s, v19.4s
 ; CHECK-GI-NEXT:    add v0.4s, v4.4s, v0.4s
-; CHECK-GI-NEXT:    addv s1, v1.4s
+; CHECK-GI-NEXT:    add v1.4s, v1.4s, v3.4s
 ; CHECK-GI-NEXT:    addv s0, v0.4s
-; CHECK-GI-NEXT:    fmov w8, s1
+; CHECK-GI-NEXT:    addv s1, v1.4s
 ; CHECK-GI-NEXT:    fmov w9, s0
+; CHECK-GI-NEXT:    fmov w8, s1
 ; CHECK-GI-NEXT:    add w0, w8, w9
 ; CHECK-GI-NEXT:    add sp, sp, #240
 ; CHECK-GI-NEXT:    ret

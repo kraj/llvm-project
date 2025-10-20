@@ -53,8 +53,8 @@ define <2 x i64> @masked_gather_v2i64(ptr %a, ptr %b) vscale_range(2, 2) {
 ; NONEON-NOSVE-NEXT:    ldr q0, [x0]
 ; NONEON-NOSVE-NEXT:    ldr q1, [x1]
 ; NONEON-NOSVE-NEXT:    mov w8, #2 // =0x2
-; NONEON-NOSVE-NEXT:    str q0, [sp, #112]
-; NONEON-NOSVE-NEXT:    ldp x10, x9, [sp, #112]
+; NONEON-NOSVE-NEXT:    str q0, [sp]
+; NONEON-NOSVE-NEXT:    ldp x10, x9, [sp]
 ; NONEON-NOSVE-NEXT:    cmp x9, #0
 ; NONEON-NOSVE-NEXT:    csel x8, x8, xzr, eq
 ; NONEON-NOSVE-NEXT:    cmp x10, #0
@@ -64,11 +64,11 @@ define <2 x i64> @masked_gather_v2i64(ptr %a, ptr %b) vscale_range(2, 2) {
 ; NONEON-NOSVE-NEXT:    and w8, w8, #0xff
 ; NONEON-NOSVE-NEXT:    tbz w8, #0, .LBB0_2
 ; NONEON-NOSVE-NEXT:  // %bb.1: // %cond.load
-; NONEON-NOSVE-NEXT:    str q1, [sp, #96]
-; NONEON-NOSVE-NEXT:    ldr x9, [sp, #96]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #64]
+; NONEON-NOSVE-NEXT:    ldr x9, [sp, #64]
 ; NONEON-NOSVE-NEXT:    ldr x9, [x9]
-; NONEON-NOSVE-NEXT:    str x9, [sp, #80]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #80]
+; NONEON-NOSVE-NEXT:    str x9, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
 ; NONEON-NOSVE-NEXT:    tbnz w8, #1, .LBB0_3
 ; NONEON-NOSVE-NEXT:    b .LBB0_4
 ; NONEON-NOSVE-NEXT:  .LBB0_2:
@@ -76,17 +76,17 @@ define <2 x i64> @masked_gather_v2i64(ptr %a, ptr %b) vscale_range(2, 2) {
 ; NONEON-NOSVE-NEXT:    ldr q0, [x9, :lo12:.LCPI0_0]
 ; NONEON-NOSVE-NEXT:    tbz w8, #1, .LBB0_4
 ; NONEON-NOSVE-NEXT:  .LBB0_3: // %cond.load1
-; NONEON-NOSVE-NEXT:    str q1, [sp, #64]
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #72]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #40]
 ; NONEON-NOSVE-NEXT:    ldr x8, [x8]
-; NONEON-NOSVE-NEXT:    str q0, [sp]
-; NONEON-NOSVE-NEXT:    ldr x9, [sp]
-; NONEON-NOSVE-NEXT:    str x8, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #48]
-; NONEON-NOSVE-NEXT:    str q0, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #16]
-; NONEON-NOSVE-NEXT:    stp x9, x8, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #112]
+; NONEON-NOSVE-NEXT:    ldr x9, [sp, #112]
+; NONEON-NOSVE-NEXT:    str x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #16]
+; NONEON-NOSVE-NEXT:    str q0, [sp, #80]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #80]
+; NONEON-NOSVE-NEXT:    stp x9, x8, [sp, #96]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp, #96]
 ; NONEON-NOSVE-NEXT:  .LBB0_4: // %else2
 ; NONEON-NOSVE-NEXT:    add sp, sp, #144
 ; NONEON-NOSVE-NEXT:    ret
@@ -132,13 +132,12 @@ define void @masked_scatter_v2i64(ptr %a, ptr %b) vscale_range(2, 2) {
 ;
 ; NONEON-NOSVE-LABEL: masked_scatter_v2i64:
 ; NONEON-NOSVE:       // %bb.0:
-; NONEON-NOSVE-NEXT:    sub sp, sp, #96
-; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 96
 ; NONEON-NOSVE-NEXT:    ldr q1, [x0]
 ; NONEON-NOSVE-NEXT:    ldr q0, [x1]
 ; NONEON-NOSVE-NEXT:    mov w8, #2 // =0x2
-; NONEON-NOSVE-NEXT:    str q1, [sp, #64]
-; NONEON-NOSVE-NEXT:    ldp x10, x9, [sp, #64]
+; NONEON-NOSVE-NEXT:    str q1, [sp, #-96]!
+; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 96
+; NONEON-NOSVE-NEXT:    ldp x10, x9, [sp]
 ; NONEON-NOSVE-NEXT:    cmp x9, #0
 ; NONEON-NOSVE-NEXT:    csel x8, x8, xzr, eq
 ; NONEON-NOSVE-NEXT:    cmp x10, #0
@@ -153,15 +152,15 @@ define void @masked_scatter_v2i64(ptr %a, ptr %b) vscale_range(2, 2) {
 ; NONEON-NOSVE-NEXT:    add sp, sp, #96
 ; NONEON-NOSVE-NEXT:    ret
 ; NONEON-NOSVE-NEXT:  .LBB1_3: // %cond.store
-; NONEON-NOSVE-NEXT:    stp q1, q0, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr x9, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr x10, [sp, #48]
+; NONEON-NOSVE-NEXT:    stp q1, q0, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr x9, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldr x10, [sp, #64]
 ; NONEON-NOSVE-NEXT:    str x9, [x10]
 ; NONEON-NOSVE-NEXT:    tbz w8, #1, .LBB1_2
 ; NONEON-NOSVE-NEXT:  .LBB1_4: // %cond.store1
-; NONEON-NOSVE-NEXT:    stp q1, q0, [sp]
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #8]
-; NONEON-NOSVE-NEXT:    ldr x9, [sp, #24]
+; NONEON-NOSVE-NEXT:    stp q1, q0, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldr x9, [sp, #40]
 ; NONEON-NOSVE-NEXT:    str x8, [x9]
 ; NONEON-NOSVE-NEXT:    add sp, sp, #96
 ; NONEON-NOSVE-NEXT:    ret

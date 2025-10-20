@@ -81,21 +81,21 @@ entry:
 define <3 x fp128> @fabs_v3f128(<3 x fp128> %a) {
 ; CHECK-SD-LABEL: fabs_v3f128:
 ; CHECK-SD:       // %bb.0: // %entry
-; CHECK-SD-NEXT:    stp q0, q1, [sp, #-48]!
+; CHECK-SD-NEXT:    sub sp, sp, #48
 ; CHECK-SD-NEXT:    .cfi_def_cfa_offset 48
-; CHECK-SD-NEXT:    ldrb w8, [sp, #15]
-; CHECK-SD-NEXT:    str q2, [sp, #32]
-; CHECK-SD-NEXT:    and w8, w8, #0x7f
-; CHECK-SD-NEXT:    strb w8, [sp, #15]
+; CHECK-SD-NEXT:    stp q0, q1, [sp, #16]
 ; CHECK-SD-NEXT:    ldrb w8, [sp, #31]
+; CHECK-SD-NEXT:    str q2, [sp]
 ; CHECK-SD-NEXT:    and w8, w8, #0x7f
 ; CHECK-SD-NEXT:    strb w8, [sp, #31]
 ; CHECK-SD-NEXT:    ldrb w8, [sp, #47]
-; CHECK-SD-NEXT:    ldp q0, q1, [sp]
 ; CHECK-SD-NEXT:    and w8, w8, #0x7f
 ; CHECK-SD-NEXT:    strb w8, [sp, #47]
-; CHECK-SD-NEXT:    ldr q2, [sp, #32]
-; CHECK-SD-NEXT:    add sp, sp, #48
+; CHECK-SD-NEXT:    ldrb w8, [sp, #15]
+; CHECK-SD-NEXT:    ldp q0, q1, [sp, #16]
+; CHECK-SD-NEXT:    and w8, w8, #0x7f
+; CHECK-SD-NEXT:    strb w8, [sp, #15]
+; CHECK-SD-NEXT:    ldr q2, [sp], #48
 ; CHECK-SD-NEXT:    ret
 ;
 ; CHECK-GI-LABEL: fabs_v3f128:
@@ -121,24 +121,24 @@ entry:
 define <4 x fp128> @fabs_v4f128(<4 x fp128> %a) {
 ; CHECK-SD-LABEL: fabs_v4f128:
 ; CHECK-SD:       // %bb.0: // %entry
-; CHECK-SD-NEXT:    stp q0, q1, [sp, #-64]!
+; CHECK-SD-NEXT:    sub sp, sp, #64
 ; CHECK-SD-NEXT:    .cfi_def_cfa_offset 64
-; CHECK-SD-NEXT:    ldrb w8, [sp, #15]
-; CHECK-SD-NEXT:    stp q2, q3, [sp, #32]
-; CHECK-SD-NEXT:    and w8, w8, #0x7f
-; CHECK-SD-NEXT:    strb w8, [sp, #15]
-; CHECK-SD-NEXT:    ldrb w8, [sp, #31]
-; CHECK-SD-NEXT:    and w8, w8, #0x7f
-; CHECK-SD-NEXT:    strb w8, [sp, #31]
+; CHECK-SD-NEXT:    stp q2, q3, [sp]
+; CHECK-SD-NEXT:    stp q0, q1, [sp, #32]
 ; CHECK-SD-NEXT:    ldrb w8, [sp, #47]
-; CHECK-SD-NEXT:    ldp q0, q1, [sp]
 ; CHECK-SD-NEXT:    and w8, w8, #0x7f
 ; CHECK-SD-NEXT:    strb w8, [sp, #47]
 ; CHECK-SD-NEXT:    ldrb w8, [sp, #63]
 ; CHECK-SD-NEXT:    and w8, w8, #0x7f
 ; CHECK-SD-NEXT:    strb w8, [sp, #63]
-; CHECK-SD-NEXT:    ldp q2, q3, [sp, #32]
-; CHECK-SD-NEXT:    add sp, sp, #64
+; CHECK-SD-NEXT:    ldrb w8, [sp, #15]
+; CHECK-SD-NEXT:    ldp q0, q1, [sp, #32]
+; CHECK-SD-NEXT:    and w8, w8, #0x7f
+; CHECK-SD-NEXT:    strb w8, [sp, #15]
+; CHECK-SD-NEXT:    ldrb w8, [sp, #31]
+; CHECK-SD-NEXT:    and w8, w8, #0x7f
+; CHECK-SD-NEXT:    strb w8, [sp, #31]
+; CHECK-SD-NEXT:    ldp q2, q3, [sp], #64
 ; CHECK-SD-NEXT:    ret
 ;
 ; CHECK-GI-LABEL: fabs_v4f128:

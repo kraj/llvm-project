@@ -498,8 +498,8 @@ define i64 @arith1(i64 noundef %0, i64 noundef %1, i64 noundef %2) {
 ; CHECK-CPA-O3-NEXT:    sub sp, sp, #32
 ; CHECK-CPA-O3-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-CPA-O3-NEXT:    madd x8, x1, x2, x0
-; CHECK-CPA-O3-NEXT:    stp x1, x0, [sp, #16]
-; CHECK-CPA-O3-NEXT:    str x2, [sp, #8]
+; CHECK-CPA-O3-NEXT:    stp x1, x0, [sp, #8]
+; CHECK-CPA-O3-NEXT:    str x2, [sp, #24]
 ; CHECK-CPA-O3-NEXT:    mov x0, x8
 ; CHECK-CPA-O3-NEXT:    add sp, sp, #32
 ; CHECK-CPA-O3-NEXT:    ret
@@ -524,8 +524,8 @@ define i64 @arith1(i64 noundef %0, i64 noundef %1, i64 noundef %2) {
 ; CHECK-NOCPA-O3-NEXT:    sub sp, sp, #32
 ; CHECK-NOCPA-O3-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-NOCPA-O3-NEXT:    madd x8, x1, x2, x0
-; CHECK-NOCPA-O3-NEXT:    stp x1, x0, [sp, #16]
-; CHECK-NOCPA-O3-NEXT:    str x2, [sp, #8]
+; CHECK-NOCPA-O3-NEXT:    stp x1, x0, [sp, #8]
+; CHECK-NOCPA-O3-NEXT:    str x2, [sp, #24]
 ; CHECK-NOCPA-O3-NEXT:    mov x0, x8
 ; CHECK-NOCPA-O3-NEXT:    add sp, sp, #32
 ; CHECK-NOCPA-O3-NEXT:    ret
@@ -568,18 +568,17 @@ define i64 @arith2(ptr noundef %0, i64 noundef %1, i64 noundef %2, i32 noundef %
 ;
 ; CHECK-CPA-O3-LABEL: arith2:
 ; CHECK-CPA-O3:       // %bb.0: // %entry
-; CHECK-CPA-O3-NEXT:    sub sp, sp, #32
-; CHECK-CPA-O3-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-CPA-O3-NEXT:    // kill: def $w3 killed $w3 def $x3
 ; CHECK-CPA-O3-NEXT:    sxtw x8, w3
 ; CHECK-CPA-O3-NEXT:    mov w9, #48 // =0x30
-; CHECK-CPA-O3-NEXT:    stp x1, x0, [sp, #16]
-; CHECK-CPA-O3-NEXT:    str x2, [sp, #8]
 ; CHECK-CPA-O3-NEXT:    maddpt x8, x8, x9, x0
-; CHECK-CPA-O3-NEXT:    str w3, [sp, #4]
 ; CHECK-CPA-O3-NEXT:    ldr x8, [x8, #24]
 ; CHECK-CPA-O3-NEXT:    madd x8, x1, x2, x8
+; CHECK-CPA-O3-NEXT:    stp x1, x0, [sp, #-32]!
+; CHECK-CPA-O3-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-CPA-O3-NEXT:    sub x0, x8, x2
+; CHECK-CPA-O3-NEXT:    str x2, [sp, #24]
+; CHECK-CPA-O3-NEXT:    str w3, [sp, #20]
 ; CHECK-CPA-O3-NEXT:    add sp, sp, #32
 ; CHECK-CPA-O3-NEXT:    ret
 ;
@@ -609,16 +608,15 @@ define i64 @arith2(ptr noundef %0, i64 noundef %1, i64 noundef %2, i32 noundef %
 ;
 ; CHECK-NOCPA-O3-LABEL: arith2:
 ; CHECK-NOCPA-O3:       // %bb.0: // %entry
-; CHECK-NOCPA-O3-NEXT:    sub sp, sp, #32
-; CHECK-NOCPA-O3-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-NOCPA-O3-NEXT:    mov w8, #48 // =0x30
-; CHECK-NOCPA-O3-NEXT:    stp x1, x0, [sp, #16]
 ; CHECK-NOCPA-O3-NEXT:    smaddl x8, w3, w8, x0
-; CHECK-NOCPA-O3-NEXT:    str x2, [sp, #8]
-; CHECK-NOCPA-O3-NEXT:    str w3, [sp, #4]
 ; CHECK-NOCPA-O3-NEXT:    ldr x8, [x8, #24]
 ; CHECK-NOCPA-O3-NEXT:    madd x8, x1, x2, x8
+; CHECK-NOCPA-O3-NEXT:    stp x1, x0, [sp, #-32]!
+; CHECK-NOCPA-O3-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-NOCPA-O3-NEXT:    sub x0, x8, x2
+; CHECK-NOCPA-O3-NEXT:    str x2, [sp, #24]
+; CHECK-NOCPA-O3-NEXT:    str w3, [sp, #20]
 ; CHECK-NOCPA-O3-NEXT:    add sp, sp, #32
 ; CHECK-NOCPA-O3-NEXT:    ret
 entry:

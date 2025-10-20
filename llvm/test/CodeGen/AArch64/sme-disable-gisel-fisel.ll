@@ -108,22 +108,22 @@ define double @locally_streaming_caller_normal_callee(double %x) nounwind noinli
 ; CHECK-COMMON-NEXT:    stp d11, d10, [sp, #64] // 16-byte Folded Spill
 ; CHECK-COMMON-NEXT:    stp d9, d8, [sp, #80] // 16-byte Folded Spill
 ; CHECK-COMMON-NEXT:    str x30, [sp, #96] // 8-byte Folded Spill
-; CHECK-COMMON-NEXT:    str d0, [sp, #24] // 8-byte Folded Spill
-; CHECK-COMMON-NEXT:    smstart sm
-; CHECK-COMMON-NEXT:    ldr d0, [sp, #24] // 8-byte Folded Reload
-; CHECK-COMMON-NEXT:    str d0, [sp, #24] // 8-byte Folded Spill
-; CHECK-COMMON-NEXT:    smstop sm
-; CHECK-COMMON-NEXT:    ldr d0, [sp, #24] // 8-byte Folded Reload
-; CHECK-COMMON-NEXT:    bl normal_callee
 ; CHECK-COMMON-NEXT:    str d0, [sp, #16] // 8-byte Folded Spill
 ; CHECK-COMMON-NEXT:    smstart sm
-; CHECK-COMMON-NEXT:    ldr d1, [sp, #16] // 8-byte Folded Reload
+; CHECK-COMMON-NEXT:    ldr d0, [sp, #16] // 8-byte Folded Reload
+; CHECK-COMMON-NEXT:    str d0, [sp, #16] // 8-byte Folded Spill
+; CHECK-COMMON-NEXT:    smstop sm
+; CHECK-COMMON-NEXT:    ldr d0, [sp, #16] // 8-byte Folded Reload
+; CHECK-COMMON-NEXT:    bl normal_callee
+; CHECK-COMMON-NEXT:    str d0, [sp, #8] // 8-byte Folded Spill
+; CHECK-COMMON-NEXT:    smstart sm
+; CHECK-COMMON-NEXT:    ldr d1, [sp, #8] // 8-byte Folded Reload
 ; CHECK-COMMON-NEXT:    mov x8, #4631107791820423168 // =0x4045000000000000
 ; CHECK-COMMON-NEXT:    fmov d0, x8
 ; CHECK-COMMON-NEXT:    fadd d0, d1, d0
-; CHECK-COMMON-NEXT:    str d0, [sp, #8] // 8-byte Folded Spill
+; CHECK-COMMON-NEXT:    str d0, [sp, #24] // 8-byte Folded Spill
 ; CHECK-COMMON-NEXT:    smstop sm
-; CHECK-COMMON-NEXT:    ldr d0, [sp, #8] // 8-byte Folded Reload
+; CHECK-COMMON-NEXT:    ldr d0, [sp, #24] // 8-byte Folded Reload
 ; CHECK-COMMON-NEXT:    ldr x30, [sp, #96] // 8-byte Folded Reload
 ; CHECK-COMMON-NEXT:    ldp d9, d8, [sp, #80] // 16-byte Folded Reload
 ; CHECK-COMMON-NEXT:    ldp d11, d10, [sp, #64] // 16-byte Folded Reload

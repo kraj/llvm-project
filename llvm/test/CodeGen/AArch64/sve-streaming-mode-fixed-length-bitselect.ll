@@ -35,32 +35,33 @@ define <8 x i32> @fixed_bitselect_v8i32(ptr %pre_cond_ptr, ptr %left_ptr, ptr %r
 ;
 ; NONEON-NOSVE-LABEL: fixed_bitselect_v8i32:
 ; NONEON-NOSVE:       // %bb.0:
+; NONEON-NOSVE-NEXT:    sub sp, sp, #128
+; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 128
 ; NONEON-NOSVE-NEXT:    ldp q0, q1, [x0]
 ; NONEON-NOSVE-NEXT:    ldp q2, q3, [x1]
 ; NONEON-NOSVE-NEXT:    ldp q4, q5, [x2]
-; NONEON-NOSVE-NEXT:    stp q0, q2, [sp, #-128]!
-; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 128
-; NONEON-NOSVE-NEXT:    stp q1, q3, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldp w13, w11, [sp, #48]
-; NONEON-NOSVE-NEXT:    ldp w14, w4, [sp, #64]
-; NONEON-NOSVE-NEXT:    ldp w17, w16, [sp]
-; NONEON-NOSVE-NEXT:    ldp w9, w8, [sp, #56]
+; NONEON-NOSVE-NEXT:    stp q0, q1, [sp, #64]
+; NONEON-NOSVE-NEXT:    ldp w13, w11, [sp, #80]
+; NONEON-NOSVE-NEXT:    stp q5, q4, [sp]
+; NONEON-NOSVE-NEXT:    stp q2, q3, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldp w14, w4, [sp, #48]
+; NONEON-NOSVE-NEXT:    ldp w17, w16, [sp, #64]
+; NONEON-NOSVE-NEXT:    ldp w9, w8, [sp, #88]
 ; NONEON-NOSVE-NEXT:    neg w15, w11
 ; NONEON-NOSVE-NEXT:    neg w3, w13
-; NONEON-NOSVE-NEXT:    str q4, [sp, #32]
 ; NONEON-NOSVE-NEXT:    and w14, w3, w14
 ; NONEON-NOSVE-NEXT:    and w15, w15, w4
 ; NONEON-NOSVE-NEXT:    neg w1, w17
-; NONEON-NOSVE-NEXT:    ldp w5, w3, [sp, #72]
-; NONEON-NOSVE-NEXT:    ldp w6, w4, [sp, #16]
-; NONEON-NOSVE-NEXT:    ldp w12, w10, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldp w5, w3, [sp, #56]
+; NONEON-NOSVE-NEXT:    ldp w6, w4, [sp, #32]
+; NONEON-NOSVE-NEXT:    ldp w12, w10, [sp, #72]
 ; NONEON-NOSVE-NEXT:    neg w2, w9
 ; NONEON-NOSVE-NEXT:    neg w7, w8
 ; NONEON-NOSVE-NEXT:    sub w17, w17, #1
 ; NONEON-NOSVE-NEXT:    and w2, w2, w5
 ; NONEON-NOSVE-NEXT:    and w1, w1, w6
 ; NONEON-NOSVE-NEXT:    and w3, w7, w3
-; NONEON-NOSVE-NEXT:    ldp w5, w6, [sp, #24]
+; NONEON-NOSVE-NEXT:    ldp w5, w6, [sp, #40]
 ; NONEON-NOSVE-NEXT:    neg w0, w12
 ; NONEON-NOSVE-NEXT:    neg w7, w16
 ; NONEON-NOSVE-NEXT:    neg w18, w10
@@ -69,20 +70,19 @@ define <8 x i32> @fixed_bitselect_v8i32(ptr %pre_cond_ptr, ptr %left_ptr, ptr %r
 ; NONEON-NOSVE-NEXT:    sub w12, w12, #1
 ; NONEON-NOSVE-NEXT:    and w0, w0, w5
 ; NONEON-NOSVE-NEXT:    and w18, w18, w6
-; NONEON-NOSVE-NEXT:    str q5, [sp, #80]
-; NONEON-NOSVE-NEXT:    ldp w7, w5, [sp, #32]
 ; NONEON-NOSVE-NEXT:    sub w16, w16, #1
+; NONEON-NOSVE-NEXT:    ldp w7, w5, [sp, #16]
 ; NONEON-NOSVE-NEXT:    sub w8, w8, #1
 ; NONEON-NOSVE-NEXT:    sub w9, w9, #1
 ; NONEON-NOSVE-NEXT:    and w17, w17, w7
 ; NONEON-NOSVE-NEXT:    and w16, w16, w5
-; NONEON-NOSVE-NEXT:    ldp w6, w7, [sp, #40]
+; NONEON-NOSVE-NEXT:    ldp w6, w7, [sp, #24]
 ; NONEON-NOSVE-NEXT:    and w12, w12, w6
 ; NONEON-NOSVE-NEXT:    and w10, w10, w7
 ; NONEON-NOSVE-NEXT:    orr w10, w10, w18
 ; NONEON-NOSVE-NEXT:    orr w12, w12, w0
-; NONEON-NOSVE-NEXT:    ldp w18, w0, [sp, #88]
-; NONEON-NOSVE-NEXT:    ldp w5, w6, [sp, #80]
+; NONEON-NOSVE-NEXT:    ldp w18, w0, [sp, #8]
+; NONEON-NOSVE-NEXT:    ldp w5, w6, [sp]
 ; NONEON-NOSVE-NEXT:    stp w12, w10, [sp, #104]
 ; NONEON-NOSVE-NEXT:    sub w10, w11, #1
 ; NONEON-NOSVE-NEXT:    sub w11, w13, #1

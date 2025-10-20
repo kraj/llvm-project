@@ -5,10 +5,10 @@ define void @test_vext_s8() nounwind ssp {
 ; CHECK-LABEL: test_vext_s8:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    ext.8b v1, v0, v0, #1
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xS8x8 = alloca <8 x i8>, align 8
@@ -29,10 +29,10 @@ define void @test_vext_u8() nounwind ssp {
 ; CHECK-LABEL: test_vext_u8:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    ext.8b v1, v0, v0, #2
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xU8x8 = alloca <8 x i8>, align 8
@@ -53,10 +53,10 @@ define void @test_vext_p8() nounwind ssp {
 ; CHECK-LABEL: test_vext_p8:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    ext.8b v1, v0, v0, #3
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xP8x8 = alloca <8 x i8>, align 8
@@ -77,10 +77,10 @@ define void @test_vext_s16() nounwind ssp {
 ; CHECK-LABEL: test_vext_s16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    ext.8b v1, v0, v0, #2
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xS16x4 = alloca <4 x i16>, align 8
@@ -105,10 +105,10 @@ define void @test_vext_u16() nounwind ssp {
 ; CHECK-LABEL: test_vext_u16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    ext.8b v1, v0, v0, #4
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xU16x4 = alloca <4 x i16>, align 8
@@ -133,10 +133,10 @@ define void @test_vext_p16() nounwind ssp {
 ; CHECK-LABEL: test_vext_p16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    ext.8b v1, v0, v0, #6
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xP16x4 = alloca <4 x i16>, align 8
@@ -161,10 +161,10 @@ define void @test_vext_s32() nounwind ssp {
 ; CHECK-LABEL: test_vext_s32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    rev64.2s v1, v0
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xS32x2 = alloca <2 x i32>, align 8
@@ -189,10 +189,10 @@ define void @test_vext_u32() nounwind ssp {
 ; CHECK-LABEL: test_vext_u32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    rev64.2s v1, v0
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xU32x2 = alloca <2 x i32>, align 8
@@ -217,10 +217,10 @@ define void @test_vext_f32() nounwind ssp {
 ; CHECK-LABEL: test_vext_f32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #32
-; CHECK-NEXT:    ldr d0, [sp, #24]
+; CHECK-NEXT:    ldr d0, [sp, #16]
 ; CHECK-NEXT:    rev64.2s v1, v0
-; CHECK-NEXT:    stp d0, d0, [sp, #8]
-; CHECK-NEXT:    str d1, [sp, #24]
+; CHECK-NEXT:    str d0, [sp, #24]
+; CHECK-NEXT:    stp d0, d1, [sp, #8]
 ; CHECK-NEXT:    add sp, sp, #32
 ; CHECK-NEXT:    ret
   %xF32x2 = alloca <2 x float>, align 8
@@ -301,10 +301,10 @@ define void @test_vextq_s8() nounwind ssp {
 ; CHECK-LABEL: test_vextq_s8:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #4
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xS8x16 = alloca <16 x i8>, align 16
@@ -325,10 +325,10 @@ define void @test_vextq_u8() nounwind ssp {
 ; CHECK-LABEL: test_vextq_u8:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #5
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xU8x16 = alloca <16 x i8>, align 16
@@ -349,10 +349,10 @@ define void @test_vextq_p8() nounwind ssp {
 ; CHECK-LABEL: test_vextq_p8:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #6
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xP8x16 = alloca <16 x i8>, align 16
@@ -373,10 +373,10 @@ define void @test_vextq_s16() nounwind ssp {
 ; CHECK-LABEL: test_vextq_s16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #14
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xS16x8 = alloca <8 x i16>, align 16
@@ -401,10 +401,10 @@ define void @test_vextq_u16() nounwind ssp {
 ; CHECK-LABEL: test_vextq_u16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #8
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xU16x8 = alloca <8 x i16>, align 16
@@ -429,10 +429,10 @@ define void @test_vextq_p16() nounwind ssp {
 ; CHECK-LABEL: test_vextq_p16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #10
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xP16x8 = alloca <8 x i16>, align 16
@@ -457,10 +457,10 @@ define void @test_vextq_s32() nounwind ssp {
 ; CHECK-LABEL: test_vextq_s32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #4
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xS32x4 = alloca <4 x i32>, align 16
@@ -485,10 +485,10 @@ define void @test_vextq_u32() nounwind ssp {
 ; CHECK-LABEL: test_vextq_u32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #8
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xU32x4 = alloca <4 x i32>, align 16
@@ -513,10 +513,10 @@ define void @test_vextq_f32() nounwind ssp {
 ; CHECK-LABEL: test_vextq_f32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #12
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xF32x4 = alloca <4 x float>, align 16
@@ -541,10 +541,10 @@ define void @test_vextq_s64() nounwind ssp {
 ; CHECK-LABEL: test_vextq_s64:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #8
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xS64x2 = alloca <2 x i64>, align 16
@@ -569,10 +569,10 @@ define void @test_vextq_u64() nounwind ssp {
 ; CHECK-LABEL: test_vextq_u64:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sub sp, sp, #48
-; CHECK-NEXT:    ldr q0, [sp, #32]
+; CHECK-NEXT:    ldr q0, [sp, #16]
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #8
-; CHECK-NEXT:    stp q0, q0, [sp]
-; CHECK-NEXT:    str q1, [sp, #32]
+; CHECK-NEXT:    str q0, [sp, #32]
+; CHECK-NEXT:    stp q0, q1, [sp]
 ; CHECK-NEXT:    add sp, sp, #48
 ; CHECK-NEXT:    ret
   %xU64x2 = alloca <2 x i64>, align 16

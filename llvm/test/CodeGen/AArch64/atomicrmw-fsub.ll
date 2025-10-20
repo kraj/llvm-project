@@ -521,27 +521,27 @@ define fp128 @test_atomicrmw_fsub_fp128_seq_cst_align16(ptr %ptr, fp128 %value) 
 ; NOLSE-NEXT:    ldr q1, [x0]
 ; NOLSE-NEXT:    stp x30, x19, [sp, #80] // 16-byte Folded Spill
 ; NOLSE-NEXT:    mov x19, x0
-; NOLSE-NEXT:    str q0, [sp] // 16-byte Folded Spill
+; NOLSE-NEXT:    str q0, [sp, #48] // 16-byte Folded Spill
 ; NOLSE-NEXT:    b .LBB6_2
 ; NOLSE-NEXT:  .LBB6_1: // %atomicrmw.start
 ; NOLSE-NEXT:    // in Loop: Header=BB6_2 Depth=1
-; NOLSE-NEXT:    stp x12, x13, [sp, #32]
+; NOLSE-NEXT:    stp x12, x13, [sp]
 ; NOLSE-NEXT:    cmp x13, x10
-; NOLSE-NEXT:    ldr q1, [sp, #32]
+; NOLSE-NEXT:    ldr q1, [sp]
 ; NOLSE-NEXT:    ccmp x12, x11, #0, eq
 ; NOLSE-NEXT:    b.eq .LBB6_6
 ; NOLSE-NEXT:  .LBB6_2: // %atomicrmw.start
 ; NOLSE-NEXT:    // =>This Loop Header: Depth=1
 ; NOLSE-NEXT:    // Child Loop BB6_3 Depth 2
 ; NOLSE-NEXT:    mov v0.16b, v1.16b
-; NOLSE-NEXT:    str q1, [sp, #16] // 16-byte Folded Spill
-; NOLSE-NEXT:    ldr q1, [sp] // 16-byte Folded Reload
+; NOLSE-NEXT:    str q1, [sp, #64] // 16-byte Folded Spill
+; NOLSE-NEXT:    ldr q1, [sp, #48] // 16-byte Folded Reload
 ; NOLSE-NEXT:    bl __subtf3
-; NOLSE-NEXT:    str q0, [sp, #48]
-; NOLSE-NEXT:    ldr q0, [sp, #16] // 16-byte Folded Reload
-; NOLSE-NEXT:    ldp x9, x8, [sp, #48]
-; NOLSE-NEXT:    str q0, [sp, #64]
-; NOLSE-NEXT:    ldp x11, x10, [sp, #64]
+; NOLSE-NEXT:    str q0, [sp, #16]
+; NOLSE-NEXT:    ldr q0, [sp, #64] // 16-byte Folded Reload
+; NOLSE-NEXT:    ldp x9, x8, [sp, #16]
+; NOLSE-NEXT:    str q0, [sp, #32]
+; NOLSE-NEXT:    ldp x11, x10, [sp, #32]
 ; NOLSE-NEXT:  .LBB6_3: // %atomicrmw.start
 ; NOLSE-NEXT:    // Parent Loop BB6_2 Depth=1
 ; NOLSE-NEXT:    // => This Inner Loop Header: Depth=2
@@ -573,24 +573,24 @@ define fp128 @test_atomicrmw_fsub_fp128_seq_cst_align16(ptr %ptr, fp128 %value) 
 ; LSE-NEXT:    ldr q1, [x0]
 ; LSE-NEXT:    stp x30, x19, [sp, #80] // 16-byte Folded Spill
 ; LSE-NEXT:    mov x19, x0
-; LSE-NEXT:    str q0, [sp] // 16-byte Folded Spill
+; LSE-NEXT:    str q0, [sp, #48] // 16-byte Folded Spill
 ; LSE-NEXT:  .LBB6_1: // %atomicrmw.start
 ; LSE-NEXT:    // =>This Inner Loop Header: Depth=1
 ; LSE-NEXT:    mov v0.16b, v1.16b
-; LSE-NEXT:    str q1, [sp, #16] // 16-byte Folded Spill
-; LSE-NEXT:    ldr q1, [sp] // 16-byte Folded Reload
+; LSE-NEXT:    str q1, [sp, #64] // 16-byte Folded Spill
+; LSE-NEXT:    ldr q1, [sp, #48] // 16-byte Folded Reload
 ; LSE-NEXT:    bl __subtf3
-; LSE-NEXT:    str q0, [sp, #48]
-; LSE-NEXT:    ldr q0, [sp, #16] // 16-byte Folded Reload
-; LSE-NEXT:    ldp x0, x1, [sp, #48]
-; LSE-NEXT:    str q0, [sp, #64]
-; LSE-NEXT:    ldp x2, x3, [sp, #64]
+; LSE-NEXT:    str q0, [sp, #16]
+; LSE-NEXT:    ldr q0, [sp, #64] // 16-byte Folded Reload
+; LSE-NEXT:    ldp x0, x1, [sp, #16]
+; LSE-NEXT:    str q0, [sp, #32]
+; LSE-NEXT:    ldp x2, x3, [sp, #32]
 ; LSE-NEXT:    mov x4, x2
 ; LSE-NEXT:    mov x5, x3
 ; LSE-NEXT:    caspal x4, x5, x0, x1, [x19]
-; LSE-NEXT:    stp x4, x5, [sp, #32]
+; LSE-NEXT:    stp x4, x5, [sp]
 ; LSE-NEXT:    cmp x5, x3
-; LSE-NEXT:    ldr q1, [sp, #32]
+; LSE-NEXT:    ldr q1, [sp]
 ; LSE-NEXT:    ccmp x4, x2, #0, eq
 ; LSE-NEXT:    b.ne .LBB6_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end

@@ -20,16 +20,16 @@ define <2 x i64> @mul_v2i64(<2 x i64> %op1, <2 x i64> %op2) {
 ;
 ; NONEON-NOSVE-LABEL: mul_v2i64:
 ; NONEON-NOSVE:       // %bb.0:
-; NONEON-NOSVE-NEXT:    stp q0, q1, [sp, #-48]!
+; NONEON-NOSVE-NEXT:    sub sp, sp, #48
 ; NONEON-NOSVE-NEXT:    .cfi_def_cfa_offset 48
-; NONEON-NOSVE-NEXT:    ldp x9, x10, [sp]
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #24]
+; NONEON-NOSVE-NEXT:    stp q0, q1, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldp x9, x10, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #40]
 ; NONEON-NOSVE-NEXT:    mul x11, x10, x8
-; NONEON-NOSVE-NEXT:    ldr x8, [sp, #16]
+; NONEON-NOSVE-NEXT:    ldr x8, [sp, #32]
 ; NONEON-NOSVE-NEXT:    mul x8, x9, x8
-; NONEON-NOSVE-NEXT:    stp x8, x11, [sp, #32]
-; NONEON-NOSVE-NEXT:    ldr q0, [sp, #32]
-; NONEON-NOSVE-NEXT:    add sp, sp, #48
+; NONEON-NOSVE-NEXT:    stp x8, x11, [sp]
+; NONEON-NOSVE-NEXT:    ldr q0, [sp], #48
 ; NONEON-NOSVE-NEXT:    ret
   %res = mul <2 x i64> %op1, %op2
   ret <2 x i64> %res
