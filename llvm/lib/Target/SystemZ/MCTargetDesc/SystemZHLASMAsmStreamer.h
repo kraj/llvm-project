@@ -28,6 +28,7 @@
 #include "llvm/Support/FormattedStream.h"
 
 namespace llvm {
+class MCSymbolGOFF;
 
 class SystemZHLASMAsmStreamer final : public MCStreamer {
   constexpr static size_t InstLimit = 80;
@@ -123,6 +124,7 @@ public:
   /// @}
 
   void emitEnd();
+  void emitExtern(MCSymbolGOFF &Sym);
 };
 } // namespace llvm
 

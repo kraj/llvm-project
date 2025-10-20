@@ -57,7 +57,7 @@ public:
 
   virtual void emitMachine(StringRef CPUOrCommand) {};
 
-  virtual void emitExtern(StringRef Str) {};
+  virtual void emitExtern(MCSymbol *Symbol) {};
   virtual void emitEnd() {};
 
   virtual const MCExpr *createWordDiffExpr(MCContext &Ctx, const MCSymbol *Hi,
@@ -69,6 +69,7 @@ public:
 class SystemZTargetGOFFStreamer : public SystemZTargetStreamer {
 public:
   SystemZTargetGOFFStreamer(MCStreamer &S) : SystemZTargetStreamer(S) {}
+  //void emitExtern(MCSymbol *Symbol) override;
   const MCExpr *createWordDiffExpr(MCContext &Ctx, const MCSymbol *Hi,
                                    const MCSymbol *Lo) override;
 };
@@ -80,7 +81,7 @@ public:
   SystemZTargetHLASMStreamer(MCStreamer &S, formatted_raw_ostream &OS)
       : SystemZTargetStreamer(S), OS(OS) {}
   SystemZHLASMAsmStreamer &getHLASMStreamer();
-  void emitExtern(StringRef Sym) override;
+  void emitExtern(MCSymbol *Symbol) override;
   void emitEnd() override;
   const MCExpr *createWordDiffExpr(MCContext &Ctx, const MCSymbol *Hi,
                                    const MCSymbol *Lo) override;

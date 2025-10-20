@@ -16,6 +16,8 @@
 #include "SystemZHLASMAsmStreamer.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCObjectFileInfo.h"
+#include "llvm/MC/MCSymbolGOFF.h"
+#include "llvm/Support/Casting.h"
 
 using namespace llvm;
 
@@ -38,8 +40,8 @@ SystemZHLASMAsmStreamer &SystemZTargetHLASMStreamer::getHLASMStreamer() {
   return static_cast<SystemZHLASMAsmStreamer &>(getStreamer());
 }
 
-void SystemZTargetHLASMStreamer::emitExtern(StringRef Sym) {
-  getStreamer().emitRawText(Twine(" EXTRN ") + Twine(Sym));
+void SystemZTargetHLASMStreamer::emitExtern(MCSymbol *Symbol) {
+  getHLASMStreamer().emitExtern(*cast<MCSymbolGOFF>(Symbol));
 }
 
 void SystemZTargetHLASMStreamer::emitEnd() { getHLASMStreamer().emitEnd(); }

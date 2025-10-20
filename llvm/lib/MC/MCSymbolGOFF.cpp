@@ -14,6 +14,11 @@
 using namespace llvm;
 
 void MCSymbolGOFF::initAttributes() {
+  // Temporary labels are not emitted into the object file.
+  if (isTemporary())
+    return;
+
+  // Do not initialize the attributes multiple times.
   if (hasLDAttributes())
     return;
 

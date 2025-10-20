@@ -26,6 +26,7 @@
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/IR/Module.h"
+#include "llvm/MC/MCDirectives.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInstBuilder.h"
 #include "llvm/MC/MCSectionELF.h"
@@ -1112,6 +1113,17 @@ void SystemZAsmPrinter::emitEndOfAsmFile(Module &M) {
   if (TT.isOSzOS()) {
     emitADASection();
     emitIDRLSection(M);
+    // Emit EXTRN declarations.
+    for (auto &GO : M.global_objects()) {
+      if (GO.isDeclaration()) {
+        MCSymbol *Sym = TM.getSymbol(&GO);
+        OutStreamer->emitSymbolAttribute(
+            Sym, GO.hasWeakLinkage() ? MCSA_WeakReference : MCSA_Global);
+        OutStreamer->emitSymbolAttribute(Sym, isa<Function>(GO) ? MCSA_Code
+                                                                : MCSA_Data);
+        getTargetStreamer()->emitExtern(Sym);
+      }
+    }
   }
   emitAttributes(M);
   // Emit the END instruction in case of HLASM output. This must be the last
@@ -1570,6 +1582,7 @@ void SystemZAsmPrinter::emitPPA2(Module &M) {
   // Make CELQSTRT symbol.
   const char *StartSymbolName = "CELQSTRT";
   MCSymbol *CELQSTRT = OutContext.getOrCreateSymbol(StartSymbolName);
+  getTargetStreamer()->emitExtern(CELQSTRT);
 
   // Create symbol and assign to class field for use in PPA1.
   PPA2Sym = OutContext.createTempSymbol("PPA2", false);
