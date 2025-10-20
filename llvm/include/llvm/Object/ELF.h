@@ -278,10 +278,8 @@ private:
   std::vector<Elf_Shdr> FakeSections;
   SmallString<0> FakeSectionStrings;
 
-  //
   // According to the ELF gABI, these three fields can be recorded in section 0
   // when possible. Therefore, we store this information when it is available.
-  //
   std::optional<uint32_t> RealPhNum;
   std::optional<uint32_t> RealShNum;
   std::optional<uint32_t> RealShStrNdx;
@@ -930,10 +928,9 @@ template <class ELFT> Error ELFFile<ELFT>::readShdrZero() {
   if ((Header.e_phnum == ELF::PN_XNUM || Header.e_shnum == 0 ||
        Header.e_shstrndx == ELF::SHN_XINDEX) &&
       Header.e_shoff != 0) {
-    //
+
     // Pretend we have section 0 or sections() would call getShNum and thus
     // become an infinite recursion
-    //
     RealShNum = 0;
     auto SecOrErr = getSection(0);
     if (!SecOrErr) {
