@@ -291,21 +291,21 @@ private:
 public:
   Expected<uint32_t> getPhNum() const {
     if (!RealPhNum) {
-      if (Error E = readShdrZero())
+      if (Error E = const_cast<ELFFile<ELFT> *>(this)->readShdrZero())
         return std::move(E);
     }
     return *RealPhNum;
   }
   Expected<uint32_t> getShNum() const {
     if (!RealShNum) {
-      if (Error E = readShdrZero())
+      if (Error E = const_cast<ELFFile<ELFT> *>(this)->readShdrZero())
         return std::move(E);
     }
     return *RealShNum;
   }
   Expected<uint32_t> getShStrNdx() const {
     if (!RealShStrNdx) {
-      if (Error E = readShdrZero())
+      if (Error E = const_cast<ELFFile<ELFT> *>(this)->readShdrZero())
         return std::move(E);
     }
     return *RealShStrNdx;
@@ -947,6 +947,8 @@ template <class ELFT> Error ELFFile<ELFT>::readShdrZero() {
     RealShNum = Header.e_shnum;
     RealShStrNdx = Header.e_shstrndx;
   }
+
+  return Error::success();
 }
 
 template <class ELFT>
