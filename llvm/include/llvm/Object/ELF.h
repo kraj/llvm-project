@@ -278,10 +278,14 @@ private:
   std::vector<Elf_Shdr> FakeSections;
   SmallString<0> FakeSectionStrings;
 
-  // According to the ELF gABI, these three fields can be recorded in section 0
-  // when possible. Therefore, we store this information when it is available.
+  // When the number of program headers is >= 0xffff, the actual number is
+  // contained in the sh_info field of the section header at index 0.
   std::optional<uint32_t> RealPhNum;
-  std::optional<uint32_t> RealShNum;
+  // When the number of section headers is >= 0xff00, the actual number is
+  // contained in the sh_size field of the section header at index 0.
+  std::optional<uint64_t> RealShNum;
+  // When the index of str section is >= 0xff00, the actual number is
+  // contained in the sh_link field of the section header at index 0.
   std::optional<uint32_t> RealShStrNdx;
 
   ELFFile(StringRef Object);
@@ -296,7 +300,7 @@ public:
     }
     return *RealPhNum;
   }
-  Expected<uint32_t> getShNum() const {
+  Expected<uint64_t> getShNum() const {
     if (!RealShNum) {
       if (Error E = const_cast<ELFFile<ELFT> *>(this)->readShdrZero())
         return std::move(E);
@@ -813,12 +817,7 @@ ELFFile<ELFT>::getSectionStringTable(Elf_Shdr_Range Sections,
         "e_shstrndx == SHN_XINDEX, but the section header table is empty");
   }
 
-  uint32_t Index;
-  if (Expected<uint32_t> IndexOrErr = getShStrNdx())
-    Index = *IndexOrErr;
-  else
-    return IndexOrErr.takeError();
-
+  uint32_t Index = *ShStrNdxOrErr;
   // There is no section name string table. Return FakeSectionStrings which
   // is non-empty if we have created fake sections.
   if (!Index)
@@ -934,30 +933,20 @@ template <class ELFT> Error ELFFile<ELFT>::readShdrZero() {
 
     // Pretend we have section 0 or sections() would call getShNum and thus
     // become an infinite recursion
-    RealShNum = 0;
-    auto SecsOrErr = sections();
-    if (!SecsOrErr) {
+    if (Header.e_shnum == 0)
+      RealShNum = 1;
+    else
+      RealShNum = Header.e_shnum;
+    auto SecOrErr = getSection(0);
+    if (!SecOrErr) {
       RealShNum = std::nullopt;
-      return SecsOrErr.takeError();
+      return SecOrErr.takeError();
     }
 
-    // We can really have 0 number of seciton
-    if ((*SecsOrErr).size() == 0) {
-      if (Header.e_phnum == ELF::PN_XNUM ||
-          Header.e_shstrndx == ELF::SHN_XINDEX) {
-        return createError("Unable to find Section 0");
-      }
-      RealShNum = 0;
-      RealPhNum = Header.e_phnum;
-      RealShStrNdx = Header.e_shstrndx;
-      return Error::success();
-    }
-
-    auto &Section = (*SecsOrErr)[0];
     RealPhNum =
-        Header.e_phnum == ELF::PN_XNUM ? Section.sh_info : Header.e_phnum;
-    RealShNum = Header.e_shnum == 0 ? Section.sh_size : Header.e_shnum;
-    RealShStrNdx = Header.e_shstrndx == ELF::SHN_XINDEX ? Section.sh_link
+        Header.e_phnum == ELF::PN_XNUM ? (*SecOrErr)->sh_info : Header.e_phnum;
+    RealShNum = Header.e_shnum == 0 ? (*SecOrErr)->sh_size : Header.e_shnum;
+    RealShStrNdx = Header.e_shstrndx == ELF::SHN_XINDEX ? (*SecOrErr)->sh_link
                                                         : Header.e_shstrndx;
   } else {
     RealPhNum = Header.e_phnum;
@@ -1034,12 +1023,10 @@ Expected<typename ELFT::ShdrRange> ELFFile<ELFT>::sections() const {
       reinterpret_cast<const Elf_Shdr *>(base() + SectionTableOffset);
 
   uintX_t NumSections = 0;
-  if (Expected<uint32_t> ShNumOrErr = getShNum())
+  if (Expected<uint64_t> ShNumOrErr = getShNum())
     NumSections = *ShNumOrErr;
   else
     return ShNumOrErr.takeError();
-  if (NumSections == 0)
-    NumSections = First->sh_size;
 
   if (NumSections > UINT64_MAX / sizeof(Elf_Shdr))
     return createError("invalid number of sections specified in the NULL "
