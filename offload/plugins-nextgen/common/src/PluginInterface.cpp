@@ -1609,6 +1609,10 @@ Error GenericDeviceTy::syncEvent(void *EventPtr) {
 
 bool GenericDeviceTy::useAutoZeroCopy() { return useAutoZeroCopyImpl(); }
 
+void GenericDeviceTy::setDeviceUidFromVendorUid(const char *VendorUid) {
+  DeviceUid = std::string(Plugin.getName()) + "-" + std::string(VendorUid);
+}
+
 Error GenericPluginTy::init() {
   if (Initialized)
     return Plugin::success();
