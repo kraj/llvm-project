@@ -1553,13 +1553,27 @@ int FTN_STDCALL FTN_GET_DEVICE_NUM(void) {
 const char *FTN_STDCALL FTN_GET_UID_FROM_DEVICE(int device_num)
     KMP_WEAK_ATTRIBUTE_EXTERNAL;
 const char *FTN_STDCALL FTN_GET_UID_FROM_DEVICE(int device_num) {
+#if KMP_OS_DARWIN || KMP_OS_WASI || defined(KMP_STUB)
+  return nullptr;
+#else
+  const char *(*fptr)(int);
+  if ((*(void **)(&fptr) = KMP_DLSYM_NEXT("omp_get_uid_from_device")))
+    return (*fptr)(device_num);
   // Returns the same string as used by libomptarget
   return "HOST";
+#endif
 }
 int FTN_STDCALL FTN_GET_DEVICE_FROM_UID(const char *device_uid)
     KMP_WEAK_ATTRIBUTE_EXTERNAL;
 int FTN_STDCALL FTN_GET_DEVICE_FROM_UID(const char *device_uid) {
+#if KMP_OS_DARWIN || KMP_OS_WASI || defined(KMP_STUB)
+  return omp_invalid_device;
+#else
+  int (*fptr)(const char *);
+  if ((*(void **)(&fptr) = KMP_DLSYM_NEXT("omp_get_device_from_uid")))
+    return (*fptr)(device_uid);
   return KMP_EXPAND_NAME(FTN_GET_INITIAL_DEVICE)();
+#endif
 }
 
 // Compiler will ensure that this is only called from host in sequential region
