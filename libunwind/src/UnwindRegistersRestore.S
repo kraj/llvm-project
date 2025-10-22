@@ -634,6 +634,12 @@ Lnovec:
 
 #elif defined(__aarch64__)
 
+#ifdef __has_feature
+#define __has_ptrauth_calls __has_feature(ptrauth_calls)
+#else
+#define __has_ptrauth_calls 0
+#endif
+
 #if defined(__ARM_FEATURE_GCS_DEFAULT)
 .arch_extension gcs
 #endif
@@ -690,7 +696,7 @@ DEFINE_LIBUNWIND_FUNCTION(__libunwind_Registers_arm64_jumpto)
   ldr    x16,     [x0, #0x0F8]  // load sp into scratch
   ldr    lr,      [x0, #0x100]  // restore pc into lr
 
-#if __has_feature(ptrauth_calls)
+#if __has_ptrauth_calls
   // The LR is signed with its address inside the register state.  Time
   // to resign to be a regular ROP protected signed pointer
   add    x1, x0, #0x100
@@ -711,7 +717,7 @@ DEFINE_LIBUNWIND_FUNCTION(__libunwind_Registers_arm64_jumpto)
 Lnogcs:
 #endif
 
-#if __has_feature(ptrauth_calls)
+#if __has_ptrauth_calls
   retab
 #else
   ret    x30                    // jump to pc

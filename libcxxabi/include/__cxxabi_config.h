@@ -107,7 +107,12 @@
 #  include <ptrauth.h>
 #endif
 
-#if __has_feature(ptrauth_calls)
+#if defined(__has_feature)
+#  define __ptrauth_cxxabi_enabled __has_feature(ptrauth_calls)
+#else
+#  define __ptrauth_cxxabi_enabled 0
+#endif
+#if __ptrauth_cxxabi_enabled
 
 // ptrauth_string_discriminator("__cxa_exception::actionRecord") == 0xFC91
 #  define __ptrauth_cxxabi_action_record __ptrauth(ptrauth_key_process_dependent_data, 1, 0xFC91)

@@ -21,7 +21,7 @@
 #include "cxa_handlers.h"
 #include "private_typeinfo.h"
 
-#if __has_feature(ptrauth_calls)
+#if __ptrauth_cxxabi_enabled
 
 // CXXABI depends on defintions in libunwind as pointer auth couples the
 // definitions
@@ -602,7 +602,7 @@ set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
                 reinterpret_cast<uintptr_t>(unwind_exception));
   _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
                 static_cast<uintptr_t>(results.ttypeIndex));
-#if __has_feature(ptrauth_calls)
+#if __ptrauth_cxxabi_enabled
   auto stackPointer = _Unwind_GetGR(context, UNW_REG_SP);
   // We manually re-sign the IP as the __ptrauth qualifiers cannot
   // express the required relationship with the destination address
@@ -973,7 +973,7 @@ _UA_CLEANUP_PHASE
 using __cxa_catch_temp_type = decltype(__cxa_exception::catchTemp);
 static inline void set_landing_pad(scan_results& results,
                                    const __cxa_catch_temp_type& source) {
-#if __has_feature(ptrauth_calls)
+#if __ptrauth_cxxabi_enabled
   const uintptr_t sourceDiscriminator =
       ptrauth_blend_discriminator(&source, __ptrauth_cxxabi_catch_temp_disc);
   const uintptr_t targetDiscriminator =
@@ -995,7 +995,7 @@ static inline void set_landing_pad(scan_results& results,
 
 static inline void get_landing_pad(__cxa_catch_temp_type &dest,
                                    const scan_results &results) {
-#if __has_feature(ptrauth_calls)
+#if __ptrauth_cxxabi_enabled
   const uintptr_t sourceDiscriminator =
       ptrauth_blend_discriminator(&results.landingPad,
                                   __ptrauth_scan_results_landingpad_disc);

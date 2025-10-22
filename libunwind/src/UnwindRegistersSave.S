@@ -763,6 +763,12 @@ LnoR2Fix:
 
 #elif defined(__aarch64__)
 
+#ifdef __has_feature
+#define __has_ptrauth_calls __has_feature(ptrauth_calls)
+#else
+#define __has_ptrauth_calls 0
+#endif
+
 //
 // extern int __unw_getcontext(unw_context_t* thread_state)
 //
@@ -772,7 +778,7 @@ LnoR2Fix:
   .p2align 2
 DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
 
-#if __has_feature(ptrauth_calls)
+#if __has_ptrauth_calls
   pacibsp
 #endif
 
@@ -817,7 +823,7 @@ DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
 #endif
   mov    x0, #0                   // return UNW_ESUCCESS
 
-#if __has_feature(ptrauth_calls)
+#if __has_ptrauth_calls
   retab
 #else
   ret
