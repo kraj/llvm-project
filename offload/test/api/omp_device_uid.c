@@ -4,16 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// Note that the device UIDs for the "fake" host devices used by libomptarget
-// will always be the same as the UID for the initial device (since it *is* the
-// same device).  The other way round, the device number returned for this UID
-// will always be the initial device.
-
-int is_host_device_uid(const char *device_uid) {
-  return strcmp(device_uid,
-                omp_get_uid_from_device(omp_get_initial_device())) == 0;
-}
-
 int test_omp_device_uid(int device_num) {
   const char *device_uid = omp_get_uid_from_device(device_num);
   if (device_uid == NULL) {
@@ -23,9 +13,7 @@ int test_omp_device_uid(int device_num) {
   }
 
   int device_num_from_uid = omp_get_device_from_uid(device_uid);
-  if (device_num_from_uid != (is_host_device_uid(device_uid)
-                                  ? omp_get_initial_device()
-                                  : device_num)) {
+  if (device_num_from_uid != device_num) {
     printf(
         "FAIL for device %d: omp_get_device_from_uid returned %d (UID: %s)\n",
         device_num, device_num_from_uid, device_uid);
@@ -45,21 +33,21 @@ int test_omp_device_uid(int device_num) {
 
     // omp_get_uid_from_device() in the device runtime is a dummy function
     // returning NULL
-    const char *device_uid_target = omp_get_uid_from_device(device_num);
+    const char *device_uid = omp_get_uid_from_device(device_num);
 
     // omp_get_device_from_uid() in the device runtime is a dummy function
     // returning omp_invalid_device.
-    device_num_from_uid = omp_get_device_from_uid(device_uid_target);
+    int device_num_from_uid = omp_get_device_from_uid(device_uid);
 
     // Depending on whether we're executing on the device or the host, we either
     // got NULL as the device UID or the correct device UID.  Consequently,
     // omp_get_device_from_uid() either returned omp_invalid_device or the
     // correct device number (aka omp_get_initial_device()).
-    if (device_uid_target ? device_num_from_uid != omp_get_initial_device()
-                          : device_num_from_uid != omp_invalid_device) {
+    if (device_uid ? device_num_from_uid != device_num
+                   : device_num_from_uid != omp_invalid_device) {
       printf("FAIL for device %d (target): omp_get_device_from_uid returned %d "
              "(UID: %s)\n",
-             device_num, device_num_from_uid, device_uid_target);
+             device_num, device_num_from_uid, device_uid);
       success = 0;
     }
   }
