@@ -93,8 +93,8 @@ EXTERN int omp_get_device_num(void) {
   return HostDevice;
 }
 
-static inline bool is_host_device_uid(const char *DeviceUid) {
-  return strcmp(DeviceUid, GenericPluginTy::getHostDeviceUid()) == 0;
+static inline bool is_initial_device_uid(const char *DeviceUid) {
+  return strcmp(DeviceUid, GenericPluginTy::getInitialDeviceUid()) == 0;
 }
 
 EXTERN int omp_get_device_from_uid(const char *DeviceUid) {
@@ -105,8 +105,8 @@ EXTERN int omp_get_device_from_uid(const char *DeviceUid) {
     DP("Call to omp_get_device_from_uid returning omp_invalid_device\n");
     return omp_invalid_device;
   }
-  if (is_host_device_uid(DeviceUid)) {
-    DP("Call to omp_get_device_from_uid returning host device number %d\n",
+  if (is_initial_device_uid(DeviceUid)) {
+    DP("Call to omp_get_device_from_uid returning initial device number %d\n",
        omp_get_initial_device());
     return omp_get_initial_device();
   }
@@ -135,17 +135,15 @@ EXTERN const char *omp_get_uid_from_device(int DeviceNum) {
     return nullptr;
   }
   if (DeviceNum == omp_get_initial_device()) {
-    DP("Call to omp_get_uid_from_device returning host device UID\n");
-    return GenericPluginTy::getHostDeviceUid();
+    DP("Call to omp_get_uid_from_device returning initial device UID\n");
+    return GenericPluginTy::getInitialDeviceUid();
   }
 
-  llvm::Expected<DeviceTy &> Device = PM->getDevice(DeviceNum);
-  if (!Device) {
-    FATAL_MESSAGE(DeviceNum, "%s", toString(Device.takeError()).c_str());
-    return nullptr;
-  }
+  auto DeviceOrErr = PM->getDevice(DeviceNum);
+  if (!DeviceOrErr)
+    FATAL_MESSAGE(DeviceNum, "%s", toString(DeviceOrErr.takeError()).c_str());
 
-  const char *Uid = Device->RTL->getDeviceUid(Device->RTLDeviceID);
+  const char *Uid = DeviceOrErr->RTL->getDeviceUid(DeviceOrErr->RTLDeviceID);
   DP("Call to omp_get_uid_from_device returning %s\n", Uid);
   return Uid;
 }
