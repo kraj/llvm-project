@@ -300,6 +300,7 @@ public:
     }
     return *RealPhNum;
   }
+
   Expected<uint64_t> getShNum() const {
     if (!RealShNum) {
       if (Error E = const_cast<ELFFile<ELFT> *>(this)->readShdrZero())
@@ -307,6 +308,7 @@ public:
     }
     return *RealShNum;
   }
+
   Expected<uint32_t> getShStrNdx() const {
     if (!RealShStrNdx) {
       if (Error E = const_cast<ELFFile<ELFT> *>(this)->readShdrZero())
@@ -811,11 +813,12 @@ Expected<StringRef>
 ELFFile<ELFT>::getSectionStringTable(Elf_Shdr_Range Sections,
                                      WarningHandler WarnHandler) const {
   Expected<uint32_t> ShStrNdxOrErr = getShStrNdx();
-  if (!ShStrNdxOrErr || (*ShStrNdxOrErr == ELF::SHN_XINDEX && RealShNum == 0)) {
-    consumeError(ShStrNdxOrErr.takeError());
+  if (!ShStrNdxOrErr)
+    return ShStrNdxOrErr.takeError();
+
+  if (*ShStrNdxOrErr == ELF::SHN_XINDEX && Sections.empty())
     return createError(
         "e_shstrndx == SHN_XINDEX, but the section header table is empty");
-  }
 
   uint32_t Index = *ShStrNdxOrErr;
   // There is no section name string table. Return FakeSectionStrings which
@@ -930,9 +933,8 @@ template <class ELFT> Error ELFFile<ELFT>::readShdrZero() {
   if ((Header.e_phnum == ELF::PN_XNUM || Header.e_shnum == 0 ||
        Header.e_shstrndx == ELF::SHN_XINDEX) &&
       Header.e_shoff != 0) {
-
     // Pretend we have section 0 or sections() would call getShNum and thus
-    // become an infinite recursion
+    // become an infinite recursion.
     if (Header.e_shnum == 0)
       RealShNum = 1;
     else
