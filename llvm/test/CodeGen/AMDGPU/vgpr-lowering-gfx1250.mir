@@ -480,7 +480,7 @@ body:             |
     ; GCN-NEXT: v_mov_b32_e32 v0 /*v256*/, v1
     $vgpr256 = V_MOV_B32_e32 undef $vgpr1, implicit $exec
 
-    ; No mode switch on fall through
+    ; No mode switch on fall through if this is the only predecessor
 
   bb.2:
     ; ASM-NEXT: %bb.2:
@@ -574,6 +574,7 @@ body:             |
     ; ASM: %bb.0:
     ; GCN-NEXT: s_set_vgpr_msb 64
     ; GCN-NEXT: v_mov_b32_e32 v0 /*v256*/, v0
+    ; GCN-NEXT: s_set_vgpr_msb 0
     $vgpr256 = V_MOV_B32_e32 undef $vgpr0, implicit $exec
 
   bb.1:
