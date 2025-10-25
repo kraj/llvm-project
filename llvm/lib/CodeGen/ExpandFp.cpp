@@ -991,7 +991,7 @@ static void addToWorklist(Instruction &I,
 }
 
 static bool runImpl(Function &F, const TargetLowering &TLI,
-                    AssumptionCache *AC) {
+                    const LibcallLoweringInfo &Libcalls, AssumptionCache *AC) {
   SmallVector<Instruction *, 4> Worklist;
 
   unsigned MaxLegalFpConvertBitWidth =
@@ -1090,12 +1090,17 @@ public:
 
   bool runOnFunction(Function &F) override {
     auto *TM = &getAnalysis<TargetPassConfig>().getTM<TargetMachine>();
-    auto *TLI = TM->getSubtargetImpl(F)->getTargetLowering();
+    const TargetSubtargetInfo *Subtarget = TM->getSubtargetImpl(F);
+    auto *TLI = Subtarget->getTargetLowering();
     AssumptionCache *AC = nullptr;
+
+    const LibcallLoweringInfo &Libcalls =
+        getAnalysis<LibcallLoweringInfoWrapper>().getLibcallLowering(
+            *Subtarget);
 
     if (OptLevel != CodeGenOptLevel::None && !F.hasOptNone())
       AC = &getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F);
-    return runImpl(F, *TLI, AC);
+    return runImpl(F, *TLI, Libcalls, AC);
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -1104,6 +1109,7 @@ public:
       AU.addRequired<AssumptionCacheTracker>();
     AU.addPreserved<AAResultsWrapperPass>();
     AU.addPreserved<GlobalsAAWrapperPass>();
+    AU.addRequired<LibcallLoweringInfoWrapper>();
   }
 };
 } // namespace
@@ -1126,8 +1132,23 @@ PreservedAnalyses ExpandFpPass::run(Function &F, FunctionAnalysisManager &FAM) {
   AssumptionCache *AC = nullptr;
   if (OptLevel != CodeGenOptLevel::None)
     AC = &FAM.getResult<AssumptionAnalysis>(F);
-  return runImpl(F, TLI, AC) ? PreservedAnalyses::none()
-                             : PreservedAnalyses::all();
+
+  auto &MAMProxy = FAM.getResult<ModuleAnalysisManagerFunctionProxy>(F);
+
+  const LibcallLoweringModuleAnalysisResult *LibcallLowering =
+      MAMProxy.getCachedResult<LibcallLoweringModuleAnalysis>(*F.getParent());
+
+  if (!LibcallLowering) {
+    F.getContext().emitError("'" + LibcallLoweringModuleAnalysis::name() +
+                             "' analysis required");
+    return PreservedAnalyses::all();
+  }
+
+  const LibcallLoweringInfo &Libcalls =
+      LibcallLowering->getLibcallLowering(*STI);
+
+  return runImpl(F, TLI, Libcalls, AC) ? PreservedAnalyses::none()
+                                       : PreservedAnalyses::all();
 }
 
 char ExpandFpLegacyPass::ID = 0;
