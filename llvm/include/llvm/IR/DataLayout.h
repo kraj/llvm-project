@@ -398,10 +398,14 @@ public:
            PS.HasExternalState;
   }
 
-  /// Returns if the null pointer for this address space has an all-zero bit
-  /// representation.
-  bool isNullPointerAllZeroes(unsigned AddrSpace) const {
-    return AddrSpace == 0;
+  /// Return the bit value of the null pointer for the given address space.
+  std::optional<APInt> getNullPointerValue(unsigned AS) const {
+    // Address space zero is currently defined to always have an all-zero null
+    // pointer representation, the others are target-specific and will require a
+    // data layout property (work-in-progress).
+    if (AS == 0)
+      return APInt::getZero(getPointerSizeInBits(AS));
+    return std::nullopt;
   }
 
   /// Returns whether this address space has an "unstable" pointer

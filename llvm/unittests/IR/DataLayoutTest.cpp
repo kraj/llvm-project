@@ -700,13 +700,13 @@ TEST(DataLayout, NonIntegralHelpers) {
   }
 }
 
-TEST(DataLayoutTest, IsNullPointerAllZeroes) {
-  EXPECT_TRUE(DataLayout("").isNullPointerAllZeroes(0));
-  EXPECT_FALSE(DataLayout("").isNullPointerAllZeroes(1));
-  EXPECT_TRUE(DataLayout("p:32:32").isNullPointerAllZeroes(0));
-  EXPECT_FALSE(DataLayout("p:32:32").isNullPointerAllZeroes(1));
-  EXPECT_TRUE(DataLayout("p:64:64").isNullPointerAllZeroes(0));
-  EXPECT_FALSE(DataLayout("p:64:64").isNullPointerAllZeroes(1));
+TEST(DataLayoutTest, GetNullPointerValue) {
+  EXPECT_EQ(DataLayout("").getNullPointerValue(0), APInt::getZero(64));
+  EXPECT_EQ(DataLayout("").getNullPointerValue(1), std::nullopt);
+  EXPECT_EQ(DataLayout("p:32:32").getNullPointerValue(0), APInt::getZero(32));
+  EXPECT_EQ(DataLayout("p:32:32").getNullPointerValue(1), std::nullopt);
+  EXPECT_EQ(DataLayout("p:64:64").getNullPointerValue(0), APInt::getZero(64));
+  EXPECT_EQ(DataLayout("p:64:64").getNullPointerValue(1), std::nullopt);
 }
 
 TEST(DataLayoutTest, CopyAssignmentInvalidatesStructLayout) {
