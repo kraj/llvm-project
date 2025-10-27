@@ -278,14 +278,15 @@ private:
   std::vector<Elf_Shdr> FakeSections;
   SmallString<0> FakeSectionStrings;
 
-  // When the number of program headers is >= 0xffff, the actual number is
+  // When the number of program headers is >= PN_XNUM, the actual number is
   // contained in the sh_info field of the section header at index 0.
   std::optional<uint32_t> RealPhNum;
-  // When the number of section headers is >= 0xff00, the actual number is
-  // contained in the sh_size field of the section header at index 0.
+  // When the number of section headers is >= SHN_LORESERVE, the actual number
+  // is contained in the sh_size field of the section header at index 0.
   std::optional<uint64_t> RealShNum;
-  // When the index of str section is >= 0xff00, the actual number is
-  // contained in the sh_link field of the section header at index 0.
+  // When the section index of the section name table is >= SHN_LORESERVE, the
+  // actual number is contained in the sh_link field of the section header at
+  // index 0.
   std::optional<uint32_t> RealShStrNdx;
 
   ELFFile(StringRef Object);
@@ -935,10 +936,7 @@ template <class ELFT> Error ELFFile<ELFT>::readShdrZero() {
       Header.e_shoff != 0) {
     // Pretend we have section 0 or sections() would call getShNum and thus
     // become an infinite recursion.
-    if (Header.e_shnum == 0)
-      RealShNum = 1;
-    else
-      RealShNum = Header.e_shnum;
+    RealShNum = 1;
     auto SecOrErr = getSection(0);
     if (!SecOrErr) {
       RealShNum = std::nullopt;
