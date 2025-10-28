@@ -124,11 +124,21 @@ target_link_libraries(unwind_shared PUBLIC
 #===============================================================================
 
 get_compiler_rt_install_dir(${COMPILER_RT_DEFAULT_TARGET_ARCH} install_dir_builtins)
+
+# Drop a leading "lib/" if present so we don't duplicate lib/lib
 string(REGEX REPLACE "^lib/" "" install_dir_builtins "${install_dir_builtins}")
-string(FIND "${install_dir_builtins}" "clang" install_path_contains_triple)
-if(install_path_contains_triple EQUAL -1)
+
+# Decide based on the actual CMake option, not on guessing from the path.
+if (NOT LLVM_ENABLE_PER_TARGET_RUNTIME_DIR)
+  # Flat-ish layout, e.g. usr/lib/clang/21.1.4/lib/linux/
+  # Libraries are named libclang_rt.builtins-<arch>.a
   set(builtins_suffix "-${COMPILER_RT_DEFAULT_TARGET_ARCH}")
+  # Do NOT prepend "../"
 else()
+  # Per-target layout, e.g.
+  # usr/lib/clang/21.1.4/lib/aarch64-unknown-linux-gnu/
+  # Libraries are just libclang_rt.builtins.a
+  set(builtins_suffix "")
   string(PREPEND install_dir_builtins "../")
 endif()
 set(LLVM_LIBGCC_COMPILER_RT ${install_dir_builtins}/libclang_rt.builtins${builtins_suffix}.a)
@@ -137,7 +147,7 @@ add_custom_target(llvm-libgcc ALL
   DEPENDS unwind_shared unwind_static clang_rt.builtins-${COMPILER_RT_DEFAULT_TARGET_ARCH}
   COMMAND ${CMAKE_COMMAND} -E create_symlink ${LLVM_LIBGCC_COMPILER_RT} libgcc.a
   COMMAND ${CMAKE_COMMAND} -E create_symlink libunwind.a libgcc_eh.a
-  COMMAND ${CMAKE_COMMAND} -E create_symlink libunwind.so libgcc_s.so.1.0
+  COMMAND ${CMAKE_COMMAND} -E create_symlink libunwind.so.1 libgcc_s.so.1.0
   COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so.1.0 libgcc_s.so.1
   COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so.1 libgcc_s.so
 )
