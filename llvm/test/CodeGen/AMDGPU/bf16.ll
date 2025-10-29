@@ -4392,8 +4392,8 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GCN-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; GCN-NEXT:    buffer_store_short v0, v1, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_readlane_b32 s31, v2, 1
 ; GCN-NEXT:    v_readlane_b32 s30, v2, 0
+; GCN-NEXT:    v_readlane_b32 s31, v2, 1
 ; GCN-NEXT:    s_mov_b32 s32, s33
 ; GCN-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GCN-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4421,10 +4421,10 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX7-NEXT:    s_swappc_b64 s[30:31], s[16:17]
 ; GFX7-NEXT:    v_mul_f32_e32 v0, 1.0, v0
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
+; GFX7-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX7-NEXT:    buffer_store_short v0, v1, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX7-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX7-NEXT:    s_mov_b32 s32, s33
 ; GFX7-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX7-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4450,10 +4450,10 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX8-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX8-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX8-NEXT:    buffer_store_short v0, v1, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX8-NEXT:    s_mov_b32 s32, s33
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4479,10 +4479,10 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX900-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX900-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX900-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX900-NEXT:    buffer_store_short v0, v1, s[0:3], 0 offen
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX900-NEXT:    s_mov_b32 s32, s33
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4505,13 +4505,14 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX950-NEXT:    s_addc_u32 s1, s1, test_arg_store@gotpcrel32@hi+12
 ; GFX950-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x0
 ; GFX950-NEXT:    v_writelane_b32 v4, s30, 0
+; GFX950-NEXT:    s_nop 1
 ; GFX950-NEXT:    v_writelane_b32 v4, s31, 1
 ; GFX950-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX950-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX950-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX950-NEXT:    scratch_store_short v1, v0, off sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX950-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX950-NEXT:    s_mov_b32 s32, s33
 ; GFX950-NEXT:    s_xor_saveexec_b64 s[0:1], -1
 ; GFX950-NEXT:    scratch_load_dword v4, off, s33 ; 4-byte Folded Reload
@@ -4538,10 +4539,10 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX10-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX10-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX10-NEXT:    buffer_store_short v0, v1, s[0:3], 0 offen
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX10-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX10-NEXT:    s_mov_b32 s32, s33
 ; GFX10-NEXT:    s_xor_saveexec_b32 s4, -1
 ; GFX10-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4568,10 +4569,11 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX11-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX11-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX11-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX11-NEXT:    scratch_store_b16 v1, v0, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX11-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX11-NEXT:    s_mov_b32 s32, s33
 ; GFX11-NEXT:    s_xor_saveexec_b32 s0, -1
 ; GFX11-NEXT:    scratch_load_b32 v2, off, s33 ; 4-byte Folded Reload
@@ -4598,10 +4600,11 @@ define void @test_call(bfloat %in, ptr addrspace(5) %out) {
 ; GFX1250-NEXT:    v_writelane_b32 v4, s31, 1
 ; GFX1250-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-NEXT:    s_swap_pc_i64 s[30:31], s[0:1]
+; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX1250-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX1250-NEXT:    scratch_store_b16 v1, v0, off scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX1250-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX1250-NEXT:    s_mov_b32 s32, s33
 ; GFX1250-NEXT:    s_wait_xcnt 0x0
 ; GFX1250-NEXT:    s_xor_saveexec_b32 s0, -1
@@ -4645,8 +4648,8 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    buffer_store_short v0, v2, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_readlane_b32 s31, v4, 1
 ; GCN-NEXT:    v_readlane_b32 s30, v4, 0
+; GCN-NEXT:    v_readlane_b32 s31, v4, 1
 ; GCN-NEXT:    s_mov_b32 s32, s33
 ; GCN-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GCN-NEXT:    buffer_load_dword v4, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4676,13 +4679,13 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX7-NEXT:    v_mul_f32_e32 v0, 1.0, v0
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v1, 16, v1
 ; GFX7-NEXT:    v_add_i32_e32 v3, vcc, 2, v2
+; GFX7-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; GFX7-NEXT:    buffer_store_short v1, v3, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    buffer_store_short v0, v2, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX7-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX7-NEXT:    s_mov_b32 s32, s33
 ; GFX7-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX7-NEXT:    buffer_load_dword v4, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4708,10 +4711,10 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX8-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX8-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX8-NEXT:    buffer_store_dword v0, v1, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX8-NEXT:    s_mov_b32 s32, s33
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4737,10 +4740,10 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX900-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX900-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX900-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX900-NEXT:    buffer_store_dword v0, v1, s[0:3], 0 offen
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX900-NEXT:    s_mov_b32 s32, s33
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4763,13 +4766,14 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX950-NEXT:    s_addc_u32 s1, s1, test_arg_store_v2bf16@gotpcrel32@hi+12
 ; GFX950-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x0
 ; GFX950-NEXT:    v_writelane_b32 v4, s30, 0
+; GFX950-NEXT:    s_nop 1
 ; GFX950-NEXT:    v_writelane_b32 v4, s31, 1
 ; GFX950-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX950-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX950-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX950-NEXT:    scratch_store_dword v1, v0, off sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX950-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX950-NEXT:    s_mov_b32 s32, s33
 ; GFX950-NEXT:    s_xor_saveexec_b64 s[0:1], -1
 ; GFX950-NEXT:    scratch_load_dword v4, off, s33 ; 4-byte Folded Reload
@@ -4796,10 +4800,10 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX10-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX10-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX10-NEXT:    buffer_store_dword v0, v1, s[0:3], 0 offen
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX10-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX10-NEXT:    s_mov_b32 s32, s33
 ; GFX10-NEXT:    s_xor_saveexec_b32 s4, -1
 ; GFX10-NEXT:    buffer_load_dword v2, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4826,10 +4830,11 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX11-NEXT:    v_writelane_b32 v2, s31, 1
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX11-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX11-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX11-NEXT:    scratch_store_b32 v1, v0, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    v_readlane_b32 s31, v2, 1
-; GFX11-NEXT:    v_readlane_b32 s30, v2, 0
 ; GFX11-NEXT:    s_mov_b32 s32, s33
 ; GFX11-NEXT:    s_xor_saveexec_b32 s0, -1
 ; GFX11-NEXT:    scratch_load_b32 v2, off, s33 ; 4-byte Folded Reload
@@ -4856,10 +4861,11 @@ define void @test_call_v2bf16(<2 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX1250-NEXT:    v_writelane_b32 v4, s31, 1
 ; GFX1250-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-NEXT:    s_swap_pc_i64 s[30:31], s[0:1]
+; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX1250-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX1250-NEXT:    scratch_store_b32 v1, v0, off scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX1250-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX1250-NEXT:    s_mov_b32 s32, s33
 ; GFX1250-NEXT:    s_wait_xcnt 0x0
 ; GFX1250-NEXT:    s_xor_saveexec_b32 s0, -1
@@ -4905,8 +4911,8 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    buffer_store_dword v0, v3, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_readlane_b32 s31, v5, 1
 ; GCN-NEXT:    v_readlane_b32 s30, v5, 0
+; GCN-NEXT:    v_readlane_b32 s31, v5, 1
 ; GCN-NEXT:    s_mov_b32 s32, s33
 ; GCN-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GCN-NEXT:    buffer_load_dword v5, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4939,12 +4945,12 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX7-NEXT:    v_mul_f32_e32 v1, 1.0, v2
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v1, 16, v1
 ; GFX7-NEXT:    v_add_i32_e32 v2, vcc, 4, v3
+; GFX7-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX7-NEXT:    buffer_store_short v1, v2, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    buffer_store_dword v0, v3, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX7-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX7-NEXT:    s_mov_b32 s32, s33
 ; GFX7-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX7-NEXT:    buffer_load_dword v4, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -4971,12 +4977,12 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    s_swappc_b64 s[30:31], s[16:17]
 ; GFX8-NEXT:    v_add_u32_e32 v3, vcc, 4, v2
+; GFX8-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX8-NEXT:    buffer_store_short v1, v3, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    buffer_store_dword v0, v2, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX8-NEXT:    s_mov_b32 s32, s33
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v4, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5002,12 +5008,12 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    v_writelane_b32 v3, s31, 1
 ; GFX900-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX900-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX900-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX900-NEXT:    buffer_store_short v1, v2, s[0:3], 0 offen offset:4
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    buffer_store_dword v0, v2, s[0:3], 0 offen
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_readlane_b32 s31, v3, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX900-NEXT:    s_mov_b32 s32, s33
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v3, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5030,16 +5036,17 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX950-NEXT:    s_addc_u32 s1, s1, test_arg_store_v2bf16@gotpcrel32@hi+12
 ; GFX950-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x0
 ; GFX950-NEXT:    v_writelane_b32 v5, s30, 0
-; GFX950-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX950-NEXT:    v_mov_b32_e32 v4, v2
+; GFX950-NEXT:    s_nop 0
+; GFX950-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX950-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX950-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX950-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX950-NEXT:    scratch_store_short v4, v1, off offset:4 sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    scratch_store_dword v4, v0, off sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX950-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX950-NEXT:    s_mov_b32 s32, s33
 ; GFX950-NEXT:    s_xor_saveexec_b64 s[0:1], -1
 ; GFX950-NEXT:    scratch_load_dword v5, off, s33 ; 4-byte Folded Reload
@@ -5066,12 +5073,12 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    v_writelane_b32 v3, s31, 1
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX10-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX10-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX10-NEXT:    buffer_store_short v1, v2, s[0:3], 0 offen offset:4
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    buffer_store_dword v0, v2, s[0:3], 0 offen
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    v_readlane_b32 s31, v3, 1
-; GFX10-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX10-NEXT:    s_mov_b32 s32, s33
 ; GFX10-NEXT:    s_xor_saveexec_b32 s4, -1
 ; GFX10-NEXT:    buffer_load_dword v3, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5098,12 +5105,13 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX11-NEXT:    v_writelane_b32 v3, s31, 1
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX11-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX11-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX11-NEXT:    scratch_store_b16 v2, v1, off offset:4 dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    scratch_store_b32 v2, v0, off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    v_readlane_b32 s31, v3, 1
-; GFX11-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX11-NEXT:    s_mov_b32 s32, s33
 ; GFX11-NEXT:    s_xor_saveexec_b32 s0, -1
 ; GFX11-NEXT:    scratch_load_b32 v3, off, s33 ; 4-byte Folded Reload
@@ -5131,12 +5139,13 @@ define void @test_call_v3bf16(<3 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX1250-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX1250-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-NEXT:    s_swap_pc_i64 s[30:31], s[0:1]
+; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX1250-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX1250-NEXT:    scratch_store_b16 v4, v1, off offset:4 scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    scratch_store_b32 v4, v0, off scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX1250-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX1250-NEXT:    s_mov_b32 s32, s33
 ; GFX1250-NEXT:    s_wait_xcnt 0x0
 ; GFX1250-NEXT:    s_xor_saveexec_b32 s0, -1
@@ -5190,8 +5199,8 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    buffer_store_short v0, v4, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_readlane_b32 s31, v8, 1
 ; GCN-NEXT:    v_readlane_b32 s30, v8, 0
+; GCN-NEXT:    v_readlane_b32 s31, v8, 1
 ; GCN-NEXT:    s_mov_b32 s32, s33
 ; GCN-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GCN-NEXT:    buffer_load_dword v8, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5231,13 +5240,13 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX7-NEXT:    buffer_store_short v2, v3, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_add_i32_e32 v2, vcc, 2, v4
+; GFX7-NEXT:    v_readlane_b32 s30, v6, 0
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; GFX7-NEXT:    buffer_store_short v1, v2, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    buffer_store_short v0, v4, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_readlane_b32 s31, v6, 1
-; GFX7-NEXT:    v_readlane_b32 s30, v6, 0
 ; GFX7-NEXT:    s_mov_b32 s32, s33
 ; GFX7-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX7-NEXT:    buffer_load_dword v6, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5264,12 +5273,12 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    s_swappc_b64 s[30:31], s[16:17]
 ; GFX8-NEXT:    v_add_u32_e32 v3, vcc, 4, v2
+; GFX8-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX8-NEXT:    buffer_store_dword v1, v3, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    buffer_store_dword v0, v2, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_readlane_b32 s31, v4, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v4, 0
 ; GFX8-NEXT:    s_mov_b32 s32, s33
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v4, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5295,12 +5304,12 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    v_writelane_b32 v3, s31, 1
 ; GFX900-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX900-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX900-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX900-NEXT:    buffer_store_dword v1, v2, s[0:3], 0 offen offset:4
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    buffer_store_dword v0, v2, s[0:3], 0 offen
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_readlane_b32 s31, v3, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX900-NEXT:    s_mov_b32 s32, s33
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v3, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5323,14 +5332,15 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX950-NEXT:    s_addc_u32 s1, s1, test_arg_store_v2bf16@gotpcrel32@hi+12
 ; GFX950-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x0
 ; GFX950-NEXT:    v_writelane_b32 v5, s30, 0
-; GFX950-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX950-NEXT:    v_mov_b32_e32 v4, v2
+; GFX950-NEXT:    s_nop 0
+; GFX950-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX950-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX950-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX950-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX950-NEXT:    scratch_store_dwordx2 v4, v[0:1], off sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX950-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX950-NEXT:    s_mov_b32 s32, s33
 ; GFX950-NEXT:    s_xor_saveexec_b64 s[0:1], -1
 ; GFX950-NEXT:    scratch_load_dword v5, off, s33 ; 4-byte Folded Reload
@@ -5357,12 +5367,12 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    v_writelane_b32 v3, s31, 1
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX10-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX10-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX10-NEXT:    buffer_store_dword v1, v2, s[0:3], 0 offen offset:4
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    buffer_store_dword v0, v2, s[0:3], 0 offen
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    v_readlane_b32 s31, v3, 1
-; GFX10-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX10-NEXT:    s_mov_b32 s32, s33
 ; GFX10-NEXT:    s_xor_saveexec_b32 s4, -1
 ; GFX10-NEXT:    buffer_load_dword v3, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5389,10 +5399,11 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX11-NEXT:    v_writelane_b32 v3, s31, 1
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX11-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX11-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX11-NEXT:    scratch_store_b64 v2, v[0:1], off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    v_readlane_b32 s31, v3, 1
-; GFX11-NEXT:    v_readlane_b32 s30, v3, 0
 ; GFX11-NEXT:    s_mov_b32 s32, s33
 ; GFX11-NEXT:    s_xor_saveexec_b32 s0, -1
 ; GFX11-NEXT:    scratch_load_b32 v3, off, s33 ; 4-byte Folded Reload
@@ -5420,10 +5431,11 @@ define void @test_call_v4bf16(<4 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX1250-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX1250-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-NEXT:    s_swap_pc_i64 s[30:31], s[0:1]
+; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX1250-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX1250-NEXT:    scratch_store_b64 v4, v[0:1], off scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX1250-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX1250-NEXT:    s_mov_b32 s32, s33
 ; GFX1250-NEXT:    s_wait_xcnt 0x0
 ; GFX1250-NEXT:    s_xor_saveexec_b32 s0, -1
@@ -5497,8 +5509,8 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    buffer_store_short v0, v8, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_readlane_b32 s31, v16, 1
 ; GCN-NEXT:    v_readlane_b32 s30, v16, 0
+; GCN-NEXT:    v_readlane_b32 s31, v16, 1
 ; GCN-NEXT:    s_mov_b32 s32, s33
 ; GCN-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GCN-NEXT:    buffer_load_dword v16, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5558,13 +5570,13 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX7-NEXT:    buffer_store_short v2, v3, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_add_i32_e32 v2, vcc, 2, v8
+; GFX7-NEXT:    v_readlane_b32 s30, v10, 0
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; GFX7-NEXT:    buffer_store_short v1, v2, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    buffer_store_short v0, v8, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_readlane_b32 s31, v10, 1
-; GFX7-NEXT:    v_readlane_b32 s30, v10, 0
 ; GFX7-NEXT:    s_mov_b32 s32, s33
 ; GFX7-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX7-NEXT:    buffer_load_dword v10, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5597,12 +5609,12 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX8-NEXT:    buffer_store_dword v2, v3, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_add_u32_e32 v2, vcc, 4, v4
+; GFX8-NEXT:    v_readlane_b32 s30, v6, 0
 ; GFX8-NEXT:    buffer_store_dword v1, v2, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    buffer_store_dword v0, v4, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_readlane_b32 s31, v6, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v6, 0
 ; GFX8-NEXT:    s_mov_b32 s32, s33
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v6, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5628,6 +5640,7 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX900-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX900-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX900-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX900-NEXT:    buffer_store_dword v3, v4, s[0:3], 0 offen offset:12
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    buffer_store_dword v2, v4, s[0:3], 0 offen offset:8
@@ -5637,7 +5650,6 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    buffer_store_dword v0, v4, s[0:3], 0 offen
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX900-NEXT:    s_mov_b32 s32, s33
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v5, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5660,13 +5672,14 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX950-NEXT:    s_addc_u32 s1, s1, test_arg_store_v2bf16@gotpcrel32@hi+12
 ; GFX950-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x0
 ; GFX950-NEXT:    v_writelane_b32 v5, s30, 0
+; GFX950-NEXT:    s_nop 1
 ; GFX950-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX950-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX950-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX950-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX950-NEXT:    scratch_store_dwordx4 v4, v[0:3], off sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX950-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX950-NEXT:    s_mov_b32 s32, s33
 ; GFX950-NEXT:    s_xor_saveexec_b64 s[0:1], -1
 ; GFX950-NEXT:    scratch_load_dword v5, off, s33 ; 4-byte Folded Reload
@@ -5693,6 +5706,7 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX10-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX10-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX10-NEXT:    buffer_store_dword v3, v4, s[0:3], 0 offen offset:12
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    buffer_store_dword v2, v4, s[0:3], 0 offen offset:8
@@ -5702,7 +5716,6 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    buffer_store_dword v0, v4, s[0:3], 0 offen
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX10-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX10-NEXT:    s_mov_b32 s32, s33
 ; GFX10-NEXT:    s_xor_saveexec_b32 s4, -1
 ; GFX10-NEXT:    buffer_load_dword v5, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5729,10 +5742,11 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX11-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX11-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX11-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX11-NEXT:    scratch_store_b128 v4, v[0:3], off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX11-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX11-NEXT:    s_mov_b32 s32, s33
 ; GFX11-NEXT:    s_xor_saveexec_b32 s0, -1
 ; GFX11-NEXT:    scratch_load_b32 v5, off, s33 ; 4-byte Folded Reload
@@ -5759,10 +5773,11 @@ define void @test_call_v8bf16(<8 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX1250-NEXT:    v_writelane_b32 v5, s31, 1
 ; GFX1250-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-NEXT:    s_swap_pc_i64 s[30:31], s[0:1]
+; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX1250-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX1250-NEXT:    scratch_store_b128 v4, v[0:3], off scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    v_readlane_b32 s31, v5, 1
-; GFX1250-NEXT:    v_readlane_b32 s30, v5, 0
 ; GFX1250-NEXT:    s_mov_b32 s32, s33
 ; GFX1250-NEXT:    s_wait_xcnt 0x0
 ; GFX1250-NEXT:    s_xor_saveexec_b32 s0, -1
@@ -5876,8 +5891,8 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    buffer_store_short v0, v16, s[0:3], 0 offen
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
-; GCN-NEXT:    v_readlane_b32 s31, v20, 1
 ; GCN-NEXT:    v_readlane_b32 s30, v20, 0
+; GCN-NEXT:    v_readlane_b32 s31, v20, 1
 ; GCN-NEXT:    s_mov_b32 s32, s33
 ; GCN-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GCN-NEXT:    buffer_load_dword v20, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -5977,13 +5992,13 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX7-NEXT:    buffer_store_short v2, v3, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_add_i32_e32 v2, vcc, 2, v16
+; GFX7-NEXT:    v_readlane_b32 s30, v18, 0
 ; GFX7-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; GFX7-NEXT:    buffer_store_short v1, v2, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    buffer_store_short v0, v16, s[0:3], 0 offen
 ; GFX7-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-NEXT:    v_readlane_b32 s31, v18, 1
-; GFX7-NEXT:    v_readlane_b32 s30, v18, 0
 ; GFX7-NEXT:    s_mov_b32 s32, s33
 ; GFX7-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX7-NEXT:    buffer_load_dword v18, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -6028,12 +6043,12 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX8-NEXT:    buffer_store_dword v2, v3, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_add_u32_e32 v2, vcc, 4, v8
+; GFX8-NEXT:    v_readlane_b32 s30, v10, 0
 ; GFX8-NEXT:    buffer_store_dword v1, v2, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    buffer_store_dword v0, v8, s[0:3], 0 offen
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_readlane_b32 s31, v10, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v10, 0
 ; GFX8-NEXT:    s_mov_b32 s32, s33
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v10, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -6059,6 +6074,7 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    v_writelane_b32 v9, s31, 1
 ; GFX900-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX900-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX900-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX900-NEXT:    buffer_store_dword v7, v8, s[0:3], 0 offen offset:28
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    buffer_store_dword v6, v8, s[0:3], 0 offen offset:24
@@ -6076,7 +6092,6 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX900-NEXT:    buffer_store_dword v0, v8, s[0:3], 0 offen
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_readlane_b32 s31, v9, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX900-NEXT:    s_mov_b32 s32, s33
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v9, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -6099,15 +6114,16 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX950-NEXT:    s_addc_u32 s1, s1, test_arg_store_v2bf16@gotpcrel32@hi+12
 ; GFX950-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x0
 ; GFX950-NEXT:    v_writelane_b32 v9, s30, 0
+; GFX950-NEXT:    s_nop 1
 ; GFX950-NEXT:    v_writelane_b32 v9, s31, 1
 ; GFX950-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX950-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX950-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX950-NEXT:    scratch_store_dwordx4 v8, v[4:7], off offset:16 sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    scratch_store_dwordx4 v8, v[0:3], off sc0 sc1
 ; GFX950-NEXT:    s_waitcnt vmcnt(0)
 ; GFX950-NEXT:    v_readlane_b32 s31, v9, 1
-; GFX950-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX950-NEXT:    s_mov_b32 s32, s33
 ; GFX950-NEXT:    s_xor_saveexec_b64 s[0:1], -1
 ; GFX950-NEXT:    scratch_load_dword v9, off, s33 ; 4-byte Folded Reload
@@ -6134,6 +6150,7 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    v_writelane_b32 v9, s31, 1
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX10-NEXT:    s_swappc_b64 s[30:31], s[16:17]
+; GFX10-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX10-NEXT:    buffer_store_dword v7, v8, s[0:3], 0 offen offset:28
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    buffer_store_dword v6, v8, s[0:3], 0 offen offset:24
@@ -6151,7 +6168,6 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX10-NEXT:    buffer_store_dword v0, v8, s[0:3], 0 offen
 ; GFX10-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX10-NEXT:    v_readlane_b32 s31, v9, 1
-; GFX10-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX10-NEXT:    s_mov_b32 s32, s33
 ; GFX10-NEXT:    s_xor_saveexec_b32 s4, -1
 ; GFX10-NEXT:    buffer_load_dword v9, off, s[0:3], s33 ; 4-byte Folded Reload
@@ -6178,12 +6194,13 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX11-NEXT:    v_writelane_b32 v9, s31, 1
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX11-NEXT:    s_swappc_b64 s[30:31], s[0:1]
+; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX11-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX11-NEXT:    scratch_store_b128 v8, v[4:7], off offset:16 dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    scratch_store_b128 v8, v[0:3], off dlc
 ; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX11-NEXT:    v_readlane_b32 s31, v9, 1
-; GFX11-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX11-NEXT:    s_mov_b32 s32, s33
 ; GFX11-NEXT:    s_xor_saveexec_b32 s0, -1
 ; GFX11-NEXT:    scratch_load_b32 v9, off, s33 ; 4-byte Folded Reload
@@ -6210,12 +6227,13 @@ define void @test_call_v16bf16(<16 x bfloat> %in, ptr addrspace(5) %out) {
 ; GFX1250-NEXT:    v_writelane_b32 v9, s31, 1
 ; GFX1250-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-NEXT:    s_swap_pc_i64 s[30:31], s[0:1]
+; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX1250-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX1250-NEXT:    scratch_store_b128 v8, v[4:7], off offset:16 scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    scratch_store_b128 v8, v[0:3], off scope:SCOPE_SYS
 ; GFX1250-NEXT:    s_wait_storecnt 0x0
 ; GFX1250-NEXT:    v_readlane_b32 s31, v9, 1
-; GFX1250-NEXT:    v_readlane_b32 s30, v9, 0
 ; GFX1250-NEXT:    s_mov_b32 s32, s33
 ; GFX1250-NEXT:    s_wait_xcnt 0x0
 ; GFX1250-NEXT:    s_xor_saveexec_b32 s0, -1
@@ -48852,34 +48870,34 @@ define <32 x bfloat> @v_vselect_v32bf16(<32 x i1> %cond, <32 x bfloat> %a, <32 x
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v20
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[60:61], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v21
+; GFX8-NEXT:    v_writelane_b32 v34, s34, 0
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[62:63], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v22
+; GFX8-NEXT:    v_writelane_b32 v34, s35, 1
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[72:73], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v23
+; GFX8-NEXT:    v_writelane_b32 v34, s36, 2
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[74:75], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v24
+; GFX8-NEXT:    v_writelane_b32 v34, s37, 3
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[76:77], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v25
-; GFX8-NEXT:    v_writelane_b32 v34, s30, 0
+; GFX8-NEXT:    v_writelane_b32 v34, s38, 4
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[78:79], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v26
-; GFX8-NEXT:    v_writelane_b32 v34, s31, 1
+; GFX8-NEXT:    v_writelane_b32 v34, s39, 5
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[88:89], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v27
-; GFX8-NEXT:    v_writelane_b32 v34, s34, 2
+; GFX8-NEXT:    v_writelane_b32 v34, s30, 6
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[90:91], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v28
-; GFX8-NEXT:    v_writelane_b32 v34, s35, 3
+; GFX8-NEXT:    v_writelane_b32 v34, s31, 7
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[30:31], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v29
-; GFX8-NEXT:    v_writelane_b32 v34, s36, 4
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[34:35], 1, v0
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v30
-; GFX8-NEXT:    v_writelane_b32 v34, s37, 5
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[36:37], 1, v0
 ; GFX8-NEXT:    buffer_load_ushort v0, off, s[0:3], s32
-; GFX8-NEXT:    v_writelane_b32 v34, s38, 6
-; GFX8-NEXT:    v_writelane_b32 v34, s39, 7
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_and_b32_e32 v0, 1, v0
 ; GFX8-NEXT:    v_cmp_eq_u32_e64 s[38:39], 1, v0
@@ -49005,6 +49023,7 @@ define <32 x bfloat> @v_vselect_v32bf16(<32 x i1> %cond, <32 x bfloat> %a, <32 x
 ; GFX8-NEXT:    v_lshlrev_b32_e32 v13, 16, v28
 ; GFX8-NEXT:    v_lshlrev_b32_e32 v14, 16, v26
 ; GFX8-NEXT:    v_lshlrev_b32_e32 v15, 16, v24
+; GFX8-NEXT:    v_readlane_b32 s30, v34, 6
 ; GFX8-NEXT:    v_or_b32_sdwa v8, v16, v8 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_sdwa v9, v18, v9 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_sdwa v10, v20, v10 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
@@ -49013,14 +49032,13 @@ define <32 x bfloat> @v_vselect_v32bf16(<32 x i1> %cond, <32 x bfloat> %a, <32 x
 ; GFX8-NEXT:    v_or_b32_sdwa v13, v29, v13 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_sdwa v14, v27, v14 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_sdwa v15, v25, v15 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-NEXT:    v_readlane_b32 s39, v34, 7
-; GFX8-NEXT:    v_readlane_b32 s38, v34, 6
-; GFX8-NEXT:    v_readlane_b32 s37, v34, 5
-; GFX8-NEXT:    v_readlane_b32 s36, v34, 4
-; GFX8-NEXT:    v_readlane_b32 s35, v34, 3
-; GFX8-NEXT:    v_readlane_b32 s34, v34, 2
-; GFX8-NEXT:    v_readlane_b32 s31, v34, 1
-; GFX8-NEXT:    v_readlane_b32 s30, v34, 0
+; GFX8-NEXT:    v_readlane_b32 s31, v34, 7
+; GFX8-NEXT:    v_readlane_b32 s39, v34, 5
+; GFX8-NEXT:    v_readlane_b32 s38, v34, 4
+; GFX8-NEXT:    v_readlane_b32 s37, v34, 3
+; GFX8-NEXT:    v_readlane_b32 s36, v34, 2
+; GFX8-NEXT:    v_readlane_b32 s35, v34, 1
+; GFX8-NEXT:    v_readlane_b32 s34, v34, 0
 ; GFX8-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX8-NEXT:    buffer_load_dword v34, off, s[0:3], s32 offset:132 ; 4-byte Folded Reload
 ; GFX8-NEXT:    s_mov_b64 exec, s[4:5]
@@ -49092,11 +49110,11 @@ define <32 x bfloat> @v_vselect_v32bf16(<32 x i1> %cond, <32 x bfloat> %a, <32 x
 ; GFX900-NEXT:    v_and_b32_e32 v0, 1, v28
 ; GFX900-NEXT:    v_cmp_eq_u32_e64 s[94:95], 1, v0
 ; GFX900-NEXT:    buffer_load_ushort v0, off, s[0:3], s32
-; GFX900-NEXT:    v_writelane_b32 v33, s30, 0
-; GFX900-NEXT:    v_writelane_b32 v33, s31, 1
-; GFX900-NEXT:    v_writelane_b32 v33, s34, 2
+; GFX900-NEXT:    v_writelane_b32 v33, s34, 0
+; GFX900-NEXT:    v_writelane_b32 v33, s35, 1
+; GFX900-NEXT:    v_writelane_b32 v33, s30, 2
+; GFX900-NEXT:    v_writelane_b32 v33, s31, 3
 ; GFX900-NEXT:    v_and_b32_e32 v1, 1, v1
-; GFX900-NEXT:    v_writelane_b32 v33, s35, 3
 ; GFX900-NEXT:    v_cmp_eq_u32_e32 vcc, 1, v1
 ; GFX900-NEXT:    s_waitcnt vmcnt(0)
 ; GFX900-NEXT:    v_and_b32_e32 v0, 1, v0
@@ -49201,6 +49219,7 @@ define <32 x bfloat> @v_vselect_v32bf16(<32 x i1> %cond, <32 x bfloat> %a, <32 x
 ; GFX900-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; GFX900-NEXT:    v_cndmask_b32_e32 v0, v0, v1, vcc
 ; GFX900-NEXT:    s_mov_b32 s4, 0x5040100
+; GFX900-NEXT:    v_readlane_b32 s30, v33, 2
 ; GFX900-NEXT:    v_perm_b32 v0, v0, v3, s4
 ; GFX900-NEXT:    v_perm_b32 v1, v2, v5, s4
 ; GFX900-NEXT:    v_perm_b32 v2, v4, v7, s4
@@ -49217,10 +49236,9 @@ define <32 x bfloat> @v_vselect_v32bf16(<32 x i1> %cond, <32 x bfloat> %a, <32 x
 ; GFX900-NEXT:    v_perm_b32 v13, v26, v29, s4
 ; GFX900-NEXT:    v_perm_b32 v14, v28, v32, s4
 ; GFX900-NEXT:    v_perm_b32 v15, v31, v30, s4
-; GFX900-NEXT:    v_readlane_b32 s35, v33, 3
-; GFX900-NEXT:    v_readlane_b32 s34, v33, 2
-; GFX900-NEXT:    v_readlane_b32 s31, v33, 1
-; GFX900-NEXT:    v_readlane_b32 s30, v33, 0
+; GFX900-NEXT:    v_readlane_b32 s31, v33, 3
+; GFX900-NEXT:    v_readlane_b32 s35, v33, 1
+; GFX900-NEXT:    v_readlane_b32 s34, v33, 0
 ; GFX900-NEXT:    s_xor_saveexec_b64 s[4:5], -1
 ; GFX900-NEXT:    buffer_load_dword v33, off, s[0:3], s32 offset:132 ; 4-byte Folded Reload
 ; GFX900-NEXT:    s_mov_b64 exec, s[4:5]
