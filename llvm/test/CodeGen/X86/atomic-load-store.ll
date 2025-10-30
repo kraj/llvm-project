@@ -295,6 +295,180 @@ define <2 x float> @atomic_vec2_float_align(ptr %x) {
   ret <2 x float> %ret
 }
 
+define <2 x half> @atomic_vec2_half(ptr %x) {
+; CHECK-O3-LABEL: atomic_vec2_half:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movl (%rdi), %eax
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O3-NEXT:    shrl $16, %eax
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec2_half:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movl (%rdi), %eax
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    shrl $16, %eax
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-SSE-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec2_half:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_half:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec2_half:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movl (%rdi), %eax
+; CHECK-O0-NEXT:    movl %eax, %ecx
+; CHECK-O0-NEXT:    shrl $16, %ecx
+; CHECK-O0-NEXT:    movw %cx, %dx
+; CHECK-O0-NEXT:    # implicit-def: $ecx
+; CHECK-O0-NEXT:    movw %dx, %cx
+; CHECK-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-O0-NEXT:    pinsrw $0, %ecx, %xmm1
+; CHECK-O0-NEXT:    movw %ax, %cx
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %cx, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec2_half:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movl (%rdi), %eax
+; CHECK-SSE-O0-NEXT:    movl %eax, %ecx
+; CHECK-SSE-O0-NEXT:    shrl $16, %ecx
+; CHECK-SSE-O0-NEXT:    movw %cx, %dx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $ecx
+; CHECK-SSE-O0-NEXT:    movw %dx, %cx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %ecx, %xmm1
+; CHECK-SSE-O0-NEXT:    movw %ax, %cx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %cx, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec2_half:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_half:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <2 x half>, ptr %x acquire, align 4
+  ret <2 x half> %ret
+}
+define <2 x bfloat> @atomic_vec2_bfloat(ptr %x) {
+; CHECK-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movl (%rdi), %eax
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O3-NEXT:    shrl $16, %eax
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movl (%rdi), %eax
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    shrl $16, %eax
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-SSE-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    movl (%rdi), %eax
+; CHECK-AVX-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O3-NEXT:    shrl $16, %eax
+; CHECK-AVX-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O3-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movl (%rdi), %eax
+; CHECK-AVX512-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O3-NEXT:    shrl $16, %eax
+; CHECK-AVX512-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O3-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movl (%rdi), %eax
+; CHECK-O0-NEXT:    movl %eax, %ecx
+; CHECK-O0-NEXT:    shrl $16, %ecx
+; CHECK-O0-NEXT:    # kill: def $cx killed $cx killed $ecx
+; CHECK-O0-NEXT:    movw %ax, %dx
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %dx, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %cx, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movl (%rdi), %eax
+; CHECK-SSE-O0-NEXT:    movl %eax, %ecx
+; CHECK-SSE-O0-NEXT:    shrl $16, %ecx
+; CHECK-SSE-O0-NEXT:    # kill: def $cx killed $cx killed $ecx
+; CHECK-SSE-O0-NEXT:    movw %ax, %dx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %dx, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %cx, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-SSE-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    movl (%rdi), %eax
+; CHECK-AVX-O0-NEXT:    movw %ax, %cx
+; CHECK-AVX-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O0-NEXT:    shrl $16, %eax
+; CHECK-AVX-O0-NEXT:    # kill: def $ax killed $ax killed $eax
+; CHECK-AVX-O0-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O0-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec2_bfloat:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movl (%rdi), %eax
+; CHECK-AVX512-O0-NEXT:    movw %ax, %cx
+; CHECK-AVX512-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O0-NEXT:    shrl $16, %eax
+; CHECK-AVX512-O0-NEXT:    # kill: def $ax killed $ax killed $eax
+; CHECK-AVX512-O0-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O0-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <2 x bfloat>, ptr %x acquire, align 4
+  ret <2 x bfloat> %ret
+}
 define <1 x ptr> @atomic_vec1_ptr(ptr %x) nounwind {
 ; CHECK-O3-LABEL: atomic_vec1_ptr:
 ; CHECK-O3:       # %bb.0:
@@ -583,6 +757,305 @@ define <4 x i16> @atomic_vec4_i16(ptr %x) nounwind {
 ; CHECK-AVX-O0-NEXT:    retq
   %ret = load atomic <4 x i16>, ptr %x acquire, align 8
   ret <4 x i16> %ret
+}
+
+define <4 x half> @atomic_vec4_half(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec4_half:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movq (%rdi), %rax
+; CHECK-O3-NEXT:    movl %eax, %ecx
+; CHECK-O3-NEXT:    shrl $16, %ecx
+; CHECK-O3-NEXT:    pinsrw $0, %ecx, %xmm1
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O3-NEXT:    movq %rax, %rcx
+; CHECK-O3-NEXT:    shrq $32, %rcx
+; CHECK-O3-NEXT:    pinsrw $0, %ecx, %xmm2
+; CHECK-O3-NEXT:    shrq $48, %rax
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm3
+; CHECK-O3-NEXT:    punpcklwd {{.*#+}} xmm2 = xmm2[0],xmm3[0],xmm2[1],xmm3[1],xmm2[2],xmm3[2],xmm2[3],xmm3[3]
+; CHECK-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-O3-NEXT:    punpckldq {{.*#+}} xmm0 = xmm0[0],xmm2[0],xmm0[1],xmm2[1]
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec4_half:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %rax
+; CHECK-SSE-O3-NEXT:    movl %eax, %ecx
+; CHECK-SSE-O3-NEXT:    shrl $16, %ecx
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %ecx, %xmm1
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    movq %rax, %rcx
+; CHECK-SSE-O3-NEXT:    shrq $32, %rcx
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %ecx, %xmm2
+; CHECK-SSE-O3-NEXT:    shrq $48, %rax
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm3
+; CHECK-SSE-O3-NEXT:    punpcklwd {{.*#+}} xmm2 = xmm2[0],xmm3[0],xmm2[1],xmm3[1],xmm2[2],xmm3[2],xmm2[3],xmm3[3]
+; CHECK-SSE-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3]
+; CHECK-SSE-O3-NEXT:    insertps {{.*#+}} xmm0 = xmm0[0],xmm2[0],zero,zero
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec4_half:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_half:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec4_half:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movq (%rdi), %rax
+; CHECK-O0-NEXT:    movl %eax, %ecx
+; CHECK-O0-NEXT:    shrl $16, %ecx
+; CHECK-O0-NEXT:    movw %cx, %dx
+; CHECK-O0-NEXT:    # implicit-def: $ecx
+; CHECK-O0-NEXT:    movw %dx, %cx
+; CHECK-O0-NEXT:    # implicit-def: $xmm2
+; CHECK-O0-NEXT:    pinsrw $0, %ecx, %xmm2
+; CHECK-O0-NEXT:    movw %ax, %dx
+; CHECK-O0-NEXT:    # implicit-def: $ecx
+; CHECK-O0-NEXT:    movw %dx, %cx
+; CHECK-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-O0-NEXT:    pinsrw $0, %ecx, %xmm0
+; CHECK-O0-NEXT:    movq %rax, %rcx
+; CHECK-O0-NEXT:    shrq $32, %rcx
+; CHECK-O0-NEXT:    movw %cx, %dx
+; CHECK-O0-NEXT:    # implicit-def: $ecx
+; CHECK-O0-NEXT:    movw %dx, %cx
+; CHECK-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-O0-NEXT:    pinsrw $0, %ecx, %xmm1
+; CHECK-O0-NEXT:    shrq $48, %rax
+; CHECK-O0-NEXT:    movw %ax, %cx
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %cx, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm3
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm3
+; CHECK-O0-NEXT:    punpcklwd {{.*#+}} xmm1 = xmm1[0],xmm3[0],xmm1[1],xmm3[1],xmm1[2],xmm3[2],xmm1[3],xmm3[3]
+; CHECK-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm2[0],xmm0[1],xmm2[1],xmm0[2],xmm2[2],xmm0[3],xmm2[3]
+; CHECK-O0-NEXT:    unpcklps {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec4_half:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %rax
+; CHECK-SSE-O0-NEXT:    movl %eax, %ecx
+; CHECK-SSE-O0-NEXT:    shrl $16, %ecx
+; CHECK-SSE-O0-NEXT:    movw %cx, %dx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $ecx
+; CHECK-SSE-O0-NEXT:    movw %dx, %cx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm2
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %ecx, %xmm2
+; CHECK-SSE-O0-NEXT:    movw %ax, %dx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $ecx
+; CHECK-SSE-O0-NEXT:    movw %dx, %cx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %ecx, %xmm0
+; CHECK-SSE-O0-NEXT:    movq %rax, %rcx
+; CHECK-SSE-O0-NEXT:    shrq $32, %rcx
+; CHECK-SSE-O0-NEXT:    movw %cx, %dx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $ecx
+; CHECK-SSE-O0-NEXT:    movw %dx, %cx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %ecx, %xmm1
+; CHECK-SSE-O0-NEXT:    shrq $48, %rax
+; CHECK-SSE-O0-NEXT:    movw %ax, %cx
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %cx, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm3
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm3
+; CHECK-SSE-O0-NEXT:    punpcklwd {{.*#+}} xmm1 = xmm1[0],xmm3[0],xmm1[1],xmm3[1],xmm1[2],xmm3[2],xmm1[3],xmm3[3]
+; CHECK-SSE-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm2[0],xmm0[1],xmm2[1],xmm0[2],xmm2[2],xmm0[3],xmm2[3]
+; CHECK-SSE-O0-NEXT:    insertps {{.*#+}} xmm0 = xmm0[0],xmm1[0],zero,zero
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec4_half:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_half:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    vmovq (%rdi), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <4 x half>, ptr %x acquire, align 8
+  ret <4 x half> %ret
+}
+define <4 x bfloat> @atomic_vec4_bfloat(ptr %x) nounwind {
+; CHECK-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-O3:       # %bb.0:
+; CHECK-O3-NEXT:    movq (%rdi), %rax
+; CHECK-O3-NEXT:    movq %rax, %rcx
+; CHECK-O3-NEXT:    movq %rax, %rdx
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O3-NEXT:    # kill: def $eax killed $eax killed $rax
+; CHECK-O3-NEXT:    shrl $16, %eax
+; CHECK-O3-NEXT:    shrq $32, %rcx
+; CHECK-O3-NEXT:    shrq $48, %rdx
+; CHECK-O3-NEXT:    pinsrw $0, %edx, %xmm1
+; CHECK-O3-NEXT:    pinsrw $0, %ecx, %xmm2
+; CHECK-O3-NEXT:    pinsrw $0, %eax, %xmm3
+; CHECK-O3-NEXT:    punpcklwd {{.*#+}} xmm2 = xmm2[0],xmm1[0],xmm2[1],xmm1[1],xmm2[2],xmm1[2],xmm2[3],xmm1[3]
+; CHECK-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm3[0],xmm0[1],xmm3[1],xmm0[2],xmm3[2],xmm0[3],xmm3[3]
+; CHECK-O3-NEXT:    punpckldq {{.*#+}} xmm0 = xmm0[0],xmm2[0],xmm0[1],xmm2[1]
+; CHECK-O3-NEXT:    retq
+;
+; CHECK-SSE-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-SSE-O3:       # %bb.0:
+; CHECK-SSE-O3-NEXT:    movq (%rdi), %rax
+; CHECK-SSE-O3-NEXT:    movq %rax, %rcx
+; CHECK-SSE-O3-NEXT:    movq %rax, %rdx
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O3-NEXT:    # kill: def $eax killed $eax killed $rax
+; CHECK-SSE-O3-NEXT:    shrl $16, %eax
+; CHECK-SSE-O3-NEXT:    shrq $32, %rcx
+; CHECK-SSE-O3-NEXT:    shrq $48, %rdx
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %edx, %xmm1
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %ecx, %xmm2
+; CHECK-SSE-O3-NEXT:    pinsrw $0, %eax, %xmm3
+; CHECK-SSE-O3-NEXT:    punpcklwd {{.*#+}} xmm2 = xmm2[0],xmm1[0],xmm2[1],xmm1[1],xmm2[2],xmm1[2],xmm2[3],xmm1[3]
+; CHECK-SSE-O3-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm3[0],xmm0[1],xmm3[1],xmm0[2],xmm3[2],xmm0[3],xmm3[3]
+; CHECK-SSE-O3-NEXT:    insertps {{.*#+}} xmm0 = xmm0[0],xmm2[0],zero,zero
+; CHECK-SSE-O3-NEXT:    retq
+;
+; CHECK-AVX-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX-O3:       # %bb.0:
+; CHECK-AVX-O3-NEXT:    movq (%rdi), %rax
+; CHECK-AVX-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O3-NEXT:    movq %rax, %rcx
+; CHECK-AVX-O3-NEXT:    shrq $48, %rcx
+; CHECK-AVX-O3-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O3-NEXT:    movq %rax, %rcx
+; CHECK-AVX-O3-NEXT:    shrq $32, %rcx
+; CHECK-AVX-O3-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O3-NEXT:    shrl $16, %eax
+; CHECK-AVX-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O3-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX-O3-NEXT:    retq
+;
+; CHECK-AVX512-O3-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX512-O3:       # %bb.0:
+; CHECK-AVX512-O3-NEXT:    movq (%rdi), %rax
+; CHECK-AVX512-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O3-NEXT:    movq %rax, %rcx
+; CHECK-AVX512-O3-NEXT:    shrq $48, %rcx
+; CHECK-AVX512-O3-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O3-NEXT:    movq %rax, %rcx
+; CHECK-AVX512-O3-NEXT:    shrq $32, %rcx
+; CHECK-AVX512-O3-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O3-NEXT:    shrl $16, %eax
+; CHECK-AVX512-O3-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O3-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX512-O3-NEXT:    retq
+;
+; CHECK-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-O0:       # %bb.0:
+; CHECK-O0-NEXT:    movq (%rdi), %rax
+; CHECK-O0-NEXT:    movl %eax, %ecx
+; CHECK-O0-NEXT:    shrl $16, %ecx
+; CHECK-O0-NEXT:    # kill: def $cx killed $cx killed $ecx
+; CHECK-O0-NEXT:    movw %ax, %dx
+; CHECK-O0-NEXT:    movq %rax, %rsi
+; CHECK-O0-NEXT:    shrq $32, %rsi
+; CHECK-O0-NEXT:    # kill: def $si killed $si killed $rsi
+; CHECK-O0-NEXT:    shrq $48, %rax
+; CHECK-O0-NEXT:    movw %ax, %di
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %di, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %si, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-O0-NEXT:    punpcklwd {{.*#+}} xmm1 = xmm1[0],xmm0[0],xmm1[1],xmm0[1],xmm1[2],xmm0[2],xmm1[3],xmm0[3]
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %dx, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-O0-NEXT:    # implicit-def: $eax
+; CHECK-O0-NEXT:    movw %cx, %ax
+; CHECK-O0-NEXT:    # implicit-def: $xmm2
+; CHECK-O0-NEXT:    pinsrw $0, %eax, %xmm2
+; CHECK-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm2[0],xmm0[1],xmm2[1],xmm0[2],xmm2[2],xmm0[3],xmm2[3]
+; CHECK-O0-NEXT:    unpcklps {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]
+; CHECK-O0-NEXT:    retq
+;
+; CHECK-SSE-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-SSE-O0:       # %bb.0:
+; CHECK-SSE-O0-NEXT:    movq (%rdi), %rax
+; CHECK-SSE-O0-NEXT:    movl %eax, %ecx
+; CHECK-SSE-O0-NEXT:    shrl $16, %ecx
+; CHECK-SSE-O0-NEXT:    # kill: def $cx killed $cx killed $ecx
+; CHECK-SSE-O0-NEXT:    movw %ax, %dx
+; CHECK-SSE-O0-NEXT:    movq %rax, %rsi
+; CHECK-SSE-O0-NEXT:    shrq $32, %rsi
+; CHECK-SSE-O0-NEXT:    # kill: def $si killed $si killed $rsi
+; CHECK-SSE-O0-NEXT:    shrq $48, %rax
+; CHECK-SSE-O0-NEXT:    movw %ax, %di
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %di, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %si, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm1
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm1
+; CHECK-SSE-O0-NEXT:    punpcklwd {{.*#+}} xmm1 = xmm1[0],xmm0[0],xmm1[1],xmm0[1],xmm1[2],xmm0[2],xmm1[3],xmm0[3]
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %dx, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm0
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm0
+; CHECK-SSE-O0-NEXT:    # implicit-def: $eax
+; CHECK-SSE-O0-NEXT:    movw %cx, %ax
+; CHECK-SSE-O0-NEXT:    # implicit-def: $xmm2
+; CHECK-SSE-O0-NEXT:    pinsrw $0, %eax, %xmm2
+; CHECK-SSE-O0-NEXT:    punpcklwd {{.*#+}} xmm0 = xmm0[0],xmm2[0],xmm0[1],xmm2[1],xmm0[2],xmm2[2],xmm0[3],xmm2[3]
+; CHECK-SSE-O0-NEXT:    insertps {{.*#+}} xmm0 = xmm0[0],xmm1[0],zero,zero
+; CHECK-SSE-O0-NEXT:    retq
+;
+; CHECK-AVX-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX-O0:       # %bb.0:
+; CHECK-AVX-O0-NEXT:    movq (%rdi), %rax
+; CHECK-AVX-O0-NEXT:    movq %rax, %rcx
+; CHECK-AVX-O0-NEXT:    shrq $48, %rcx
+; CHECK-AVX-O0-NEXT:    # kill: def $cx killed $cx killed $rcx
+; CHECK-AVX-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O0-NEXT:    movq %rax, %rcx
+; CHECK-AVX-O0-NEXT:    shrq $32, %rcx
+; CHECK-AVX-O0-NEXT:    # kill: def $cx killed $cx killed $rcx
+; CHECK-AVX-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O0-NEXT:    movw %ax, %cx
+; CHECK-AVX-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O0-NEXT:    # kill: def $eax killed $eax killed $rax
+; CHECK-AVX-O0-NEXT:    shrl $16, %eax
+; CHECK-AVX-O0-NEXT:    # kill: def $ax killed $ax killed $eax
+; CHECK-AVX-O0-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX-O0-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX-O0-NEXT:    retq
+;
+; CHECK-AVX512-O0-LABEL: atomic_vec4_bfloat:
+; CHECK-AVX512-O0:       # %bb.0:
+; CHECK-AVX512-O0-NEXT:    movq (%rdi), %rax
+; CHECK-AVX512-O0-NEXT:    movq %rax, %rcx
+; CHECK-AVX512-O0-NEXT:    shrq $48, %rcx
+; CHECK-AVX512-O0-NEXT:    # kill: def $cx killed $cx killed $rcx
+; CHECK-AVX512-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O0-NEXT:    movq %rax, %rcx
+; CHECK-AVX512-O0-NEXT:    shrq $32, %rcx
+; CHECK-AVX512-O0-NEXT:    # kill: def $cx killed $cx killed $rcx
+; CHECK-AVX512-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O0-NEXT:    movw %ax, %cx
+; CHECK-AVX512-O0-NEXT:    movw %cx, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O0-NEXT:    # kill: def $eax killed $eax killed $rax
+; CHECK-AVX512-O0-NEXT:    shrl $16, %eax
+; CHECK-AVX512-O0-NEXT:    # kill: def $ax killed $ax killed $eax
+; CHECK-AVX512-O0-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+; CHECK-AVX512-O0-NEXT:    vmovaps -{{[0-9]+}}(%rsp), %xmm0
+; CHECK-AVX512-O0-NEXT:    retq
+  %ret = load atomic <4 x bfloat>, ptr %x acquire, align 8
+  ret <4 x bfloat> %ret
 }
 
 define <4 x float> @atomic_vec4_float(ptr %x) nounwind {
