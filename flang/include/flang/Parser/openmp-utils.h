@@ -25,6 +25,13 @@
 
 namespace Fortran::parser::omp {
 
+template <typename T> constexpr auto addr_if(std::optional<T> &x) {
+  return x ? &*x : nullptr;
+}
+template <typename T> constexpr auto addr_if(const std::optional<T> &x) {
+  return x ? &*x : nullptr;
+}
+
 namespace detail {
 using D = llvm::omp::Directive;
 
@@ -39,11 +46,7 @@ struct ConstructId {
   }
 
 MAKE_CONSTR_ID(OpenMPDeclarativeAllocate, D::OMPD_allocate);
-MAKE_CONSTR_ID(OpenMPDeclarativeAssumes, D::OMPD_assumes);
-MAKE_CONSTR_ID(OpenMPDeclareReductionConstruct, D::OMPD_declare_reduction);
-MAKE_CONSTR_ID(OpenMPDeclareTargetConstruct, D::OMPD_declare_target);
 MAKE_CONSTR_ID(OpenMPExecutableAllocate, D::OMPD_allocate);
-MAKE_CONSTR_ID(OpenMPRequiresConstruct, D::OMPD_requires);
 
 #undef MAKE_CONSTR_ID
 
@@ -95,11 +98,7 @@ struct DirectiveNameScope {
       if constexpr (std::is_base_of_v<OmpBlockConstruct, T>) {
         return std::get<OmpBeginDirective>(x.t).DirName();
       } else if constexpr (std::is_same_v<T, OpenMPDeclarativeAllocate> ||
-          std::is_same_v<T, OpenMPDeclarativeAssumes> ||
-          std::is_same_v<T, OpenMPDeclareReductionConstruct> ||
-          std::is_same_v<T, OpenMPDeclareTargetConstruct> ||
-          std::is_same_v<T, OpenMPExecutableAllocate> ||
-          std::is_same_v<T, OpenMPRequiresConstruct>) {
+          std::is_same_v<T, OpenMPExecutableAllocate>) {
         return MakeName(std::get<Verbatim>(x.t).source, ConstructId<T>::id);
       } else {
         return GetFromTuple(
@@ -141,8 +140,23 @@ template <typename T> OmpDirectiveName GetOmpDirectiveName(const T &x) {
 }
 
 const OmpObjectList *GetOmpObjectList(const OmpClause &clause);
+
+template <typename T>
+const T *GetFirstArgument(const OmpDirectiveSpecification &spec) {
+  for (const OmpArgument &arg : spec.Arguments().v) {
+    if (auto *t{std::get_if<T>(&arg.u)}) {
+      return t;
+    }
+  }
+  return nullptr;
+}
+
 const BlockConstruct *GetFortranBlockConstruct(
     const ExecutionPartConstruct &epc);
+
+const OmpCombinerExpression *GetCombinerExpr(
+    const OmpReductionSpecifier &rspec);
+const OmpInitializerExpression *GetInitializerExpr(const OmpClause &init);
 
 } // namespace Fortran::parser::omp
 

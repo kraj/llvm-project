@@ -250,6 +250,13 @@ enum OpenMPAllocateClauseModifier {
   OMPC_ALLOCATE_unknown
 };
 
+/// OpenMP modifiers for 'threadset' clause.
+enum OpenMPThreadsetKind {
+#define OPENMP_THREADSET_KIND(Name) OMPC_THREADSET_##Name,
+#include "clang/Basic/OpenMPKinds.def"
+  OMPC_THREADSET_unknown
+};
+
 /// Number of allowed allocate-modifiers.
 static constexpr unsigned NumberOfOMPAllocateClauseModifiers =
     OMPC_ALLOCATE_unknown;
@@ -389,6 +396,13 @@ bool isOpenMPLoopBoundSharingDirective(OpenMPDirectiveKind Kind);
 /// \param DKind Specified directive.
 /// \return True iff the directive is a loop transformation.
 bool isOpenMPCanonicalLoopNestTransformationDirective(
+    OpenMPDirectiveKind DKind);
+
+/// Checks if the specified directive is a loop transformation directive that
+/// applies to a canonical loop sequence.
+/// \param DKind Specified directive.
+/// \return True iff the directive is a loop transformation.
+bool isOpenMPCanonicalLoopSequenceTransformationDirective(
     OpenMPDirectiveKind DKind);
 
 /// Checks if the specified directive is a loop transformation directive.
