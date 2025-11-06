@@ -72,11 +72,22 @@ bool Constant::isNegativeZeroValue() const {
 }
 
 // Return true iff this constant is positive zero (floating point), negative
-// zero (floating point), or a null value.
+// zero (floating point), zero-value pointer, or a null value.
 bool Constant::isZeroValue() const {
   // Floating point values have an explicit -0.0 value.
   if (const ConstantFP *CFP = dyn_cast<ConstantFP>(this))
     return CFP->isZero();
+
+  // Zero value pointer is a constant expression of inttoptr(0).
+  if (const auto *CE = dyn_cast<ConstantExpr>(this)) {
+    if (CE->getOpcode() == Instruction::IntToPtr) {
+      Constant *SrcCI = cast<Constant>(CE->getOperand(0));
+      // We don't need to check the bitwise value since it is zext or truncate
+      // for inttoptr(0) so it doesn't matter.
+      if (SrcCI->isZeroValue())
+        return true;
+    }
+  }
 
   // Check for constant splat vectors of 1 values.
   if (getType()->isVectorTy())
@@ -369,7 +380,10 @@ bool Constant::containsConstantExpression() const {
   return false;
 }
 
-/// Constructor to create a '0' constant of arbitrary type.
+/// Constructor that creates a null constant of any type. For most types, this
+/// means a constant with value '0', but for pointer types, it represents a
+/// nullptr constant. A nullptr isn't always a zero-value pointer in certain
+/// address spaces on some targets.
 Constant *Constant::getNullValue(Type *Ty) {
   switch (Ty->getTypeID()) {
   case Type::IntegerTyID:
@@ -397,6 +411,19 @@ Constant *Constant::getNullValue(Type *Ty) {
   default:
     // Function, Label, or Opaque type?
     llvm_unreachable("Cannot create a null constant of that type!");
+  }
+}
+
+/// Constructor that creates a zero constant of any type. For most types, this
+/// is equivalent to getNullValue. For pointer types, it creates an inttoptr
+/// constant expression.
+Constant *Constant::getZeroValue(Type *Ty) {
+  switch (Ty->getTypeID()) {
+  case Type::PointerTyID:
+    return ConstantExpr::getIntToPtr(
+        ConstantInt::get(Type::getInt8Ty(Ty->getContext()), 0), Ty);
+  default:
+    return Constant::getNullValue(Ty);
   }
 }
 
@@ -735,7 +762,7 @@ static bool constantIsDead(const Constant *C, bool RemoveDeadUsers) {
     ReplaceableMetadataImpl::SalvageDebugInfo(*C);
     const_cast<Constant *>(C)->destroyConstant();
   }
-  
+
   return true;
 }
 

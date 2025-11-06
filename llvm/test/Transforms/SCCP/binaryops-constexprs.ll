@@ -7,8 +7,9 @@ declare void @use.i1(i1)
 define void @and_constexpr(i32 %a) {
 ; CHECK-LABEL: @and_constexpr(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    call void @use.i32(i32 0)
-; CHECK-NEXT:    [[AND_2:%.*]] = and i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A:%.*]]
+; CHECK-NEXT:    [[AND_1:%.*]] = and i32 ptrtoint (ptr zeroinitializer to i32), [[A:%.*]]
+; CHECK-NEXT:    call void @use.i32(i32 [[AND_1]])
+; CHECK-NEXT:    [[AND_2:%.*]] = and i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A]]
 ; CHECK-NEXT:    call void @use.i32(i32 [[AND_2]])
 ; CHECK-NEXT:    [[TRUE_1:%.*]] = icmp ne i32 [[AND_2]], 100
 ; CHECK-NEXT:    call void @use.i1(i1 [[TRUE_1]])
@@ -38,7 +39,7 @@ entry:
 define void @add_constexpr(i32 %a) {
 ; CHECK-LABEL: @add_constexpr(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD_1:%.*]] = add nuw nsw i32 0, [[A:%.*]]
+; CHECK-NEXT:    [[ADD_1:%.*]] = add i32 ptrtoint (ptr zeroinitializer to i32), [[A:%.*]]
 ; CHECK-NEXT:    call void @use.i32(i32 [[ADD_1]])
 ; CHECK-NEXT:    [[ADD_2:%.*]] = add i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A]]
 ; CHECK-NEXT:    call void @use.i32(i32 [[ADD_2]])
@@ -70,8 +71,9 @@ entry:
 define void @mul_constexpr(i32 %a) {
 ; CHECK-LABEL: @mul_constexpr(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    call void @use.i32(i32 0)
-; CHECK-NEXT:    [[MUL_2:%.*]] = mul i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A:%.*]]
+; CHECK-NEXT:    [[MUL_1:%.*]] = mul i32 ptrtoint (ptr zeroinitializer to i32), [[A:%.*]]
+; CHECK-NEXT:    call void @use.i32(i32 [[MUL_1]])
+; CHECK-NEXT:    [[MUL_2:%.*]] = mul i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A]]
 ; CHECK-NEXT:    call void @use.i32(i32 [[MUL_2]])
 ; CHECK-NEXT:    [[COND_1:%.*]] = icmp ne i32 [[MUL_2]], 100
 ; CHECK-NEXT:    call void @use.i1(i1 [[COND_1]])
@@ -102,8 +104,9 @@ entry:
 define void @udiv_constexpr(i32 %a) {
 ; CHECK-LABEL: @udiv_constexpr(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    call void @use.i32(i32 0)
-; CHECK-NEXT:    [[UDIV_2:%.*]] = udiv i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A:%.*]]
+; CHECK-NEXT:    [[UDIV_1:%.*]] = udiv i32 ptrtoint (ptr zeroinitializer to i32), [[A:%.*]]
+; CHECK-NEXT:    call void @use.i32(i32 [[UDIV_1]])
+; CHECK-NEXT:    [[UDIV_2:%.*]] = udiv i32 ptrtoint (ptr inttoptr (i32 20 to ptr) to i32), [[A]]
 ; CHECK-NEXT:    call void @use.i32(i32 [[UDIV_2]])
 ; CHECK-NEXT:    [[TRUE_1:%.*]] = icmp ne i32 [[UDIV_2]], 100
 ; CHECK-NEXT:    call void @use.i1(i1 [[TRUE_1]])

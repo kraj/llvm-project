@@ -126,6 +126,20 @@ Constant *llvm::ConstantFoldCastInstruction(unsigned opc, Constant *V,
   if (isa<PoisonValue>(V))
     return PoisonValue::get(DestTy);
 
+  // We can't fold inttoptr(0) to ConstantPointerNull without checking the
+  // target data layout. However, since data layout is not available here, we
+  // can't do this.
+  if (opc == Instruction::IntToPtr && V->isZeroValue())
+    return nullptr;
+  // Similarly, we can't fold ptrtoint(nullptr) to null.
+  if (opc == Instruction::PtrToInt && V->isNullValue())
+    return nullptr;
+  // However, since the recent change of the semantic of `ptr addrspace(N)
+  // null`, we can fold address space cast of a nullptr to the corresponding
+  // nullptr in the destination address space.
+  if (opc == Instruction::AddrSpaceCast && V->isNullValue())
+    return Constant::getNullValue(DestTy);
+
   if (isa<UndefValue>(V)) {
     // zext(undef) = 0, because the top bits will be zero.
     // sext(undef) = 0, because the top bits will all be the same.
