@@ -1413,7 +1413,6 @@ TEST(TargetParserTest, AArch64ExtensionFeatures) {
       AArch64::AEK_SSBS,         AArch64::AEK_SB,
       AArch64::AEK_PREDRES,      AArch64::AEK_BF16,
       AArch64::AEK_I8MM,         AArch64::AEK_F32MM,
-      AArch64::AEK_F64MM,        AArch64::AEK_TME,
       AArch64::AEK_LS64,         AArch64::AEK_BRBE,
       AArch64::AEK_PAUTH,        AArch64::AEK_FLAGM,
       AArch64::AEK_SME,          AArch64::AEK_SMEF64F64,
@@ -1453,6 +1452,7 @@ TEST(TargetParserTest, AArch64ExtensionFeatures) {
       AArch64::AEK_SVE2P3,       AArch64::AEK_SVE_B16MM,
       AArch64::AEK_F16MM,        AArch64::AEK_F16F32DOT,
       AArch64::AEK_F16F32MM,     AArch64::AEK_MOPS_GO,
+      AArch64::AEK_F64MM,
   };
 
   std::vector<StringRef> Features;
@@ -1511,7 +1511,6 @@ TEST(TargetParserTest, AArch64ExtensionFeatures) {
   EXPECT_TRUE(llvm::is_contained(Features, "+i8mm"));
   EXPECT_TRUE(llvm::is_contained(Features, "+f32mm"));
   EXPECT_TRUE(llvm::is_contained(Features, "+f64mm"));
-  EXPECT_TRUE(llvm::is_contained(Features, "+tme"));
   EXPECT_TRUE(llvm::is_contained(Features, "+ls64"));
   EXPECT_TRUE(llvm::is_contained(Features, "+brbe"));
   EXPECT_TRUE(llvm::is_contained(Features, "+pauth"));
@@ -1697,7 +1696,6 @@ TEST(TargetParserTest, AArch64ArchExtFeature) {
       {"rcpc", "norcpc", "+rcpc", "-rcpc"},
       {"rng", "norng", "+rand", "-rand"},
       {"memtag", "nomemtag", "+mte", "-mte"},
-      {"tme", "notme", "+tme", "-tme"},
       {"pauth", "nopauth", "+pauth", "-pauth"},
       {"ssbs", "nossbs", "+ssbs", "-ssbs"},
       {"sb", "nosb", "+sb", "-sb"},

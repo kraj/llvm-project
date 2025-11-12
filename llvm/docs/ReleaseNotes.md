@@ -107,6 +107,9 @@ Changes to the AArch64 Backend
 * Assembler/disassembler support has been added for 'Virtual Tagging
   Extension (vMTE)' Future Architecture Technologies extension.
 
+* `FEAT_TME` support has been removed, as it has been withdrawn from
+   all future versions of the A-profile architecture.
+
 Changes to the AMDGPU Backend
 -----------------------------
 
