@@ -101,8 +101,9 @@ public:
     // This assumes the OriginManager's `get` can find an existing origin.
     // We might need a `find` method on OriginManager to avoid `getOrCreate`
     // logic in a const-query context if that becomes an issue.
-    return const_cast<OriginManager &>(Analysis.getFactManager().getOriginMgr())
-        .get(*VD);
+    // return const_cast<OriginManager &>(Analysis.getFactManager().getOriginMgr())
+    //     .get(*VD);
+    return std::nullopt;
   }
 
   std::vector<LoanID> getLoansForVar(llvm::StringRef VarName) {

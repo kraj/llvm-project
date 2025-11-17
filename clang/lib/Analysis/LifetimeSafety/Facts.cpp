@@ -53,7 +53,10 @@ void ReturnOfOriginFact::dump(llvm::raw_ostream &OS, const LoanManager &,
 void UseFact::dump(llvm::raw_ostream &OS, const LoanManager &,
                    const OriginManager &OM) const {
   OS << "Use (";
-  OM.dump(getUsedOrigin(), OS);
+  for (OriginID OID : getUsedOrigins()) {
+    OM.dump(OID, OS);
+    OS << ", ";
+  }
   OS << ", " << (isWritten() ? "Write" : "Read") << ")\n";
 }
 

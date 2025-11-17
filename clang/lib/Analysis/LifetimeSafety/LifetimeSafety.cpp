@@ -41,11 +41,12 @@ void LifetimeSafetyAnalysis::run() {
   const CFG &Cfg = *AC.getCFG();
   DEBUG_WITH_TYPE("PrintCFG", Cfg.dump(AC.getASTContext().getLangOpts(),
                                        /*ShowColors=*/true));
-  FactMgr.init(Cfg);
 
-  FactsGenerator FactGen(FactMgr, AC);
+  FactMgr = std::make_unique<FactManager>(AC, Cfg);
+
+  FactsGenerator FactGen(*FactMgr, AC);
   FactGen.run();
-  DEBUG_WITH_TYPE("LifetimeFacts", FactMgr.dump(Cfg, AC));
+  DEBUG_WITH_TYPE("LifetimeFacts", FactMgr->dump(Cfg, AC));
 
   /// TODO(opt): Consider optimizing individual blocks before running the
   /// dataflow analysis.
@@ -59,14 +60,14 @@ void LifetimeSafetyAnalysis::run() {
   /// 3. Collapse ExpireFacts belonging to same source location into a single
   ///    Fact.
   LoanPropagation = std::make_unique<LoanPropagationAnalysis>(
-      Cfg, AC, FactMgr, Factory.OriginMapFactory, Factory.LoanSetFactory);
+      Cfg, AC, *FactMgr, Factory.OriginMapFactory, Factory.LoanSetFactory);
 
   LiveOrigins = std::make_unique<LiveOriginsAnalysis>(
-      Cfg, AC, FactMgr, Factory.LivenessMapFactory);
+      Cfg, AC, *FactMgr, Factory.LivenessMapFactory);
   DEBUG_WITH_TYPE("LiveOrigins",
-                  LiveOrigins->dump(llvm::dbgs(), FactMgr.getTestPoints()));
+                  LiveOrigins->dump(llvm::dbgs(), FactMgr->getTestPoints()));
 
-  runLifetimeChecker(*LoanPropagation, *LiveOrigins, FactMgr, AC, Reporter);
+  runLifetimeChecker(*LoanPropagation, *LiveOrigins, *FactMgr, AC, Reporter);
 }
 } // namespace internal
 

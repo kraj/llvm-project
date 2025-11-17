@@ -1,9 +1,13 @@
 // RUN: %clang_cc1 -fsyntax-only -fexperimental-lifetime-safety -Wexperimental-lifetime-safety -verify %s
 
-struct MyObj {
+struct View;
+
+struct [[gsl::Owner]] MyObj {
   int id;
   ~MyObj() {}  // Non-trivial destructor
   MyObj operator+(MyObj);
+  
+  View getView() const [[clang::lifetimebound]];
 };
 
 struct [[gsl::Pointer()]] View {
@@ -218,6 +222,16 @@ void potential_for_loop_use_after_loop_body(MyObj safe) {
     p = &s;     // expected-warning {{may not live long enough}}
   }             // expected-note {{destroyed here}}
   (void)*p;     // expected-note {{later used here}}
+}
+
+void safe_for_loop_gsl() {
+  MyObj safe;
+  View v = safe;
+  for (int i = 0; i < 1; ++i) {
+    MyObj s;
+    v = s;
+    v.use();
+  }
 }
 
 void potential_for_loop_gsl() {
@@ -444,13 +458,6 @@ MyObj* Identity(MyObj* v [[clang::lifetimebound]]);
 View Choose(bool cond, View a [[clang::lifetimebound]], View b [[clang::lifetimebound]]);
 MyObj* GetPointer(const MyObj& obj [[clang::lifetimebound]]);
 
-struct [[gsl::Pointer()]] LifetimeBoundView {
-  LifetimeBoundView();
-  LifetimeBoundView(const MyObj& obj [[clang::lifetimebound]]);
-  LifetimeBoundView pass() [[clang::lifetimebound]] { return *this; }
-  operator View() const [[clang::lifetimebound]];
-};
-
 void lifetimebound_simple_function() {
   View v;
   {
@@ -497,25 +504,34 @@ void lifetimebound_mixed_args() {
   v.use();                       // expected-note {{later used here}}
 }
 
+struct LifetimeBoundMember {
+  LifetimeBoundMember();
+  View get() const [[clang::lifetimebound]];
+  operator View() const [[clang::lifetimebound]];
+};
+
 void lifetimebound_member_function() {
-  LifetimeBoundView lbv, lbv2;
+  View v;
   {
     MyObj obj;
-    lbv = obj;        // expected-warning {{object whose reference is captured does not live long enough}}
-    lbv2 = lbv.pass();
-  }                   // expected-note {{destroyed here}}
-  View v = lbv2;      // expected-note {{later used here}}
-  v.use();
+    v  = obj.getView(); // expected-warning {{object whose reference is captured does not live long enough}}
+  }                     // expected-note {{destroyed here}}
+  v.use();              // expected-note {{later used here}}
 }
+
+struct LifetimeBoundConversionView {
+  LifetimeBoundConversionView();
+  ~LifetimeBoundConversionView();
+  operator View() const [[clang::lifetimebound]];
+};
 
 void lifetimebound_conversion_operator() {
   View v;
   {
-    MyObj obj;
-    LifetimeBoundView lbv = obj; // expected-warning {{object whose reference is captured does not live long enough}}
-    v = lbv;                     // Conversion operator is lifetimebound
-  }                              // expected-note {{destroyed here}}
-  v.use();                       // expected-note {{later used here}}
+    LifetimeBoundConversionView obj;
+    v = obj;  // expected-warning {{object whose reference is captured does not live long enough}}
+  }           // expected-note {{destroyed here}}
+  v.use();    // expected-note {{later used here}}
 }
 
 void lifetimebound_chained_calls() {
@@ -556,18 +572,18 @@ void lifetimebound_partial_safety(bool cond) {
   v.use();                // expected-note {{later used here}}
 }
 
-// FIXME: Creating reference from lifetimebound call doesn't propagate loans.
+// TODO:Extensively test references types.
 const MyObj& GetObject(View v [[clang::lifetimebound]]);
 void lifetimebound_return_reference() {
   View v;
   const MyObj* ptr;
   {
     MyObj obj;
-    View temp_v = obj;
+    View temp_v = obj;  // expected-warning {{object whose reference is captured does not live long enough}}
     const MyObj& ref = GetObject(temp_v);
     ptr = &ref;
-  }
-  (void)*ptr;
+  }                     // expected-note {{destroyed here}}
+  (void)*ptr;           // expected-note {{later used here}}
 }
 
 // FIXME: No warning for non gsl::Pointer types. Origin tracking is only supported for pointer types.
@@ -575,6 +591,7 @@ struct LifetimeBoundCtor {
   LifetimeBoundCtor();
   LifetimeBoundCtor(const MyObj& obj [[clang::lifetimebound]]);
 };
+
 void lifetimebound_ctor() {
   LifetimeBoundCtor v;
   {
@@ -686,3 +703,67 @@ void parentheses(bool cond) {
   }  // expected-note 4 {{destroyed here}}
   (void)*p;  // expected-note 4 {{later used here}}
 }
+
+namespace GH162834 {
+template <class T>
+struct StatusOr {
+  ~StatusOr() {}
+  const T& value() const& [[clang::lifetimebound]] { return data; }
+
+  private:
+  T data;
+};
+
+StatusOr<View> getViewOr();
+StatusOr<MyObj> getStringOr();
+StatusOr<MyObj*> getPointerOr();
+
+void foo() {
+  View view;
+  {
+    StatusOr<View> view_or = getViewOr();
+    view = view_or.value();
+  }
+  (void)view;
+}
+
+void bar() {
+  MyObj* pointer;
+  {
+    StatusOr<MyObj*> pointer_or = getPointerOr();
+    pointer = pointer_or.value();
+  }
+  (void)*pointer;
+}
+
+void foobar() {
+  View view;
+  {
+    StatusOr<MyObj> string_or = getStringOr();
+    view = string_or. // expected-warning {{object whose reference is captured does not live long enough}}
+            value();
+  }                     // expected-note {{destroyed here}}
+  (void)view;           // expected-note {{later used here}}
+}
+} // namespace GH162834
+
+namespace CppCoverage {
+
+int getInt();
+
+void ReferenceParam(unsigned Value, unsigned &Ref) {
+  Value = getInt();
+  Ref = getInt();
+}
+
+inline void normalize(int &exponent, int &mantissa) {
+  const int shift = 1;
+  exponent -= shift;
+  mantissa <<= shift;
+}
+
+void add(int c, MyObj* node) {
+  MyObj* arr[10];
+  arr[4] = node;
+}
+} // namespace CppCoverage

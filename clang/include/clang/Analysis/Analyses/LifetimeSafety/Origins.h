@@ -28,12 +28,10 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, OriginID ID) {
 
 /// An Origin is a symbolic identifier that represents the set of possible
 /// loans a pointer-like object could hold at any given time.
-/// TODO: Enhance the origin model to handle complex types, pointer
-/// indirection and reborrowing. The plan is to move from a single origin per
-/// variable/expression to a "list of origins" governed by the Type.
-/// For example, the type 'int**' would have two origins.
-/// See discussion:
-/// https://github.com/llvm/llvm-project/pull/142313/commits/0cd187b01e61b200d92ca0b640789c1586075142#r2137644238
+///
+/// Each Origin corresponds to a single level of indirection. For complex types
+/// with multiple levels of indirection (e.g., `int**`), multiple Origins are
+/// organized into an OriginTree structure (see below).
 struct Origin {
   OriginID ID;
   /// A pointer to the AST node that this origin represents. This union
@@ -52,27 +50,79 @@ struct Origin {
   }
 };
 
+/// A tree of origins representing levels of indirection for pointer-like types.
+///
+/// Each node in the tree contains an OriginID representing a level of
+/// indirection. The tree structure captures the multi-level nature of
+/// pointer and reference types in the lifetime analysis.
+///
+/// Examples:
+///   - For `int& x`, the tree has depth 2:
+///     * Root: origin for the reference storage itself (the lvalue `x`)
+///     * Pointee: origin for what `x` refers to
+///
+///   - For `int* p`, the tree has depth 2:
+///     * Root: origin for the pointer variable `p`
+///     * Pointee: origin for what `p` points to
+///
+///   - For `View v` (where View is gsl::Pointer), the tree has depth 2:
+///     * Root: origin for the view object itself
+///     * Pointee: origin for what the view refers to
+///
+///   - For `int** pp`, the tree has depth 3:
+///     * Root: origin for `pp` itself
+///     * Pointee: origin for `*pp` (what `pp` points to)
+///     * Pointee->Pointee: origin for `**pp` (what `*pp` points to)
+///
+/// The tree structure enables the analysis to track how loans flow through
+/// different levels of indirection when assignments and dereferences occur.
+struct OriginTree {
+  OriginID OID;
+  OriginTree *Pointee = nullptr;
+
+  OriginTree(OriginID OID) : OID(OID) {}
+
+  size_t getDepth() const {
+    size_t Depth = 1;
+    const OriginTree *T = this;
+    while (T->Pointee) {
+      T = T->Pointee;
+      Depth++;
+    }
+    return Depth;
+  }
+};
+
+bool isPointerLikeType(QualType QT);
+
 /// Manages the creation, storage, and retrieval of origins for pointer-like
 /// variables and expressions.
 class OriginManager {
 public:
-  OriginManager() = default;
 
-  Origin &addOrigin(OriginID ID, const clang::ValueDecl &D);
-  Origin &addOrigin(OriginID ID, const clang::Expr &E);
+  explicit OriginManager(ASTContext& AST) : AST(AST) {}
 
-  // TODO: Mark this method as const once we remove the call to getOrCreate.
-  OriginID get(const Expr &E);
+  /// Gets or creates the OriginTree for a given ValueDecl.
+  ///
+  /// Creates a tree structure mirroring the levels of indirection in the
+  /// declaration's type (e.g., `int** p` creates depth 2).
+  ///
+  /// \returns The OriginTree, or nullptr if the type is not pointer-like.
+  OriginTree *getOrCreateTree(const ValueDecl *D);
 
-  OriginID get(const ValueDecl &D);
-
-  OriginID getOrCreate(const Expr &E);
+  /// Gets or creates the OriginTree for a given Expr.
+  ///
+  /// Creates a tree based on the expression's type and value category:
+  /// - Lvalues get an implicit reference level (modeling addressability)
+  /// - Rvalues of non-pointer type return nullptr (no trackable origin)
+  /// - DeclRefExpr may reuse the underlying declaration's tree
+  ///
+  /// \returns The OriginTree, or nullptr for non-pointer rvalues.
+  OriginTree *getOrCreateTree(const Expr *E);
 
   const Origin &getOrigin(OriginID ID) const;
 
   llvm::ArrayRef<Origin> getOrigins() const { return AllOrigins; }
-
-  OriginID getOrCreate(const ValueDecl &D);
 
   unsigned getNumOrigins() const { return NextOriginID.Value; }
 
@@ -81,12 +131,29 @@ public:
 private:
   OriginID getNextOriginID() { return NextOriginID++; }
 
+  OriginTree *createNode(const ValueDecl *D) {
+    OriginID NewID = getNextOriginID();
+    AllOrigins.emplace_back(NewID, D);
+    return new (TreeAllocator.Allocate<OriginTree>()) OriginTree(NewID);
+  }
+
+  OriginTree *createNode(const Expr *E) {
+    OriginID NewID = getNextOriginID();
+    AllOrigins.emplace_back(NewID, E);
+    return new (TreeAllocator.Allocate<OriginTree>()) OriginTree(NewID);
+  }
+
+  template <typename T>
+  OriginTree *buildTreeForType(QualType QT, const T *Node);
+
+  ASTContext& AST;
   OriginID NextOriginID{0};
-  /// TODO(opt): Profile and evaluate the usefullness of small buffer
+  /// TODO(opt): Profile and evaluate the usefulness of small buffer
   /// optimisation.
   llvm::SmallVector<Origin> AllOrigins;
-  llvm::DenseMap<const clang::ValueDecl *, OriginID> DeclToOriginID;
-  llvm::DenseMap<const clang::Expr *, OriginID> ExprToOriginID;
+  llvm::BumpPtrAllocator TreeAllocator;
+  llvm::DenseMap<const clang::ValueDecl *, OriginTree *> DeclToTree;
+  llvm::DenseMap<const clang::Expr *, OriginTree *> ExprToTree;
 };
 } // namespace clang::lifetimes::internal
 

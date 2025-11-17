@@ -62,7 +62,8 @@ static llvm::BitVector computePersistentOrigins(const FactManager &FactMgr,
         CheckOrigin(F->getAs<ReturnOfOriginFact>()->getReturnedOriginID());
         break;
       case Fact::Kind::Use:
-        CheckOrigin(F->getAs<UseFact>()->getUsedOrigin());
+        for (OriginID OID : F->getAs<UseFact>()->getUsedOrigins())
+          CheckOrigin(OID);
         break;
       case Fact::Kind::Expire:
       case Fact::Kind::TestPoint:
