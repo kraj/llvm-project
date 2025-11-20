@@ -84,8 +84,13 @@ serializeLocation(const Location &Loc,
   return LocationObj;
 }
 
+/// \param Comment A json::Array possibly containing TextComments
+/// \param Key     The type (Brief, Code) of comment to be inserted
 static void insertComment(Object &Description, json::Value &Comment,
                           StringRef Key) {
+  auto *TextCommentArray = Comment.getAsArray();
+  if (TextCommentArray && TextCommentArray->empty())
+    return;
   auto DescriptionIt = Description.find(Key);
 
   if (DescriptionIt == Description.end()) {
@@ -100,8 +105,29 @@ static void insertComment(Object &Description, json::Value &Comment,
 
 static json::Value extractTextComments(Object *ParagraphComment) {
   if (!ParagraphComment)
-    return json::Object();
-  return *ParagraphComment->get("Children");
+    return nullptr;
+  json::Value *Children = ParagraphComment->get("Children");
+  if (!Children)
+    return nullptr;
+  auto ChildrenArray = *Children->getAsArray();
+  auto ChildrenIt = ChildrenArray.begin();
+  while (ChildrenIt != ChildrenArray.end()) {
+    auto *ChildObj = ChildrenIt->getAsObject();
+    if (!ChildObj)
+      break;
+    auto TextComment = ChildObj->getString("TextComment");
+    if (!TextComment) {
+      ChildrenIt = ChildrenArray.erase(ChildrenIt);
+      continue;
+    }
+
+    if (TextComment->empty()) {
+      ChildrenIt = ChildrenArray.erase(ChildrenIt);
+      continue;
+    }
+    ++ChildrenIt;
+  }
+  return ChildrenArray;
 }
 
 static json::Value extractVerbatimComments(json::Array VerbatimLines) {
@@ -131,6 +157,8 @@ static Object serializeComment(const CommentInfo &I, Object &Description) {
 
   switch (I.Kind) {
   case CommentKind::CK_TextComment: {
+    if (I.Text.empty())
+      return Obj;
     Obj.insert({commentKindToString(I.Kind), I.Text});
     return Obj;
   }
@@ -265,6 +293,8 @@ serializeCommonAttributes(const Info &I, json::Object &Obj,
       if (auto *ParagraphComment = Comment.getAsObject();
           ParagraphComment->get("ParagraphComment")) {
         auto TextCommentsArray = extractTextComments(ParagraphComment);
+        if (TextCommentsArray.kind() == json::Value::Null)
+          continue;
         insertComment(Description, TextCommentsArray, "ParagraphComments");
       }
     }
