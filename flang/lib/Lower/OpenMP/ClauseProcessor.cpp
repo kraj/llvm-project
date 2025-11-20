@@ -209,18 +209,6 @@ getIfClauseOperand(lower::AbstractConverter &converter,
                                     ifVal);
 }
 
-static void addUseDeviceClause(
-    lower::AbstractConverter &converter, const omp::ObjectList &objects,
-    llvm::SmallVectorImpl<mlir::Value> &operands,
-    llvm::SmallVectorImpl<const semantics::Symbol *> &useDeviceSyms) {
-  genObjectList(objects, converter, operands);
-  for (mlir::Value &operand : operands)
-    checkMapType(operand.getLoc(), operand.getType());
-
-  for (const omp::Object &object : objects)
-    useDeviceSyms.push_back(object.sym());
-}
-
 //===----------------------------------------------------------------------===//
 // ClauseProcessor unique clauses
 //===----------------------------------------------------------------------===//
@@ -1159,14 +1147,23 @@ bool ClauseProcessor::processInReduction(
 }
 
 bool ClauseProcessor::processIsDevicePtr(
-    mlir::omp::IsDevicePtrClauseOps &result,
+    lower::StatementContext &stmtCtx, mlir::omp::IsDevicePtrClauseOps &result,
     llvm::SmallVectorImpl<const semantics::Symbol *> &isDeviceSyms) const {
-  return findRepeatableClause<omp::clause::IsDevicePtr>(
-      [&](const omp::clause::IsDevicePtr &devPtrClause,
-          const parser::CharBlock &) {
-        addUseDeviceClause(converter, devPtrClause.v, result.isDevicePtrVars,
-                           isDeviceSyms);
+  std::map<Object, OmpMapParentAndMemberData> parentMemberIndices;
+  bool clauseFound = findRepeatableClause<omp::clause::IsDevicePtr>(
+      [&](const omp::clause::IsDevicePtr &clause,
+          const parser::CharBlock &source) {
+        mlir::Location location = converter.genLocation(source);
+        mlir::omp::ClauseMapFlags mapTypeBits =
+            mlir::omp::ClauseMapFlags::storage;
+        processMapObjects(stmtCtx, location, clause.v, mapTypeBits,
+                          parentMemberIndices, result.isDevicePtrVars,
+                          isDeviceSyms);
       });
+
+  insertChildMapInfoIntoParent(converter, semaCtx, stmtCtx, parentMemberIndices,
+                               result.isDevicePtrVars, isDeviceSyms);
+  return clauseFound;
 }
 
 bool ClauseProcessor::processLinear(mlir::omp::LinearClauseOps &result) const {
