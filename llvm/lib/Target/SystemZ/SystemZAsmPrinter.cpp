@@ -31,6 +31,7 @@
 #include "llvm/MC/MCInstBuilder.h"
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/MC/MCSymbolGOFF.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Chrono.h"
 #include "llvm/Support/Compiler.h"
@@ -170,13 +171,14 @@ void SystemZAsmPrinter::emitCallInformation(CallType CT) {
                      .addReg(SystemZMC::GR64Regs[static_cast<unsigned>(CT)]));
 }
 
-uint32_t SystemZAsmPrinter::AssociatedDataAreaTable::insert(const MCSymbol *Sym,
-                                                            unsigned SlotKind) {
+std::pair<const MCSymbol *, uint32_t>
+SystemZAsmPrinter::AssociatedDataAreaTable::insert(const MCSymbol *Sym,
+                                                   unsigned SlotKind) {
   auto Key = std::make_pair(Sym, SlotKind);
-  auto It = Displacements.find(Key);
+  auto *It = Displacements.find(Key);
 
   if (It != Displacements.end())
-    return (*It).second;
+    return std::pair(Sym, (*It).second);
 
   // Determine length of descriptor.
   uint32_t Length;
@@ -189,18 +191,23 @@ uint32_t SystemZAsmPrinter::AssociatedDataAreaTable::insert(const MCSymbol *Sym,
     break;
   }
 
+  // Language Environment DLL logic requires function descriptors, for
+  // imported functions, that are placed in the ADA to be 8 byte aligned.
+  if (SlotKind == SystemZII::MO_ADA_DIRECT_FUNC_DESC)
+    NextDisplacement = alignTo(NextDisplacement, 8);
   uint32_t Displacement = NextDisplacement;
   Displacements[std::make_pair(Sym, SlotKind)] = NextDisplacement;
   NextDisplacement += Length;
 
-  return Displacement;
+  return std::pair(Sym, Displacement);
 }
 
-uint32_t
+std::pair<const MCSymbol *, uint32_t>
 SystemZAsmPrinter::AssociatedDataAreaTable::insert(const MachineOperand MO) {
   MCSymbol *Sym;
   if (MO.getType() == MachineOperand::MO_GlobalAddress) {
     const GlobalValue *GV = MO.getGlobal();
+    assert(GV->hasName() && "Cannot put unnamed value in ADA");
     Sym = MO.getParent()->getMF()->getTarget().getSymbol(GV);
     assert(Sym && "No symbol");
   } else if (MO.getType() == MachineOperand::MO_ExternalSymbol) {
@@ -347,7 +354,9 @@ void SystemZAsmPrinter::emitInstruction(const MachineInstr *MI) {
   case SystemZ::ADA_ENTRY: {
     const SystemZSubtarget &Subtarget = MF->getSubtarget<SystemZSubtarget>();
     const SystemZInstrInfo *TII = Subtarget.getInstrInfo();
-    uint32_t Disp = ADATable.insert(MI->getOperand(1));
+    const MCSymbol *Sym;
+    uint32_t Disp;
+    std::tie(Sym, Disp) = ADATable.insert(MI->getOperand(1));
     Register TargetReg = MI->getOperand(0).getReg();
 
     Register ADAReg = MI->getOperand(2).getReg();
@@ -1012,6 +1021,59 @@ void SystemZAsmPrinter::emitMachineConstantPoolValue(
   OutStreamer->emitValue(Expr, Size);
 }
 
+// Emit the ctor or dtor list taking into account the init priority.
+void SystemZAsmPrinter::emitXXStructorList(const DataLayout &DL,
+                                           const Constant *List, bool IsCtor) {
+  if (TM.getTargetTriple().isOSBinFormatGOFF())
+    AsmPrinter::emitXXStructorList(DL, List, IsCtor);
+
+  SmallVector<Structor, 8> Structors;
+  preprocessXXStructorList(DL, List, Structors);
+  if (Structors.empty())
+    return;
+
+  const Align Align = llvm::Align(4);
+  const TargetLoweringObjectFile &Obj = getObjFileLowering();
+  for (Structor &S : Structors) {
+    MCSection *OutputSection =
+        (IsCtor ? Obj.getStaticCtorSection(S.Priority, nullptr)
+                : Obj.getStaticDtorSection(S.Priority, nullptr));
+    OutStreamer->switchSection(OutputSection);
+    if (OutStreamer->getCurrentSection() != OutStreamer->getPreviousSection())
+      emitAlignment(Align);
+
+    const MCSectionGOFF *Section =
+        static_cast<const MCSectionGOFF *>(getCurrentSection());
+    uint32_t XtorPriority = Section->getPRAttributes().SortKey;
+
+    const GlobalValue *GV = dyn_cast<GlobalValue>(S.Func->stripPointerCasts());
+    assert(GV && "C++ xxtor pointer was not a GlobalValue!");
+    MCSymbolGOFF *Symbol = static_cast<MCSymbolGOFF *>(getSymbol(GV));
+
+    // @@SQINIT entry: { unsigned prio; void (*ctor)();  void (*dtor)(); }
+
+    unsigned PointerSizeInBytes = DL.getPointerSize();
+
+    auto &Ctx = OutStreamer->getContext();
+    const MCExpr *ADAFuncRefExpr;
+    unsigned SlotKind = SystemZII::MO_ADA_DIRECT_FUNC_DESC;
+    ADAFuncRefExpr = MCBinaryExpr::createAdd(
+        MCSpecifierExpr::create(MCSymbolRefExpr::create(ADASym, OutContext),
+                                SystemZ::S_QCon, OutContext),
+        MCConstantExpr::create(ADATable.insert(Symbol, SlotKind).second, Ctx),
+        Ctx);
+
+    emitInt32(XtorPriority);
+    if (IsCtor) {
+      OutStreamer->emitValue(ADAFuncRefExpr, PointerSizeInBytes);
+      OutStreamer->emitIntValue(0, PointerSizeInBytes);
+    } else {
+      OutStreamer->emitIntValue(0, PointerSizeInBytes);
+      OutStreamer->emitValue(ADAFuncRefExpr, PointerSizeInBytes);
+    }
+  }
+}
+
 static void printFormattedRegName(const MCAsmInfo *MAI, unsigned RegNo,
                                   raw_ostream &OS) {
   const char *RegName;
@@ -1536,13 +1598,17 @@ void SystemZAsmPrinter::emitPPA1(MCSymbol *FnEndSym) {
     OutStreamer->AddComment("Flags");
     OutStreamer->emitInt32(0); // LSDA field is a WAS offset
     OutStreamer->AddComment("Personality routine");
-    OutStreamer->emitInt64(ADATable.insert(
-        PersonalityRoutine, SystemZII::MO_ADA_INDIRECT_FUNC_DESC));
+    // Store only offset of function descriptor
+    OutStreamer->emitInt64(
+        ADATable
+            .insert(PersonalityRoutine, SystemZII::MO_ADA_INDIRECT_FUNC_DESC)
+            .second);
     OutStreamer->AddComment("LSDA location");
+    // Store only offset of LSDA
     MCSymbol *GCCEH = MF->getContext().getOrCreateSymbol(
         Twine("GCC_except_table") + Twine(MF->getFunctionNumber()));
     OutStreamer->emitInt64(
-        ADATable.insert(GCCEH, SystemZII::MO_ADA_DATA_SYMBOL_ADDR));
+        ADATable.insert(GCCEH, SystemZII::MO_ADA_DATA_SYMBOL_ADDR).second);
   }
 
   // Emit name length and name optional section (0x01 of flags 4)
@@ -1561,6 +1627,8 @@ void SystemZAsmPrinter::emitStartOfAsmFile(Module &M) {
 }
 
 void SystemZAsmPrinter::emitPPA2(Module &M) {
+  ADASym = getObjFileLowering().getADASection()->getBeginSymbol();
+
   OutStreamer->pushSection();
   OutStreamer->switchSection(getObjFileLowering().getTextSection(),
                              GOFF::SK_PPA2);
