@@ -373,8 +373,8 @@ void SystemZAsmPrinter::emitInstruction(const MachineInstr *MI) {
       Disp = 0;
       Op = Op0;
     }
-    OutStreamer->AddComment(Twine("Loading from ADA at offset ")
-                        .concat(utostr(Disp)));
+    OutStreamer->AddComment(
+        Twine("Loading from ADA at offset ").concat(utostr(Disp)));
     EmitToStreamer(*OutStreamer, MCInstBuilder(Op)
                                      .addReg(TargetReg)
                                      .addReg(ADAReg)
@@ -1756,7 +1756,8 @@ const MCExpr *SystemZAsmPrinter::lowerConstant(const Constant *CV,
   return AsmPrinter::lowerConstant(CV);
 }
 
-void SystemZAsmPrinter::emitGlobalAlias(const Module &M, const GlobalAlias &GA) {
+void SystemZAsmPrinter::emitGlobalAlias(const Module &M,
+                                        const GlobalAlias &GA) {
   if (!TM.getTargetTriple().isOSzOS()) {
     AsmPrinter::emitGlobalAlias(M, GA);
     return;
