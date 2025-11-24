@@ -2533,19 +2533,13 @@ genTargetOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
                    loc, clauseOps, defaultMaps, hasDeviceAddrSyms,
                    isDevicePtrSyms, mapSyms);
 
-  DataSharingProcessor dsp(converter, semaCtx, item->clauses, eval,
-                           /*shouldCollectPreDeterminedSymbols=*/
-                           lower::omp::isLastItemInQueue(item, queue),
-                           /*useDelayedPrivatization=*/true, symTable,
-                           /*isTargetPrivitization=*/true);
-  dsp.processStep1(&clauseOps);
-
   if (!isDevicePtrSyms.empty()) {
     // is_device_ptr maps get duplicated so the clause and synthesized
     // has_device_addr entry each own a unique MapInfoOp user, keeping
     // MapInfoFinalization happy while still wiring the symbol into
     // has_device_addr when the user didn’t spell it explicitly.
     fir::FirOpBuilder &builder = converter.getFirOpBuilder();
+    auto insertionPt = builder.saveInsertionPoint();
     auto alreadyPresent = [&](const semantics::Symbol *sym) {
       return llvm::any_of(hasDeviceAddrSyms, [&](const semantics::Symbol *s) {
         return s && sym && s->GetUltimate() == sym->GetUltimate();
@@ -2571,7 +2565,15 @@ genTargetOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
       assert(clonedMapInfo && "expected cloned map info op");
       clauseOps.isDevicePtrVars[idx] = clonedMapInfo.getResult();
     }
+    builder.restoreInsertionPoint(insertionPt);
   }
+
+  DataSharingProcessor dsp(converter, semaCtx, item->clauses, eval,
+                           /*shouldCollectPreDeterminedSymbols=*/
+                           lower::omp::isLastItemInQueue(item, queue),
+                           /*useDelayedPrivatization=*/true, symTable,
+                           /*isTargetPrivitization=*/true);
+  dsp.processStep1(&clauseOps);
 
   // 5.8.1 Implicit Data-Mapping Attribute Rules
   // The following code follows the implicit data-mapping rules to map all the
