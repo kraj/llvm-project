@@ -332,10 +332,7 @@ static LogicalResult checkImplementationStatus(Operation &op) {
         op.getInReductionSyms())
       result = todo("in_reduction");
   };
-  auto checkIsDevicePtr = [&todo](auto op, LogicalResult &result) {
-    if (!op.getIsDevicePtrVars().empty())
-      result = todo("is_device_ptr");
-  };
+  auto checkIsDevicePtr = [](auto, LogicalResult &) {};
   auto checkLinear = [&todo](auto op, LogicalResult &result) {
     if (!op.getLinearVars().empty() || !op.getLinearStepVars().empty())
       result = todo("linear");
@@ -3996,6 +3993,9 @@ static void collectMapDataFromMapOperands(
     llvm::Value *origValue = moduleTranslation.lookupValue(offloadPtr);
     auto mapType = convertClauseMapFlags(mapOp.getMapType());
     auto mapTypeAlways = llvm::omp::OpenMPOffloadMappingFlags::OMP_MAP_ALWAYS;
+    bool isDevicePtr =
+        (mapOp.getMapType() & omp::ClauseMapFlags::storage) ==
+        omp::ClauseMapFlags::storage;
 
     mapData.OriginalValue.push_back(origValue);
     mapData.BasePointers.push_back(origValue);
@@ -4006,7 +4006,12 @@ static void collectMapDataFromMapOperands(
     mapData.Sizes.push_back(
         builder.getInt64(dl.getTypeSize(mapOp.getVarType())));
     mapData.MapClause.push_back(mapOp.getOperation());
-    if (llvm::to_underlying(mapType & mapTypeAlways)) {
+    if (isDevicePtr) {
+      mapType |= llvm::omp::OpenMPOffloadMappingFlags::OMP_MAP_TARGET_PARAM;
+      mapType |= llvm::omp::OpenMPOffloadMappingFlags::OMP_MAP_LITERAL;
+      mapData.Types.push_back(mapType);
+      mapData.Mappers.push_back(nullptr);
+    } else if (llvm::to_underlying(mapType & mapTypeAlways)) {
       // Descriptors are mapped with the ALWAYS flag, since they can get
       // rematerialized, so the address of the decriptor for a given object
       // may change from one place to another.
@@ -4029,7 +4034,8 @@ static void collectMapDataFromMapOperands(
     mapData.Names.push_back(LLVM::createMappingInformation(
         mapOp.getLoc(), *moduleTranslation.getOpenMPBuilder()));
     mapData.DevicePointers.push_back(
-        llvm::OpenMPIRBuilder::DeviceInfoTy::Address);
+        isDevicePtr ? llvm::OpenMPIRBuilder::DeviceInfoTy::Pointer
+                    : llvm::OpenMPIRBuilder::DeviceInfoTy::Address);
     mapData.IsAMapping.push_back(false);
     mapData.IsAMember.push_back(checkIsAMember(hasDevAddrOperands, mapOp));
   }
