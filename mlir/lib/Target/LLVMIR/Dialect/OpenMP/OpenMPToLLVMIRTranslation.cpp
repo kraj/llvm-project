@@ -3993,9 +3993,8 @@ static void collectMapDataFromMapOperands(
     llvm::Value *origValue = moduleTranslation.lookupValue(offloadPtr);
     auto mapType = convertClauseMapFlags(mapOp.getMapType());
     auto mapTypeAlways = llvm::omp::OpenMPOffloadMappingFlags::OMP_MAP_ALWAYS;
-    bool isDevicePtr =
-        (mapOp.getMapType() & omp::ClauseMapFlags::storage) ==
-        omp::ClauseMapFlags::storage;
+    bool isDevicePtr = (mapOp.getMapType() & omp::ClauseMapFlags::storage) ==
+                       omp::ClauseMapFlags::storage;
 
     mapData.OriginalValue.push_back(origValue);
     mapData.BasePointers.push_back(origValue);
