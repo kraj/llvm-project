@@ -42,15 +42,6 @@ mlir::omp::ReductionModifier translateReductionModifier(ReductionModifier mod) {
   return mlir::omp::ReductionModifier::defaultmod;
 }
 
-/// Check for unsupported map operand types.
-static void checkMapType(mlir::Location location, mlir::Type type) {
-  if (auto refType = mlir::dyn_cast<fir::ReferenceType>(type))
-    type = refType.getElementType();
-  if (auto boxType = mlir::dyn_cast_or_null<fir::BoxType>(type))
-    if (!mlir::isa<fir::PointerType>(boxType.getElementType()))
-      TODO(location, "OMPD_target_data MapOperand BoxType");
-}
-
 static mlir::omp::ScheduleModifier
 translateScheduleModifier(const omp::clause::Schedule::OrderingModifier &m) {
   switch (m) {
