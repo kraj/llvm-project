@@ -347,7 +347,7 @@ void SystemZAsmPrinter::emitInstruction(const MachineInstr *MI) {
   case SystemZ::ADA_ENTRY: {
     const SystemZSubtarget &Subtarget = MF->getSubtarget<SystemZSubtarget>();
     const SystemZInstrInfo *TII = Subtarget.getInstrInfo();
-    uint32_t Disp  = ADATable.insert(MI->getOperand(1));
+    uint32_t Disp = ADATable.insert(MI->getOperand(1));
     Register TargetReg = MI->getOperand(0).getReg();
 
     Register ADAReg = MI->getOperand(2).getReg();
@@ -1125,7 +1125,6 @@ void SystemZAsmPrinter::emitEndOfAsmFile(Module &M) {
                                                   : MCSA_Global);
         OutStreamer->emitSymbolAttribute(Sym, isa<Function>(GO) ? MCSA_Code
                                                                 : MCSA_Data);
-        llvm::dbgs() << "TONY emitting " << Sym->getName() << "\n";
       }
     }
     OutStreamer->switchSection(
