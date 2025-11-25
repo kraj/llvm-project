@@ -32,6 +32,8 @@ public:
   LLVM_ABI RTLIB::RuntimeLibcallsInfo run(const Module &M,
                                           ModuleAnalysisManager &);
 
+  operator bool() const { return LibcallsInfo.has_value(); }
+
 private:
   friend AnalysisInfoMixin<RuntimeLibraryAnalysis>;
   LLVM_ABI static AnalysisKey Key;

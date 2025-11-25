@@ -1097,7 +1097,7 @@ public:
 
     const LibcallLoweringInfo &Libcalls =
         getAnalysis<LibcallLoweringInfoWrapper>().getLibcallLowering(
-            *Subtarget);
+            *F.getParent(), *Subtarget);
 
     if (OptLevel != CodeGenOptLevel::None && !F.hasOptNone())
       AC = &getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F);
