@@ -164,45 +164,91 @@ static ScanfSpecifierResult ParseScanfSpecifier(FormatStringHandler &H,
   const char *conversionPosition = I++;
   ScanfConversionSpecifier::Kind k = ScanfConversionSpecifier::InvalidSpecifier;
   switch (FormatStrConverter.convert(*conversionPosition)) {
-    default:
-      break;
-    case '%': k = ConversionSpecifier::PercentArg;   break;
-    case 'b': k = ConversionSpecifier::bArg; break;
-    case 'A': k = ConversionSpecifier::AArg; break;
-    case 'E': k = ConversionSpecifier::EArg; break;
-    case 'F': k = ConversionSpecifier::FArg; break;
-    case 'G': k = ConversionSpecifier::GArg; break;
-    case 'X': k = ConversionSpecifier::XArg; break;
-    case 'a': k = ConversionSpecifier::aArg; break;
-    case 'd': k = ConversionSpecifier::dArg; break;
-    case 'e': k = ConversionSpecifier::eArg; break;
-    case 'f': k = ConversionSpecifier::fArg; break;
-    case 'g': k = ConversionSpecifier::gArg; break;
-    case 'i': k = ConversionSpecifier::iArg; break;
-    case 'n': k = ConversionSpecifier::nArg; break;
-    case 'c': k = ConversionSpecifier::cArg; break;
-    case 'C': k = ConversionSpecifier::CArg; break;
-    case 'S': k = ConversionSpecifier::SArg; break;
-    case '[': k = ConversionSpecifier::ScanListArg; break;
-    case 'u': k = ConversionSpecifier::uArg; break;
-    case 'x': k = ConversionSpecifier::xArg; break;
-    case 'o': k = ConversionSpecifier::oArg; break;
-    case 's': k = ConversionSpecifier::sArg; break;
-    case 'p': k = ConversionSpecifier::pArg; break;
-    // Apple extensions
-      // Apple-specific
-    case 'D':
-      if (Target.getTriple().isOSDarwin())
-        k = ConversionSpecifier::DArg;
-      break;
-    case 'O':
-      if (Target.getTriple().isOSDarwin())
-        k = ConversionSpecifier::OArg;
-      break;
-    case 'U':
-      if (Target.getTriple().isOSDarwin())
-        k = ConversionSpecifier::UArg;
-      break;
+  default:
+    break;
+  case '%':
+    k = ConversionSpecifier::PercentArg;
+    break;
+  case 'b':
+    k = ConversionSpecifier::bArg;
+    break;
+  case 'A':
+    k = ConversionSpecifier::AArg;
+    break;
+  case 'E':
+    k = ConversionSpecifier::EArg;
+    break;
+  case 'F':
+    k = ConversionSpecifier::FArg;
+    break;
+  case 'G':
+    k = ConversionSpecifier::GArg;
+    break;
+  case 'X':
+    k = ConversionSpecifier::XArg;
+    break;
+  case 'a':
+    k = ConversionSpecifier::aArg;
+    break;
+  case 'd':
+    k = ConversionSpecifier::dArg;
+    break;
+  case 'e':
+    k = ConversionSpecifier::eArg;
+    break;
+  case 'f':
+    k = ConversionSpecifier::fArg;
+    break;
+  case 'g':
+    k = ConversionSpecifier::gArg;
+    break;
+  case 'i':
+    k = ConversionSpecifier::iArg;
+    break;
+  case 'n':
+    k = ConversionSpecifier::nArg;
+    break;
+  case 'c':
+    k = ConversionSpecifier::cArg;
+    break;
+  case 'C':
+    k = ConversionSpecifier::CArg;
+    break;
+  case 'S':
+    k = ConversionSpecifier::SArg;
+    break;
+  case '[':
+    k = ConversionSpecifier::ScanListArg;
+    break;
+  case 'u':
+    k = ConversionSpecifier::uArg;
+    break;
+  case 'x':
+    k = ConversionSpecifier::xArg;
+    break;
+  case 'o':
+    k = ConversionSpecifier::oArg;
+    break;
+  case 's':
+    k = ConversionSpecifier::sArg;
+    break;
+  case 'p':
+    k = ConversionSpecifier::pArg;
+    break;
+  // Apple extensions
+  // Apple-specific
+  case 'D':
+    if (Target.getTriple().isOSDarwin())
+      k = ConversionSpecifier::DArg;
+    break;
+  case 'O':
+    if (Target.getTriple().isOSDarwin())
+      k = ConversionSpecifier::OArg;
+    break;
+  case 'U':
+    if (Target.getTriple().isOSDarwin())
+      k = ConversionSpecifier::UArg;
+    break;
   }
   ScanfConversionSpecifier CS(conversionPosition, k);
   if (k == ScanfConversionSpecifier::ScanListArg) {

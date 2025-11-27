@@ -57,21 +57,21 @@ static bool
 ParseObjCFlags(FormatStringHandler &H, PrintfSpecifier &FS, const char *FlagBeg,
                const char *E, bool Warn,
                const llvm::TextEncodingConverter &FormatStrConverter) {
-    StringRef Flag(FlagBeg, E - FlagBeg);
-    // Currently there is only one flag.
-    if (Flag.size() == 2 && FormatStrConverter.convert(FlagBeg[0]) == 't' &&
-        FormatStrConverter.convert(FlagBeg[1]) == 't') {
-      FS.setHasObjCTechnicalTerm(FlagBeg);
-      return false;
-    }
-    // Handle either the case of no flag or an invalid flag.
-    if (Warn) {
-      if (Flag == "")
-        H.HandleEmptyObjCModifierFlag(FlagBeg, E - FlagBeg);
-      else
-        H.HandleInvalidObjCModifierFlag(FlagBeg, E - FlagBeg);
-    }
-    return true;
+  StringRef Flag(FlagBeg, E - FlagBeg);
+  // Currently there is only one flag.
+  if (Flag.size() == 2 && FormatStrConverter.convert(FlagBeg[0]) == 't' &&
+      FormatStrConverter.convert(FlagBeg[1]) == 't') {
+    FS.setHasObjCTechnicalTerm(FlagBeg);
+    return false;
+  }
+  // Handle either the case of no flag or an invalid flag.
+  if (Warn) {
+    if (Flag == "")
+      H.HandleEmptyObjCModifierFlag(FlagBeg, E - FlagBeg);
+    else
+      H.HandleInvalidObjCModifierFlag(FlagBeg, E - FlagBeg);
+  }
+  return true;
 }
 
 static PrintfSpecifierResult
@@ -214,16 +214,28 @@ ParsePrintfSpecifier(FormatStringHandler &H, const char *&Beg, const char *E,
   bool hasMore = true;
   for ( ; I != E; ++I) {
     switch (FormatStrConverter.convert(*I)) {
-      default: hasMore = false; break;
-      case '\'':
-        // FIXME: POSIX specific.  Always accept?
-        FS.setHasThousandsGrouping(I);
-        break;
-      case '-': FS.setIsLeftJustified(I); break;
-      case '+': FS.setHasPlusPrefix(I); break;
-      case ' ': FS.setHasSpacePrefix(I); break;
-      case '#': FS.setHasAlternativeForm(I); break;
-      case '0': FS.setHasLeadingZeros(I); break;
+    default:
+      hasMore = false;
+      break;
+    case '\'':
+      // FIXME: POSIX specific.  Always accept?
+      FS.setHasThousandsGrouping(I);
+      break;
+    case '-':
+      FS.setIsLeftJustified(I);
+      break;
+    case '+':
+      FS.setHasPlusPrefix(I);
+      break;
+    case ' ':
+      FS.setHasSpacePrefix(I);
+      break;
+    case '#':
+      FS.setHasAlternativeForm(I);
+      break;
+    case '0':
+      FS.setHasLeadingZeros(I);
+      break;
     }
     if (!hasMore)
       break;
@@ -324,95 +336,141 @@ ParsePrintfSpecifier(FormatStringHandler &H, const char *&Beg, const char *E,
   const char *conversionPosition = I++;
   ConversionSpecifier::Kind k = ConversionSpecifier::InvalidSpecifier;
   switch (FormatStrConverter.convert(*conversionPosition)) {
-    default:
-      break;
-    // C99: 7.19.6.1 (section 8).
-    case '%': k = ConversionSpecifier::PercentArg;   break;
-    case 'A': k = ConversionSpecifier::AArg; break;
-    case 'E': k = ConversionSpecifier::EArg; break;
-    case 'F': k = ConversionSpecifier::FArg; break;
-    case 'G': k = ConversionSpecifier::GArg; break;
-    case 'X': k = ConversionSpecifier::XArg; break;
-    case 'a': k = ConversionSpecifier::aArg; break;
-    case 'c': k = ConversionSpecifier::cArg; break;
-    case 'd': k = ConversionSpecifier::dArg; break;
-    case 'e': k = ConversionSpecifier::eArg; break;
-    case 'f': k = ConversionSpecifier::fArg; break;
-    case 'g': k = ConversionSpecifier::gArg; break;
-    case 'i': k = ConversionSpecifier::iArg; break;
-    case 'n':
-      // Not handled, but reserved in OpenCL.
-      if (!LO.OpenCL)
-        k = ConversionSpecifier::nArg;
-      break;
-    case 'o': k = ConversionSpecifier::oArg; break;
-    case 'p': k = ConversionSpecifier::pArg; break;
-    case 's': k = ConversionSpecifier::sArg; break;
-    case 'u': k = ConversionSpecifier::uArg; break;
-    case 'x': k = ConversionSpecifier::xArg; break;
-    // C23.
-    case 'b':
-      if (isFreeBSDKPrintf)
-        k = ConversionSpecifier::FreeBSDbArg; // int followed by char *
-      else
-        k = ConversionSpecifier::bArg;
-      break;
-    case 'B': k = ConversionSpecifier::BArg; break;
-    // POSIX specific.
-    case 'C': k = ConversionSpecifier::CArg; break;
-    case 'S': k = ConversionSpecifier::SArg; break;
-    // Apple extension for os_log
-    case 'P':
-      k = ConversionSpecifier::PArg;
-      break;
-    // Objective-C.
-    case '@': k = ConversionSpecifier::ObjCObjArg; break;
-    // Glibc specific.
-    case 'm': k = ConversionSpecifier::PrintErrno; break;
-    case 'r':
-      if (isFreeBSDKPrintf)
-        k = ConversionSpecifier::FreeBSDrArg; // int
-      else if (LO.FixedPoint)
-        k = ConversionSpecifier::rArg;
-      break;
-    case 'y':
-      if (isFreeBSDKPrintf)
-        k = ConversionSpecifier::FreeBSDyArg; // int
-      break;
-    // Apple-specific.
-    case 'D':
-      if (isFreeBSDKPrintf)
-        k = ConversionSpecifier::FreeBSDDArg; // void * followed by char *
-      else if (Target.getTriple().isOSDarwin())
-        k = ConversionSpecifier::DArg;
-      break;
-    case 'O':
-      if (Target.getTriple().isOSDarwin())
-        k = ConversionSpecifier::OArg;
-      break;
-    case 'U':
-      if (Target.getTriple().isOSDarwin())
-        k = ConversionSpecifier::UArg;
-      break;
-    // MS specific.
-    case 'Z':
-      if (Target.getTriple().isOSMSVCRT())
-        k = ConversionSpecifier::ZArg;
-      break;
-    // ISO/IEC TR 18037 (fixed-point) specific.
-    // NOTE: 'r' is handled up above since FreeBSD also supports %r.
-    case 'k':
-      if (LO.FixedPoint)
-        k = ConversionSpecifier::kArg;
-      break;
-    case 'K':
-      if (LO.FixedPoint)
-        k = ConversionSpecifier::KArg;
-      break;
-    case 'R':
-      if (LO.FixedPoint)
-        k = ConversionSpecifier::RArg;
-      break;
+  default:
+    break;
+  // C99: 7.19.6.1 (section 8).
+  case '%':
+    k = ConversionSpecifier::PercentArg;
+    break;
+  case 'A':
+    k = ConversionSpecifier::AArg;
+    break;
+  case 'E':
+    k = ConversionSpecifier::EArg;
+    break;
+  case 'F':
+    k = ConversionSpecifier::FArg;
+    break;
+  case 'G':
+    k = ConversionSpecifier::GArg;
+    break;
+  case 'X':
+    k = ConversionSpecifier::XArg;
+    break;
+  case 'a':
+    k = ConversionSpecifier::aArg;
+    break;
+  case 'c':
+    k = ConversionSpecifier::cArg;
+    break;
+  case 'd':
+    k = ConversionSpecifier::dArg;
+    break;
+  case 'e':
+    k = ConversionSpecifier::eArg;
+    break;
+  case 'f':
+    k = ConversionSpecifier::fArg;
+    break;
+  case 'g':
+    k = ConversionSpecifier::gArg;
+    break;
+  case 'i':
+    k = ConversionSpecifier::iArg;
+    break;
+  case 'n':
+    // Not handled, but reserved in OpenCL.
+    if (!LO.OpenCL)
+      k = ConversionSpecifier::nArg;
+    break;
+  case 'o':
+    k = ConversionSpecifier::oArg;
+    break;
+  case 'p':
+    k = ConversionSpecifier::pArg;
+    break;
+  case 's':
+    k = ConversionSpecifier::sArg;
+    break;
+  case 'u':
+    k = ConversionSpecifier::uArg;
+    break;
+  case 'x':
+    k = ConversionSpecifier::xArg;
+    break;
+  // C23.
+  case 'b':
+    if (isFreeBSDKPrintf)
+      k = ConversionSpecifier::FreeBSDbArg; // int followed by char *
+    else
+      k = ConversionSpecifier::bArg;
+    break;
+  case 'B':
+    k = ConversionSpecifier::BArg;
+    break;
+  // POSIX specific.
+  case 'C':
+    k = ConversionSpecifier::CArg;
+    break;
+  case 'S':
+    k = ConversionSpecifier::SArg;
+    break;
+  // Apple extension for os_log
+  case 'P':
+    k = ConversionSpecifier::PArg;
+    break;
+  // Objective-C.
+  case '@':
+    k = ConversionSpecifier::ObjCObjArg;
+    break;
+  // Glibc specific.
+  case 'm':
+    k = ConversionSpecifier::PrintErrno;
+    break;
+  case 'r':
+    if (isFreeBSDKPrintf)
+      k = ConversionSpecifier::FreeBSDrArg; // int
+    else if (LO.FixedPoint)
+      k = ConversionSpecifier::rArg;
+    break;
+  case 'y':
+    if (isFreeBSDKPrintf)
+      k = ConversionSpecifier::FreeBSDyArg; // int
+    break;
+  // Apple-specific.
+  case 'D':
+    if (isFreeBSDKPrintf)
+      k = ConversionSpecifier::FreeBSDDArg; // void * followed by char *
+    else if (Target.getTriple().isOSDarwin())
+      k = ConversionSpecifier::DArg;
+    break;
+  case 'O':
+    if (Target.getTriple().isOSDarwin())
+      k = ConversionSpecifier::OArg;
+    break;
+  case 'U':
+    if (Target.getTriple().isOSDarwin())
+      k = ConversionSpecifier::UArg;
+    break;
+  // MS specific.
+  case 'Z':
+    if (Target.getTriple().isOSMSVCRT())
+      k = ConversionSpecifier::ZArg;
+    break;
+  // ISO/IEC TR 18037 (fixed-point) specific.
+  // NOTE: 'r' is handled up above since FreeBSD also supports %r.
+  case 'k':
+    if (LO.FixedPoint)
+      k = ConversionSpecifier::kArg;
+    break;
+  case 'K':
+    if (LO.FixedPoint)
+      k = ConversionSpecifier::KArg;
+    break;
+  case 'R':
+    if (LO.FixedPoint)
+      k = ConversionSpecifier::RArg;
+    break;
   }
 
   // Check to see if we used the Objective-C modifier flags with
