@@ -4957,11 +4957,16 @@ void CodeGenFunction::EmitCallArg(CallArgList &args, const Expr *E,
     RawAddress ArgSlotAlloca = Address::invalid();
     ArgSlot = CreateAggTemp(E->getType(), "agg.tmp", &ArgSlotAlloca);
 
-    // Emit a lifetime start/end for this temporary at the end of the full
-    // expression.
+    // Emit a lifetime start/end for this temporary. If the type has a
+    // destructor, then we need to keep it alive for the full expression.
     if (!CGM.getCodeGenOpts().NoLifetimeMarkersForTemporaries &&
-        EmitLifetimeStart(ArgSlotAlloca.getPointer()))
-      pushFullExprCleanup<CallLifetimeEnd>(NormalAndEHCleanup, ArgSlotAlloca);
+        EmitLifetimeStart(ArgSlotAlloca.getPointer())) {
+      if (E->getType().isDestructedType()) {
+        pushFullExprCleanup<CallLifetimeEnd>(NormalAndEHCleanup, ArgSlotAlloca);
+      } else {
+        args.addLifetimeCleanup({ArgSlotAlloca.getPointer()});
+      }
+    }
   }
 
   args.add(EmitAnyExpr(E, ArgSlot), type);
@@ -6290,6 +6295,11 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
   // we can't use the full cleanup mechanism.
   for (CallLifetimeEnd &LifetimeEnd : CallLifetimeEndAfterCall)
     LifetimeEnd.Emit(*this, /*Flags=*/{});
+
+  if (!CGM.getCodeGenOpts().NoLifetimeMarkersForTemporaries)
+    for (const CallArgList::EndLifetimeInfo &LT :
+         CallArgs.getLifetimeCleanups())
+      EmitLifetimeEnd(LT.Addr);
 
   if (!ReturnValue.isExternallyDestructed() &&
       RetTy.isDestructedType() == QualType::DK_nontrivial_c_struct)

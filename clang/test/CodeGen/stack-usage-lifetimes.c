@@ -40,11 +40,11 @@ void t1(int c) {
 }
 
 void t2(void) {
-  // x86-precise-remark@-1 {{72 stack bytes}}
+  // x86-precise-remark@-1 {{40 stack bytes}}
   // x86-sloppy-remark@-2 {{72 stack bytes}}
-  // aarch64-precise-remark@-3 {{80 stack bytes}}
+  // aarch64-precise-remark@-3 {{48 stack bytes}}
   // aarch64-sloppy-remark@-4 {{80 stack bytes}}
-  // riscv-precise-remark@-5 {{80 stack bytes}}
+  // riscv-precise-remark@-5 {{48 stack bytes}}
   // riscv-sloppy-remark@-6 {{80 stack bytes}}
 
   useA(genA());
@@ -52,11 +52,11 @@ void t2(void) {
 }
 
 void t3(void) {
-  // x86-precise-remark@-1 {{72 stack bytes}}
+  // x86-precise-remark@-1 {{40 stack bytes}}
   // x86-sloppy-remark@-2 {{72 stack bytes}}
-  // aarch64-precise-remark@-3 {{80 stack bytes}}
+  // aarch64-precise-remark@-3 {{48 stack bytes}}
   // aarch64-sloppy-remark@-4 {{80 stack bytes}}
-  // riscv-precise-remark@-5 {{80 stack bytes}}
+  // riscv-precise-remark@-5 {{48 stack bytes}}
   // riscv-sloppy-remark@-6 {{80 stack bytes}}
 
   useB(genB());
