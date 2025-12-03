@@ -19,6 +19,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <string>
+#include <typeinfo>
 #include <variant>
 
 template <>
@@ -344,7 +345,17 @@ public:
 
   /// Binds the indexing and length methods in the Python class.
   static void bind(nanobind::module_ &m) {
-    auto clazz = nanobind::class_<Derived>(m, Derived::pyClassName)
+    const std::type_info &elemTy = typeid(ElementTy);
+    PyObject *elemTyInfo = nanobind::detail::nb_type_lookup(&elemTy);
+    assert(elemTyInfo && "expected nb_type_lookup to succeed");
+    nanobind::handle elemTyName = nanobind::detail::nb_type_name(elemTyInfo);
+    std::string sig = "class ";
+    sig += Derived::pyClassName;
+    sig += "(collections.abc.Sequence[";
+    sig += nanobind::cast<std::string>(elemTyName);
+    sig += "])";
+    auto clazz = nanobind::class_<Derived>(m, Derived::pyClassName,
+                                           nanobind::sig(sig.c_str()))
                      .def("__add__", &Sliceable::dunderAdd);
     Derived::bindDerived(clazz);
 
