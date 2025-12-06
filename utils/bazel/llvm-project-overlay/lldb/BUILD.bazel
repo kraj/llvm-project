@@ -521,9 +521,10 @@ objc_library(
 
 cc_library(
     name = "Host",
-    srcs = glob([
-        "source/Host/common/**/*.cpp",
-    ]) + select({
+    srcs = glob(
+        ["source/Host/common/**/*.cpp"],
+        exclude = ["source/Host/common/Editline.cpp"],
+    ) + select({
         "@platforms//os:linux": glob(
             [
                 "source/Host/posix/**/*.cpp",
