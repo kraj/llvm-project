@@ -14,6 +14,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPURegBankLegalizeRules.h"
+#include "AMDGPUGlobalISelUtils.h"
 #include "AMDGPUInstrInfo.h"
 #include "GCNSubtarget.h"
 #include "llvm/CodeGen/GlobalISel/GenericMachineInstrs.h"
@@ -132,6 +133,8 @@ bool matchUniformityAndLLT(Register Reg, UniformityLLTOpPredicateID UniID,
     return MRI.getType(Reg).getSizeInBits() == 256 && MUI.isUniform(Reg);
   case UniB512:
     return MRI.getType(Reg).getSizeInBits() == 512 && MUI.isUniform(Reg);
+  case UniBRC:
+    return isBRC(MRI.getType(Reg)) && MUI.isUniform(Reg);
   case DivS1:
     return MRI.getType(Reg) == LLT::scalar(1) && MUI.isDivergent(Reg);
   case DivS16:
@@ -172,6 +175,8 @@ bool matchUniformityAndLLT(Register Reg, UniformityLLTOpPredicateID UniID,
     return MRI.getType(Reg).getSizeInBits() == 256 && MUI.isDivergent(Reg);
   case DivB512:
     return MRI.getType(Reg).getSizeInBits() == 512 && MUI.isDivergent(Reg);
+  case DivBRC:
+    return isBRC(MRI.getType(Reg)) && MUI.isDivergent(Reg);
   case _:
     return true;
   default:
@@ -559,6 +564,12 @@ RegBankLegalizeRules::RegBankLegalizeRules(const GCNSubtarget &_ST,
   addRulesForGOpcs({G_CONSTANT})
       .Any({{UniS1, _}, {{Sgpr32Trunc}, {None}, UniCstExt}});
   addRulesForGOpcs({G_FREEZE}).Any({{DivS1}, {{Vcc}, {Vcc}}});
+
+  addRulesForGOpcs({G_UNMERGE_VALUES})
+      .Any({{UniS16}, {{}, {}, UnmergeToShiftTrunc}})
+      .Any({{DivS16}, {{}, {}, ApplyAllVgpr}})
+      .Any({{UniBRC}, {{}, {}, VerifyAllSgpr}})
+      .Any({{DivBRC}, {{}, {}, ApplyAllVgpr}});
 
   addRulesForGOpcs({G_ICMP})
       .Any({{UniS1, _, S32}, {{Sgpr32Trunc}, {None, Sgpr32, Sgpr32}}})

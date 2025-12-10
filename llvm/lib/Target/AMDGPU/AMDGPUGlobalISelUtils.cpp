@@ -186,3 +186,19 @@ void AMDGPU::buildReadFirstLane(MachineIRBuilder &B, Register SgprDst,
             .addReg(VgprSrc);
       });
 }
+
+bool AMDGPU::isBRC(LLT Ty) {
+  if (Ty.isPointer())
+    return true;
+
+  unsigned Size = Ty.getSizeInBits();
+  if (Size % 32 != 0)
+    return false;
+
+  // 32, 2x32, 3x32 ... 12x32, 16x32, 32x32
+  unsigned NumB32s = Size / 32;
+  if ((NumB32s >= 1 && NumB32s <= 12) || NumB32s == 16 || NumB32s == 32)
+    return true;
+
+  return false;
+}

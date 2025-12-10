@@ -53,6 +53,10 @@ void buildReadAnyLane(MachineIRBuilder &B, Register SgprDst, Register VgprSrc,
                       const RegisterBankInfo &RBI);
 void buildReadFirstLane(MachineIRBuilder &B, Register SgprDst, Register VgprSrc,
                         const RegisterBankInfo &RBI);
+
+// "Reg Class" low level types. LLTs that fit into some register class on both
+// sgpr and vgpr. LLTs with sizes 32, 2x32, 3x32 ... 12x32, 16x32, 32x32.
+bool isBRC(LLT Ty);
 }
 }
 
