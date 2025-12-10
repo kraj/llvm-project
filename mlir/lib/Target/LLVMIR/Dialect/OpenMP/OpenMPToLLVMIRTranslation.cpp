@@ -1981,6 +1981,10 @@ convertOmpTeams(omp::TeamsOp op, llvm::IRBuilderBase &builder,
   if (failed(checkImplementationStatus(*op)))
     return failure();
 
+  if (op.getNumTeamsDims().has_value() || !op.getNumTeamsValues().empty()) {
+    return op.emitError("Lowering of num_teams with dims modifier is NYI.");
+  }
+
   DenseMap<Value, llvm::Value *> reductionVariableMap;
   unsigned numReductionVars = op.getNumReductionVars();
   SmallVector<omp::DeclareReductionOp> reductionDecls;
@@ -5587,6 +5591,10 @@ extractHostEvalClauses(omp::TargetOp targetOp, Value &numThreads,
     for (Operation *user : blockArg.getUsers()) {
       llvm::TypeSwitch<Operation *>(user)
           .Case([&](omp::TeamsOp teamsOp) {
+            // num_teams dims and values are not yet supported
+            assert(!teamsOp.getNumTeamsDims().has_value() &&
+                   teamsOp.getNumTeamsValues().empty() &&
+                   "Lowering of num_teams with dims modifier is NYI.");
             if (teamsOp.getNumTeamsLower() == blockArg)
               numTeamsLower = hostEvalVar;
             else if (teamsOp.getNumTeamsUpper() == blockArg)
@@ -5709,6 +5717,10 @@ initTargetDefaultAttrs(omp::TargetOp targetOp, Operation *capturedOp,
     // host_eval, but instead evaluated prior to entry to the region. This
     // ensures values are mapped and available inside of the target region.
     if (auto teamsOp = castOrGetParentOfType<omp::TeamsOp>(capturedOp)) {
+      // num_teams dims and values are not yet supported
+      assert(!teamsOp.getNumTeamsDims().has_value() &&
+             teamsOp.getNumTeamsValues().empty() &&
+             "Lowering of num_teams with dims modifier is NYI.");
       numTeamsLower = teamsOp.getNumTeamsLower();
       numTeamsUpper = teamsOp.getNumTeamsUpper();
       threadLimit = teamsOp.getThreadLimit();
