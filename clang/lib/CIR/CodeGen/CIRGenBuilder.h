@@ -189,6 +189,11 @@ public:
     return getType<cir::RecordType>(nameAttr, kind);
   }
 
+  cir::DataMemberAttr getDataMemberAttr(cir::DataMemberType ty,
+                                        unsigned memberIndex) {
+    return cir::DataMemberAttr::get(ty, memberIndex);
+  }
+
   // Return true if the value is a null constant such as null pointer, (+0.0)
   // for floating-point or zero initializer
   bool isNullValue(mlir::Attribute attr) const {
@@ -211,6 +216,16 @@ public:
       fv.convert(fpVal.getSemantics(), llvm::APFloat::rmNearestTiesToEven,
                  &ignored);
       return fv.bitwiseIsEqual(fpVal);
+    }
+    if (const auto recordVal = mlir::dyn_cast<cir::ConstRecordAttr>(attr)) {
+      for (const auto elt : recordVal.getMembers()) {
+        // FIXME(cir): the record's ID should not be considered a member.
+        if (mlir::isa<mlir::StringAttr>(elt))
+          continue;
+        if (!isNullValue(elt))
+          return false;
+      }
+      return true;
     }
 
     if (const auto arrayVal = mlir::dyn_cast<cir::ConstArrayAttr>(attr)) {
@@ -334,6 +349,11 @@ public:
     llvm_unreachable("negation for the given type is NYI");
   }
 
+  cir::IsFPClassOp createIsFPClass(mlir::Location loc, mlir::Value src,
+                                   cir::FPClassTest flags) {
+    return cir::IsFPClassOp::create(*this, loc, src, flags);
+  }
+
   // TODO: split this to createFPExt/createFPTrunc when we have dedicated cast
   // operations.
   mlir::Value createFloatingCast(mlir::Value v, mlir::Type destType) {
@@ -403,6 +423,19 @@ public:
         cir::BaseClassAddrOp::create(*this, loc, ptrTy, addr.getPointer(),
                                      mlir::APInt(64, offset), assumeNotNull);
     return Address(baseAddr, destType, addr.getAlignment());
+  }
+
+  Address createDerivedClassAddr(mlir::Location loc, Address addr,
+                                 mlir::Type destType, unsigned offset,
+                                 bool assumeNotNull) {
+    if (destType == addr.getElementType())
+      return addr;
+
+    cir::PointerType ptrTy = getPointerTo(destType);
+    auto derivedAddr =
+        cir::DerivedClassAddrOp::create(*this, loc, ptrTy, addr.getPointer(),
+                                        mlir::APInt(64, offset), assumeNotNull);
+    return Address(derivedAddr, destType, addr.getAlignment());
   }
 
   mlir::Value createVTTAddrPoint(mlir::Location loc, mlir::Type retTy,
