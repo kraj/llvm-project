@@ -10,29 +10,37 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/Utils/LoopPeel.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/Loads.h"
+#include "llvm/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopIterator.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Analysis/ScalarEvolutionPatternMatch.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Module.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/ProfDataUtils.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -53,6 +61,10 @@ using namespace llvm::SCEVPatternMatch;
 
 STATISTIC(NumPeeled, "Number of loops peeled");
 STATISTIC(NumPeeledEnd, "Number of loops peeled from end");
+STATISTIC(NumPeeledForLoadWidening,
+          "Number of loops peeled to enable consecutive load widening");
+STATISTIC(NumLoadsWidened,
+          "Number of consecutive load groups widened after peeling");
 
 namespace llvm {
 static cl::opt<unsigned> UnrollPeelCount(
@@ -85,6 +97,19 @@ static cl::opt<bool> DisableAdvancedPeeling(
 static cl::opt<bool> EnablePeelingForIV(
     "enable-peeling-for-iv", cl::init(false), cl::Hidden,
     cl::desc("Enable peeling to convert Phi nodes into IVs"));
+
+static cl::opt<bool> EnablePeelForLoadWidening(
+    "enable-peel-for-load-widening", cl::init(true), cl::Hidden,
+    cl::desc("Enable peeling last iteration to enable consecutive load widening"));
+
+static cl::opt<unsigned> MinBytesForLoadWidening(
+    "min-bytes-for-load-widening", cl::init(3), cl::Hidden,
+    cl::desc("Minimum consecutive bytes to consider for load widening peeling"));
+
+static cl::opt<unsigned> MaxBytesForLoadWidening(
+    "max-bytes-for-load-widening", cl::init(15), cl::Hidden,
+    cl::desc(
+        "Maximum consecutive bytes to consider for load widening peeling"));
 
 static const char *PeeledCountMetaData = "llvm.loop.peeled.count";
 
@@ -743,13 +768,203 @@ static bool violatesLegacyMultiExitLoopCheck(Loop *L) {
     });
 }
 
+namespace {
+// Represents a group of consecutive loads for widening analysis
+struct ConsecutiveLoadGroup {
+  LoadInst *FirstLoad;
+  SmallVector<std::pair<LoadInst *, APInt>, 8> Loads;
+  Value *BasePtr;
+  unsigned TotalBytes;
+};
+
+// Validate that pointer stride matches group size for loop-variant pointers
+static bool validateGroupStrideForPeeling(const ConsecutiveLoadGroup &Group,
+                                           Loop &L, ScalarEvolution &SE) {
+  if (Group.Loads.empty())
+    return false;
+
+  LoadInst *FirstLoad = Group.Loads[0].first;
+  const SCEV *PtrSCEV = SE.getSCEV(FirstLoad->getPointerOperand());
+
+  const SCEVAddRecExpr *AR = dyn_cast<SCEVAddRecExpr>(PtrSCEV);
+  if (!AR || AR->getLoop() != &L)
+    return true; // Loop-invariant is fine
+
+  const SCEV *Step = AR->getStepRecurrence(SE);
+  if (auto *ConstStep = dyn_cast<SCEVConstant>(Step)) {
+    int64_t StepVal = ConstStep->getValue()->getSExtValue();
+    return StepVal == static_cast<int64_t>(Group.TotalBytes);
+  }
+
+  return false;
+}
+
+// Find groups of consecutive loads in a basic block for peeling purposes
+static SmallVector<ConsecutiveLoadGroup> findConsecutiveLoadGroupsForPeeling(
+    BasicBlock *BB, Loop &L, ScalarEvolution &SE, const DataLayout &DL,
+    const TargetTransformInfo &TTI, DominatorTree *DT, AssumptionCache *AC) {
+  SmallVector<ConsecutiveLoadGroup> Groups;
+  DenseMap<Value *, SmallVector<std::pair<LoadInst *, APInt>>> LoadsByBase;
+  for (Instruction &I : *BB) {
+    if (auto *LI = dyn_cast<LoadInst>(&I)) {
+      // Only consider integer loads for widening
+      if (!LI->getType()->isIntegerTy())
+        continue;
+      Value *Ptr = LI->getPointerOperand();
+      APInt Offset(DL.getIndexTypeSizeInBits(Ptr->getType()), 0);
+      Value *ActualBase = Ptr->stripAndAccumulateConstantOffsets(
+          DL, Offset, /*AllowNonInbounds=*/true);
+      LoadsByBase[ActualBase].emplace_back(LI, Offset);
+    }
+    if (I.mayHaveSideEffects() || &I == BB->getTerminator()) {
+      for (auto &[Base, Loads] : LoadsByBase) {
+        if (Loads.size() <= 1)
+          continue;
+        LLVM_DEBUG(dbgs() << "  Considering load group with base: " << *Base
+                          << ", " << Loads.size() << " load(s)\n");
+        int64_t Left = INT64_MAX;
+        int64_t Right = INT64_MIN;
+        for (auto [LI, Offset] : Loads) {
+          LLVM_DEBUG(dbgs() << " " << *LI
+                            << ", Offset=" << Offset.getSExtValue() << "\n");
+          Left = std::min(Left, Offset.getSExtValue());
+          Right = std::max(Right, Offset.getSExtValue() +
+                                      static_cast<int64_t>(
+                                          DL.getTypeStoreSize(LI->getType())));
+        }
+        uint64_t TotalBytes = Right - Left;
+        if (TotalBytes < MinBytesForLoadWidening) {
+          LLVM_DEBUG(dbgs() << "  Rejecting group due to small size of "
+                            << TotalBytes << " byte(s)\n");
+          continue;
+        }
+        if ((TotalBytes % 2) == 0) {
+          LLVM_DEBUG(dbgs() << "  Rejecting group due to even size of "
+                            << TotalBytes << " byte(s)\n");
+          continue;
+        }
+
+        if (TotalBytes > 16) {
+          LLVM_DEBUG(dbgs() << "  Rejecting group due size too large of "
+                            << TotalBytes << " byte(s)\n");
+          continue;
+        }
+
+        // Compute the widened size (round up to next power of 2, capped at 16)
+        unsigned WideBytes =
+            std::min(16u, static_cast<unsigned>(NextPowerOf2(TotalBytes - 1)));
+
+        // // Check if the first load's pointer is already known to be
+        // // dereferenceable for the widened size. If so, peeling won't help
+        // // because the backend can already widen the loads.
+        LoadInst *FirstLoad = Loads[0].first;
+        // Value *Ptr = FirstLoad->getPointerOperand();
+        // APInt WideSize(DL.getIndexTypeSizeInBits(Ptr->getType()), WideBytes);
+        // if (isDereferenceableAndAlignedPointer(Ptr, FirstLoad->getAlign(),
+        //                                        WideSize, DL, FirstLoad, AC,
+        //                                        DT))
+        //   continue;
+
+        // Check alignment requirements
+        unsigned Fast = 0;
+        if (FirstLoad->getAlign() < WideBytes &&
+            !TTI.allowsMisalignedMemoryAccesses(
+                FirstLoad->getContext(), WideBytes,
+                FirstLoad->getPointerAddressSpace(), FirstLoad->getAlign(),
+                &Fast) &&
+            !Fast) {
+          LLVM_DEBUG(dbgs() << "  Rejecting group due to alignment\n");
+          continue;
+        }
+        // Only handle default address space; other address spaces may have
+        // different dereferenceability semantics.
+        if (FirstLoad->getPointerAddressSpace() != 0) {
+          LLVM_DEBUG(dbgs() << "  Rejecting group due to non-default address "
+                               "space\n");
+          continue;
+        }
+
+        // Sort loads by offset so the first load has the minimum offset.
+        // This is required for correct bit offset calculation during widening.
+        llvm::sort(Loads, [](const std::pair<LoadInst *, APInt> &A,
+                             const std::pair<LoadInst *, APInt> &B) {
+          return A.second.slt(B.second);
+        });
+
+        ConsecutiveLoadGroup Group;
+        Group.FirstLoad = FirstLoad;
+        Group.Loads = std::move(Loads);
+        Group.BasePtr = Base;
+        Group.TotalBytes = TotalBytes;
+        if (validateGroupStrideForPeeling(Group, L, SE))
+          Groups.emplace_back(std::move(Group));
+        else
+          LLVM_DEBUG(dbgs() << "  Rejecting group due to stride mismatch\n");
+      }
+      LoadsByBase.clear();
+    }
+  }
+  return Groups;
+}
+} // anonymous namespace
+
+// Returns 1 if peeling the last iteration would enable widening consecutive
+// load groups to power-of-2 sizes. Returns 0 otherwise.
+static unsigned peelLastForConsecutiveLoadWidening(
+    Loop &L, ScalarEvolution &SE, const DataLayout &DL,
+    const TargetTransformInfo &TTI, DominatorTree &DT, AssumptionCache *AC) {
+  if (!EnablePeelForLoadWidening)
+    return 0;
+
+  // Only handle innermost loops
+  if (!L.isInnermost())
+    return 0;
+
+  // Need to be able to peel the last iteration
+  if (!canPeelLastIteration(L, SE))
+    return 0;
+
+  BasicBlock *Latch = L.getLoopLatch();
+  if (!Latch)
+    return 0;
+
+  // Look for consecutive load groups in blocks that execute every iteration
+  for (BasicBlock *BB : L.blocks()) {
+    // Skip blocks that don't dominate the latch
+    if (!DT.dominates(BB, Latch))
+      continue;
+
+    // Find consecutive load groups using the helper function
+    auto Groups =
+        findConsecutiveLoadGroupsForPeeling(BB, L, SE, DL, TTI, &DT, AC);
+    if (!Groups.empty()) {
+      // Describe the groups
+      LLVM_DEBUG({
+        for (const auto &Group : Groups) {
+          dbgs() << "  Found consecutive load group for peeling:\n";
+          for (auto [LI, Offset] : Group.Loads) {
+            dbgs() << "    ";
+            LI->print(dbgs());
+            dbgs() << "\n";
+          }
+          dbgs() << "    Total bytes: " << Group.TotalBytes << "\n";
+        }
+      });
+
+      return 1;
+    }
+  }
+
+  return 0;
+}
 
 // Return the number of iterations we want to peel off.
 void llvm::computePeelCount(Loop *L, unsigned LoopSize,
                             TargetTransformInfo::PeelingPreferences &PP,
                             unsigned TripCount, DominatorTree &DT,
                             ScalarEvolution &SE, const TargetTransformInfo &TTI,
-                            AssumptionCache *AC, unsigned Threshold) {
+                            AssumptionCache *AC, unsigned Threshold,
+                            bool AllowLoadWideningPeel) {
   assert(LoopSize > 0 && "Zero loop size is not allowed!");
   // Save the PP.PeelCount value set by the target in
   // TTI.getPeelingPreferences or by the flag -unroll-peel-count.
@@ -849,6 +1064,26 @@ void llvm::computePeelCount(Loop *L, unsigned LoopSize,
     }
   }
 
+  // Check for consecutive load widening opportunity.
+  // Skip this when running before vectorization (AllowLoadWideningPeel=false)
+  // to avoid peeling loops that could have been vectorized instead.
+  if (PP.PeelCount == 0 && AllowLoadWideningPeel) {
+    const DataLayout &DL = L->getHeader()->getDataLayout();
+    unsigned LoadWideningPeel =
+        peelLastForConsecutiveLoadWidening(*L, SE, DL, TTI, DT, AC);
+    if (LoadWideningPeel > 0) {
+      if (LoadWideningPeel + AlreadyPeeled <= UnrollPeelMaxCount) {
+        LLVM_DEBUG(dbgs() << "Peel last " << LoadWideningPeel
+                          << " iteration(s) to enable consecutive load widening.\n");
+        PP.PeelCount = LoadWideningPeel;
+        PP.PeelProfiledIterations = false;
+        PP.PeelLast = true;
+        NumPeeledForLoadWidening++;
+        return;
+      }
+    }
+  }
+
   // Bail if we know the statically calculated trip count.
   // In this case we rather prefer partial unrolling.
   if (TripCount)
@@ -885,6 +1120,126 @@ void llvm::computePeelCount(Loop *L, unsigned LoopSize,
     LLVM_DEBUG(dbgs() << "Max peel count by cost: "
                       << (Threshold / LoopSize - 1) << "\n");
   }
+}
+
+/// Widen consecutive load groups in a loop to power-of-2 sizes.
+/// Returns true if any loads were widened.
+bool llvm::widenConsecutiveLoads(Loop &L, ScalarEvolution &SE,
+                                 const DataLayout &DL,
+                                 const TargetTransformInfo &TTI,
+                                 DominatorTree &DT, LoopInfo *LI,
+                                 AssumptionCache *AC) {
+  BasicBlock *Latch = L.getLoopLatch();
+  if (!Latch)
+    return false;
+
+  bool Changed = false;
+
+  for (BasicBlock *BB : L.blocks()) {
+    if (!DT.dominates(BB, Latch))
+      continue;
+
+    auto Groups =
+        findConsecutiveLoadGroupsForPeeling(BB, L, SE, DL, TTI, &DT, AC);
+    for (auto &Group : Groups) {
+      LLVM_DEBUG(dbgs() << "    Widening " << Group.TotalBytes << " bytes to "
+                        << NextPowerOf2(Group.TotalBytes - 1) << " bytes\n");
+
+      // Compute the wide load size (round up to next power of 2, capped at 16)
+      unsigned WideBytes = std::min(
+          16u, static_cast<unsigned>(NextPowerOf2(Group.TotalBytes - 1)));
+      unsigned WideBits = WideBytes * 8;
+
+      // Find the earliest load in program order to insert the wide load before.
+      // After sorting by offset, Group.Loads[0] has the minimum offset but may
+      // not be the earliest in program order.
+      LoadInst *InsertPoint = Group.FirstLoad;
+
+      // Create the wide load
+      IRBuilder<> Builder(InsertPoint);
+      Type *WideType = IntegerType::get(L.getHeader()->getContext(), WideBits);
+
+      // Get the pointer to the start of the consecutive region
+      Value *BasePtr = Group.BasePtr;
+      int64_t FirstOffset = Group.Loads[0].second.getSExtValue();
+
+      // If the first load doesn't start at offset 0, we need to adjust
+      if (FirstOffset != 0) {
+        Value *OrigPtr = Group.BasePtr;
+        BasePtr = Builder.CreatePtrAdd(
+            OrigPtr,
+            ConstantInt::get(Type::getInt64Ty(L.getHeader()->getContext()),
+                             FirstOffset));
+      }
+
+      LoadInst *WideLoad = Builder.CreateLoad(WideType, BasePtr);
+
+      // Merge AA metadata from all loads
+      AAMDNodes AATags = InsertPoint->getAAMetadata();
+      for (const auto &[LI, Offset] : Group.Loads) {
+        if (LI != InsertPoint)
+          AATags = AATags.concat(LI->getAAMetadata());
+      }
+      if (AATags)
+        WideLoad->setAAMetadata(AATags);
+
+      // For each original load, extract the corresponding bytes
+      bool IsBigEndian = DL.isBigEndian();
+      for (const auto &[LI, Offset] : Group.Loads) {
+        unsigned LoadBytes = DL.getTypeStoreSize(LI->getType());
+
+        // Calculate bit offset within the wide load
+        unsigned BitOffset;
+        if (IsBigEndian) {
+          BitOffset =
+              WideBits - (Offset.getSExtValue() - FirstOffset + LoadBytes) * 8;
+        } else {
+          BitOffset = (Offset.getSExtValue() - FirstOffset) * 8;
+        }
+
+        Value *Extracted = WideLoad;
+        if (BitOffset != 0) {
+          Extracted = Builder.CreateLShr(Extracted,
+                                         ConstantInt::get(WideType, BitOffset));
+        }
+
+        // Only truncate if the target type is smaller than the wide type
+        unsigned TargetBits = LI->getType()->getScalarSizeInBits();
+        if (TargetBits < WideBits) {
+        Extracted = Builder.CreateTrunc(Extracted, LI->getType());
+        } else {
+          assert(TargetBits == WideBits &&
+                 "Target type cannot be larger than wide load type");
+        }
+
+        LI->replaceAllUsesWith(Extracted);
+      }
+
+      // Delete the original loads (in reverse program order to maintain
+      // validity)
+      SmallVector<LoadInst *> LoadsToDelete;
+      for (const auto &[LI, Offset] : Group.Loads)
+        LoadsToDelete.push_back(LI);
+      llvm::sort(LoadsToDelete, [](LoadInst *A, LoadInst *B) {
+        return B->comesBefore(A); // Reverse order
+      });
+      for (LoadInst *LI : LoadsToDelete)
+        LI->eraseFromParent();
+
+      NumLoadsWidened++;
+      Changed = true;
+    }
+  }
+
+  // Restore LCSSA form if we modified the loop. We need to restore LCSSA
+  // for all top-level loops since replacing load uses may affect LCSSA phi
+  // nodes in exit blocks of sibling loops.
+  if (Changed && LI) {
+    for (Loop *TopLoop : *LI)
+      formLCSSARecursively(*TopLoop, DT, LI, &SE);
+  }
+
+  return Changed;
 }
 
 /// Clones the body of the loop L, putting it between \p InsertTop and \p

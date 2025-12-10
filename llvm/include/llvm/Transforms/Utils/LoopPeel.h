@@ -41,12 +41,24 @@ gatherPeelingPreferences(Loop *L, ScalarEvolution &SE,
                          std::optional<bool> UserAllowProfileBasedPeeling,
                          bool UnrollingSpecficValues = false);
 
+/// \p AllowLoadWideningPeel controls whether peeling for load widening is
+/// considered. This should be set to false when running before vectorization
+/// (e.g., in LoopFullUnrollPass) to avoid peeling loops that could have been
+/// vectorized instead.
 void computePeelCount(Loop *L, unsigned LoopSize,
                       TargetTransformInfo::PeelingPreferences &PP,
                       unsigned TripCount, DominatorTree &DT,
                       ScalarEvolution &SE, const TargetTransformInfo &TTI,
                       AssumptionCache *AC = nullptr,
-                      unsigned Threshold = UINT_MAX);
+                      unsigned Threshold = UINT_MAX,
+                      bool AllowLoadWideningPeel = true);
+
+/// Widen consecutive load groups in a loop to power-of-2 sizes.
+/// Should be called after peeling the last iteration for load widening.
+/// Returns true if any loads were widened.
+bool widenConsecutiveLoads(Loop &L, ScalarEvolution &SE, const DataLayout &DL,
+                           const TargetTransformInfo &TTI, DominatorTree &DT,
+                           LoopInfo *LI, AssumptionCache *AC);
 
 } // end namespace llvm
 
