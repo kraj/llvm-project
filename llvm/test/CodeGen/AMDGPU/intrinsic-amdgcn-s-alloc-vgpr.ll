@@ -7,6 +7,7 @@ declare i1 @llvm.amdgcn.s.alloc.vgpr(i32)
 define amdgpu_cs void @test_alloc_vreg_const(ptr addrspace(1) %out) #0 {
 ; GISEL-LABEL: test_alloc_vreg_const:
 ; GISEL:       ; %bb.0: ; %entry
+; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 25, 1), 1
 ; GISEL-NEXT:    s_alloc_vgpr 45
 ; GISEL-NEXT:    s_cselect_b32 s0, 1, 0
 ; GISEL-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
@@ -17,6 +18,7 @@ define amdgpu_cs void @test_alloc_vreg_const(ptr addrspace(1) %out) #0 {
 ;
 ; DAGISEL-LABEL: test_alloc_vreg_const:
 ; DAGISEL:       ; %bb.0: ; %entry
+; DAGISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 25, 1), 1
 ; DAGISEL-NEXT:    s_alloc_vgpr 45
 ; DAGISEL-NEXT:    s_cselect_b32 s0, -1, 0
 ; DAGISEL-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
@@ -33,6 +35,7 @@ entry:
 define amdgpu_cs void @test_alloc_vreg_var(i32 inreg %n, ptr addrspace(1) %out) #0 {
 ; GISEL-LABEL: test_alloc_vreg_var:
 ; GISEL:       ; %bb.0: ; %entry
+; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 25, 1), 1
 ; GISEL-NEXT:    s_alloc_vgpr s0
 ; GISEL-NEXT:    s_cselect_b32 s0, 1, 0
 ; GISEL-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
@@ -43,6 +46,7 @@ define amdgpu_cs void @test_alloc_vreg_var(i32 inreg %n, ptr addrspace(1) %out) 
 ;
 ; DAGISEL-LABEL: test_alloc_vreg_var:
 ; DAGISEL:       ; %bb.0: ; %entry
+; DAGISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 25, 1), 1
 ; DAGISEL-NEXT:    s_alloc_vgpr s0
 ; DAGISEL-NEXT:    s_cselect_b32 s0, -1, 0
 ; DAGISEL-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
