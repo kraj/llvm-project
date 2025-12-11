@@ -2880,8 +2880,7 @@ convertOmpParallel(omp::ParallelOp opInst, llvm::IRBuilderBase &builder,
     ifCond = moduleTranslation.lookupValue(ifVar);
   llvm::Value *numThreads = nullptr;
   // num_threads dims and values are not yet supported
-  assert(!opInst.getNumThreadsDims().has_value() &&
-         opInst.getNumThreadsValues().empty() &&
+  assert(!opInst.hasNumThreadsDimsModifier() &&
          "Lowering of num_threads with dims modifier is NYI.");
   if (auto numThreadsVar = opInst.getNumThreads())
     numThreads = moduleTranslation.lookupValue(numThreadsVar);
@@ -5609,8 +5608,7 @@ extractHostEvalClauses(omp::TargetOp targetOp, Value &numThreads,
           })
           .Case([&](omp::ParallelOp parallelOp) {
             // num_threads dims and values are not yet supported
-            assert(!parallelOp.getNumThreadsDims().has_value() &&
-                   parallelOp.getNumThreadsValues().empty() &&
+            assert(!parallelOp.hasNumThreadsDimsModifier() &&
                    "Lowering of num_threads with dims modifier is NYI.");
             if (parallelOp.getNumThreads() == blockArg)
               numThreads = hostEvalVar;
@@ -5734,8 +5732,7 @@ initTargetDefaultAttrs(omp::TargetOp targetOp, Operation *capturedOp,
 
     if (auto parallelOp = castOrGetParentOfType<omp::ParallelOp>(capturedOp)) {
       // num_threads dims and values are not yet supported
-      assert(!parallelOp.getNumThreadsDims().has_value() &&
-             parallelOp.getNumThreadsValues().empty() &&
+      assert(!parallelOp.hasNumThreadsDimsModifier() &&
              "Lowering of num_threads with dims modifier is NYI.");
       numThreads = parallelOp.getNumThreads();
     }
