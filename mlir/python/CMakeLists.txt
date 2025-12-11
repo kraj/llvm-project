@@ -533,6 +533,10 @@ declare_mlir_python_extension(MLIRPythonExtension.Core
   PYTHON_BINDINGS_LIBRARY nanobind
   SOURCES
     MainModule.cpp
+    IRAffine.cpp
+    IRAttributes.cpp
+    IRInterfaces.cpp
+    IRTypes.cpp
     Pass.cpp
     Rewrite.cpp
 
@@ -1007,12 +1011,8 @@ get_property(NB_LIBRARY_TARGET_NAME TARGET MLIRPythonModules.extension._mlir.dso
 list(GET NB_LIBRARY_TARGET_NAME 0 NB_LIBRARY_TARGET_NAME)
 add_mlir_library_install(${NB_LIBRARY_TARGET_NAME})
 add_mlir_library(MLIRPythonSupport
-  ${PYTHON_SOURCE_DIR}/Globals.cpp
-  ${PYTHON_SOURCE_DIR}/IRAffine.cpp
-  ${PYTHON_SOURCE_DIR}/IRAttributes.cpp
   ${PYTHON_SOURCE_DIR}/IRCore.cpp
-  ${PYTHON_SOURCE_DIR}/IRInterfaces.cpp
-  ${PYTHON_SOURCE_DIR}/IRTypes.cpp
+  ${PYTHON_SOURCE_DIR}/Globals.cpp
   EXCLUDE_FROM_LIBMLIR
   SHARED
   LINK_COMPONENTS
@@ -1024,6 +1024,13 @@ add_mlir_library(MLIRPythonSupport
 target_link_libraries(MLIRPythonSupport PUBLIC ${NB_LIBRARY_TARGET_NAME})
 nanobind_link_options(MLIRPythonSupport)
 set_target_properties(MLIRPythonSupport PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY "${MLIRPythonModules_ROOT_PREFIX}/_mlir_libs"
+  BINARY_OUTPUT_DIRECTORY "${MLIRPythonModules_ROOT_PREFIX}/_mlir_libs"
+  # Needed for windows (and doesn't hurt others).
+  RUNTIME_OUTPUT_DIRECTORY "${MLIRPythonModules_ROOT_PREFIX}/_mlir_libs"
+  ARCHIVE_OUTPUT_DIRECTORY "${MLIRPythonModules_ROOT_PREFIX}/_mlir_libs"
+)
+set_target_properties(${NB_LIBRARY_TARGET_NAME} PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${MLIRPythonModules_ROOT_PREFIX}/_mlir_libs"
   BINARY_OUTPUT_DIRECTORY "${MLIRPythonModules_ROOT_PREFIX}/_mlir_libs"
   # Needed for windows (and doesn't hurt others).
@@ -1051,4 +1058,4 @@ endif()
 target_link_libraries(
   MLIRPythonModules.extension._mlir.dso
   PUBLIC MLIRPythonSupport)
-
+target_compile_definitions(MLIRPythonSupport PRIVATE NB_DOMAIN=${MLIR_BINDINGS_PYTHON_NB_DOMAIN})
