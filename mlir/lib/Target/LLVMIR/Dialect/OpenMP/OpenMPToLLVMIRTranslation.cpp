@@ -1981,7 +1981,7 @@ convertOmpTeams(omp::TeamsOp op, llvm::IRBuilderBase &builder,
   if (failed(checkImplementationStatus(*op)))
     return failure();
 
-  if (op.getNumTeamsDims().has_value() || !op.getNumTeamsValues().empty()) {
+  if (op.hasNumTeamsDimsModifier()) {
     return op.emitError("Lowering of num_teams with dims modifier is NYI.");
   }
 
@@ -5592,8 +5592,7 @@ extractHostEvalClauses(omp::TargetOp targetOp, Value &numThreads,
       llvm::TypeSwitch<Operation *>(user)
           .Case([&](omp::TeamsOp teamsOp) {
             // num_teams dims and values are not yet supported
-            assert(!teamsOp.getNumTeamsDims().has_value() &&
-                   teamsOp.getNumTeamsValues().empty() &&
+            assert(!teamsOp.hasNumTeamsDimsModifier() &&
                    "Lowering of num_teams with dims modifier is NYI.");
             if (teamsOp.getNumTeamsLower() == blockArg)
               numTeamsLower = hostEvalVar;
@@ -5718,8 +5717,7 @@ initTargetDefaultAttrs(omp::TargetOp targetOp, Operation *capturedOp,
     // ensures values are mapped and available inside of the target region.
     if (auto teamsOp = castOrGetParentOfType<omp::TeamsOp>(capturedOp)) {
       // num_teams dims and values are not yet supported
-      assert(!teamsOp.getNumTeamsDims().has_value() &&
-             teamsOp.getNumTeamsValues().empty() &&
+      assert(!teamsOp.hasNumTeamsDimsModifier() &&
              "Lowering of num_teams with dims modifier is NYI.");
       numTeamsLower = teamsOp.getNumTeamsLower();
       numTeamsUpper = teamsOp.getNumTeamsUpper();
