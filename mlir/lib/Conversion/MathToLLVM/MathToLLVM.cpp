@@ -32,11 +32,15 @@ namespace {
 template <typename SourceOp, typename TargetOp>
 using ConvertFastMath = arith::AttrConvertFastMathToLLVM<SourceOp, TargetOp>;
 
-template <typename SourceOp, typename TargetOp>
+template <typename SourceOp, typename TargetOp,
+          bool FailOnUnsupportedFP = false>
 using ConvertFMFMathToLLVMPattern =
-    VectorConvertToLLVMPattern<SourceOp, TargetOp, ConvertFastMath>;
+    VectorConvertToLLVMPattern<SourceOp, TargetOp, ConvertFastMath,
+                               FailOnUnsupportedFP>;
 
-using AbsFOpLowering = ConvertFMFMathToLLVMPattern<math::AbsFOp, LLVM::FAbsOp>;
+using AbsFOpLowering =
+    ConvertFMFMathToLLVMPattern<math::AbsFOp, LLVM::FAbsOp,
+                                /*FailOnUnsupportedFP=*/true>;
 using CeilOpLowering = ConvertFMFMathToLLVMPattern<math::CeilOp, LLVM::FCeilOp>;
 using CopySignOpLowering =
     ConvertFMFMathToLLVMPattern<math::CopySignOp, LLVM::CopySignOp>;
@@ -49,7 +53,8 @@ using Exp2OpLowering = ConvertFMFMathToLLVMPattern<math::Exp2Op, LLVM::Exp2Op>;
 using ExpOpLowering = ConvertFMFMathToLLVMPattern<math::ExpOp, LLVM::ExpOp>;
 using FloorOpLowering =
     ConvertFMFMathToLLVMPattern<math::FloorOp, LLVM::FFloorOp>;
-using FmaOpLowering = ConvertFMFMathToLLVMPattern<math::FmaOp, LLVM::FMAOp>;
+using FmaOpLowering = ConvertFMFMathToLLVMPattern<math::FmaOp, LLVM::FMAOp,
+                                                  /*FailOnUnsupportedFP=*/true>;
 using Log10OpLowering =
     ConvertFMFMathToLLVMPattern<math::Log10Op, LLVM::Log10Op>;
 using Log2OpLowering = ConvertFMFMathToLLVMPattern<math::Log2Op, LLVM::Log2Op>;
@@ -339,8 +344,11 @@ struct RsqrtOpLowering : public ConvertOpToLLVMPattern<math::RsqrtOp> {
   }
 };
 
-struct IsNaNOpLowering : public ConvertOpToLLVMPattern<math::IsNaNOp> {
-  using ConvertOpToLLVMPattern<math::IsNaNOp>::ConvertOpToLLVMPattern;
+struct IsNaNOpLowering
+    : public ConvertOpToLLVMPattern<math::IsNaNOp,
+                                    /*FailOnUnsupportedFP=*/true> {
+  using ConvertOpToLLVMPattern<
+      math::IsNaNOp, /*FailOnUnsupportedFP=*/true>::ConvertOpToLLVMPattern;
 
   LogicalResult
   matchAndRewrite(math::IsNaNOp op, OpAdaptor adaptor,
@@ -358,8 +366,11 @@ struct IsNaNOpLowering : public ConvertOpToLLVMPattern<math::IsNaNOp> {
   }
 };
 
-struct IsFiniteOpLowering : public ConvertOpToLLVMPattern<math::IsFiniteOp> {
-  using ConvertOpToLLVMPattern<math::IsFiniteOp>::ConvertOpToLLVMPattern;
+struct IsFiniteOpLowering
+    : public ConvertOpToLLVMPattern<math::IsFiniteOp,
+                                    /*FailOnUnsupportedFP=*/true> {
+  using ConvertOpToLLVMPattern<
+      math::IsFiniteOp, /*FailOnUnsupportedFP=*/true>::ConvertOpToLLVMPattern;
 
   LogicalResult
   matchAndRewrite(math::IsFiniteOp op, OpAdaptor adaptor,
