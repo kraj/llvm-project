@@ -4469,6 +4469,53 @@ bool Sema::MergeFunctionDecl(FunctionDecl *New, NamedDecl *&OldD, Scope *S,
   return true;
 }
 
+/// Check if a function has a lifetimebound attribute on its function type
+/// (which represents the implicit 'this' parameter for methods).
+/// Returns the attribute if found, nullptr otherwise.
+static const LifetimeBoundAttr *
+getLifetimeBoundAttrFromType(const TypeSourceInfo *TSI) {
+  if (!TSI)
+    return nullptr;
+  // Walk through the type layers looking for a lifetimebound attribute.
+  TypeLoc TL = TSI->getTypeLoc();
+  while (true) {
+    auto ATL = TL.getAsAdjusted<AttributedTypeLoc>();
+    if (!ATL)
+      break;
+    if (auto *LBAttr = ATL.getAttrAs<LifetimeBoundAttr>())
+      return LBAttr;
+    TL = ATL.getModifiedLoc();
+  }
+  return nullptr;
+}
+
+/// Merge lifetimebound attribute on function type (implicit 'this')
+/// from Old to New method declaration.
+static void mergeLifetimeBoundAttrOnMethod(Sema &S, CXXMethodDecl *New,
+                                           const CXXMethodDecl *Old) {
+  const TypeSourceInfo *OldTSI = Old->getTypeSourceInfo();
+  const TypeSourceInfo *NewTSI = New->getTypeSourceInfo();
+
+  if (!OldTSI || !NewTSI)
+    return;
+
+  const LifetimeBoundAttr *OldLBAttr = getLifetimeBoundAttrFromType(OldTSI);
+  const LifetimeBoundAttr *NewLBAttr = getLifetimeBoundAttrFromType(NewTSI);
+
+  // If Old has lifetimebound but New doesn't, add it to New
+  if (OldLBAttr && !NewLBAttr) {
+    QualType NewMethodType = New->getType();
+    QualType AttributedType =
+        S.Context.getAttributedType(OldLBAttr, NewMethodType, NewMethodType);
+    TypeLocBuilder TLB;
+    TLB.pushFullCopy(NewTSI->getTypeLoc());
+    AttributedTypeLoc TyLoc = TLB.push<AttributedTypeLoc>(AttributedType);
+    TyLoc.setAttr(OldLBAttr);
+    New->setType(AttributedType);
+    New->setTypeSourceInfo(TLB.getTypeSourceInfo(S.Context, AttributedType));
+  }
+}
+
 bool Sema::MergeCompatibleFunctionDecls(FunctionDecl *New, FunctionDecl *Old,
                                         Scope *S, bool MergeTypeWithOld) {
   // Merge the attributes
@@ -4485,12 +4532,17 @@ bool Sema::MergeCompatibleFunctionDecls(FunctionDecl *New, FunctionDecl *Old,
   // Merge attributes from the parameters.  These can mismatch with K&R
   // declarations.
   if (New->getNumParams() == Old->getNumParams())
-      for (unsigned i = 0, e = New->getNumParams(); i != e; ++i) {
-        ParmVarDecl *NewParam = New->getParamDecl(i);
-        ParmVarDecl *OldParam = Old->getParamDecl(i);
-        mergeParamDeclAttributes(NewParam, OldParam, *this);
-        mergeParamDeclTypes(NewParam, OldParam, *this);
-      }
+    for (unsigned i = 0, e = New->getNumParams(); i != e; ++i) {
+      ParmVarDecl *NewParam = New->getParamDecl(i);
+      ParmVarDecl *OldParam = Old->getParamDecl(i);
+      mergeParamDeclAttributes(NewParam, OldParam, *this);
+      mergeParamDeclTypes(NewParam, OldParam, *this);
+    }
+
+  // Merge function type attributes (e.g., lifetimebound on implicit 'this').
+  if (auto *NewMethod = dyn_cast<CXXMethodDecl>(New))
+    if (auto *OldMethod = dyn_cast<CXXMethodDecl>(Old))
+      mergeLifetimeBoundAttrOnMethod(*this, NewMethod, OldMethod);
 
   if (getLangOpts().CPlusPlus)
     return MergeCXXFunctionDecl(New, Old, S);
