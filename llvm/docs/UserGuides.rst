@@ -53,6 +53,7 @@ intermediate LLVM representation.
    LoopTerminology
    MarkdownQuickstartTemplate
    MemorySSA
+   MemProf
    MergeFunctions
    MCJITDesignAndImplementation
    MisExpect
@@ -153,6 +154,10 @@ Optimizations
 
 :doc:`MemorySSA`
    Information about the MemorySSA utility in LLVM, as well as how to use it.
+
+:doc:`MemProf`
+   User guide and internals of MemProf, a profile guided optimization for
+   memory.
 
 :doc:`LoopTerminology`
   A document describing Loops and associated terms as used in LLVM.
