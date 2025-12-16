@@ -632,13 +632,20 @@ def VGPR_32 : SIRegisterClass<"AMDGPU", !listconcat(Reg32Types.types, Reg16Types
   let BaseClassOrder = 32;
 }
 
-// Identical to VGPR_32 except it only contains the low 128 (Lo128) registers.
+// Identical to VGPR_32 except only the low 128 (Lo128) registers in each
+// register bank are allocatable.
 def VGPR_32_Lo128 : SIRegisterClass<"AMDGPU", !listconcat(Reg32Types.types, Reg16Types.types), 32,
-                            (add (sequence "VGPR%u", 0, 127))> {
+                            (add (sequence "VGPR%u", 0, 895))> {
+  let AltOrders = [(add (sequence "VGPR%u", 0, 127),
+                        (sequence "VGPR%u", 256, 383),
+                        (sequence "VGPR%u", 512, 639),
+                        (sequence "VGPR%u", 768, 895))];
+  let AltOrderSelect = [{ return 1; }];
   let AllocationPriority = !add(0, !mul(BaseClassPriority, BaseClassScaleFactor));
   let GeneratePressureSet = 0;
   let Size = 32;
   let Weight = 1;
+  let BaseClassOrder = 33;
 }
 
 // Identical to VGPR_32 except it only contains the low 256 (Lo256) registers.
@@ -1485,15 +1492,6 @@ foreach size = ["64", "96", "128", "160", "192", "224", "256", "288", "320", "35
 
   // Always even alignment requirement
   def VGPROp_#size#_Align2 : RegisterOperand<!cast<RegisterClassLike>("VReg_"#size#_Align2)>;
-}
-
-def VGPROp_16_Lo128 : RegisterOperand<VGPR_16_Lo128> {
-  let DecoderMethod = "DecodeVGPR_16_Lo128RegisterClass";
-  let EncoderMethod = "getMachineOpValueT16Lo128";
-}
-
-def VGPROp_32_Lo128 : RegisterOperand<VGPR_32_Lo128> {
-  let DecoderMethod = "DecodeVGPR_32RegisterClass";
 }
 
 //===----------------------------------------------------------------------===//

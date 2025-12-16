@@ -3632,6 +3632,17 @@ bool isPackedFP32Inst(unsigned Opc) {
   }
 }
 
+bool isLo128VGPR32(MCPhysReg R) {
+  return R >= AMDGPU::VGPR0 && R <= AMDGPU::VGPR127;
+}
+
+bool isHi128VGPR32(MCPhysReg R) {
+  return ((R >= AMDGPU::VGPR128 && R < AMDGPU::VGPR256) ||
+          (R >= AMDGPU::VGPR384 && R < AMDGPU::VGPR512) ||
+          (R >= AMDGPU::VGPR640 && R < AMDGPU::VGPR768) ||
+          (R >= AMDGPU::VGPR896 && R < AMDGPU::VGPR1023));
+}
+
 const std::array<unsigned, 3> &ClusterDimsAttr::getDims() const {
   assert(isFixedDims() && "expect kind to be FixedDims");
   return Dims;
