@@ -53,16 +53,9 @@ void CFGStmtMap::Accumulate(SMap &SM, const CFGBlock *B) {
     SM[Term] = B;
 }
 
-CFGStmtMap *CFGStmtMap::Build(const CFG *C, const ParentMap *PM) {
-  if (!C || !PM)
-    return nullptr;
-
-  SMap SM;
-
+CFGStmtMap::CFGStmtMap(const CFG &C, const ParentMap &PM) : PM(&PM) {
   // Walk all blocks, accumulating the block-level expressions, labels,
   // and terminators.
-  for (const CFGBlock *BB : *C)
-    Accumulate(SM, BB);
-
-  return new CFGStmtMap(PM, std::move(SM));
+  for (const CFGBlock *BB : C)
+    Accumulate(M, BB);
 }
