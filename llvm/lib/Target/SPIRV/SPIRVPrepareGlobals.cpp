@@ -92,10 +92,10 @@ bool tryReplaceAliasWithAliasee(GlobalAlias &GA) {
     return false;
   }
 
-  GlobalObject *AO = GA.getAliaseeObject();
+  auto *AO = dyn_cast<GlobalObject>(GA.getAliasee());
   if (!AO) {
-    LLVM_DEBUG(dbgs() << "Skipping alias with no aliasee: " << GA.getName()
-                      << "\n");
+    LLVM_DEBUG(dbgs() << "Skipping alias whose aliasee is not a GlobalObject: "
+                      << GA.getName() << "\n");
     return false;
   }
 
@@ -109,7 +109,9 @@ bool tryReplaceAliasWithAliasee(GlobalAlias &GA) {
                     << " with aliasee: " << AO->getName() << "\n");
 
   GA.replaceAllUsesWith(AO);
-  GA.eraseFromParent();
+  if (GA.isDiscardableIfUnused()) {
+    GA.eraseFromParent();
+  }
 
   return true;
 }
