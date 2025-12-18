@@ -22,35 +22,11 @@
 #include "SPIRVSubtarget.h"
 #include "SPIRVUtils.h"
 #include "llvm/CodeGen/FunctionLoweringInfo.h"
-#include "llvm/IR/GlobalAlias.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/IntrinsicsSPIRV.h"
 #include "llvm/Support/ModRef.h"
 
 using namespace llvm;
-
-// Resolves a global alias to its underlying aliasee object.
-// Updates the machine operand to reference the resolved aliasee while
-// preserving offset and target flags from the original operand.
-// Returns the resolved aliasee object, or nullptr if resolution fails.
-static const GlobalValue *resolveGlobalAlias(const GlobalAlias *GA,
-                                             MachineOperand &MO) {
-  const auto *AO = GA->getAliaseeObject();
-  if (!AO)
-    return nullptr;
-
-  // Preserve offset and target flags from the original operand
-  int64_t Offset = MO.getOffset();
-  unsigned TFlags = MO.getTargetFlags();
-
-  // Update the machine operand to reference the aliasee object.
-  // MCInstLower requires the aliasee object otherwise it will crash during
-  // lowering. If not updated, the callee will be a global alias instead of a
-  // function and fail.
-  MO = MachineOperand::CreateGA(AO, Offset, TFlags);
-
-  return AO;
-}
 
 SPIRVCallLowering::SPIRVCallLowering(const SPIRVTargetLowering &TLI,
                                      SPIRVGlobalRegistry *GR)
@@ -549,36 +525,10 @@ bool SPIRVCallLowering::lowerCall(MachineIRBuilder &MIRBuilder,
   // Emit a regular OpFunctionCall. If it's an externally declared function,
   // be sure to emit its type and function declaration here. It will be hoisted
   // globally later.
-  MachineOperand &InfoCallee = Info.Callee;
-  if (InfoCallee.isGlobal()) {
-    const GlobalValue *GV = InfoCallee.getGlobal();
-
-    // Check if the callee is a global alias and resolve it to the aliasee
-    // object (if possible).
-    if (const auto *GA = dyn_cast<GlobalAlias>(GV)) {
-
-      // Check if the alias or the aliasee may be replaced by a symbol outside
-      // the module at link time or runtime.
-      if (GA->isInterposable() || GV->isInterposable()) {
-        // The lang ref says that in this scenario "any optimization cannot
-        // replace the alias with the aliasee". We don't yet support the
-        // interposable case.
-        return false;
-      }
-
-      // Replace the alias with the aliasee.
-      GV = resolveGlobalAlias(GA, InfoCallee);
-
-      // If alias resolution failed, return early. The subsequent code expects
-      // GV to be a Function and would fail anyway, with or without alias
-      // handling.
-      if (!GV)
-        return false;
-    }
-
-    std::string FuncName = GV->getName().str();
+  if (Info.Callee.isGlobal()) {
+    std::string FuncName = Info.Callee.getGlobal()->getName().str();
     DemangledName = getOclOrSpirvBuiltinDemangledName(FuncName);
-    CF = dyn_cast_or_null<const Function>(GV);
+    CF = dyn_cast_or_null<const Function>(Info.Callee.getGlobal());
     // TODO: support constexpr casts and indirect calls.
     if (CF == nullptr)
       return false;
@@ -705,7 +655,7 @@ bool SPIRVCallLowering::lowerCall(MachineIRBuilder &MIRBuilder,
     CallOp = SPIRV::OpFunctionPointerCallINTEL;
     // Collect information about the indirect call to support possible
     // specification of opaque ptr types of parent function's parameters
-    Register CalleeReg = InfoCallee.getReg();
+    Register CalleeReg = Info.Callee.getReg();
     if (CalleeReg.isValid()) {
       SPIRVCallLowering::SPIRVIndirectCall IndirectCall;
       IndirectCall.Callee = CalleeReg;
@@ -736,7 +686,7 @@ bool SPIRVCallLowering::lowerCall(MachineIRBuilder &MIRBuilder,
   auto MIB = MIRBuilder.buildInstr(CallOp)
                  .addDef(ResVReg)
                  .addUse(GR->getSPIRVTypeID(RetType))
-                 .add(InfoCallee);
+                 .add(Info.Callee);
 
   for (const auto &Arg : Info.OrigArgs) {
     // Currently call args should have single vregs.
