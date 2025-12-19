@@ -639,8 +639,20 @@ def VGPR_32_Lo128 : SIRegisterClass<"AMDGPU", !listconcat(Reg32Types.types, Reg1
   let AltOrders = [(add (sequence "VGPR%u", 0, 127),
                         (sequence "VGPR%u", 256, 383),
                         (sequence "VGPR%u", 512, 639),
-                        (sequence "VGPR%u", 768, 895))];
-  let AltOrderSelect = [{ return 1; }];
+                        (sequence "VGPR%u", 768, 895)),
+                   (add (sequence "VGPR%u", 0, 127),
+                        (sequence "VGPR%u", 256, 383),
+                        (sequence "VGPR%u", 512, 639)),
+                   (add (sequence "VGPR%u", 0, 127),
+                        (sequence "VGPR%u", 256, 383)),
+                   (add (sequence "VGPR%u", 0, 127))];
+  let AltOrderSelect = [{
+                          const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
+                          unsigned N = ST.getMaxNumVGPRs(MF);
+                          unsigned SchedWaves = MF.getInfo<SIMachineFunctionInfo>()->getMinAllowedOccupancy();
+                          N = std::min(N, ST.getMaxNumVGPRs(SchedWaves, 0));
+                          return N > 768 ? 1 : N > 512 ? 2 : N > 256 ? 3 : 4;
+                        }];
   let AllocationPriority = !add(0, !mul(BaseClassPriority, BaseClassScaleFactor));
   let GeneratePressureSet = 0;
   let Size = 32;
