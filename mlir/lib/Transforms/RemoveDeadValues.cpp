@@ -86,7 +86,12 @@ struct FunctionToCleanUp {
   BitVector nonLiveRets;
 };
 
-struct OperationToCleanup {
+struct ResultsToCleanup {
+  Operation *op;
+  BitVector nonLive;
+};
+
+struct OperandsToCleanup {
   Operation *op;
   BitVector nonLive;
   Operation *callee =
@@ -107,8 +112,8 @@ struct SuccessorOperandsToCleanup {
 struct RDVFinalCleanupList {
   SmallVector<Operation *> operations;
   SmallVector<FunctionToCleanUp> functions;
-  SmallVector<OperationToCleanup> operands;
-  SmallVector<OperationToCleanup> results;
+  SmallVector<OperandsToCleanup> operands;
+  SmallVector<ResultsToCleanup> results;
   SmallVector<BlockArgsToCleanup> blocks;
   SmallVector<SuccessorOperandsToCleanup> successorOperands;
 };
@@ -875,7 +880,7 @@ static void cleanUpDeadVals(RDVFinalCleanupList &list) {
 
   // 5. Operands
   LDBG() << "Cleaning up " << list.operands.size() << " operand lists";
-  for (OperationToCleanup &o : list.operands) {
+  for (OperandsToCleanup &o : list.operands) {
     // Handle call-specific cleanup only when we have a cached callee reference.
     // This avoids expensive symbol lookup and is defensive against future
     // changes.
