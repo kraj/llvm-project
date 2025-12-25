@@ -106,7 +106,6 @@ struct SuccessorOperandsToCleanup {
 
 struct RDVFinalCleanupList {
   SmallVector<Operation *> operations;
-  SmallVector<Value> values;
   SmallVector<FunctionToCleanUp> functions;
   SmallVector<OperationToCleanup> operands;
   SmallVector<OperationToCleanup> results;
@@ -320,10 +319,8 @@ static void processFuncOp(FunctionOpInterface funcOp, Operation *module,
 
   // Do (1).
   for (auto [index, arg] : llvm::enumerate(arguments))
-    if (arg && nonLiveArgs[index]) {
-      cl.values.push_back(arg);
+    if (arg && nonLiveArgs[index])
       nonLiveSet.insert(arg);
-    }
 
   // Do (2). (Skip creating generic operand cleanup entries for call ops.
   // Call arguments will be removed in the call-site specific segment-aware
@@ -845,14 +842,7 @@ static void cleanUpDeadVals(RDVFinalCleanupList &list) {
     op->erase();
   }
 
-  // 4. Values
-  LDBG() << "Cleaning up " << list.values.size() << " values";
-  for (auto &v : list.values) {
-    LDBG() << "Dropping all uses of value: " << v;
-    v.dropAllUses();
-  }
-
-  // 5. Functions
+  // 4. Functions
   LDBG() << "Cleaning up " << list.functions.size() << " functions";
   // Record which function arguments were erased so we can shrink call-site
   // argument segments for CallOpInterface operations (e.g. ops using
@@ -869,6 +859,9 @@ static void cleanUpDeadVals(RDVFinalCleanupList &list) {
       llvm::interleaveComma(f.nonLiveRets.set_bits(), os);
       os << "]";
     });
+    // Drop all uses of the dead arguments.
+    for (auto deadIdx : f.nonLiveArgs.set_bits())
+      f.funcOp.getArgument(deadIdx).dropAllUses();
     // Some functions may not allow erasing arguments or results. These calls
     // return failure in such cases without modifying the function, so it's okay
     // to proceed.
@@ -880,7 +873,7 @@ static void cleanUpDeadVals(RDVFinalCleanupList &list) {
     (void)f.funcOp.eraseResults(f.nonLiveRets);
   }
 
-  // 6. Operands
+  // 5. Operands
   LDBG() << "Cleaning up " << list.operands.size() << " operand lists";
   for (OperationToCleanup &o : list.operands) {
     // Handle call-specific cleanup only when we have a cached callee reference.
@@ -929,7 +922,7 @@ static void cleanUpDeadVals(RDVFinalCleanupList &list) {
     }
   }
 
-  // 7. Results
+  // 6. Results
   LDBG() << "Cleaning up " << list.results.size() << " result lists";
   for (auto &r : list.results) {
     LDBG_OS([&](raw_ostream &os) {
