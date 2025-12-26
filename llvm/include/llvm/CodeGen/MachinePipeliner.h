@@ -236,6 +236,14 @@ class SwingSchedulerDDG {
   struct SwingSchedulerDDGEdges {
     EdgesType Preds;
     EdgesType Succs;
+
+    /// This field is a subset of ValidationOnlyEdges. These edges are used only
+    /// by specific heuristics, mainly for cycle detection. Although they are
+    /// unnecessary in theory (i.e., ignoring them should still yield a valid
+    /// schedule), they are retained to preserve the existing behavior. Since we
+    /// only need which extra edges exist from a given SUnit, we only store the
+    /// destination SUnits.
+    SmallVector<SUnit *, 4> ExtraSuccs;
   };
 
   void initEdges(SUnit *SU);
@@ -265,6 +273,8 @@ public:
   const EdgesType &getInEdges(const SUnit *SU) const;
 
   const EdgesType &getOutEdges(const SUnit *SU) const;
+
+  ArrayRef<SUnit *> getExtraOutEdges(const SUnit *SU) const;
 
   bool isValidSchedule(const SMSchedule &Schedule) const;
 };
@@ -361,7 +371,7 @@ class SwingSchedulerDAG : public ScheduleDAGInstrs {
       NumPaths = 0;
     }
 
-    void createAdjacencyStructure(SwingSchedulerDAG *DAG);
+    void createAdjacencyStructure(SwingSchedulerDDG *DDG);
     bool circuit(int V, int S, NodeSetType &NodeSets,
                  const SwingSchedulerDAG *DAG, bool HasBackedge = false);
     void unblock(int U);
@@ -417,8 +427,6 @@ public:
   int getZeroLatencyHeight(SUnit *Node) {
     return ScheduleInfo[Node->NodeNum].ZeroLatencyHeight;
   }
-
-  bool isLoopCarriedDep(const SwingSchedulerDDGEdge &Edge) const;
 
   void applyInstrChange(MachineInstr *MI, SMSchedule &Schedule);
 
@@ -530,13 +538,11 @@ public:
     SUnit *FirstNode = Nodes[0];
     SUnit *LastNode = Nodes[Nodes.size() - 1];
 
-    for (auto &PI : DDG->getInEdges(LastNode)) {
+    for (SUnit *SU : DDG->getExtraOutEdges(LastNode)) {
       // If we have an order dep that is potentially loop carried then a
-      // back-edge exists between the last node and the first node that isn't
-      // modeled in the DAG. Handle it manually by adding 1 to the distance of
-      // the last node.
-      if (PI.getSrc() != FirstNode || !PI.isOrderDep() ||
-          !DAG->isLoopCarriedDep(PI))
+      // back-edge exists between the last node and the first node in extra
+      // edges. Handle it manually by adding 1 to the distance of the last node.
+      if (SU != FirstNode)
         continue;
       unsigned &First = SUnitToDistance[FirstNode];
       unsigned Last = SUnitToDistance[LastNode];
