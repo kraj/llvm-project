@@ -2033,6 +2033,41 @@ static Constant *getFPClassConstant(Type *Ty, FPClassTest Mask,
   }
 }
 
+static Value *simplifyDemandedUseFPClassFPTrunc(InstCombinerImpl &IC,
+                                                Instruction &I,
+                                                FPClassTest DemandedMask,
+                                                KnownFPClass &Known,
+                                                unsigned Depth) {
+  FPClassTest SrcDemandedMask = DemandedMask;
+
+  // Zero results may have been rounded from subnormal sources.
+  if (DemandedMask & fcNegZero)
+    SrcDemandedMask |= fcNegSubnormal;
+  if (DemandedMask & fcPosZero)
+    SrcDemandedMask |= fcPosSubnormal;
+
+  // Subnormal results may have been normal in the source type
+  if (DemandedMask & fcNegSubnormal)
+    SrcDemandedMask |= fcNegNormal;
+  if (DemandedMask & fcPosSubnormal)
+    SrcDemandedMask |= fcPosNormal;
+
+  if (DemandedMask & fcPosInf)
+    SrcDemandedMask |= fcPosNormal;
+  if (DemandedMask & fcNegInf)
+    SrcDemandedMask |= fcNegNormal;
+
+  KnownFPClass KnownSrc;
+  if (IC.SimplifyDemandedFPClass(&I, 0, SrcDemandedMask, KnownSrc, Depth + 1))
+    return &I;
+
+  Known = KnownFPClass::fptrunc(KnownSrc);
+
+  FPClassTest ValidResults = DemandedMask & Known.KnownFPClasses;
+  return getFPClassConstant(I.getType(), ValidResults,
+                            /*IsCanonicalizing=*/true);
+}
+
 Value *InstCombinerImpl::SimplifyDemandedUseFPClass(Instruction *I,
                                                     FPClassTest DemandedMask,
                                                     KnownFPClass &Known,
@@ -2218,6 +2253,9 @@ Value *InstCombinerImpl::SimplifyDemandedUseFPClass(Instruction *I,
     FPClassTest ValidResults = DemandedMask & Known.KnownFPClasses;
     return getFPClassConstant(VTy, ValidResults, /*IsCanonicalizing=*/true);
   }
+  case Instruction::FPTrunc:
+    return simplifyDemandedUseFPClassFPTrunc(*this, *I, DemandedMask, Known,
+                                             Depth);
   case Instruction::FPExt: {
     FPClassTest SrcDemandedMask = DemandedMask;
 
@@ -2638,6 +2676,9 @@ Value *InstCombinerImpl::SimplifyDemandedUseFPClass(Instruction *I,
 
       return getFPClassConstant(VTy, ValidResults, /*IsCanonicalizing=*/true);
     }
+    case Intrinsic::fptrunc_round:
+      return simplifyDemandedUseFPClassFPTrunc(*this, *CI, DemandedMask, Known,
+                                               Depth);
     case Intrinsic::canonicalize: {
       Type *EltTy = VTy->getScalarType();
 

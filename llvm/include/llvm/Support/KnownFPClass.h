@@ -299,6 +299,9 @@ struct KnownFPClass {
                                      const fltSemantics &DstTy,
                                      const fltSemantics &SrcTy);
 
+  /// Propagate known class for fptrunc.
+  static LLVM_ABI KnownFPClass fptrunc(const KnownFPClass &KnownSrc);
+
   void resetAll() { *this = KnownFPClass(); }
 };
 
