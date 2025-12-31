@@ -521,6 +521,45 @@ void RegionBranchOpInterface::getSuccessorOperandInputMapping(
   }
 }
 
+void RegionBranchOpInterface::getSuccessorInputOperandMapping(
+    RegionBranchInverseSuccessorMapping &mapping) {
+  RegionBranchSuccessorMapping operandToInputs;
+  getSuccessorOperandInputMapping(operandToInputs);
+  for (const auto &[operand, inputs] : operandToInputs) {
+    for (Value input : inputs)
+      mapping[input].push_back(operand);
+  }
+}
+
+DenseSet<Value>
+RegionBranchOpInterface::computePossibleValuesOfSuccessorInput(Value value) {
+  RegionBranchInverseSuccessorMapping inputToOperands;
+  getSuccessorInputOperandMapping(inputToOperands);
+
+  DenseSet<Value> possibleValues;
+  DenseSet<Value> visited;
+  SmallVector<Value> worklist;
+
+  // Starting with the given value, trace back all predecessor values (i.e.,
+  // preceding successor operands) and add them to the set of possible values.
+  // If the successor operand is again a successor input, do not add it to
+  // result set, but instead continue the traversal.
+  worklist.push_back(value);
+  while (!worklist.empty()) {
+    Value next = worklist.pop_back_val();
+    auto it = inputToOperands.find(next);
+    if (it == inputToOperands.end()) {
+      possibleValues.insert(next);
+      continue;
+    }
+    for (OpOperand *operand : it->second)
+      if (visited.insert(operand->get()).second)
+        worklist.push_back(operand->get());
+  }
+
+  return possibleValues;
+}
+
 SmallVector<RegionBranchPoint>
 RegionBranchOpInterface::getAllRegionBranchPoints() {
   SmallVector<RegionBranchPoint> branchPoints;

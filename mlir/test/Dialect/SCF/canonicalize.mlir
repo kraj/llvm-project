@@ -1071,17 +1071,17 @@ func.func @invariant_loop_args_in_same_order(%f_arg0: tensor<i32>) -> (tensor<i3
 // CHECK:    %[[ZERO:.*]] = arith.constant dense<0>
 // CHECK:    %[[ONE:.*]] = arith.constant dense<1>
 // CHECK:    %[[CST42:.*]] = arith.constant dense<42>
-// CHECK:    %[[WHILE:.*]]:3 = scf.while (%[[ARG0:.*]] = %[[ZERO]], %[[ARG2:.*]] = %[[ONE]], %[[ARG3:.*]] = %[[ONE]])
+// CHECK:    %[[WHILE:.*]]:2 = scf.while (%[[ARG0:.*]] = %[[ZERO]], %[[ARG2:.*]] = %[[ONE]]) : (tensor<i32>, tensor<i32>) -> (tensor<i32>, tensor<i32>)
 // CHECK:       arith.cmpi slt, %[[ARG0]], %{{.*}}
 // CHECK:       tensor.extract %{{.*}}[]
-// CHECK:       scf.condition(%{{.*}}) %[[ARG0]], %[[ARG2]], %[[ARG3]]
+// CHECK:       scf.condition(%{{.*}}) %[[ARG0]], %[[ARG2]]
 // CHECK:    } do {
-// CHECK:     ^{{.*}}(%[[ARG0:.*]]: tensor<i32>, %[[ARG2:.*]]: tensor<i32>, %[[ARG3:.*]]: tensor<i32>):
+// CHECK:     ^{{.*}}(%[[ARG0:.*]]: tensor<i32>, %[[ARG2:.*]]: tensor<i32>):
 // CHECK:       %[[VAL0:.*]] = arith.addi %[[ARG0]], %[[FUNC_ARG0]]
-// CHECK:       %[[VAL1:.*]] = arith.addi %[[ARG2]], %[[ARG3]]
-// CHECK:       scf.yield %[[VAL0]], %[[VAL1]], %[[VAL1]]
+// CHECK:       %[[VAL1:.*]] = arith.addi %[[ARG2]], %[[ARG2]]
+// CHECK:       scf.yield %[[VAL0]], %[[VAL1]]
 // CHECK:    }
-// CHECK:    return %[[WHILE]]#0, %[[FUNC_ARG0]], %[[WHILE]]#1, %[[WHILE]]#2, %[[ZERO]]
+// CHECK:    return %[[WHILE]]#0, %[[FUNC_ARG0]], %[[WHILE]]#1, %[[WHILE]]#1, %[[ZERO]]
 
 // CHECK-LABEL: @while_loop_invariant_argument_different_order
 func.func @while_loop_invariant_argument_different_order(%arg : tensor<i32>) -> (tensor<i32>, tensor<i32>, tensor<i32>, tensor<i32>, tensor<i32>, tensor<i32>) {
@@ -1736,11 +1736,11 @@ module {
 
 // Test case with multiple scf.yield ops with at least one different operand, then no change.
 
-// CHECK:           %[[VAL_3:.*]]:2 = scf.execute_region -> (memref<1x60xui8>, memref<1x120xui8>) no_inline {
+// CHECK:           %[[VAL_3:.*]] = scf.execute_region -> memref<1x120xui8> no_inline {
 // CHECK:           ^bb1:
-// CHECK:             scf.yield %{{.*}}, %{{.*}} : memref<1x60xui8>, memref<1x120xui8>
+// CHECK:             scf.yield %{{.*}} : memref<1x120xui8>
 // CHECK:           ^bb2:
-// CHECK:             scf.yield %{{.*}}, %{{.*}} : memref<1x60xui8>, memref<1x120xui8>
+// CHECK:             scf.yield  %{{.*}} : memref<1x120xui8>
 // CHECK:           }
 
 module {
@@ -2214,16 +2214,14 @@ func.func @iter_args_cycles_non_cycle_start(%lb : index, %ub : index, %step : in
 //  CHECK-SAME:     %[[arg0:.*]]: index
 //   CHECK-DAG:   %[[c10:.*]] = arith.constant 10
 //   CHECK-DAG:   %[[c11:.*]] = arith.constant 11
-//       CHECK:   %[[switch:.*]] = scf.index_switch %[[arg0]] -> index
+//       CHECK:   scf.index_switch %[[arg0]]
 //       CHECK:   case 1 {
 //       CHECK:     memref.store %[[c10]]
-//       CHECK:     scf.yield %[[arg0]] : index
 //       CHECK:   } 
 //       CHECK:   default {
 //       CHECK:     memref.store %[[c11]]
-//       CHECK:     scf.yield %[[arg0]] : index
 //       CHECK:   }
-//       CHECK:   return %[[switch]]
+//       CHECK:   return %[[arg0]]
 func.func @dead_index_switch_result(%arg0 : index, %arg1 : memref<i32>) -> index {
   %non_live, %live = scf.index_switch %arg0 -> i32, index
   case 1 {

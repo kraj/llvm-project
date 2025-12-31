@@ -129,13 +129,13 @@ func.func @matmul_sparse_rhs(%a: tensor<10x20xf32>,
 // CHECK:             %[[VAL_29:.*]] = memref.load %[[VAL_9]]{{\[}}%[[VAL_28]]] : memref<?xindex>
 // CHECK:             %[[VAL_30:.*]] = memref.load %[[VAL_12]]{{\[}}%[[VAL_2]]] : memref<?xindex>
 // CHECK:             %[[VAL_31:.*]] = memref.load %[[VAL_12]]{{\[}}%[[VAL_3]]] : memref<?xindex>
-// CHECK:             %[[VAL_32:.*]]:4 = scf.while (%[[VAL_33:.*]] = %[[VAL_27]], %[[VAL_34:.*]] = %[[VAL_30]], %[[VAL_35:.*]] = %[[VAL_26]], %[[VAL_36:.*]] = %[[VAL_21]]) : (index, index, index, tensor<4x4xf64, #sparse{{[0-9]*}}>) -> (index, index, index, tensor<4x4xf64, #sparse{{[0-9]*}}>) {
+// CHECK:             %[[VAL_32:.*]]:3 = scf.while (%[[VAL_33:.*]] = %[[VAL_27]], %[[VAL_34:.*]] = %[[VAL_30]], %[[VAL_35:.*]] = %[[VAL_26]]) : (index, index, index) -> (index, index, index) {
 // CHECK:               %[[VAL_37:.*]] = arith.cmpi ult, %[[VAL_33]], %[[VAL_29]] : index
 // CHECK:               %[[VAL_38:.*]] = arith.cmpi ult, %[[VAL_34]], %[[VAL_31]] : index
 // CHECK:               %[[VAL_39:.*]] = arith.andi %[[VAL_37]], %[[VAL_38]] : i1
-// CHECK:               scf.condition(%[[VAL_39]]) %[[VAL_33]], %[[VAL_34]], %[[VAL_35]], %[[VAL_36]] : index, index, index, tensor<4x4xf64, #sparse{{[0-9]*}}>
+// CHECK:               scf.condition(%[[VAL_39]]) %[[VAL_33]], %[[VAL_34]], %[[VAL_35]] : index, index, index
 // CHECK:             } do {
-// CHECK:             ^bb0(%[[VAL_40:.*]]: index, %[[VAL_41:.*]]: index, %[[VAL_42:.*]]: index, %[[VAL_43:.*]]: tensor<4x4xf64, #sparse{{[0-9]*}}>):
+// CHECK:             ^bb0(%[[VAL_40:.*]]: index, %[[VAL_41:.*]]: index, %[[VAL_42:.*]]: index):
 // CHECK:               %[[VAL_44:.*]] = memref.load %[[VAL_10]]{{\[}}%[[VAL_40]]] : memref<?xindex>
 // CHECK:               %[[VAL_45:.*]] = memref.load %[[VAL_13]]{{\[}}%[[VAL_41]]] : memref<?xindex>
 // CHECK:               %[[VAL_46:.*]] = arith.cmpi ult, %[[VAL_45]], %[[VAL_44]] : index
@@ -143,7 +143,7 @@ func.func @matmul_sparse_rhs(%a: tensor<10x20xf32>,
 // CHECK:               %[[VAL_48:.*]] = arith.cmpi eq, %[[VAL_44]], %[[VAL_47]] : index
 // CHECK:               %[[VAL_49:.*]] = arith.cmpi eq, %[[VAL_45]], %[[VAL_47]] : index
 // CHECK:               %[[VAL_50:.*]] = arith.andi %[[VAL_48]], %[[VAL_49]] : i1
-// CHECK:               %[[VAL_51:.*]]:2 = scf.if %[[VAL_50]] -> (index, tensor<4x4xf64, #sparse{{[0-9]*}}>) {
+// CHECK:               %[[VAL_51:.*]] = scf.if %[[VAL_50]] -> (index) {
 // CHECK:                 %[[VAL_52:.*]] = memref.load %[[VAL_11]]{{\[}}%[[VAL_40]]] : memref<?xf64>
 // CHECK:                 %[[VAL_53:.*]] = memref.load %[[VAL_14]]{{\[}}%[[VAL_41]]] : memref<?xindex>
 // CHECK:                 %[[VAL_54:.*]] = arith.addi %[[VAL_41]], %[[VAL_3]] : index
@@ -167,9 +167,9 @@ func.func @matmul_sparse_rhs(%a: tensor<10x20xf32>,
 // CHECK:                   memref.store %[[VAL_63]], %[[VAL_23]]{{\[}}%[[VAL_59]]] : memref<?xf64>
 // CHECK:                   scf.yield %[[VAL_68:.*]] : index
 // CHECK:                 }
-// CHECK:                 scf.yield %[[VAL_69:.*]], %[[VAL_43]] : index, tensor<4x4xf64, #sparse{{[0-9]*}}>
+// CHECK:                 scf.yield %[[VAL_69:.*]] : index
 // CHECK:               } else {
-// CHECK:                 scf.yield %[[VAL_42]], %[[VAL_43]] : index, tensor<4x4xf64, #sparse{{[0-9]*}}>
+// CHECK:                 scf.yield %[[VAL_42]] : index
 // CHECK:               }
 // CHECK:               %[[VAL_70:.*]] = arith.cmpi eq, %[[VAL_44]], %[[VAL_47]] : index
 // CHECK:               %[[VAL_71:.*]] = arith.addi %[[VAL_40]], %[[VAL_3]] : index
@@ -177,9 +177,9 @@ func.func @matmul_sparse_rhs(%a: tensor<10x20xf32>,
 // CHECK:               %[[VAL_73:.*]] = arith.cmpi eq, %[[VAL_45]], %[[VAL_47]] : index
 // CHECK:               %[[VAL_74:.*]] = arith.addi %[[VAL_41]], %[[VAL_3]] : index
 // CHECK:               %[[VAL_75:.*]] = arith.select %[[VAL_73]], %[[VAL_74]], %[[VAL_41]] : index
-// CHECK:               scf.yield %[[VAL_72]], %[[VAL_75]], %[[VAL_76:.*]]#0, %[[VAL_76]]#1 : index, index, index, tensor<4x4xf64, #sparse{{[0-9]*}}>
+// CHECK:               scf.yield %[[VAL_72]], %[[VAL_75]], %[[VAL_76:.*]] : index, index, index
 // CHECK:             }
-// CHECK:             %[[VAL_77:.*]] = sparse_tensor.compress %[[VAL_23]], %[[VAL_24]], %[[VAL_25]], %[[VAL_78:.*]]#2 into %[[VAL_78]]#3{{\[}}%[[VAL_22]]] : memref<?xf64>, memref<?xi1>, memref<?xindex>, tensor<4x4xf64, #sparse{{[0-9]*}}>
+// CHECK:             %[[VAL_77:.*]] = sparse_tensor.compress %[[VAL_23]], %[[VAL_24]], %[[VAL_25]], %[[VAL_78:.*]]#2 into %[[VAL_21]]{{\[}}%[[VAL_22]]] : memref<?xf64>, memref<?xi1>, memref<?xindex>, tensor<4x4xf64, #sparse{{[0-9]*}}>
 // CHECK:             scf.yield %[[VAL_77]] : tensor<4x4xf64, #sparse{{[0-9]*}}>
 // CHECK:           }
 // CHECK:           %[[VAL_79:.*]] = sparse_tensor.load %[[VAL_80:.*]] hasInserts : tensor<4x4xf64, #sparse{{[0-9]*}}>

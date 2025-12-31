@@ -1304,9 +1304,10 @@ def SparseTensor_SelectOp : SparseTensor_Op<"select", [Pure, SameOperandsAndResu
   let hasVerifier = 1;
 }
 
-def SparseTensor_YieldOp : SparseTensor_Op<"yield", [Pure, Terminator,
-    ParentOneOf<["BinaryOp", "UnaryOp", "ReduceOp", "SelectOp",
-                 "ForeachOp", "IterateOp", "CoIterateOp"]>]> {
+def SparseTensor_YieldOp : SparseTensor_Op<"yield",
+    [Pure, Terminator, ReturnLike,
+     ParentOneOf<["BinaryOp", "UnaryOp", "ReduceOp", "SelectOp",
+                  "ForeachOp", "IterateOp", "CoIterateOp"]>]> {
   let summary = "Yield from sparse_tensor set-like operations";
   let description = [{
       Yields a value from within a `binary`, `unary`, `reduce`,

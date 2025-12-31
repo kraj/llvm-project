@@ -355,6 +355,15 @@ def RegionBranchOpInterface : OpInterface<"RegionBranchOpInterface"> {
         ::mlir::RegionBranchSuccessorMapping &mapping,
         std::optional<::mlir::RegionBranchPoint> src = std::nullopt);
 
+    /// Build a mapping from successor inputs to successor operands. This is
+    /// the same as "getSuccessorOperandInputMapping", but inverted.
+    void getSuccessorInputOperandMapping(
+        ::mlir::RegionBranchInverseSuccessorMapping &mapping);
+
+    /// Compute all values that a successor input could possibly have. If the
+    /// given value is not a successor input, return an empty set.
+    ::llvm::DenseSet<Value> computePossibleValuesOfSuccessorInput(::mlir::Value value);
+
     /// Return all possible region branch points: the region branch op itself
     /// and all region branch terminators.
     ::llvm::SmallVector<::mlir::RegionBranchPoint> getAllRegionBranchPoints();

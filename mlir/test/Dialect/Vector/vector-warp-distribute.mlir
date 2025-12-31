@@ -1330,11 +1330,11 @@ func.func @vector_insert_1d_broadcast(%laneid: index, %pos: index) -> (vector<96
 // -----
 
 // CHECK-PROP-LABEL: func @vector_insert_0d(
-//       CHECK-PROP:   %[[W:.*]]:2 = gpu.warp_execute_on_lane_0{{.*}} -> (vector<f32>, f32)
+//       CHECK-PROP:   %[[W:.*]] = gpu.warp_execute_on_lane_0{{.*}} -> (f32)
 //       CHECK-PROP:     %[[VEC:.*]] = "some_def"
 //       CHECK-PROP:     %[[VAL:.*]] = "another_def"
-//       CHECK-PROP:     gpu.yield %[[VEC]], %[[VAL]]
-//       CHECK-PROP:   vector.broadcast %[[W]]#1 : f32 to vector<f32>
+//       CHECK-PROP:     gpu.yield %[[VAL]]
+//       CHECK-PROP:   vector.broadcast %[[W]] : f32 to vector<f32>
 func.func @vector_insert_0d(%laneid: index) -> (vector<f32>) {
   %r = gpu.warp_execute_on_lane_0(%laneid)[32] -> (vector<f32>) {
     %0 = "some_def"() : () -> (vector<f32>)
