@@ -2013,23 +2013,6 @@ void ForallOp::getCanonicalizationPatterns(RewritePatternSet &results,
               ForallOpReplaceConstantInductionVar>(context);
 }
 
-/// Given the region at `index`, or the parent operation if `index` is None,
-/// return the successor regions. These are the regions that may be selected
-/// during the flow of control. `operands` is a set of optional attributes that
-/// correspond to a constant value for each operand, or null if that operand is
-/// not a constant.
-void ForallOp::getSuccessorRegions(RegionBranchPoint point,
-                                   SmallVectorImpl<RegionSuccessor> &regions) {
-  // In accordance with the semantics of forall, its body is executed in
-  // parallel by multiple threads. We should not expect to branch back into
-  // the forall body after the region's execution is complete.
-  if (point.isParent())
-    regions.push_back(RegionSuccessor(&getRegion(), getRegionIterArgs()));
-  else
-    regions.push_back(
-        RegionSuccessor(getOperation(), getOperation()->getResults()));
-}
-
 //===----------------------------------------------------------------------===//
 // InParallelOp
 //===----------------------------------------------------------------------===//

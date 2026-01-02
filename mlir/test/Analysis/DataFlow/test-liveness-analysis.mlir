@@ -346,7 +346,7 @@ func.func @affine_loop_no_use_iv() {
 // CHECK-LABEL: test_tag: forall:
 // CHECK-NEXT: operand #0: live
 // CHECK-NEXT: region: #0:
-// CHECK-NEXT:   argument: #0: live
+// CHECK-NEXT:   argument: #0: not live
 
 func.func @forall_no_use_iv_has_side_effect_op(%idx1: index, %idx2: index) {
   scf.parallel (%i) = (%idx1) to (%idx2) step (%idx2) {

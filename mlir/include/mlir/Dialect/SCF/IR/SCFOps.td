@@ -326,7 +326,6 @@ def ForallOp : SCF_Op<"forall", [
            "promoteIfSingleIteration", "yieldTiledValuesAndReplace"]>,
        RecursiveMemoryEffects,
        SingleBlockImplicitTerminator<"scf::InParallelOp">,
-       DeclareOpInterfaceMethods<RegionBranchOpInterface>,
        DestinationStyleOpInterface,
        HasParallelRegion
      ]> {
