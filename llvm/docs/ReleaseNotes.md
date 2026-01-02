@@ -76,6 +76,9 @@ Changes to the LLVM IR
   keep floating point support out of printf if it can be proven unused.
 * Case values are no longer operands of `SwitchInst`.
 
+* "denormal-fp-math" and "denormal-fp-math-f32" string attributes were
+  migrated to first-class denormal_fpenv attribute.
+
 Changes to LLVM infrastructure
 ------------------------------
 

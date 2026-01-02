@@ -106,3 +106,19 @@ raw_ostream &llvm::operator<<(raw_ostream &OS, FPClassTest Mask) {
   OS << ')';
   return OS;
 }
+
+void DenormalFPEnv::print(raw_ostream &OS) const {
+  if (F32Mode == DefaultMode) {
+    DefaultMode.print(OS, /*Legacy=*/false);
+    return;
+  }
+
+  // Omit printing the base mode if only the f32 mode isn't the default.
+  if (DefaultMode != DenormalMode::getDefault()) {
+    DefaultMode.print(OS, /*Legacy=*/false);
+    OS << ' ';
+  }
+
+  OS << "float: ";
+  F32Mode.print(OS, /*Legacy=*/false);
+}
