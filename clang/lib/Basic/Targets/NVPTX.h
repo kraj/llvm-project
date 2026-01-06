@@ -87,7 +87,7 @@ public:
   initFeatureMap(llvm::StringMap<bool> &Features, DiagnosticsEngine &Diags,
                  StringRef CPU,
                  const std::vector<std::string> &FeaturesVec) const override {
-    if (GPU != OffloadArch::UNUSED)
+    if (GPU != OffloadArch::UNUSED_)
       Features[OffloadArchToString(GPU)] = true;
     // Only add PTX feature if explicitly requested. Otherwise, let the backend
     // use the minimum required PTX version for the target SM.

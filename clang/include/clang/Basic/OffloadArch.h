@@ -16,7 +16,7 @@ class StringRef;
 namespace clang {
 
 enum class OffloadArch {
-  UNUSED,
+  UNUSED_,
   UNKNOWN,
   // TODO: Deprecate and remove GPU architectures older than sm_52.
   SM_20,
