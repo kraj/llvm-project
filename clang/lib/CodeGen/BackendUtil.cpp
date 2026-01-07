@@ -468,6 +468,7 @@ static bool initTargetOptions(const CompilerInstance &CI,
   Options.XCOFFReadOnlyPointers = CodeGenOpts.XCOFFReadOnlyPointers;
   Options.VecLib =
       convertDriverVectorLibraryToVectorLibrary(CodeGenOpts.getVecLib());
+  Options.TrapUnreachable = CodeGenOpts.TrapUnreachable;
 
   switch (CodeGenOpts.getSwiftAsyncFramePointer()) {
   case CodeGenOptions::SwiftAsyncFramePointerKind::Auto:
