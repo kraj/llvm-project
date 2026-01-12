@@ -17362,7 +17362,7 @@ SDValue AArch64TargetLowering::LowerVSCALE(SDValue Op,
 
 /// Set the IntrinsicInfo for the `aarch64_sve_st<N>` intrinsics.
 template <unsigned NumVecs>
-static bool
+static void
 setInfoSVEStN(const AArch64TargetLowering &TLI, const DataLayout &DL,
               AArch64TargetLowering::IntrinsicInfo &Info, const CallBase &CI) {
   Info.opc = ISD::INTRINSIC_VOID;
@@ -17382,24 +17382,29 @@ setInfoSVEStN(const AArch64TargetLowering &TLI, const DataLayout &DL,
   Info.offset = 0;
   Info.align.reset();
   Info.flags = MachineMemOperand::MOStore;
-  return true;
 }
 
 /// getTgtMemIntrinsic - Represent NEON load and store intrinsics as
 /// MemIntrinsicNodes.  The associated MachineMemOperands record the alignment
 /// specified in the intrinsic calls.
-bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
-                                               const CallBase &I,
-                                               MachineFunction &MF,
-                                               unsigned Intrinsic) const {
+void AArch64TargetLowering::getTgtMemIntrinsic(
+    SmallVectorImpl<IntrinsicInfo> &Infos, const CallBase &I,
+    MachineFunction &MF, unsigned Intrinsic) const {
+  IntrinsicInfo Info;
   auto &DL = I.getDataLayout();
   switch (Intrinsic) {
   case Intrinsic::aarch64_sve_st2:
-    return setInfoSVEStN<2>(*this, DL, Info, I);
+    setInfoSVEStN<2>(*this, DL, Info, I);
+    Infos.push_back(Info);
+    return;
   case Intrinsic::aarch64_sve_st3:
-    return setInfoSVEStN<3>(*this, DL, Info, I);
+    setInfoSVEStN<3>(*this, DL, Info, I);
+    Infos.push_back(Info);
+    return;
   case Intrinsic::aarch64_sve_st4:
-    return setInfoSVEStN<4>(*this, DL, Info, I);
+    setInfoSVEStN<4>(*this, DL, Info, I);
+    Infos.push_back(Info);
+    return;
   case Intrinsic::aarch64_neon_ld2:
   case Intrinsic::aarch64_neon_ld3:
   case Intrinsic::aarch64_neon_ld4:
@@ -17414,7 +17419,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align.reset();
     // volatile loads with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_neon_ld2lane:
   case Intrinsic::aarch64_neon_ld3lane:
@@ -17435,7 +17441,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align.reset();
     // volatile loads with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_neon_st2:
   case Intrinsic::aarch64_neon_st3:
@@ -17457,7 +17464,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align.reset();
     // volatile stores with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_neon_st2lane:
   case Intrinsic::aarch64_neon_st3lane:
@@ -17481,7 +17489,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align.reset();
     // volatile stores with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_ldaxr:
   case Intrinsic::aarch64_ldxr: {
@@ -17492,7 +17501,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = DL.getABITypeAlign(ValTy);
     Info.flags = MachineMemOperand::MOLoad | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_stlxr:
   case Intrinsic::aarch64_stxr: {
@@ -17503,7 +17513,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = DL.getABITypeAlign(ValTy);
     Info.flags = MachineMemOperand::MOStore | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_ldaxp:
   case Intrinsic::aarch64_ldxp:
@@ -17513,7 +17524,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = Align(16);
     Info.flags = MachineMemOperand::MOLoad | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
   case Intrinsic::aarch64_stlxp:
   case Intrinsic::aarch64_stxp:
     Info.opc = ISD::INTRINSIC_W_CHAIN;
@@ -17522,7 +17534,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = Align(16);
     Info.flags = MachineMemOperand::MOStore | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
   case Intrinsic::aarch64_sve_ldnt1: {
     Type *ElTy = cast<VectorType>(I.getType())->getElementType();
     Info.opc = ISD::INTRINSIC_W_CHAIN;
@@ -17531,7 +17544,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = DL.getABITypeAlign(ElTy);
     Info.flags = MachineMemOperand::MOLoad | MachineMemOperand::MONonTemporal;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_sve_stnt1: {
     Type *ElTy =
@@ -17542,7 +17556,8 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = DL.getABITypeAlign(ElTy);
     Info.flags = MachineMemOperand::MOStore | MachineMemOperand::MONonTemporal;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::aarch64_mops_memset_tag: {
     Value *Dst = I.getArgOperand(0);
@@ -17555,13 +17570,12 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.flags = MachineMemOperand::MOStore;
     // The size of the memory being operated on is unknown at this point
     Info.size = MemoryLocation::UnknownSize;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   default:
     break;
   }
-
-  return false;
 }
 
 bool AArch64TargetLowering::shouldReduceLoadWidth(

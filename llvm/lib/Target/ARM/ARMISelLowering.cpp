@@ -20680,10 +20680,10 @@ bool ARMTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT,
 /// getTgtMemIntrinsic - Represent NEON load and store intrinsics as
 /// MemIntrinsicNodes.  The associated MachineMemOperands record the alignment
 /// specified in the intrinsic calls.
-bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
-                                           const CallBase &I,
-                                           MachineFunction &MF,
-                                           unsigned Intrinsic) const {
+void ARMTargetLowering::getTgtMemIntrinsic(
+    SmallVectorImpl<IntrinsicInfo> &Infos, const CallBase &I,
+    MachineFunction &MF, unsigned Intrinsic) const {
+  IntrinsicInfo Info;
   switch (Intrinsic) {
   case Intrinsic::arm_neon_vld1:
   case Intrinsic::arm_neon_vld2:
@@ -20706,7 +20706,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align = cast<ConstantInt>(AlignArg)->getMaybeAlignValue();
     // volatile loads with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_neon_vld1x2:
   case Intrinsic::arm_neon_vld1x3:
@@ -20721,7 +20722,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align = I.getParamAlign(I.arg_size() - 1).valueOrOne();
     // volatile loads with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_neon_vst1:
   case Intrinsic::arm_neon_vst2:
@@ -20747,7 +20749,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align = cast<ConstantInt>(AlignArg)->getMaybeAlignValue();
     // volatile stores with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_neon_vst1x2:
   case Intrinsic::arm_neon_vst1x3:
@@ -20768,7 +20771,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align = I.getParamAlign(0).valueOrOne();
     // volatile stores with NEON intrinsics not supported
     Info.flags = MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vld2q:
   case Intrinsic::arm_mve_vld4q: {
@@ -20782,7 +20786,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align = Align(VecTy->getScalarSizeInBits() / 8);
     // volatile loads with MVE intrinsics not supported
     Info.flags = MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vst2q:
   case Intrinsic::arm_mve_vst4q: {
@@ -20796,7 +20801,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.align = Align(VecTy->getScalarSizeInBits() / 8);
     // volatile stores with MVE intrinsics not supported
     Info.flags = MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vldr_gather_base:
   case Intrinsic::arm_mve_vldr_gather_base_predicated: {
@@ -20805,7 +20811,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.memVT = MVT::getVT(I.getType());
     Info.align = Align(1);
     Info.flags |= MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vldr_gather_base_wb:
   case Intrinsic::arm_mve_vldr_gather_base_wb_predicated: {
@@ -20814,7 +20821,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.memVT = MVT::getVT(I.getType()->getContainedType(0));
     Info.align = Align(1);
     Info.flags |= MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vldr_gather_offset:
   case Intrinsic::arm_mve_vldr_gather_offset_predicated: {
@@ -20826,7 +20834,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
                                   DataVT.getVectorNumElements());
     Info.align = Align(1);
     Info.flags |= MachineMemOperand::MOLoad;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vstr_scatter_base:
   case Intrinsic::arm_mve_vstr_scatter_base_predicated: {
@@ -20835,7 +20844,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.memVT = MVT::getVT(I.getArgOperand(2)->getType());
     Info.align = Align(1);
     Info.flags |= MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vstr_scatter_base_wb:
   case Intrinsic::arm_mve_vstr_scatter_base_wb_predicated: {
@@ -20844,7 +20854,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.memVT = MVT::getVT(I.getArgOperand(2)->getType());
     Info.align = Align(1);
     Info.flags |= MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_mve_vstr_scatter_offset:
   case Intrinsic::arm_mve_vstr_scatter_offset_predicated: {
@@ -20856,7 +20867,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
                                   DataVT.getVectorNumElements());
     Info.align = Align(1);
     Info.flags |= MachineMemOperand::MOStore;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_ldaex:
   case Intrinsic::arm_ldrex: {
@@ -20868,7 +20880,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = DL.getABITypeAlign(ValTy);
     Info.flags = MachineMemOperand::MOLoad | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_stlex:
   case Intrinsic::arm_strex: {
@@ -20880,7 +20893,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = DL.getABITypeAlign(ValTy);
     Info.flags = MachineMemOperand::MOStore | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
   }
   case Intrinsic::arm_stlexd:
   case Intrinsic::arm_strexd:
@@ -20890,7 +20904,8 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = Align(8);
     Info.flags = MachineMemOperand::MOStore | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
 
   case Intrinsic::arm_ldaexd:
   case Intrinsic::arm_ldrexd:
@@ -20900,13 +20915,12 @@ bool ARMTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
     Info.offset = 0;
     Info.align = Align(8);
     Info.flags = MachineMemOperand::MOLoad | MachineMemOperand::MOVolatile;
-    return true;
+    Infos.push_back(Info);
+    return;
 
   default:
     break;
   }
-
-  return false;
 }
 
 /// Returns true if it is beneficial to convert a load of a constant
