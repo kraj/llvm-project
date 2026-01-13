@@ -90,6 +90,8 @@ Non-comprehensive list of changes in this release
 
 New Compiler Flags
 ------------------
+- New option ``-ftrap-unreachable`` added to enable the existing backend option: TrapUnreachable.
+  This behavior is off by default (e.g. no change in the compiler's behavior) for now.
 
 Deprecated Compiler Flags
 -------------------------
