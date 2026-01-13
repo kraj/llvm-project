@@ -48,8 +48,7 @@ static void normalizeCharSetName(StringRef CSName,
 }
 
 // Maps the encoding name to enum constant if possible.
-std::optional<TextEncoding>
-TextEncodingConverter::getKnownEncoding(StringRef Name) {
+static std::optional<TextEncoding> getKnownEncoding(StringRef Name) {
   SmallString<16> Normalized;
   normalizeCharSetName(Name, Normalized);
   if (Normalized.equals("utf8"))
@@ -57,6 +56,16 @@ TextEncodingConverter::getKnownEncoding(StringRef Name) {
   if (Normalized.equals("ibm1047"))
     return TextEncoding::IBM1047;
   return std::nullopt;
+}
+
+bool TextEncodingConverter::isEncodingSupported(StringRef Name) {
+  if (getKnownEncoding(Name))
+    return true;
+  llvm::ErrorOr<llvm::TextEncodingConverter> ErrorOrConverter =
+      llvm::TextEncodingConverter::create("UTF-8", Name.data());
+  if (ErrorOrConverter)
+    return true;
+  return false;
 }
 
 [[maybe_unused]] static void HandleOverflow(size_t &Capacity, char *&Output,
