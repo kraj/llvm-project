@@ -3017,6 +3017,11 @@ Value *InstCombinerImpl::SimplifyMultipleUseDemandedFPClass(
     if (KnownSrc.SignBit == true)
       return Src;
 
+    // If the only sign bit difference is for 0, ignore it with nsz.
+    if ((FMF.noSignedZeros() || FabsFMF.noSignedZeros()) &&
+        KnownSrc.isKnownNever(KnownFPClass::OrderedGreaterThanZeroMask | fcNan))
+      return Src;
+
     Known = KnownFPClass::fneg(KnownFPClass::fabs(KnownSrc));
     break;
   }
@@ -3034,11 +3039,15 @@ Value *InstCombinerImpl::SimplifyMultipleUseDemandedFPClass(
       if ((DemandedMask & fcInf) == fcNone)
         KnownSrc.knownNot(fcInf);
 
-      // TODO: If the only sign bit difference is due to -0, look at source if
-      // nsz.
       if (KnownSrc.SignBit == false || ((DemandedMask & fcNan) == fcNone &&
                                         KnownSrc.isKnownNever(fcNegative)))
         return Src;
+
+      // If the only sign bit difference is due to -0, ignore it with nsz
+      if (FMF.noSignedZeros() &&
+          KnownSrc.isKnownNever(KnownFPClass::OrderedLessThanZeroMask | fcNan))
+        return Src;
+
       Known = KnownFPClass::fabs(KnownSrc);
       break;
     }
