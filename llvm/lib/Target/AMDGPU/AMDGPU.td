@@ -2070,6 +2070,7 @@ def FeatureISAVersion13 : FeatureSet<
    FeatureCvtPkF16F32Inst,
    FeatureF16BF16ToFP6BF6ConversionScaleInsts,
    FeatureIEEEMinimumMaximumInsts,
+   FeatureSWakeupBarrier,
    FeatureClusters,
    FeatureCubeInsts,
    FeatureLerpInst,
