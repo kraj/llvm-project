@@ -1793,17 +1793,17 @@ void GCNSchedStage::modifyRegionSchedule(unsigned RegionIdx,
   for (MachineInstr *MI : MIOrder) {
     // Either move the next MI in order before the end of the region or move the
     // region end past the MI if it is at the correct position.
-    if (MI->getIterator() != RegionEnd)
+    if (MI->getIterator() != RegionEnd) {
       MBB->splice(RegionEnd, MBB, MI);
-    else
+      if (!MI->isDebugInstr())
+        DAG.LIS->handleMove(*MI, true);
+    } else {
       ++RegionEnd;
-
+    }
     if (MI->isDebugInstr()) {
       LLVM_DEBUG(dbgs() << "Scheduling " << *MI);
       continue;
     }
-
-    DAG.LIS->handleMove(*MI, true);
 
     // Reset read-undef flags and update them later.
     for (MachineOperand &Op : MI->all_defs())
