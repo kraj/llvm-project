@@ -1603,7 +1603,7 @@ public:
   static constexpr IsAFunctionTy isaFunction = mlirValueIsAOpResult;
   static constexpr const char *pyClassName = "OpResult";
   using PyConcreteValue::PyConcreteValue;
-  operator MlirOpResult() { return mlirValueToOpResult(castFrom(*this)); }
+  operator MlirOpResult() { return mlirValueToOpResult(this->get()); }
 
   static void bindDerived(ClassTy &c);
 };
