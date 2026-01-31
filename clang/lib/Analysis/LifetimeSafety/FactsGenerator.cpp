@@ -551,6 +551,17 @@ void FactsGenerator::handleFunctionCall(const Expr *Call,
   FD = getDeclWithMergedLifetimeBoundAttrs(FD);
   if (!FD)
     return;
+
+  // Detect container methods that invalidate iterators/references.
+  // For instance methods, Args[0] is the implicit 'this' pointer.
+  if (const auto *MD = dyn_cast<CXXMethodDecl>(FD);
+      MD && MD->isInstance() && isContainerInvalidationMethod(MD)) {
+    OriginList *ThisList = getOriginsList(*Args[0]);
+    if (ThisList)
+      CurrentBlockFacts.push_back(FactMgr.createFact<InvalidateOriginFact>(
+          ThisList->getOuterOriginID(), Call));
+  }
+
   handleMovedArgsInCall(FD, Args);
   if (!CallList)
     return;

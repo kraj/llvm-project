@@ -74,6 +74,12 @@ public:
                                    const Expr *MovedExpr,
                                    SourceLocation ExpiryLoc) {}
 
+  // Reports when a reference/iterator is used after the container operation
+  // that invalidated it.
+  virtual void reportUseAfterInvalidation(const Expr *IssueExpr,
+                                          const Expr *UseExpr,
+                                          const Expr *InvalidationExpr) {}
+
   // Suggests lifetime bound annotations for function paramters.
   virtual void suggestLifetimeboundToParmVar(SuggestionScope Scope,
                                              const ParmVarDecl *ParmToAnnotate,

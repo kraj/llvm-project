@@ -39,11 +39,16 @@ private:
   //   temporary object materialized via this MaterializeTemporaryExpr.
   const llvm::PointerUnion<const clang::ValueDecl *,
                            const clang::MaterializeTemporaryExpr *>
-      P;
+      P = nullptr;
 
 public:
+  AccessPath() {};
   AccessPath(const clang::ValueDecl *D) : P(D) {}
   AccessPath(const clang::MaterializeTemporaryExpr *MTE) : P(MTE) {}
+
+  operator bool() const {
+    return getAsValueDecl() || getAsMaterializeTemporaryExpr();
+  }
 
   const clang::ValueDecl *getAsValueDecl() const {
     return P.dyn_cast<const clang::ValueDecl *>();

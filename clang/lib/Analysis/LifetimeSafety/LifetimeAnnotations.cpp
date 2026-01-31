@@ -255,4 +255,76 @@ template <typename T> static bool isRecordWithAttr(QualType Type) {
 bool isGslPointerType(QualType QT) { return isRecordWithAttr<PointerAttr>(QT); }
 bool isGslOwnerType(QualType QT) { return isRecordWithAttr<OwnerAttr>(QT); }
 
+bool isContainerInvalidationMethod(const CXXMethodDecl *MD) {
+  if (!MD)
+    return false;
+  const CXXRecordDecl *RD = MD->getParent();
+  if (!RD || !isInStlNamespace(RD))
+    return false;
+
+  StringRef ContainerName;
+  if (const auto *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(RD))
+    ContainerName = CTSD->getSpecializedTemplate()->getName();
+  else if (RD->getIdentifier())
+    ContainerName = RD->getName();
+  else
+    return false;
+
+  static llvm::StringSet<> Containers = {
+      // Sequence
+      "vector", "basic_string", "deque", "list", "forward_list",
+      // Adaptors
+      "stack", "priority_queue", "queue",
+      // Associative
+      "set", "multiset", "map", "multimap",
+      // Unordered Associative
+      "unordered_set", "unordered_multiset", "unordered_map",
+      "unordered_multimap",
+      // C++23 Flat
+      "flat_map", "flat_set", "flat_multimap", "flat_multiset"};
+
+  if (!Containers.contains(ContainerName))
+    return false;
+
+  // Handle Operators via OverloadedOperatorKind
+  OverloadedOperatorKind OO = MD->getOverloadedOperator();
+  if (OO != OO_None) {
+    switch (OO) {
+    case OO_Equal:     // operator= : Always invalidates (Assignment)
+    case OO_PlusEqual: // operator+= : Append (String/Vector)
+      return true;
+    case OO_Subscript: // operator[] : Invalidation only for Maps
+                       // (Insert-or-access)
+    {
+      static llvm::StringSet<> MapContainers = {"map", "unordered_map",
+                                                "flat_map"};
+      return MapContainers.contains(ContainerName);
+    }
+    default:
+      return false;
+    }
+  }
+
+  if (!MD->getIdentifier())
+    return false;
+  static const llvm::StringSet<> InvalidatingMembers = {
+      // Basic Insertion/Emplacement
+      "push_front", "push_back", "emplace_front", "emplace_back", "insert",
+      "emplace", "push",
+      // Basic Removal/Clearing
+      "pop_front", "pop_back", "pop", "erase", "clear",
+      // Memory Management
+      "reserve", "resize", "shrink_to_fit",
+      // Assignment (Named)
+      "assign", "swap",
+      // String Specifics
+      "append", "replace",
+      // Forward List Specifics
+      "insert_after", "emplace_after", "erase_after",
+      // List/Forward_list Splicing & Merging
+      "splice", "splice_after", "merge", "remove", "remove_if", "unique",
+      // Modern C++ (C++17/23)
+      "extract", "try_emplace", "insert_range", "append_range", "assign_range"};
+  return InvalidatingMembers.contains(MD->getName());
+}
 } // namespace clang::lifetimes
