@@ -651,6 +651,13 @@ Attribute DenseElementsAttr::AttributeElementIterator::operator*() const {
     ArrayRef<StringRef> vals = owner.getRawStringData();
     return StringAttr::get(owner.isSplat() ? vals.front() : vals[index], eltTy);
   }
+  // Check if the element type implements DenseElementTypeInterface.
+  if (auto denseEltTy = llvm::dyn_cast<DenseElementType>(eltTy)) {
+    ArrayRef<char> rawData = owner.getRawData();
+    size_t byteSize = denseEltTy.getDenseElementBitSize() / CHAR_BIT;
+    size_t offset = owner.isSplat() ? 0 : index * byteSize;
+    return denseEltTy.convertToAttribute(rawData.slice(offset, byteSize));
+  }
   llvm_unreachable("unexpected element type");
 }
 
@@ -944,6 +951,19 @@ DenseElementsAttr DenseElementsAttr::get(ShapedType type,
                                 llvm::cast<FloatAttr>(attr1).getValue()));
     }
     return DenseElementsAttr::get(type, complexValues);
+  }
+
+  // Check if the element type implements DenseElementTypeInterface.
+  if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType)) {
+    SmallVector<char> data;
+    for (Attribute attr : values) {
+      SmallVector<char> elementData;
+      if (failed(denseEltType.convertFromAttribute(attr, elementData))) {
+        llvm_unreachable("incompatible attribute for DenseElementType");
+      }
+      llvm::append_range(data, elementData);
+    }
+    return DenseIntOrFPElementsAttr::getRaw(type, data);
   }
 
   // If the element type is not based on int/float/index, assume it is a string

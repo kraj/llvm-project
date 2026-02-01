@@ -16,6 +16,7 @@
 #include "mlir/IR/AffineMap.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinDialect.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/DialectResourceBlobManager.h"
 #include "mlir/IR/IntegerSet.h"
@@ -954,6 +955,137 @@ Attribute Parser::parseDenseArrayAttr(Type attrType) {
   return eltParser.getAttr();
 }
 
+/// Try to parse a dense elements attribute with the type-first syntax.
+/// Syntax: dense<TYPE : [ATTR, ATTR, ...]>
+/// This is used for element types implementing DenseElementTypeInterface.
+///
+/// Returns:
+///   - failure() on parse error
+///   - Attribute() (null) if this is not the type-first syntax
+///   - A valid Attribute on success
+static FailureOr<Attribute> parseDenseElementsAttrTyped(Parser &p, SMLoc loc) {
+  // Try to parse an optional type. Skip l_paren because parseOptionalType
+  // would try to parse it as a tuple/function type, but '(' starts a complex
+  // literal like (0, 1) in dense syntax.
+  Type type;
+  OptionalParseResult typeResult = p.getToken().is(Token::l_paren)
+                                       ? OptionalParseResult(std::nullopt)
+                                       : p.parseOptionalType(type);
+  if (!typeResult.has_value())
+    return Attribute(); // Not type-first syntax.
+
+  if (failed(*typeResult))
+    return failure(); // Type parse error.
+
+  // We parsed a type. Check for ':' to confirm type-first syntax.
+  if (!p.getToken().is(Token::colon)) {
+    p.emitError(loc, "expected ':' after type in dense attribute");
+    return failure();
+  }
+
+  // Validate the type.
+  auto shapedType = dyn_cast<ShapedType>(type);
+  if (!shapedType) {
+    p.emitError(loc, "expected a shaped type for dense elements");
+    return failure();
+  }
+
+  if (!shapedType.hasStaticShape()) {
+    p.emitError(loc, "dense elements type must have static shape");
+    return failure();
+  }
+
+  // Check that the element type implements DenseElementTypeInterface.
+  auto denseEltType = dyn_cast<DenseElementType>(shapedType.getElementType());
+  if (!denseEltType) {
+    p.emitError(loc, "element type must implement DenseElementTypeInterface "
+                     "for type-first dense syntax");
+    return failure();
+  }
+
+  // Consume the ':' that separates the type from the element list.
+  p.consumeToken(Token::colon);
+
+  ArrayRef<int64_t> shape = shapedType.getShape();
+
+  // Parse the element attributes and convert to raw bytes.
+  SmallVector<char> rawData;
+  size_t byteSize = denseEltType.getDenseElementBitSize() / CHAR_BIT;
+
+  // Helper to parse a single element.
+  auto parseSingleElement = [&]() -> ParseResult {
+    Attribute elemAttr = p.parseAttribute();
+    if (!elemAttr)
+      return failure();
+    if (failed(denseEltType.convertFromAttribute(elemAttr, rawData))) {
+      p.emitError("incompatible attribute for element type");
+      return failure();
+    }
+    return success();
+  };
+
+  // Recursively parse elements matching the expected shape.
+  std::function<ParseResult(ArrayRef<int64_t>)> parseElements;
+  parseElements = [&](ArrayRef<int64_t> remainingShape) -> ParseResult {
+    // Leaf: parse a single element.
+    if (remainingShape.empty())
+      return parseSingleElement();
+
+    // Non-leaf: expect a list with the correct number of elements.
+    int64_t expectedCount = remainingShape[0];
+    ArrayRef<int64_t> innerShape = remainingShape.drop_front();
+    int64_t actualCount = 0;
+
+    auto parseOne = [&]() -> ParseResult {
+      if (parseElements(innerShape))
+        return failure();
+      ++actualCount;
+      return success();
+    };
+
+    if (p.parseCommaSeparatedList(Parser::Delimiter::Square, parseOne))
+      return failure();
+
+    if (actualCount != expectedCount) {
+      p.emitError() << "expected " << expectedCount
+                    << " elements in dimension, got " << actualCount;
+      return failure();
+    }
+    return success();
+  };
+
+  // Check for splat (single element for the whole tensor).
+  bool isSplat = false;
+  if (!p.getToken().is(Token::l_square)) {
+    // Single element - parse as splat.
+    if (parseSingleElement())
+      return failure();
+    isSplat = shapedType.getNumElements() != 1;
+  } else if (shape.empty()) {
+    // Scalar type shouldn't have a list.
+    p.emitError(loc, "expected single element for scalar type, got list");
+    return failure();
+  } else {
+    // Parse structured literal matching the shape.
+    if (parseElements(shape))
+      return failure();
+  }
+
+  // Verify element count (should match unless it's a splat).
+  int64_t numElements = shapedType.getNumElements();
+  if (!isSplat && rawData.size() != byteSize * numElements) {
+    p.emitError(loc) << "parsed " << (rawData.size() / byteSize)
+                     << " elements, but type expects " << numElements;
+    return failure();
+  }
+
+  if (p.parseToken(Token::greater, "expected '>' to close dense attribute"))
+    return failure();
+
+  // Create the attribute from raw buffer.
+  return DenseElementsAttr::getFromRawBuffer(shapedType, rawData);
+}
+
 /// Parse a dense elements attribute.
 Attribute Parser::parseDenseElementsAttr(Type attrType) {
   auto attribLoc = getToken().getLoc();
@@ -961,7 +1093,16 @@ Attribute Parser::parseDenseElementsAttr(Type attrType) {
   if (parseToken(Token::less, "expected '<' after 'dense'"))
     return nullptr;
 
-  // Parse the literal data if necessary.
+  // Try to parse the type-first syntax: dense<TYPE : [ATTR, ...]>
+  // This is used for element types implementing DenseElementTypeInterface.
+  FailureOr<Attribute> typedResult =
+      parseDenseElementsAttrTyped(*this, attribLoc);
+  if (failed(typedResult))
+    return nullptr;
+  if (*typedResult)
+    return *typedResult;
+
+  // Parse the literal data if necessary (old syntax: dense<LITERAL> : TYPE).
   TensorLiteralParser literalParser(*this);
   if (!consumeIf(Token::greater)) {
     if (literalParser.parse(/*allowHex=*/true) ||
@@ -969,10 +1110,10 @@ Attribute Parser::parseDenseElementsAttr(Type attrType) {
       return nullptr;
   }
 
-  auto type = parseElementsLiteralType(attribLoc, attrType);
-  if (!type)
+  auto literalType = parseElementsLiteralType(attribLoc, attrType);
+  if (!literalType)
     return nullptr;
-  return literalParser.getAttr(attribLoc, type);
+  return literalParser.getAttr(attribLoc, literalType);
 }
 
 Attribute Parser::parseDenseResourceElementsAttr(Type attrType) {

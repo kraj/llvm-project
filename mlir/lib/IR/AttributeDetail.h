@@ -16,6 +16,7 @@
 #include "mlir/IR/AffineMap.h"
 #include "mlir/IR/AttributeSupport.h"
 #include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/MLIRContext.h"
@@ -32,6 +33,9 @@ namespace detail {
 
 /// Return the bit width which DenseElementsAttr should use for this type.
 inline size_t getDenseElementBitWidth(Type eltType) {
+  // Check for DenseElementTypeInterface first.
+  if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType))
+    return denseEltType.getDenseElementBitSize();
   // Align the width for complex to 8 to make storage and interpretation easier.
   if (ComplexType comp = llvm::dyn_cast<ComplexType>(eltType))
     return llvm::alignTo<8>(getDenseElementBitWidth(comp.getElementType())) * 2;
