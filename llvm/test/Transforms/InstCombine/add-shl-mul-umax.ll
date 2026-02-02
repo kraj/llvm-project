@@ -11,12 +11,12 @@
 
 ; Positive Test Cases for `shl`
 
-define i64 @test_shl_by_2(i64 %x) {
+define i64 @test_shl_by_2(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_by_2(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0:![0-9]+]] {
 ; CHECK-NEXT:    [[TMP2:%.*]] = shl nuw i64 [[X]], 2
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[TMP2]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[TMP2]], !prof [[PROF1:![0-9]+]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -25,12 +25,12 @@ define i64 @test_shl_by_2(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_shl_by_5(i64 %x) {
+define i64 @test_shl_by_5(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_by_5(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[TMP2:%.*]] = shl nuw i64 [[X]], 5
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[TMP2]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[TMP2]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -39,12 +39,12 @@ define i64 @test_shl_by_5(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_shl_with_nsw(i64 %x) {
+define i64 @test_shl_with_nsw(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_with_nsw(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[SHL:%.*]] = shl nuw nsw i64 [[X]], 2
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[SHL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[SHL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -53,12 +53,12 @@ define i64 @test_shl_with_nsw(i64 %x) {
   ret i64 %max
 }
 
-define <2 x i64> @test_shl_vector_by_2(<2 x i64> %x) {
+define <2 x i64> @test_shl_vector_by_2(<2 x i64> %x) !prof !0 {
 ; CHECK-LABEL: define <2 x i64> @test_shl_vector_by_2(
-; CHECK-SAME: <2 x i64> [[X:%.*]]) {
+; CHECK-SAME: <2 x i64> [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[SHL:%.*]] = shl nuw <2 x i64> [[X]], splat (i64 2)
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <2 x i64> [[X]], zeroinitializer
-; CHECK-NEXT:    [[MAX:%.*]] = select <2 x i1> [[TMP1]], <2 x i64> splat (i64 1), <2 x i64> [[SHL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select <2 x i1> [[TMP1]], <2 x i64> splat (i64 1), <2 x i64> [[SHL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret <2 x i64> [[MAX]]
 ;
   %x1 = add <2 x i64> %x, <i64 1, i64 1>
@@ -69,12 +69,12 @@ define <2 x i64> @test_shl_vector_by_2(<2 x i64> %x) {
 
 ; Commuted Test Cases for `shl`
 
-define i64 @test_shl_umax_commuted(i64 %x) {
+define i64 @test_shl_umax_commuted(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_umax_commuted(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[SHL:%.*]] = shl nuw i64 [[X]], 2
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[SHL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[SHL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -85,9 +85,9 @@ define i64 @test_shl_umax_commuted(i64 %x) {
 
 ; Negative Test Cases for `shl`
 
-define i64 @test_shl_by_zero(i64 %x) {
+define i64 @test_shl_by_zero(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_by_zero(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umax.i64(i64 [[X]], i64 [[X1]])
 ; CHECK-NEXT:    ret i64 [[MAX]]
@@ -98,9 +98,9 @@ define i64 @test_shl_by_zero(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_shl_add_by_2(i64 %x) {
+define i64 @test_shl_add_by_2(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_add_by_2(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 2
 ; CHECK-NEXT:    [[SHL:%.*]] = shl nuw i64 [[X]], 2
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umax.i64(i64 [[SHL]], i64 [[X1]])
@@ -112,9 +112,9 @@ define i64 @test_shl_add_by_2(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_shl_without_nuw(i64 %x) {
+define i64 @test_shl_without_nuw(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_without_nuw(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    [[SHL:%.*]] = shl i64 [[X]], 2
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umax.i64(i64 [[SHL]], i64 [[X1]])
@@ -126,9 +126,9 @@ define i64 @test_shl_without_nuw(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_shl_umin(i64 %x) {
+define i64 @test_shl_umin(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_umin(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    [[SHL:%.*]] = shl nuw i64 [[X]], 2
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umin.i64(i64 [[SHL]], i64 [[X1]])
@@ -143,9 +143,9 @@ define i64 @test_shl_umin(i64 %x) {
 ; Multi-use Test Cases for `shl`
 declare void @use(i64)
 
-define i64 @test_shl_multi_use_add(i64 %x) {
+define i64 @test_shl_multi_use_add(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_multi_use_add(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    call void @use(i64 [[X1]])
 ; CHECK-NEXT:    [[TMP2:%.*]] = shl nuw i64 [[X]], 3
@@ -159,13 +159,13 @@ define i64 @test_shl_multi_use_add(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_shl_multi_use_shl(i64 %x) {
+define i64 @test_shl_multi_use_shl(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_shl_multi_use_shl(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[SHL:%.*]] = shl nuw i64 [[X]], 2
 ; CHECK-NEXT:    call void @use(i64 [[SHL]])
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[SHL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[SHL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -177,12 +177,12 @@ define i64 @test_shl_multi_use_shl(i64 %x) {
 
 ; Positive Test Cases for `mul`
 
-define i64 @test_mul_by_3(i64 %x) {
+define i64 @test_mul_by_3(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_by_3(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[X]], 3
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -191,12 +191,12 @@ define i64 @test_mul_by_3(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_by_5(i64 %x) {
+define i64 @test_mul_by_5(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_by_5(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[X]], 5
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -205,12 +205,12 @@ define i64 @test_mul_by_5(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_with_nsw(i64 %x) {
+define i64 @test_mul_with_nsw(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_with_nsw(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw nsw i64 [[X]], 3
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -219,12 +219,12 @@ define i64 @test_mul_with_nsw(i64 %x) {
   ret i64 %max
 }
 
-define <2 x i64> @test_mul_vector_by_3(<2 x i64> %x) {
+define <2 x i64> @test_mul_vector_by_3(<2 x i64> %x) !prof !0 {
 ; CHECK-LABEL: define <2 x i64> @test_mul_vector_by_3(
-; CHECK-SAME: <2 x i64> [[X:%.*]]) {
+; CHECK-SAME: <2 x i64> [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw <2 x i64> [[X]], splat (i64 3)
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <2 x i64> [[X]], zeroinitializer
-; CHECK-NEXT:    [[MAX:%.*]] = select <2 x i1> [[TMP1]], <2 x i64> splat (i64 1), <2 x i64> [[MUL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select <2 x i1> [[TMP1]], <2 x i64> splat (i64 1), <2 x i64> [[MUL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret <2 x i64> [[MAX]]
 ;
   %x1 = add <2 x i64> %x, <i64 1, i64 1>
@@ -235,12 +235,12 @@ define <2 x i64> @test_mul_vector_by_3(<2 x i64> %x) {
 
 ; Commuted Test Cases for `mul`
 
-define i64 @test_mul_max_commuted(i64 %x) {
+define i64 @test_mul_max_commuted(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_max_commuted(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[X]], 3
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -251,9 +251,9 @@ define i64 @test_mul_max_commuted(i64 %x) {
 
 ; Negative Test Cases for `mul`
 
-define i64 @test_mul_by_zero(i64 %x) {
+define i64 @test_mul_by_zero(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_by_zero(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    ret i64 [[X1]]
 ;
@@ -263,9 +263,9 @@ define i64 @test_mul_by_zero(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_by_1(i64 %x) {
+define i64 @test_mul_by_1(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_by_1(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umax.i64(i64 [[X]], i64 [[X1]])
 ; CHECK-NEXT:    ret i64 [[MAX]]
@@ -276,9 +276,9 @@ define i64 @test_mul_by_1(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_add_by_2(i64 %x) {
+define i64 @test_mul_add_by_2(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_add_by_2(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 2
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[X]], 3
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umax.i64(i64 [[MUL]], i64 [[X1]])
@@ -290,9 +290,9 @@ define i64 @test_mul_add_by_2(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_without_nuw(i64 %x) {
+define i64 @test_mul_without_nuw(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_without_nuw(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i64 [[X]], 3
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umax.i64(i64 [[MUL]], i64 [[X1]])
@@ -304,9 +304,9 @@ define i64 @test_mul_without_nuw(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_umin(i64 %x) {
+define i64 @test_mul_umin(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_umin(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[X]], 3
 ; CHECK-NEXT:    [[MAX:%.*]] = call i64 @llvm.umin.i64(i64 [[MUL]], i64 [[X1]])
@@ -320,9 +320,9 @@ define i64 @test_mul_umin(i64 %x) {
 
 ; Multi-use Test Cases for `mul`
 
-define i64 @test_mul_multi_use_add(i64 %x) {
+define i64 @test_mul_multi_use_add(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_multi_use_add(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[X1:%.*]] = add i64 [[X]], 1
 ; CHECK-NEXT:    call void @use(i64 [[X1]])
 ; CHECK-NEXT:    [[TMP2:%.*]] = mul nuw i64 [[X]], 3
@@ -336,13 +336,13 @@ define i64 @test_mul_multi_use_add(i64 %x) {
   ret i64 %max
 }
 
-define i64 @test_mul_multi_use_mul(i64 %x) {
+define i64 @test_mul_multi_use_mul(i64 %x) !prof !0 {
 ; CHECK-LABEL: define i64 @test_mul_multi_use_mul(
-; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-SAME: i64 [[X:%.*]]) !prof [[PROF0]] {
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[X]], 3
 ; CHECK-NEXT:    call void @use(i64 [[MUL]])
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[X]], 0
-; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]]
+; CHECK-NEXT:    [[MAX:%.*]] = select i1 [[TMP1]], i64 1, i64 [[MUL]], !prof [[PROF1]]
 ; CHECK-NEXT:    ret i64 [[MAX]]
 ;
   %x1 = add i64 %x, 1
@@ -351,3 +351,9 @@ define i64 @test_mul_multi_use_mul(i64 %x) {
   %max = call i64 @llvm.umax.i64(i64 %mul, i64 %x1)
   ret i64 %max
 }
+
+!0 = !{!"function_entry_count", i64 1}
+;.
+; CHECK: [[PROF0]] = !{!"function_entry_count", i64 1}
+; CHECK: [[PROF1]] = !{!"unknown", !"instcombine"}
+;.
