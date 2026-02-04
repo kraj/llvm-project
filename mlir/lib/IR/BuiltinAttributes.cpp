@@ -619,46 +619,27 @@ DenseElementsAttr::AttributeElementIterator::AttributeElementIterator(
 Attribute DenseElementsAttr::AttributeElementIterator::operator*() const {
   auto owner = llvm::cast<DenseElementsAttr>(getFromOpaquePointer(base));
   Type eltTy = owner.getElementType();
-  if (llvm::dyn_cast<IntegerType>(eltTy))
-    return IntegerAttr::get(eltTy, *IntElementIterator(owner, index));
-  if (llvm::isa<IndexType>(eltTy))
-    return IntegerAttr::get(eltTy, *IntElementIterator(owner, index));
-  if (auto floatEltTy = llvm::dyn_cast<FloatType>(eltTy)) {
-    IntElementIterator intIt(owner, index);
-    FloatElementIterator floatIt(floatEltTy.getFloatSemantics(), intIt);
-    return FloatAttr::get(eltTy, *floatIt);
-  }
-  if (auto complexTy = llvm::dyn_cast<ComplexType>(eltTy)) {
-    auto complexEltTy = complexTy.getElementType();
-    ComplexIntElementIterator complexIntIt(owner, index);
-    if (llvm::isa<IntegerType>(complexEltTy)) {
-      auto value = *complexIntIt;
-      auto real = IntegerAttr::get(complexEltTy, value.real());
-      auto imag = IntegerAttr::get(complexEltTy, value.imag());
-      return ArrayAttr::get(complexTy.getContext(),
-                            ArrayRef<Attribute>{real, imag});
-    }
 
-    ComplexFloatElementIterator complexFloatIt(
-        llvm::cast<FloatType>(complexEltTy).getFloatSemantics(), complexIntIt);
-    auto value = *complexFloatIt;
-    auto real = FloatAttr::get(complexEltTy, value.real());
-    auto imag = FloatAttr::get(complexEltTy, value.imag());
-    return ArrayAttr::get(complexTy.getContext(),
-                          ArrayRef<Attribute>{real, imag});
+  // Handle i1 (boolean) specially - it's bit-packed and doesn't use interface.
+  if (eltTy.isInteger(1)) {
+    bool value = *BoolElementIterator(owner, index);
+    return IntegerAttr::get(eltTy, APInt(1, value));
   }
+
+  // Handle strings specially.
   if (llvm::isa<DenseStringElementsAttr>(owner)) {
     ArrayRef<StringRef> vals = owner.getRawStringData();
     return StringAttr::get(owner.isSplat() ? vals.front() : vals[index], eltTy);
   }
-  // Check if the element type implements DenseElementTypeInterface.
-  if (auto denseEltTy = llvm::dyn_cast<DenseElementType>(eltTy)) {
-    ArrayRef<char> rawData = owner.getRawData();
-    size_t byteSize = denseEltTy.getDenseElementBitSize() / CHAR_BIT;
-    size_t offset = owner.isSplat() ? 0 : index * byteSize;
-    return denseEltTy.convertToAttribute(rawData.slice(offset, byteSize));
-  }
-  llvm_unreachable("unexpected element type");
+
+  // All other types should implement DenseElementTypeInterface.
+  auto denseEltTy = llvm::cast<DenseElementType>(eltTy);
+  ArrayRef<char> rawData = owner.getRawData();
+  // Storage is byte-aligned: align bit size up to next byte boundary.
+  size_t bitSize = denseEltTy.getDenseElementBitSize();
+  size_t byteSize = llvm::divideCeil(bitSize, CHAR_BIT);
+  size_t offset = owner.isSplat() ? 0 : index * byteSize;
+  return denseEltTy.convertToAttribute(rawData.slice(offset, byteSize));
 }
 
 //===----------------------------------------------------------------------===//
@@ -920,94 +901,35 @@ DenseElementsAttr DenseElementsAttr::get(ShapedType type,
 
   Type eltType = type.getElementType();
 
-  // Take care complex type case first.
-  if (auto complexType = llvm::dyn_cast<ComplexType>(eltType)) {
-    if (complexType.getElementType().isIntOrIndex()) {
-      SmallVector<std::complex<APInt>> complexValues;
-      complexValues.reserve(values.size());
-      for (Attribute attr : values) {
-        assert(llvm::isa<ArrayAttr>(attr) && "expected ArrayAttr for complex");
-        auto arrayAttr = llvm::cast<ArrayAttr>(attr);
-        assert(arrayAttr.size() == 2 && "expected 2 element for complex");
-        auto attr0 = arrayAttr[0];
-        auto attr1 = arrayAttr[1];
-        complexValues.push_back(
-            std::complex<APInt>(llvm::cast<IntegerAttr>(attr0).getValue(),
-                                llvm::cast<IntegerAttr>(attr1).getValue()));
-      }
-      return DenseElementsAttr::get(type, complexValues);
-    }
-    // Must be float.
-    SmallVector<std::complex<APFloat>> complexValues;
-    complexValues.reserve(values.size());
-    for (Attribute attr : values) {
-      assert(llvm::isa<ArrayAttr>(attr) && "expected ArrayAttr for complex");
-      auto arrayAttr = llvm::cast<ArrayAttr>(attr);
-      assert(arrayAttr.size() == 2 && "expected 2 element for complex");
-      auto attr0 = arrayAttr[0];
-      auto attr1 = arrayAttr[1];
-      complexValues.push_back(
-          std::complex<APFloat>(llvm::cast<FloatAttr>(attr0).getValue(),
-                                llvm::cast<FloatAttr>(attr1).getValue()));
-    }
-    return DenseElementsAttr::get(type, complexValues);
+  // Handle i1 (boolean) specially - it's bit-packed.
+  if (eltType.isInteger(1)) {
+    SmallVector<bool> boolValues;
+    boolValues.reserve(values.size());
+    for (Attribute attr : values)
+      boolValues.push_back(llvm::cast<IntegerAttr>(attr).getValue().isOne());
+    return get(type, boolValues);
   }
 
-  // Check if the element type implements DenseElementTypeInterface.
-  if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType)) {
-    SmallVector<char> data;
-    for (Attribute attr : values) {
-      SmallVector<char> elementData;
-      if (failed(denseEltType.convertFromAttribute(attr, elementData))) {
-        llvm_unreachable("incompatible attribute for DenseElementType");
-      }
-      llvm::append_range(data, elementData);
-    }
-    return DenseIntOrFPElementsAttr::getRaw(type, data);
-  }
-
-  // If the element type is not based on int/float/index, assume it is a string
-  // type.
-  if (!eltType.isIntOrIndexOrFloat()) {
+  // Handle strings specially.
+  if (!llvm::isa<DenseElementType>(eltType)) {
     SmallVector<StringRef, 8> stringValues;
     stringValues.reserve(values.size());
     for (Attribute attr : values) {
       assert(llvm::isa<StringAttr>(attr) &&
-             "expected string value for non integer/index/float element");
+             "expected string value for non-DenseElementType element");
       stringValues.push_back(llvm::cast<StringAttr>(attr).getValue());
     }
     return get(type, stringValues);
   }
 
-  // Otherwise, get the raw storage width to use for the allocation.
-  size_t bitWidth = getDenseElementBitWidth(eltType);
-  size_t storageBitWidth = getDenseElementStorageWidth(bitWidth);
-
-  // Compress the attribute values into a character buffer.
-  SmallVector<char, 8> data(
-      llvm::divideCeil(storageBitWidth * values.size(), CHAR_BIT));
-  APInt intVal;
-  for (unsigned i = 0, e = values.size(); i < e; ++i) {
-    if (auto floatAttr = llvm::dyn_cast<FloatAttr>(values[i])) {
-      assert(floatAttr.getType() == eltType &&
-             "expected float attribute type to equal element type");
-      intVal = floatAttr.getValue().bitcastToAPInt();
-    } else {
-      auto intAttr = llvm::cast<IntegerAttr>(values[i]);
-      assert(intAttr.getType() == eltType &&
-             "expected integer attribute type to equal element type");
-      intVal = intAttr.getValue();
-    }
-
-    assert(intVal.getBitWidth() == bitWidth &&
-           "expected value to have same bitwidth as element type");
-    writeBits(data.data(), i * storageBitWidth, intVal);
+  // All other types go through DenseElementTypeInterface.
+  auto denseEltType = llvm::cast<DenseElementType>(eltType);
+  SmallVector<char> data;
+  for (Attribute attr : values) {
+    LogicalResult result = denseEltType.convertFromAttribute(attr, data);
+    assert(succeeded(result) && "incompatible attribute for DenseElementType");
+    (void)result;
   }
-
-  // Handle the special encoding of splat of bool.
-  if (values.size() == 1 && eltType.isInteger(1))
-    data[0] = data[0] ? -1 : 0;
-
   return DenseIntOrFPElementsAttr::getRaw(type, data);
 }
 

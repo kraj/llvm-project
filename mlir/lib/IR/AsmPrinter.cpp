@@ -2507,22 +2507,27 @@ void AsmPrinter::Impl::printAttributeImpl(Attribute attr,
     }
 
   } else if (auto denseEltAttr = llvm::dyn_cast<DenseElementsAttr>(attr)) {
-    // Check if the element type implements DenseElementTypeInterface.
-    // If so, use the type-first syntax which embeds the type in the attribute.
+    // Check if the element type implements DenseElementTypeInterface and is
+    // not a built-in type. Built-in types (int, float, index, complex) use the
+    // existing printing format for backwards compatibility.
     Type eltType = denseEltAttr.getElementType();
-    if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType)) {
-      if (printerFlags.shouldElideElementsAttr(denseEltAttr)) {
-        printElidedElementsAttr(os);
-      } else {
-        os << "dense<";
-        printDenseElementsAttrWithInterface(denseEltAttr, denseEltType);
-        os << '>';
+    bool isBuiltinEltType =
+        eltType.isIntOrIndexOrFloat() || llvm::isa<ComplexType>(eltType);
+    if (!isBuiltinEltType) {
+      if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType)) {
+        if (printerFlags.shouldElideElementsAttr(denseEltAttr)) {
+          printElidedElementsAttr(os);
+        } else {
+          os << "dense<";
+          printDenseElementsAttrWithInterface(denseEltAttr, denseEltType);
+          os << '>';
+        }
+        // Type is embedded in the syntax, don't print it again.
+        return;
       }
-      // Type is embedded in the syntax, don't print it again.
-      return;
     }
 
-    // Fall back to existing printing for built-in element types.
+    // Print built-in element types with the existing format.
     if (auto intOrFpEltAttr =
             llvm::dyn_cast<DenseIntOrFPElementsAttr>(denseEltAttr)) {
       if (printerFlags.shouldElideElementsAttr(intOrFpEltAttr)) {
@@ -2735,7 +2740,9 @@ void AsmPrinter::Impl::printDenseElementsAttrWithInterface(
   os << " : ";
 
   ArrayRef<char> rawData = attr.getRawData();
-  size_t byteSize = denseEltType.getDenseElementBitSize() / CHAR_BIT;
+  // Storage is byte-aligned: align bit size up to next byte boundary.
+  size_t bitSize = denseEltType.getDenseElementBitSize();
+  size_t byteSize = llvm::divideCeil(bitSize, (size_t)CHAR_BIT);
 
   // Print elements: convert raw bytes to attribute, then print attribute.
   printDenseElementsAttrImpl(

@@ -342,7 +342,8 @@ def LLVMX86AMXType : LLVMType<"LLVMX86AMX", "x86_amx"> {
 //===----------------------------------------------------------------------===//
 
 def LLVMPPCFP128Type : LLVMType<"LLVMPPCFP128", "ppc_fp128",
-    [DeclareTypeInterfaceMethods<FloatTypeInterface, ["getFloatSemantics"]>]> {
+    [DeclareTypeInterfaceMethods<DenseElementTypeInterface>,
+     DeclareTypeInterfaceMethods<FloatTypeInterface, ["getFloatSemantics"]>]> {
   let summary = "128 bit FP type with IBM double-double semantics";
   let description = [{
     A 128 bit floating-point type with IBM double-double semantics.

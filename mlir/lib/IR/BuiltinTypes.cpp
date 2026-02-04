@@ -18,9 +18,11 @@
 #include "mlir/IR/TensorEncoding.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/Sequence.h"
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/CheckedArithmetic.h"
+#include <cstring>
 
 using namespace mlir;
 using namespace mlir::detail;
@@ -86,6 +88,157 @@ IntegerType IntegerType::scaleElementBitwidth(unsigned scale) {
   return IntegerType::get(getContext(), scale * getWidth(), getSignedness());
 }
 
+size_t IntegerType::getDenseElementBitSize() const {
+  // Return the actual bit width. Storage alignment is handled separately.
+  // Note: i1 is bit-packed and should be special-cased by the caller.
+  return getWidth();
+}
+
+Attribute IntegerType::convertToAttribute(ArrayRef<char> rawData) const {
+  unsigned bitWidth = getWidth();
+  // Storage is byte-aligned, but we only use the lower `bitWidth` bits.
+  APInt value(bitWidth, 0);
+  if (bitWidth <= 64) {
+    uint64_t bits = 0;
+    std::memcpy(&bits, rawData.data(), rawData.size());
+    // Mask to the actual bit width.
+    bits &= llvm::maskTrailingOnes<uint64_t>(bitWidth);
+    value = APInt(bitWidth, bits);
+  } else {
+    size_t numWords = llvm::divideCeil(bitWidth, 64);
+    SmallVector<uint64_t> words(numWords);
+    std::memcpy(words.data(), rawData.data(), rawData.size());
+    value = APInt(bitWidth, words);
+  }
+  return IntegerAttr::get(*this, value);
+}
+
+LogicalResult
+IntegerType::convertFromAttribute(Attribute attr,
+                                  SmallVectorImpl<char> &result) const {
+  auto intAttr = dyn_cast<IntegerAttr>(attr);
+  if (!intAttr || intAttr.getType() != *this)
+    return failure();
+
+  APInt value = intAttr.getValue();
+  // Storage is byte-aligned.
+  size_t byteSize = llvm::divideCeil(getDenseElementBitSize(), CHAR_BIT);
+  size_t oldSize = result.size();
+  result.resize(oldSize + byteSize);
+  // Use getRawData() to handle all bit widths correctly.
+  llvm::StoreIntToMemory(
+      value, reinterpret_cast<uint8_t *>(result.data() + oldSize), byteSize);
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// Index Type
+//===----------------------------------------------------------------------===//
+
+size_t IndexType::getDenseElementBitSize() const {
+  return kInternalStorageBitWidth;
+}
+
+Attribute IndexType::convertToAttribute(ArrayRef<char> rawData) const {
+  uint64_t value = 0;
+  std::memcpy(&value, rawData.data(), rawData.size());
+  return IntegerAttr::get(*this, APInt(kInternalStorageBitWidth, value));
+}
+
+LogicalResult
+IndexType::convertFromAttribute(Attribute attr,
+                                SmallVectorImpl<char> &result) const {
+  auto intAttr = dyn_cast<IntegerAttr>(attr);
+  if (!intAttr || intAttr.getType() != *this)
+    return failure();
+
+  APInt value = intAttr.getValue();
+  size_t byteSize = kInternalStorageBitWidth / CHAR_BIT;
+  size_t oldSize = result.size();
+  result.resize(oldSize + byteSize);
+  llvm::StoreIntToMemory(
+      value, reinterpret_cast<uint8_t *>(result.data() + oldSize), byteSize);
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// Complex Type
+//===----------------------------------------------------------------------===//
+
+size_t ComplexType::getDenseElementBitSize() const {
+  Type eltType = getElementType();
+  if (auto intType = dyn_cast<IntegerType>(eltType))
+    return 2 * llvm::alignTo<CHAR_BIT>(intType.getWidth());
+  return 2 * cast<FloatType>(eltType).getWidth();
+}
+
+Attribute ComplexType::convertToAttribute(ArrayRef<char> rawData) const {
+  Type eltType = getElementType();
+  size_t halfSize = rawData.size() / 2;
+
+  if (auto intType = dyn_cast<IntegerType>(eltType)) {
+    unsigned width = intType.getWidth();
+    uint64_t realBits = 0, imagBits = 0;
+    std::memcpy(&realBits, rawData.data(), halfSize);
+    std::memcpy(&imagBits, rawData.data() + halfSize, halfSize);
+    auto real = IntegerAttr::get(eltType, APInt(width, realBits));
+    auto imag = IntegerAttr::get(eltType, APInt(width, imagBits));
+    return ArrayAttr::get(getContext(), {real, imag});
+  }
+
+  auto floatType = cast<FloatType>(eltType);
+  const auto &semantics = floatType.getFloatSemantics();
+  uint64_t realBits = 0, imagBits = 0;
+  std::memcpy(&realBits, rawData.data(), halfSize);
+  std::memcpy(&imagBits, rawData.data() + halfSize, halfSize);
+  auto real = FloatAttr::get(
+      eltType, APFloat(semantics, APInt(floatType.getWidth(), realBits)));
+  auto imag = FloatAttr::get(
+      eltType, APFloat(semantics, APInt(floatType.getWidth(), imagBits)));
+  return ArrayAttr::get(getContext(), {real, imag});
+}
+
+LogicalResult
+ComplexType::convertFromAttribute(Attribute attr,
+                                  SmallVectorImpl<char> &result) const {
+  auto arrayAttr = dyn_cast<ArrayAttr>(attr);
+  if (!arrayAttr || arrayAttr.size() != 2)
+    return failure();
+
+  Type eltType = getElementType();
+  size_t halfSize = getDenseElementBitSize() / 2 / CHAR_BIT;
+  size_t oldSize = result.size();
+  result.resize(oldSize + 2 * halfSize);
+
+  if (auto intType = dyn_cast<IntegerType>(eltType)) {
+    auto realAttr = dyn_cast<IntegerAttr>(arrayAttr[0]);
+    auto imagAttr = dyn_cast<IntegerAttr>(arrayAttr[1]);
+    if (!realAttr || !imagAttr)
+      return failure();
+    llvm::StoreIntToMemory(realAttr.getValue(),
+                           reinterpret_cast<uint8_t *>(result.data() + oldSize),
+                           halfSize);
+    llvm::StoreIntToMemory(
+        imagAttr.getValue(),
+        reinterpret_cast<uint8_t *>(result.data() + oldSize + halfSize),
+        halfSize);
+    return success();
+  }
+
+  auto realAttr = dyn_cast<FloatAttr>(arrayAttr[0]);
+  auto imagAttr = dyn_cast<FloatAttr>(arrayAttr[1]);
+  if (!realAttr || !imagAttr)
+    return failure();
+  llvm::StoreIntToMemory(realAttr.getValue().bitcastToAPInt(),
+                         reinterpret_cast<uint8_t *>(result.data() + oldSize),
+                         halfSize);
+  llvm::StoreIntToMemory(
+      imagAttr.getValue().bitcastToAPInt(),
+      reinterpret_cast<uint8_t *>(result.data() + oldSize + halfSize),
+      halfSize);
+  return success();
+}
+
 //===----------------------------------------------------------------------===//
 // Float Types
 //===----------------------------------------------------------------------===//
@@ -114,6 +267,57 @@ FLOAT_TYPE_SEMANTICS(Float64Type, IEEEdouble)
 FLOAT_TYPE_SEMANTICS(Float80Type, x87DoubleExtended)
 FLOAT_TYPE_SEMANTICS(Float128Type, IEEEquad)
 #undef FLOAT_TYPE_SEMANTICS
+
+// DenseElementTypeInterface implementations for all float types.
+#define FLOAT_DENSE_ELEMENT_INTERFACE(TYPE)                                    \
+  size_t TYPE::getDenseElementBitSize() const {                                \
+    return FloatType(*this).getWidth();                                        \
+  }                                                                            \
+  Attribute TYPE::convertToAttribute(ArrayRef<char> rawData) const {           \
+    FloatType floatType(*this);                                                \
+    unsigned bitWidth = floatType.getWidth();                                  \
+    uint64_t bits = 0;                                                         \
+    std::memcpy(&bits, rawData.data(), rawData.size());                        \
+    /* Mask to actual bit width for sub-byte floats. */                        \
+    bits &= llvm::maskTrailingOnes<uint64_t>(bitWidth);                        \
+    APInt intVal(bitWidth, bits);                                              \
+    APFloat floatVal(floatType.getFloatSemantics(), intVal);                   \
+    return FloatAttr::get(*this, floatVal);                                    \
+  }                                                                            \
+  LogicalResult TYPE::convertFromAttribute(                                    \
+      Attribute attr, SmallVectorImpl<char> &result) const {                   \
+    auto floatAttr = dyn_cast<FloatAttr>(attr);                                \
+    if (!floatAttr || floatAttr.getType() != *this)                            \
+      return failure();                                                        \
+    APInt intVal = floatAttr.getValue().bitcastToAPInt();                      \
+    /* Storage is byte-aligned. */                                             \
+    size_t byteSize = llvm::divideCeil(FloatType(*this).getWidth(), CHAR_BIT); \
+    size_t oldSize = result.size();                                            \
+    result.resize(oldSize + byteSize);                                         \
+    llvm::StoreIntToMemory(                                                    \
+        intVal, reinterpret_cast<uint8_t *>(result.data() + oldSize),          \
+        byteSize);                                                             \
+    return success();                                                          \
+  }
+FLOAT_DENSE_ELEMENT_INTERFACE(Float4E2M1FNType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float6E2M3FNType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float6E3M2FNType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E5M2Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E4M3Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E4M3FNType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E5M2FNUZType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E4M3FNUZType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E4M3B11FNUZType)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E3M4Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float8E8M0FNUType)
+FLOAT_DENSE_ELEMENT_INTERFACE(BFloat16Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float16Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(FloatTF32Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float32Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float64Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float80Type)
+FLOAT_DENSE_ELEMENT_INTERFACE(Float128Type)
+#undef FLOAT_DENSE_ELEMENT_INTERFACE
 
 FloatType Float16Type::scaleElementBitwidth(unsigned scale) const {
   if (scale == 2)

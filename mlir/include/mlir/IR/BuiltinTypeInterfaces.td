@@ -42,11 +42,66 @@ def VectorElementTypeInterface : TypeInterface<"VectorElementTypeInterface"> {
 }
 
 //===----------------------------------------------------------------------===//
+// DenseElementTypeInterface
+//===----------------------------------------------------------------------===//
+
+def DenseElementTypeInterface : TypeInterface<"DenseElementType"> {
+  let cppNamespace = "::mlir";
+  let description = [{
+    This interface allows custom types to be used as element types in
+    DenseElementsAttr. Types implementing this interface define:
+
+    1. The bit size for element storage. Only full byte sizes are supported
+       at the moment.
+    2. Helper methods for converting from/to Attribute. This assumes that there
+       is a corresponding attribute for each type that implements this
+       interface.
+
+    The helper methods for converting from/to Attribute are utilized when
+    parsing/printing IR or iterating over the elements via Attribute.
+  }];
+
+  let methods = [
+    InterfaceMethod<
+      /*desc=*/[{
+        Return the number of bits required to store one element in dense
+        storage. This must be a compile-time constant for the type and must
+        be a multiple of 8 (byte-aligned).
+      }],
+      /*retTy=*/"size_t",
+      /*methodName=*/"getDenseElementBitSize",
+      /*args=*/(ins)
+    >,
+    InterfaceMethod<
+      /*desc=*/[{
+        Convert raw storage bytes to an attribute representing this element
+        value. The `rawData` array contains exactly `getDenseElementBitSize()/8`
+        bytes.
+      }],
+      /*retTy=*/"::mlir::Attribute",
+      /*methodName=*/"convertToAttribute",
+      /*args=*/(ins "::llvm::ArrayRef<char>":$rawData)
+    >,
+    InterfaceMethod<
+      /*desc=*/[{
+        Convert an attribute to raw storage bytes. Appends exactly
+        `getDenseElementBitSize()/8` bytes to `result`. Returns failure if the
+        attribute is incompatible with this element type.
+      }],
+      /*retTy=*/"::llvm::LogicalResult",
+      /*methodName=*/"convertFromAttribute",
+      /*args=*/(ins "::mlir::Attribute":$attr,
+                    "::llvm::SmallVectorImpl<char>&":$result)
+    >,
+  ];
+}
+
+//===----------------------------------------------------------------------===//
 // FloatTypeInterface
 //===----------------------------------------------------------------------===//
 
 def FloatTypeInterface : TypeInterface<"FloatType",
-    [VectorElementTypeInterface]> {
+    [DenseElementTypeInterface, VectorElementTypeInterface]> {
   let cppNamespace = "::mlir";
   let description = [{
     This type interface should be implemented by all floating-point types. It
@@ -336,61 +391,6 @@ def ShapedTypeInterface : TypeInterface<"ShapedType"> {
                             ::mlir::ShapedType::isDynamic);
     }
   }];
-}
-
-//===----------------------------------------------------------------------===//
-// DenseElementTypeInterface
-//===----------------------------------------------------------------------===//
-
-def DenseElementTypeInterface : TypeInterface<"DenseElementType"> {
-  let cppNamespace = "::mlir";
-  let description = [{
-    This interface allows custom types to be used as element types in
-    DenseElementsAttr. Types implementing this interface define:
-
-    1. The bit size for element storage. Only full byte sizes are supported
-       at the moment.
-    2. Helper methods for converting from/to Attribute. This assumes that there
-       is a corresponding attribute for each type that implements this
-       interface.
-
-    The helper methods for converting from/to Attribute are utilized when
-    parsing/printing IR or iterating over the elements via Attribute.
-  }];
-
-  let methods = [
-    InterfaceMethod<
-      /*desc=*/[{
-        Return the number of bits required to store one element in dense
-        storage. This must be a compile-time constant for the type and must
-        be a multiple of 8 (byte-aligned).
-      }],
-      /*retTy=*/"size_t",
-      /*methodName=*/"getDenseElementBitSize",
-      /*args=*/(ins)
-    >,
-    InterfaceMethod<
-      /*desc=*/[{
-        Convert raw storage bytes to an attribute representing this element
-        value. The `rawData` array contains exactly `getDenseElementBitSize()/8`
-        bytes.
-      }],
-      /*retTy=*/"::mlir::Attribute",
-      /*methodName=*/"convertToAttribute",
-      /*args=*/(ins "::llvm::ArrayRef<char>":$rawData)
-    >,
-    InterfaceMethod<
-      /*desc=*/[{
-        Convert an attribute to raw storage bytes. Appends exactly
-        `getDenseElementBitSize()/8` bytes to `result`. Returns failure if the
-        attribute is incompatible with this element type.
-      }],
-      /*retTy=*/"::llvm::LogicalResult",
-      /*methodName=*/"convertFromAttribute",
-      /*args=*/(ins "::mlir::Attribute":$attr,
-                    "::llvm::SmallVectorImpl<char>&":$result)
-    >,
-  ];
 }
 
 #endif // MLIR_IR_BUILTINTYPEINTERFACES_TD_

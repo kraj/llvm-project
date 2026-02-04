@@ -1010,7 +1010,9 @@ static FailureOr<Attribute> parseDenseElementsAttrTyped(Parser &p, SMLoc loc) {
 
   // Parse the element attributes and convert to raw bytes.
   SmallVector<char> rawData;
-  size_t byteSize = denseEltType.getDenseElementBitSize() / CHAR_BIT;
+  // Storage is byte-aligned: align bit size up to next byte boundary.
+  size_t bitSize = denseEltType.getDenseElementBitSize();
+  size_t byteSize = llvm::divideCeil(bitSize, (size_t)CHAR_BIT);
 
   // Helper to parse a single element.
   auto parseSingleElement = [&]() -> ParseResult {

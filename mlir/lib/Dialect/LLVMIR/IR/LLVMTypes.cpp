@@ -22,6 +22,7 @@
 
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/TypeSize.h"
+#include <cstring>
 #include <optional>
 
 using namespace mlir;
@@ -700,6 +701,32 @@ bool LLVM::LLVMTargetExtType::supportsMemOps() const {
 
 const llvm::fltSemantics &LLVMPPCFP128Type::getFloatSemantics() const {
   return APFloat::PPCDoubleDouble();
+}
+
+size_t LLVMPPCFP128Type::getDenseElementBitSize() const { return 128; }
+
+Attribute LLVMPPCFP128Type::convertToAttribute(ArrayRef<char> rawData) const {
+  // PPC double-double is 128 bits.
+  uint64_t loWord = 0, hiWord = 0;
+  std::memcpy(&loWord, rawData.data(), 8);
+  std::memcpy(&hiWord, rawData.data() + 8, 8);
+  APInt intVal(128, {loWord, hiWord});
+  APFloat floatVal(getFloatSemantics(), intVal);
+  return FloatAttr::get(*this, floatVal);
+}
+
+LogicalResult
+LLVMPPCFP128Type::convertFromAttribute(Attribute attr,
+                                       SmallVectorImpl<char> &result) const {
+  auto floatAttr = dyn_cast<FloatAttr>(attr);
+  if (!floatAttr || floatAttr.getType() != *this)
+    return failure();
+  APInt intVal = floatAttr.getValue().bitcastToAPInt();
+  const uint64_t *words = intVal.getRawData();
+  size_t oldSize = result.size();
+  result.resize(oldSize + 16);
+  std::memcpy(result.data() + oldSize, words, 16);
+  return success();
 }
 
 //===----------------------------------------------------------------------===//

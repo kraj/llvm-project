@@ -33,14 +33,12 @@ namespace detail {
 
 /// Return the bit width which DenseElementsAttr should use for this type.
 inline size_t getDenseElementBitWidth(Type eltType) {
-  // Check for DenseElementTypeInterface first.
+  // i1 is stored as a single bit (bit-packed storage).
+  if (eltType.isInteger(1))
+    return 1;
+  // Check for DenseElementTypeInterface.
   if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType))
     return denseEltType.getDenseElementBitSize();
-  // Align the width for complex to 8 to make storage and interpretation easier.
-  if (ComplexType comp = llvm::dyn_cast<ComplexType>(eltType))
-    return llvm::alignTo<8>(getDenseElementBitWidth(comp.getElementType())) * 2;
-  if (eltType.isIndex())
-    return IndexType::kInternalStorageBitWidth;
   return eltType.getIntOrFloatBitWidth();
 }
 
