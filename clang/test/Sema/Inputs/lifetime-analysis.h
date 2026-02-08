@@ -90,6 +90,7 @@ struct unordered_map {
   T& operator[](const Key& key);
   iterator begin();
   iterator end();
+  iterator find(const Key& key);
   iterator erase(iterator);
 };
 
