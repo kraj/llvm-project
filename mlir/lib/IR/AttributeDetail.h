@@ -33,10 +33,6 @@ namespace detail {
 
 /// Return the bit width which DenseElementsAttr should use for this type.
 inline size_t getDenseElementBitWidth(Type eltType) {
-  // i1 is stored as a single bit (bit-packed storage).
-  if (eltType.isInteger(1))
-    return 1;
-  // Check for DenseElementTypeInterface.
   if (auto denseEltType = llvm::dyn_cast<DenseElementType>(eltType))
     return denseEltType.getDenseElementBitSize();
   llvm_unreachable("unsupported element type");
@@ -92,10 +88,7 @@ struct DenseIntOrFPElementsAttrStorage : public DenseElementsAttributeStorage {
 
     // If the data is already known to be a splat, the key hash value is
     // directly the data buffer.
-    bool isBoolData = ty.getElementType().isInteger(1);
     if (isKnownSplat) {
-      if (isBoolData)
-        return getKeyForSplatBoolData(ty, data[0] != 0);
       return KeyTy(ty, data, llvm::hash_value(data), isKnownSplat);
     }
 
@@ -105,12 +98,8 @@ struct DenseIntOrFPElementsAttrStorage : public DenseElementsAttributeStorage {
     size_t numElements = ty.getNumElements();
     assert(numElements != 1 && "splat of 1 element should already be detected");
 
-    // Handle boolean values directly as they are packed to 1-bit.
-    if (isBoolData)
-      return getKeyForBoolData(ty, data, numElements);
-
     size_t elementWidth = getDenseElementBitWidth(ty.getElementType());
-    // Non 1-bit dense elements are padded to 8-bits.
+    // Dense elements are padded to 8-bits.
     size_t storageSize = llvm::divideCeil(elementWidth, CHAR_BIT);
     assert(((data.size() / storageSize) == numElements) &&
            "data does not hold expected number of elements");
@@ -127,45 +116,6 @@ struct DenseIntOrFPElementsAttrStorage : public DenseElementsAttributeStorage {
 
     // Otherwise, this is a splat so just return the hash of the first element.
     return KeyTy(ty, firstElt, hashVal, /*isSplat=*/true);
-  }
-
-  /// Construct a key with a set of boolean data.
-  static KeyTy getKeyForBoolData(ShapedType ty, ArrayRef<char> data,
-                                 size_t numElements) {
-    ArrayRef<char> splatData = data;
-    bool splatValue = splatData.front() & 1;
-
-    // Check the simple case where the data matches the known splat value.
-    if (splatData == ArrayRef<char>(splatValue ? kSplatTrue : kSplatFalse))
-      return getKeyForSplatBoolData(ty, splatValue);
-
-    // Handle the case where the potential splat value is 1 and the number of
-    // elements is non 8-bit aligned.
-    size_t numOddElements = numElements % CHAR_BIT;
-    if (splatValue && numOddElements != 0) {
-      // Check that all bits are set in the last value.
-      char lastElt = splatData.back();
-      if (lastElt != llvm::maskTrailingOnes<unsigned char>(numOddElements))
-        return KeyTy(ty, data, llvm::hash_value(data));
-
-      // If this is the only element, the data is known to be a splat.
-      if (splatData.size() == 1)
-        return getKeyForSplatBoolData(ty, splatValue);
-      splatData = splatData.drop_back();
-    }
-
-    // Check that the data buffer corresponds to a splat of the proper mask.
-    char mask = splatValue ? ~0 : 0;
-    return llvm::all_of(splatData, [mask](char c) { return c == mask; })
-               ? getKeyForSplatBoolData(ty, splatValue)
-               : KeyTy(ty, data, llvm::hash_value(data));
-  }
-
-  /// Return a key to use for a boolean splat of the given value.
-  static KeyTy getKeyForSplatBoolData(ShapedType type, bool splatValue) {
-    const char &splatData = splatValue ? kSplatTrue : kSplatFalse;
-    return KeyTy(type, splatData, llvm::hash_value(splatData),
-                 /*isSplat=*/true);
   }
 
   /// Hash the key for the storage.

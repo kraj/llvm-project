@@ -460,7 +460,7 @@ const char DenseIntOrFPElementsAttrStorage::kSplatFalse = 0;
 /// Get the bitwidth of a dense element type within the buffer.
 /// DenseElementsAttr requires bitwidths greater than 1 to be aligned by 8.
 static size_t getDenseElementStorageWidth(size_t origWidth) {
-  return origWidth == 1 ? origWidth : llvm::alignTo<8>(origWidth);
+  return llvm::alignTo<8>(origWidth);
 }
 static size_t getDenseElementStorageWidth(Type elementType) {
   return getDenseElementStorageWidth(getDenseElementBitWidth(elementType));
@@ -622,12 +622,6 @@ Attribute DenseElementsAttr::AttributeElementIterator::operator*() const {
   auto owner = llvm::cast<DenseElementsAttr>(getFromOpaquePointer(base));
   Type eltTy = owner.getElementType();
 
-  // Handle i1 (boolean) specially - it's bit-packed and doesn't use interface.
-  if (eltTy.isInteger(1)) {
-    bool value = *BoolElementIterator(owner, index);
-    return IntegerAttr::get(eltTy, APInt(1, value));
-  }
-
   // Handle strings specially.
   if (llvm::isa<DenseStringElementsAttr>(owner)) {
     ArrayRef<StringRef> vals = owner.getRawStringData();
@@ -654,7 +648,7 @@ DenseElementsAttr::BoolElementIterator::BoolElementIterator(
           attr.getRawData().data(), attr.isSplat(), dataIndex) {}
 
 bool DenseElementsAttr::BoolElementIterator::operator*() const {
-  return getBit(getData(), getDataIndex());
+  return static_cast<bool>(getData()[getDataIndex()]);
 }
 
 //===----------------------------------------------------------------------===//
@@ -900,17 +894,7 @@ bool DenseElementsAttr::classof(Attribute attr) {
 DenseElementsAttr DenseElementsAttr::get(ShapedType type,
                                          ArrayRef<Attribute> values) {
   assert(hasSameNumElementsOrSplat(type, values));
-
   Type eltType = type.getElementType();
-
-  // Handle i1 (boolean) specially - it's bit-packed.
-  if (eltType.isInteger(1)) {
-    SmallVector<bool> boolValues;
-    boolValues.reserve(values.size());
-    for (Attribute attr : values)
-      boolValues.push_back(llvm::cast<IntegerAttr>(attr).getValue().isOne());
-    return get(type, boolValues);
-  }
 
   // Handle strings specially.
   if (!llvm::isa<DenseElementType>(eltType)) {
@@ -941,25 +925,9 @@ DenseElementsAttr DenseElementsAttr::get(ShapedType type,
                                          ArrayRef<bool> values) {
   assert(hasSameNumElementsOrSplat(type, values));
   assert(type.getElementType().isInteger(1));
-
-  SmallVector<char> buff(llvm::divideCeil(values.size(), CHAR_BIT));
-
-  if (!values.empty()) {
-    bool isSplat = true;
-    bool firstValue = values[0];
-    for (int i = 0, e = values.size(); i != e; ++i) {
-      isSplat &= values[i] == firstValue;
-      setBit(buff.data(), i, values[i]);
-    }
-
-    // Splat of bool is encoded as a byte with all-ones in it.
-    if (isSplat) {
-      buff.resize(1);
-      buff[0] = values[0] ? -1 : 0;
-    }
-  }
-
-  return DenseIntOrFPElementsAttr::getRaw(type, buff);
+  return DenseIntOrFPElementsAttr::getRaw(
+      type, ArrayRef<char>(reinterpret_cast<const char *>(values.data()),
+                           values.size()));
 }
 
 DenseElementsAttr DenseElementsAttr::get(ShapedType type,
@@ -1030,23 +998,7 @@ bool DenseElementsAttr::isValidRawBuffer(ShapedType type,
   // The initializer is always a splat if the result type has a single element.
   detectedSplat = numElements == 1;
 
-  // Storage width of 1 is special as it is packed by the bit.
-  if (storageWidth == 1) {
-    // Check for a splat, or a buffer equal to the number of elements which
-    // consists of either all 0's or all 1's.
-    if (rawBuffer.size() == 1) {
-      auto rawByte = static_cast<uint8_t>(rawBuffer[0]);
-      if (rawByte == 0 || rawByte == 0xff) {
-        detectedSplat = true;
-        return true;
-      }
-    }
-
-    // This is a valid non-splat buffer if it has the right size.
-    return rawBufferWidth == llvm::alignTo<8>(numElements);
-  }
-
-  // All other types are 8-bit aligned, so we can just check the buffer width
+  // All types are 8-bit aligned, so we can just check the buffer width
   // to know if only a single initializer element was passed in.
   if (rawBufferWidth == storageWidth) {
     detectedSplat = true;
