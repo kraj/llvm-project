@@ -1240,7 +1240,7 @@ AArch64RegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
       }
       TypeSize DstSize = getSizeInBits(MI.getOperand(0).getReg(), MRI, TRI);
       TypeSize SrcSize = getSizeInBits(MI.getOperand(2).getReg(), MRI, TRI);
-      if (DstSize == 16 ||
+      if (DstSize == 16 || // Fp conversions to i16 must be kept on fp register banks to ensure proper saturation, as there are no 16-bit gprs
           ((DstSize == SrcSize || STI.hasFeature(AArch64::FeatureFPRCVT)) &&
            all_of(MRI.use_nodbg_instructions(MI.getOperand(0).getReg()),
                   [&](const MachineInstr &UseMI) {
