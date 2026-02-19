@@ -153,3 +153,85 @@ def E_IntegerType : TestType<"Integer"> {
 // DECL-NEXT: /// Return true if this is an unsigned integer type.
 // DECL-NEXT: bool isUnsigned() const { return getSignedness() == Unsigned; }
 }
+
+// Test 'let append' for extra class declarations/definitions in types.
+
+class InheritableTestType<string name> : TypeDef<Test_Dialect, name> {
+  let append extraClassDeclaration = [{
+    int getInheritedHelper();
+  }];
+  let append extraClassDefinition = [{
+    int $cppClass::getInheritedHelper() { return 42; }
+  }];
+}
+
+// Both appended and regular extra declarations should appear.
+def F_InheritableTypeA : InheritableTestType<"InheritableA"> {
+  let typeName = "test.inheritable_a";
+  let append extraClassDeclaration = [{
+    void doA();
+  }];
+  let append extraClassDefinition = [{
+    void $cppClass::doA() {}
+  }];
+}
+
+// DECL-LABEL: class InheritableAType
+// DECL: int getInheritedHelper();
+// DECL: void doA();
+
+// DEF-LABEL: int InheritableAType::getInheritedHelper()
+// DEF: return 42;
+// DEF-LABEL: void InheritableAType::doA()
+
+// Only appended declarations from parent (no additional extraClassDeclaration).
+def G_InheritableTypeB : InheritableTestType<"InheritableB"> {
+  let typeName = "test.inheritable_b";
+}
+
+// DECL-LABEL: class InheritableBType
+// DECL: int getInheritedHelper();
+
+// Discard accumulated declarations by using plain 'let' to override.
+def H_InheritableTypeC : InheritableTestType<"InheritableC"> {
+  let typeName = "test.inheritable_c";
+  let extraClassDeclaration = [{}];
+  let extraClassDefinition = [{}];
+}
+
+// DECL-LABEL: class InheritableCType
+// DECL-NOT: int getInheritedHelper();
+
+// Middle-of-stack: accumulates with base declarations via 'let append'.
+class InheritableMiddleType<string name> : InheritableTestType<name> {
+  let append extraClassDeclaration = [{
+    int getMiddleHelper();
+  }];
+  let append extraClassDefinition = [{
+    int $cppClass::getMiddleHelper() { return 1; }
+  }];
+}
+
+// Concrete type inheriting from middle gets both base and middle.
+def I_InheritableTypeD : InheritableMiddleType<"InheritableD"> {
+  let typeName = "test.inheritable_d";
+}
+
+// DECL-LABEL: class InheritableDType
+// DECL: int getInheritedHelper();
+// DECL: int getMiddleHelper();
+
+// DEF-LABEL: int InheritableDType::getInheritedHelper()
+// DEF: return 42;
+// DEF-LABEL: int InheritableDType::getMiddleHelper()
+// DEF: return 1;
+
+// Passthrough: middle class doesn't append, base value passes through.
+class InheritablePassthroughType<string name> : InheritableTestType<name> {}
+
+def J_InheritableTypeE : InheritablePassthroughType<"InheritableE"> {
+  let typeName = "test.inheritable_e";
+}
+
+// DECL-LABEL: class InheritableEType
+// DECL: int getInheritedHelper();

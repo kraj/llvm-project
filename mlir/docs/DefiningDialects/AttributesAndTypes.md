@@ -1200,6 +1200,30 @@ Note that these are mechanisms intended for long-tail cases by power users; for
 not-yet-implemented widely-applicable cases, improving the infrastructure is
 preferable.
 
+### Accumulating extra declarations with `let append`
+
+Similar to [operations](Operations.md#accumulating-extra-declarations-with-let-append),
+attribute and type definitions support `let append` on `extraClassDeclaration`
+and `extraClassDefinition`. These values accumulate across the TableGen
+class hierarchy, so base classes can provide shared C++ code that is
+automatically included in all derived attributes or types. A derived class can
+opt out by using a plain `let` to override the accumulated value.
+
+```tablegen
+class MyBaseType<string name> : TypeDef<MyDialect, name> {
+  let append extraClassDeclaration = [{
+    bool isCompatible(Type other);
+  }];
+  let append extraClassDefinition = [{
+    bool $cppClass::isCompatible(Type other) { return other == *this; }
+  }];
+}
+
+def FooType : MyBaseType<"Foo"> {
+  // FooType gets isCompatible() automatically.
+}
+```
+
 ### Mnemonic Alias in Assembly
 
 Attribute and Type can use aliases in the assembly to reduce verbosity.

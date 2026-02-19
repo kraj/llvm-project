@@ -447,6 +447,8 @@ tgtok::TokKind TGLexer::LexIdentifier() {
                             .Case("else", tgtok::ElseKW)
                             .Case("assert", tgtok::Assert)
                             .Case("dump", tgtok::Dump)
+                            .Case("append", tgtok::Append)
+                            .Case("prepend", tgtok::Prepend)
                             .Default(tgtok::Id);
 
   // A couple of tokens require special processing.

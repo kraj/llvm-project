@@ -1164,7 +1164,7 @@ static void genPropertyVerifier(
 /// Include declarations specified on NativeTrait
 static std::string formatExtraDeclarations(const Operator &op) {
   SmallVector<StringRef> extraDeclarations;
-  // Include extra class declarations from NativeTrait
+  // Include extra class declarations from NativeTrait.
   for (const auto &trait : op.getTraits()) {
     if (auto *opTrait = dyn_cast<tblgen::NativeTrait>(&trait)) {
       StringRef value = opTrait->getExtraConcreteClassDeclaration();
@@ -1182,7 +1182,7 @@ static std::string formatExtraDeclarations(const Operator &op) {
 /// Include declarations specified on NativeTrait
 static std::string formatExtraDefinitions(const Operator &op) {
   SmallVector<StringRef> extraDefinitions;
-  // Include extra class definitions from NativeTrait
+  // Include extra class definitions from NativeTrait.
   for (const auto &trait : op.getTraits()) {
     if (auto *opTrait = dyn_cast<tblgen::NativeTrait>(&trait)) {
       StringRef value = opTrait->getExtraConcreteClassDefinition();

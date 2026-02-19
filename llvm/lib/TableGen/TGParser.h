@@ -26,13 +26,17 @@ struct MultiClass;
 struct SubClassReference;
 struct SubMultiClassReference;
 
+enum class LetConcatKind { Replace, Append, Prepend };
+
 struct LetRecord {
   const StringInit *Name;
   std::vector<unsigned> Bits;
   const Init *Value;
   SMLoc Loc;
-  LetRecord(const StringInit *N, ArrayRef<unsigned> B, const Init *V, SMLoc L)
-      : Name(N), Bits(B), Value(V), Loc(L) {}
+  LetConcatKind ConcatKind;
+  LetRecord(const StringInit *N, ArrayRef<unsigned> B, const Init *V, SMLoc L,
+            LetConcatKind CK = LetConcatKind::Replace)
+      : Name(N), Bits(B), Value(V), Loc(L), ConcatKind(CK) {}
 };
 
 /// RecordsEntry - Holds exactly one of a Record, ForeachLoop, or
@@ -226,7 +230,8 @@ private: // Semantic analysis methods.
   /// RecordVal.
   bool SetValue(Record *TheRec, SMLoc Loc, const Init *ValName,
                 ArrayRef<unsigned> BitList, const Init *V,
-                bool AllowSelfAssignment = false, bool OverrideDefLoc = true);
+                bool AllowSelfAssignment = false, bool OverrideDefLoc = true,
+                LetConcatKind ConcatKind = LetConcatKind::Replace);
   bool AddSubClass(Record *Rec, SubClassReference &SubClass);
   bool AddSubClass(RecordsEntry &Entry, SubClassReference &SubClass);
   bool AddSubMultiClass(MultiClass *CurMC,

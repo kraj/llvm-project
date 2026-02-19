@@ -360,6 +360,43 @@ def NS_IOp : NS_Op<"op_with_same_operands_and_result_types_trait", [SameOperands
 // CHECK: static IOp create(::mlir::OpBuilder &builder, ::mlir::Location location, ::mlir::ValueRange operands, const Properties &properties, ::llvm::ArrayRef<::mlir::NamedAttribute> discardableAttributes = {});
 // CHECK: static IOp create(::mlir::ImplicitLocOpBuilder &builder, ::mlir::ValueRange operands, const Properties &properties, ::llvm::ArrayRef<::mlir::NamedAttribute> discardableAttributes = {});
 
+// CHECK-LABEL: NS::InheritableOpA declarations
+// CHECK: int getInheritedHelper();
+// CHECK: void doA();
+
+// CHECK-LABEL: NS::InheritableOpB declarations
+// CHECK: int getInheritedHelper();
+
+// Discard: no inheritable declarations.
+// CHECK-LABEL: NS::InheritableOpC declarations
+// CHECK-NOT: int getInheritedHelper();
+
+// Middle-of-stack: gets both base and middle inheritable declarations.
+// CHECK-LABEL: NS::InheritableOpD declarations
+// CHECK: int getInheritedHelper();
+// CHECK: int getMiddleHelper();
+
+// Middle-of-stack with own extraClassDeclaration.
+// CHECK-LABEL: NS::InheritableOpE declarations
+// CHECK: int getInheritedHelper();
+// CHECK: int getMiddleHelper();
+// CHECK: void doE();
+
+// Passthrough: middle class doesn't set inheritable, base value passes through.
+// CHECK-LABEL: NS::InheritableOpF declarations
+// CHECK: int getInheritedHelper();
+
+// DEFS-LABEL: NS::InheritableOpA definitions
+// DEFS: int InheritableOpA::getInheritedHelper() { return 42; }
+// DEFS: void InheritableOpA::doA() {}
+
+// DEFS-LABEL: NS::InheritableOpD definitions
+// DEFS: int InheritableOpD::getInheritedHelper() { return 42; }
+// DEFS: int InheritableOpD::getMiddleHelper() { return 1; }
+
+// DEFS-LABEL: NS::InheritableOpF definitions
+// DEFS: int InheritableOpF::getInheritedHelper() { return 42; }
+
 // Check default value of `attributes` for the `genInferredTypeCollectiveParamBuilder` builder
 def NS_JOp : NS_Op<"op_with_InferTypeOpInterface_interface", [DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let arguments = (ins AnyType:$a, AnyType:$b);
@@ -551,3 +588,64 @@ def _TypeInferredPropOp : NS_Op<"type_inferred_prop_op_with_properties", [
   let results = (outs AnyType:$result);
   let hasCustomAssemblyFormat = 1;
 }
+
+// Test 'let append' for extra class declarations/definitions.
+class NS_InheritableOp<string mnemonic, list<Trait> traits = []>
+    : NS_Op<mnemonic, traits> {
+  let append extraClassDeclaration = [{
+    int getInheritedHelper();
+  }];
+  let append extraClassDefinition = [{
+    int $cppClass::getInheritedHelper() { return 42; }
+  }];
+}
+
+// Both appended and regular extra declarations should appear.
+def NS_InheritableOpA : NS_InheritableOp<"inheritable_op_a"> {
+  let append extraClassDeclaration = [{
+    void doA();
+  }];
+  let append extraClassDefinition = [{
+    void $cppClass::doA() {}
+  }];
+}
+
+// Only appended declarations from parent (no additional extraClassDeclaration).
+def NS_InheritableOpB : NS_InheritableOp<"inheritable_op_b"> {}
+
+// Discard accumulated declarations by using plain 'let' to override.
+def NS_InheritableOpC : NS_InheritableOp<"inheritable_op_c"> {
+  let extraClassDeclaration = ?;
+  let extraClassDefinition = ?;
+}
+
+// Middle-of-stack: NS_Op -> NS_InheritableOp -> NS_InheritableMiddleOp
+// The middle class appends its own extraClassDeclaration. Concrete ops
+// get both the base and middle declarations (accumulated via 'let append').
+class NS_InheritableMiddleOp<string mnemonic, list<Trait> traits = []>
+    : NS_InheritableOp<mnemonic, traits> {
+  let append extraClassDeclaration = [{
+    int getMiddleHelper();
+  }];
+  let append extraClassDefinition = [{
+    int $cppClass::getMiddleHelper() { return 1; }
+  }];
+}
+
+// Concrete op inheriting from middle class gets both base and middle.
+def NS_InheritableOpD : NS_InheritableMiddleOp<"inheritable_op_d"> {}
+
+// Concrete op inheriting from middle class with its own appended declaration.
+def NS_InheritableOpE : NS_InheritableMiddleOp<"inheritable_op_e"> {
+  let append extraClassDeclaration = [{
+    void doE();
+  }];
+}
+
+// Middle class that does NOT append — inherits the base class value and
+// passes it through to concrete ops.
+class NS_InheritablePassthroughOp<string mnemonic, list<Trait> traits = []>
+    : NS_InheritableOp<mnemonic, traits> {}
+
+// Concrete op gets the original base class declarations.
+def NS_InheritableOpF : NS_InheritablePassthroughOp<"inheritable_op_f"> {}

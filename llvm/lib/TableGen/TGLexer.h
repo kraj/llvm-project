@@ -86,6 +86,8 @@ enum TokKind {
   List,
   String,
   Then,
+  Append,
+  Prepend,
 
   // Object start tokens.
   OBJECT_START_FIRST,
