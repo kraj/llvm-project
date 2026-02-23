@@ -4277,12 +4277,6 @@ tryToMatchAndCreateExtendedReduction(VPReductionRecipe *Red, VPCostContext &Ctx,
               cast<VPWidenCastRecipe>(VecOp)->computeCost(VF, Ctx);
           InstructionCost RedCost = Red->computeCost(VF, Ctx);
 
-          // For partial reductions, the decision has already been
-          // made at the point of transforming reductions -> partial
-          // reductions for a given plan, based on the cost-model.
-          if (Red->isPartialReduction())
-            return true;
-
           // TTI::getExtendedReductionCost for in-loop reductions
           // only supports integer types.
           if (RedTy->isFloatingPointTy())
@@ -4339,14 +4333,8 @@ tryToMatchAndCreateMulAccumulateReduction(VPReductionRecipe *Red,
               Ext0 ? Ctx.Types.inferScalarType(Ext0->getOperand(0)) : RedTy;
           InstructionCost MulAccCost;
 
-          // For partial reductions, the decision has already been
-          // made at the point of transforming reductions -> partial
-          // reductions for a given plan, based on the cost-model.
-          if (Red->isPartialReduction())
-            return true;
-
-          // Only partial reductions support mixed or floating-point extends
-          // at the moment.
+          // getMulAccReductionCost for in-loop reductions does not support
+          // mixed or floating-point extends.
           if (Ext0 && Ext1 &&
               (Ext0->getOpcode() != Ext1->getOpcode() ||
                Ext0->getOpcode() == Instruction::CastOps::FPExt))
@@ -4414,7 +4402,7 @@ tryToMatchAndCreateMulAccumulateReduction(VPReductionRecipe *Red,
                                                  VPWidenCastRecipe *&ExtB,
                                                  VPValue *&ValB,
                                                  VPWidenRecipe *Mul) {
-    if (!ExtA || ExtB || !isa<VPIRValue>(ValB) || Red->isPartialReduction())
+    if (!ExtA || ExtB || !isa<VPIRValue>(ValB))
       return;
     Type *NarrowTy = Ctx.Types.inferScalarType(ExtA->getOperand(0));
     Instruction::CastOps ExtOpc = ExtA->getOpcode();
@@ -4511,6 +4499,11 @@ tryToMatchAndCreateMulAccumulateReduction(VPReductionRecipe *Red,
 static void tryToCreateAbstractReductionRecipe(VPReductionRecipe *Red,
                                                VPCostContext &Ctx,
                                                VFRange &Range) {
+  // Creation of VPExpressions for partial reductions is entirely handled in
+  // `transformToPartialReduction`.
+  if (Red->isPartialReduction())
+    return;
+
   VPExpressionRecipe *AbstractR = nullptr;
   auto IP = std::next(Red->getIterator());
   auto *VPBB = Red->getParent();
@@ -5847,6 +5840,45 @@ optimizeExtendsForPartialReduction(VPSingleDefRecipe *BinOp,
   return BinOp;
 }
 
+static VPExpressionRecipe *
+createPartialReductionExpression(VPReductionRecipe *Red) {
+  VPValue *VecOp = Red->getVecOp();
+
+  // reduce.[f]add(ext(op))
+  //  -> VPExpressionRecipe(op, red)
+  if (isa<VPWidenCastRecipe>(VecOp) &&
+      (match(VecOp, m_ZExtOrSExt(m_VPValue())) ||
+       match(VecOp, m_FPExt(m_VPValue()))))
+    return new VPExpressionRecipe(cast<VPWidenCastRecipe>(VecOp), Red);
+
+  // reduce.[f]add([f]mul(ext(a), ext(b)))
+  //  -> VPExpressionRecipe(a, b, mul, red)
+  if (match(VecOp, m_FMul(m_FPExt(m_VPValue()), m_FPExt(m_VPValue()))) ||
+      match(VecOp,
+            m_Mul(m_ZExtOrSExt(m_VPValue()), m_ZExtOrSExt(m_VPValue())))) {
+    auto *Mul = cast<VPWidenRecipe>(VecOp);
+    auto *ExtA = cast<VPWidenCastRecipe>(Mul->getOperand(0));
+    auto *ExtB = cast<VPWidenCastRecipe>(Mul->getOperand(1));
+    return new VPExpressionRecipe(ExtA, ExtB, Mul, Red);
+  }
+
+  // reduce.add(neg(mul(ext(a), ext(b))))
+  //  -> VPExpressionRecipe(a, b, mul, sub, red)
+  if (match(VecOp, m_Sub(m_ZeroInt(), m_Mul(m_ZExtOrSExt(m_VPValue()),
+                                            m_ZExtOrSExt(m_VPValue()))))) {
+    // FIXME: This should be removed, because codegen can't optimally
+    // generate code for this. However, for complex-dot products we
+    // rely on it.
+    auto *Sub = cast<VPWidenRecipe>(VecOp);
+    auto *Mul = cast<VPWidenRecipe>(Sub->getOperand(1));
+    auto *ExtA = cast<VPWidenCastRecipe>(Mul->getOperand(0));
+    auto *ExtB = cast<VPWidenCastRecipe>(Mul->getOperand(1));
+    return new VPExpressionRecipe(ExtA, ExtB, Mul, Sub, Red);
+  }
+
+  return nullptr;
+}
+
 // Helper to transform a partial reduction chain into a partial reduction
 // recipe. Assumes profitability has been checked.
 static void transformToPartialReduction(const VPPartialReductionChain &Chain,
@@ -5920,6 +5952,12 @@ static void transformToPartialReduction(const VPPartialReductionChain &Chain,
   if (Cond)
     ExitValue->replaceAllUsesWith(PartialRed);
   WidenRecipe->replaceAllUsesWith(PartialRed);
+
+  // For cost-model purposes, see if we can fold this into a VPExpression.
+  if (VPExpressionRecipe *E = createPartialReductionExpression(PartialRed)) {
+    E->insertBefore(WidenRecipe);
+    PartialRed->replaceAllUsesWith(E);
+  }
 
   // We only need to update the PHI node once, which is when we find the
   // last reduction in the chain.
