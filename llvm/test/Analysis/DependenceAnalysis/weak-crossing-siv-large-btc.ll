@@ -13,8 +13,8 @@
 ;     A[i1] = 0;
 ; }
 ;
-; FIXME: Both `A[i0] = 0` and `A[i1] = 0` must be executed, so there is a
-; dependency between them.
+; Both `A[i0] = 0` and `A[i1] = 0` must be executed, so there is a dependency
+; between them.
 ;
 define void @weak_crossing_siv_large_btc(ptr %A) {
 ; CHECK-ALL-LABEL: 'weak_crossing_siv_large_btc'
