@@ -83,7 +83,7 @@ public:
   addTextureHandle(ResourceClass RC, bool IsROV, ResourceDimension RD,
                    AccessSpecifier Access = AccessSpecifier::AS_private);
   BuiltinTypeDeclBuilder &addSamplerHandle();
-  BuiltinTypeDeclBuilder &addArraySubscriptOperators();
+  BuiltinTypeDeclBuilder &addArraySubscriptOperators(ResourceDimension Dim);
 
   // Builtin types constructors
   BuiltinTypeDeclBuilder &addDefaultHandleConstructor();
@@ -95,6 +95,7 @@ public:
 
   // Builtin types methods
   BuiltinTypeDeclBuilder &addLoadMethods();
+  BuiltinTypeDeclBuilder &addTextureLoadMethods(ResourceDimension Dim);
   BuiltinTypeDeclBuilder &addByteAddressBufferLoadMethods();
   BuiltinTypeDeclBuilder &addByteAddressBufferStoreMethods();
   BuiltinTypeDeclBuilder &addSampleMethods(ResourceDimension Dim);
@@ -109,6 +110,7 @@ public:
   BuiltinTypeDeclBuilder &addDecrementCounterMethod();
   BuiltinTypeDeclBuilder &addHandleAccessFunction(DeclarationName &Name,
                                                   bool IsConst, bool IsRef,
+                                                  QualType IndexTy,
                                                   QualType ElemTy = QualType());
   BuiltinTypeDeclBuilder &
   addLoadWithStatusFunction(DeclarationName &Name, bool IsConst,
@@ -119,6 +121,7 @@ public:
   BuiltinTypeDeclBuilder &addConsumeMethod();
 
   BuiltinTypeDeclBuilder &addGetDimensionsMethodForBuffer();
+  BuiltinTypeDeclBuilder &addMipLevelMethods(ResourceDimension Dim);
 
 private:
   BuiltinTypeDeclBuilder &addCreateFromBinding();
@@ -129,14 +132,19 @@ private:
                                             ResourceClass RC,
                                             ResourceDimension RD, bool IsROV,
                                             bool RawBuffer, bool IsCounter,
-                                            AccessSpecifier Access);
+                                            AccessSpecifier Access,
+                                            QualType ElementTy = QualType());
+  BuiltinTypeDeclBuilder &addNestedRecord(StringRef Name,
+                                          CXXRecordDecl *&NestedRecord);
   BuiltinTypeDeclBuilder &
   addHandleMember(ResourceClass RC, ResourceDimension RD, bool IsROV,
                   bool RawBuffer,
-                  AccessSpecifier Access = AccessSpecifier::AS_private);
+                  AccessSpecifier Access = AccessSpecifier::AS_private,
+                  QualType ElementTy = QualType());
   BuiltinTypeDeclBuilder &
   addCounterHandleMember(ResourceClass RC, bool IsROV, bool RawBuffer,
-                         AccessSpecifier Access = AccessSpecifier::AS_private);
+                         AccessSpecifier Access = AccessSpecifier::AS_private,
+                         QualType ElementTy = QualType());
   QualType getGatherReturnType();
   FieldDecl *getResourceHandleField() const;
   FieldDecl *getResourceCounterHandleField() const;

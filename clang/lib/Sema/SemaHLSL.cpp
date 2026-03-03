@@ -2142,6 +2142,36 @@ bool SemaHLSL::handleResourceTypeAttr(QualType T, const ParsedAttr &AL) {
     break;
   }
 
+  case ParsedAttr::AT_HLSLResourceDimension: {
+    if (AL.getNumArgs() != 1 || !AL.isArgExpr(0)) {
+      Diag(AL.getLoc(), diag::err_attribute_wrong_number_arguments) << AL << 1;
+      return false;
+    }
+
+    Expr *E = AL.getArgAsExpr(0);
+    StringRef Identifier;
+    SourceLocation ArgLoc;
+    if (const auto *Literal = dyn_cast<StringLiteral>(E->IgnoreParenCasts())) {
+      Identifier = Literal->getString();
+      ArgLoc = Literal->getBeginLoc();
+    } else {
+      Diag(E->getBeginLoc(), diag::err_attribute_argument_type)
+          << AL << AANT_ArgumentString;
+      return false;
+    }
+
+    // Validate resource dimension value
+    llvm::dxil::ResourceDimension RD;
+    if (!HLSLResourceDimensionAttr::ConvertStrToResourceDimension(Identifier,
+                                                                  RD)) {
+      Diag(ArgLoc, diag::warn_attribute_type_not_supported)
+          << "ResourceDimension" << Identifier;
+      return false;
+    }
+    A = HLSLResourceDimensionAttr::Create(getASTContext(), RD, ACI);
+    break;
+  }
+
   case ParsedAttr::AT_HLSLROV:
     A = HLSLROVAttr::Create(getASTContext(), ACI);
     break;
@@ -3284,6 +3314,43 @@ static bool CheckVectorSelect(Sema *S, CallExpr *TheCall) {
   return false;
 }
 
+static bool CheckIndexType(Sema *S, CallExpr *TheCall, unsigned IndexArgIndex) {
+  assert(TheCall->getNumArgs() > IndexArgIndex && "Index argument missing");
+  QualType ArgType = TheCall->getArg(IndexArgIndex)->getType();
+  QualType IndexTy = ArgType;
+  unsigned int ActualDim = 1;
+  if (const auto *VTy = IndexTy->getAs<VectorType>()) {
+    ActualDim = VTy->getNumElements();
+    IndexTy = VTy->getElementType();
+  }
+  if (!IndexTy->isIntegerType()) {
+    S->Diag(TheCall->getArg(IndexArgIndex)->getBeginLoc(),
+            diag::err_typecheck_expect_int)
+        << ArgType;
+    return true;
+  }
+
+  QualType ResourceArgTy = TheCall->getArg(0)->getType();
+  const HLSLAttributedResourceType *ResTy =
+      ResourceArgTy.getTypePtr()->getAs<HLSLAttributedResourceType>();
+  assert(ResTy && "Resource argument must be a resource");
+  HLSLAttributedResourceType::Attributes ResAttrs = ResTy->getAttrs();
+
+  unsigned int ExpectedDim = 1;
+  if (ResAttrs.ResourceDimension != llvm::dxil::ResourceDimension::Unknown) {
+    ExpectedDim = getResourceDimensions(ResAttrs.ResourceDimension);
+  }
+
+  if (ActualDim != ExpectedDim) {
+    S->Diag(TheCall->getArg(IndexArgIndex)->getBeginLoc(),
+            diag::err_hlsl_builtin_resource_coordinate_dimension_mismatch)
+        << cast<NamedDecl>(TheCall->getCalleeDecl()) << ExpectedDim << ActualDim;
+    return true;
+  }
+
+  return false;
+}
+
 static bool CheckResourceHandle(
     Sema *S, CallExpr *TheCall, unsigned ArgIndex,
     llvm::function_ref<bool(const HLSLAttributedResourceType *ResType)> Check =
@@ -3441,6 +3508,47 @@ static bool CheckGatherBuiltin(Sema &S, CallExpr *TheCall, bool IsCmp) {
 
   return false;
 }
+static bool CheckLoadLevelBuiltin(Sema &S, CallExpr *TheCall) {
+  if (S.checkArgCountRange(TheCall, 2, 3))
+    return true;
+
+  // Check the texture handle.
+  if (CheckResourceHandle(&S, TheCall, 0,
+                          [](const HLSLAttributedResourceType *ResType) {
+                            return ResType->getAttrs().ResourceDimension ==
+                                   llvm::dxil::ResourceDimension::Unknown;
+                          }))
+    return true;
+
+  auto *ResourceTy =
+      TheCall->getArg(0)->getType()->castAs<HLSLAttributedResourceType>();
+
+  // Check the location + lod (int3 for Texture2D).
+  unsigned ExpectedDim =
+      getResourceDimensions(ResourceTy->getAttrs().ResourceDimension);
+  if (CheckVectorElementCount(&S, TheCall->getArg(1)->getType(), S.Context.IntTy,
+                              ExpectedDim + 1,
+                              TheCall->getArg(1)->getBeginLoc()))
+    return true;
+
+  // Check the offset operand.
+  if (TheCall->getNumArgs() > 2) {
+    if (CheckVectorElementCount(&S, TheCall->getArg(2)->getType(),
+                                S.Context.IntTy, ExpectedDim,
+                                TheCall->getArg(2)->getBeginLoc()))
+      return true;
+  }
+
+  QualType ReturnType = ResourceTy->getContainedType();
+  if (const auto *VecTy = ReturnType->getAs<VectorType>())
+    ReturnType = VecTy->getElementType();
+  ReturnType = S.Context.getExtVectorType(ReturnType, 4);
+
+  TheCall->setType(ReturnType);
+
+  return false;
+}
+
 static bool CheckSamplingBuiltin(Sema &S, CallExpr *TheCall, SampleKind Kind) {
   unsigned MinArgs, MaxArgs;
   if (Kind == SampleKind::Sample) {
@@ -3579,8 +3687,7 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
   case Builtin::BI__builtin_hlsl_resource_getpointer: {
     if (SemaRef.checkArgCount(TheCall, 2) ||
         CheckResourceHandle(&SemaRef, TheCall, 0) ||
-        CheckArgTypeMatches(&SemaRef, TheCall->getArg(1),
-                            SemaRef.getASTContext().UnsignedIntTy))
+        CheckIndexType(&SemaRef, TheCall, 1))
       return true;
 
     auto *ResourceTy =
@@ -3597,8 +3704,7 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
   case Builtin::BI__builtin_hlsl_resource_getpointer_typed: {
     if (SemaRef.checkArgCount(TheCall, 3) ||
         CheckResourceHandle(&SemaRef, TheCall, 0) ||
-        CheckArgTypeMatches(&SemaRef, TheCall->getArg(1),
-                            SemaRef.getASTContext().UnsignedIntTy))
+        CheckIndexType(&SemaRef, TheCall, 1))
       return true;
 
     QualType ElementTy = TheCall->getArg(2)->getType();
@@ -3661,6 +3767,8 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
 
     break;
   }
+  case Builtin::BI__builtin_hlsl_resource_load_level:
+    return CheckLoadLevelBuiltin(SemaRef, TheCall);
   case Builtin::BI__builtin_hlsl_resource_sample:
     return CheckSamplingBuiltin(SemaRef, TheCall, SampleKind::Sample);
   case Builtin::BI__builtin_hlsl_resource_sample_bias:
@@ -4564,6 +4672,27 @@ void SemaHLSL::deduceAddressSpace(VarDecl *Decl) {
 }
 
 void SemaHLSL::ActOnVariableDeclarator(VarDecl *VD) {
+  auto CheckType = [&](QualType T) {
+    if (const auto *RT = T->getAs<RecordType>()) {
+      const CXXRecordDecl *RD = cast<CXXRecordDecl>(RT->getDecl());
+      if (RD->getIdentifier() &&
+          (RD->getName() == "mips_type" || RD->getName() == "mips_slice_type")) {
+        const DeclContext *DC = RD->getDeclContext();
+        if (isa<CXXRecordDecl>(DC)) {
+          SemaRef.Diag(VD->getLocation(),
+                       diag::err_hlsl_intermediate_type_variable)
+              << T;
+          VD->setInvalidDecl();
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  if (CheckType(VD->getType()))
+    return;
+
   if (VD->hasGlobalStorage()) {
     // make sure the declaration has a complete type
     if (SemaRef.RequireCompleteType(
@@ -5510,6 +5639,27 @@ bool SemaHLSL::handleInitialization(VarDecl *VDecl, Expr *&Init) {
   // If initializing a local resource, track the resource binding it is using
   if (VDecl->getType()->isHLSLResourceRecord() && !VDecl->hasGlobalStorage())
     trackLocalResource(VDecl, Init);
+
+  auto CheckType = [&](QualType T) {
+    if (const auto *RT = T->getAs<RecordType>()) {
+      const CXXRecordDecl *RD = cast<CXXRecordDecl>(RT->getDecl());
+      if (RD->getIdentifier() &&
+          (RD->getName() == "mips_type" || RD->getName() == "mips_slice_type")) {
+        const DeclContext *DC = RD->getDeclContext();
+        if (isa<CXXRecordDecl>(DC)) {
+          SemaRef.Diag(VDecl->getLocation(),
+                       diag::err_hlsl_intermediate_type_variable)
+              << T;
+          VDecl->setInvalidDecl();
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  if (CheckType(VDecl->getType()))
+    return false;
 
   const HLSLVkConstantIdAttr *ConstIdAttr =
       VDecl->getAttr<HLSLVkConstantIdAttr>();

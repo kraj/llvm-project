@@ -13471,6 +13471,9 @@ def err_std_source_location_impl_malformed : Error<
 def err_std_initializer_list_malformed : Error<
   "%0 layout not recognized. Must be a non-polymorphic class type with no bases and two fields: a 'const E *' and either another 'const E *' or a 'std::size_t'">;
 
+def err_hlsl_builtin_resource_coordinate_dimension_mismatch : Error<
+  "builtin %0 resource coordinate dimension mismatch: expected %1, found %2">;
+
 // HLSL Diagnostics
 def err_hlsl_langstd_unimplemented : Error<"support for HLSL language version %0 is incomplete">;
 def err_hlsl_attr_unsupported_in_stage : Error<"attribute %0 is unsupported in '%1' shaders, requires %select{|one of the following: }2%3">;
@@ -13619,6 +13622,8 @@ def warn_hlsl_assigning_local_resource_is_not_unique
     : Warning<"assignment of %0 to local resource %1 is not to the same "
               "unique global resource">,
       InGroup<HLSLExplicitBinding>;
+def err_hlsl_intermediate_type_variable : Error<
+  "intermediate helper type %0 cannot be used as a variable">;
 
 def err_hlsl_push_constant_unique
     : Error<"cannot have more than one push constant block">;
