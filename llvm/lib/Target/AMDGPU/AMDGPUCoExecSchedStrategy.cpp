@@ -139,10 +139,12 @@ void HardwareUnitInfo::schedule(SUnit *SU, unsigned BlockingCycles) {
   if (TotalCycles == 0)
     return;
 
+  ScheduledSUs.push_back(SU);
   AllSUs.remove(SU);
   PrioritySUs.remove(SU);
 
-  TotalCycles -= BlockingCycles;
+  if (BufferSize <= 1 || (ScheduledSUs.size() % BufferSize == 0))
+    TotalCycles -= BlockingCycles;
 
   if (AllSUs.empty())
     return;
@@ -167,6 +169,14 @@ void HardwareUnitInfo::schedule(SUnit *SU, unsigned BlockingCycles) {
       PrioritySUs.insert(SU);
     }
   }
+}
+
+void HardwareUnitInfo::finalizeCycles() {
+  if (BufferSize <= 1 || !AllSUs.size())
+    return;
+
+  BufferCycles = TotalCycles / AllSUs.size();
+  TotalCycles /= BufferSize;
 }
 
 HardwareUnitInfo *
@@ -219,6 +229,7 @@ void CandidateHeuristics::initialize(ScheduleDAGMI *SchedDAG,
   HWUInfo[(int)InstructionFlavor::WMMA].setProducesCoexecWindow(true);
   HWUInfo[(int)InstructionFlavor::MultiCycleVALU].setProducesCoexecWindow(true);
   HWUInfo[(int)InstructionFlavor::TRANS].setProducesCoexecWindow(true);
+  HWUInfo[(int)InstructionFlavor::DS].setBufferSize(DefaultBufferSizes::DS);
 
   collectHWUIPressure();
 }
@@ -230,6 +241,10 @@ void CandidateHeuristics::collectHWUIPressure() {
   for (auto &SU : DAG->SUnits) {
     const InstructionFlavor Flavor = classifyFlavor(*SU.getInstr(), *SII);
     HWUInfo[(int)(Flavor)].insert(&SU, getHWUICyclesForInst(&SU));
+  }
+
+  for (auto &HWUI : HWUInfo) {
+    HWUI.finalizeCycles();
   }
 
   LLVM_DEBUG(dumpRegionSummary());
@@ -663,16 +678,39 @@ bool AMDGPUCoExecSchedStrategy::tryCandidateCoexec(SchedCandidate &Cand,
 
 bool AMDGPUCoExecSchedStrategy::tryEffectiveStall(SchedCandidate &Cand,
                                                   SchedCandidate &TryCand,
-                                                  SchedBoundary &Zone) const {
+                                                  SchedBoundary &Zone) {
+  auto getBufferFullStalls = [this, &Zone](SchedCandidate &SchedCand) -> unsigned {
+    SUnit *SU = SchedCand.SU;
+    InstructionFlavor Flavor = classifyFlavor(
+        *SU->getInstr(), *static_cast<const SIInstrInfo *>(DAG->TII));
+    HardwareUnitInfo *HWUI = Heurs.getHWUIFromFlavor(Flavor);
+
+    if (HWUI->getBufferSize() <= 1)
+      return 0;
+
+    // getBufferAvailableCycle assumes top-down scheduling.
+    assert(Zone.isTop());
+    unsigned CurrCycle = Zone.getCurrCycle();
+    unsigned BufferReadyCycle = HWUI->getBufferAvailableCycle(CurrCycle);
+    if (BufferReadyCycle <= CurrCycle)
+      return 0;
+
+    return BufferReadyCycle - CurrCycle;
+  };
+
   // Treat structural and latency stalls as a single scheduling cost for the
   // current cycle.
   unsigned TryStructStall = getStructuralStallCycles(Zone, TryCand.SU);
   unsigned TryLatencyStall = Zone.getLatencyStallCycles(TryCand.SU);
   unsigned TryEffectiveStall = std::max(TryStructStall, TryLatencyStall);
+  unsigned TrySchedStall = getBufferFullStalls(TryCand);
+  TryEffectiveStall = std::max(TrySchedStall, TryEffectiveStall);
 
   unsigned CandStructStall = getStructuralStallCycles(Zone, Cand.SU);
   unsigned CandLatencyStall = Zone.getLatencyStallCycles(Cand.SU);
   unsigned CandEffectiveStall = std::max(CandStructStall, CandLatencyStall);
+  unsigned CandSchedStall = getBufferFullStalls(Cand);
+  CandEffectiveStall = std::max(CandSchedStall, CandEffectiveStall);
 
   LLVM_DEBUG(if (TryEffectiveStall || CandEffectiveStall) {
     dbgs() << "Effective stalls: try=" << TryEffectiveStall
