@@ -6246,7 +6246,15 @@ def CIR_ATan2Op : CIR_BinaryFPToFPBuiltinOp<"atan2", "ATan2Op"> {
 // Variadic Operations
 //===----------------------------------------------------------------------===//
 
-def CIR_VAStartOp : CIR_Op<"va_start"> {
+class CIR_VAOp<string mnemonic> : CIR_Op<mnemonic> {
+  let arguments = (ins CIR_PointerType:$arg_list);
+
+  let assemblyFormat = [{
+    $arg_list attr-dict `:` type(operands)
+  }];
+}
+
+def CIR_VAStartOp : CIR_VAOp<"va_start"> {
   let summary = "Starts a variable argument list";
   let description = [{
     The cir.va_start operation models the C/C++ va_start macro by
@@ -6275,14 +6283,9 @@ def CIR_VAStartOp : CIR_Op<"va_start"> {
     cir.va_start %p : !cir.ptr<!rec___va_list_tag>
     ```
   }];
-  let arguments = (ins CIR_PointerType:$arg_list);
-
-  let assemblyFormat = [{
-    $arg_list attr-dict `:` type(operands)
-  }];
 }
 
-def CIR_VAEndOp : CIR_Op<"va_end"> {
+def CIR_VAEndOp : CIR_VAOp<"va_end"> {
   let summary = "Ends a variable argument list";
   let description = [{
     The `cir.va_end` operation models the C/C++ va_end macro by finalizing
@@ -6309,12 +6312,6 @@ def CIR_VAEndOp : CIR_Op<"va_end"> {
           -> !cir.ptr<!rec___va_list_tag>
     cir.va_end %p : !cir.ptr<!rec___va_list_tag>
     ```
-  }];
-
-  let arguments = (ins CIR_PointerType:$arg_list);
-
-  let assemblyFormat = [{
-    $arg_list attr-dict `:` type(operands)
   }];
 }
 
