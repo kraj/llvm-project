@@ -1099,10 +1099,8 @@ unsigned getBoundsSafetyInfoSize(const BoundsSafetyInfo &BSI) {
 
 unsigned getParamInfoSize(const ParamInfo &PI) {
   unsigned BSISize = 0;
-  /* TO_UPSTREAM(BoundsSafety) ON */
   if (auto BSI = PI.BoundsSafety)
     BSISize = getBoundsSafetyInfoSize(*BSI);
-  /* TO_UPSTREAM(BoundsSafety) OFF */
   return getVariableInfoSize(PI) + 1 + BSISize;
 }
 
