@@ -633,6 +633,8 @@ def LLVM_PtrToIntOp : LLVM_CastOp<"ptrtoint", "PtrToInt",
 def LLVM_PtrToAddrOp : LLVM_CastOp<"ptrtoaddr", "PtrToAddr",
                                   LLVM_ScalarOrVectorOf<LLVM_AnyPointer>,
                                   LLVM_ScalarOrVectorOf<AnySignlessInteger>> {
+  // Overwrite the base class llvmBuilder since the instruction doesn't take a
+  // destination type argument.
   let llvmBuilder = "$res = builder.CreatePtrToAddr($arg);";
   let hasVerifier = 1;
 
@@ -643,7 +645,7 @@ def LLVM_PtrToAddrOp : LLVM_CastOp<"ptrtoaddr", "PtrToAddr",
     (or a vector of integers) without capturing the provenance of the pointer.
     Therefore, an integer returned or derived from `llvm.ptrtoaddr` does not
     create a legal-to-access pointer when used in `llvm.inttoptr`.
-    Code that only care about the address value of a pointer
+    Code that only cares about the address value of a pointer
     (e.g. pointer subtraction) should prefer `llvm.ptrtoaddr` over
     `llvm.ptrtoint`.
 
