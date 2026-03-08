@@ -342,7 +342,7 @@ inline bool operator!=(const ContextInfo &LHS, const ContextInfo &RHS) {
 class BoundsSafetyInfo {
 public:
   enum class BoundsSafetyKind {
-    CountedBy = 0,
+    CountedBy,
     CountedByOrNull,
     SizedBy,
     SizedByOrNull,
