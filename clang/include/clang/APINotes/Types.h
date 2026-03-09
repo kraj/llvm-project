@@ -350,12 +350,12 @@ public:
   };
 
 private:
-  /// Whether this property has been audited for nullability.
+  /// Whether this property has been audited for bounds safety.
   LLVM_PREFERRED_TYPE(bool)
   unsigned KindAudited : 1;
 
-  /// The kind of nullability for this property. Only valid if the nullability
-  /// has been audited.
+  /// The kind of bounds safety for this property. Only valid if the bounds
+  /// safety has been audited.
   LLVM_PREFERRED_TYPE(BoundsSafetyKind)
   unsigned Kind : 3;
 
