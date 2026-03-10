@@ -436,6 +436,19 @@ class ElementsAttrBase<Pred condition, string summary> :
 def ElementsAttr : ElementsAttrBase<CPred<"::llvm::isa<::mlir::ElementsAttr>($_self)">,
                                     "constant vector/tensor attribute">;
 
+class DenseTypedElementsAttrBase : ElementsAttrBase<
+    CPred<"::llvm::isa<::mlir::DenseTypedElementsAttr>($_self)">,
+    "dense typed elements attribute"> {
+  let storageType = [{ ::mlir::DenseTypedElementsAttr }];
+  let returnType = [{ ::mlir::DenseTypedElementsAttr }];
+  let convertFromStorage = "$_self";
+}
+
+def DenseTypedElementsAttr : DenseTypedElementsAttrBase;
+
+// Compatibility alias for old ODS constraints name.
+def DenseIntOrFPElementsAttr : DenseTypedElementsAttrBase;
+
 class IntElementsAttrBase<Pred condition, string summary> :
     ElementsAttrBase<And<[CPred<"::llvm::isa<::mlir::DenseIntElementsAttr>($_self)">,
                           condition]>,
