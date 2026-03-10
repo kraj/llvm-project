@@ -25,7 +25,6 @@
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Analysis/VectorUtils.h"
-#include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -19199,20 +19198,14 @@ static SDValue performVWABDACombineWV(SDNode *N, SelectionDAG &DAG,
     return Op;
   };
 
-  auto ExtractOps = [&](SDValue Op0,
-                        SDValue Op1) -> std::pair<SDValue, SDValue> {
-    SDValue Diff = GetDiff(Op0);
-    if (Diff)
-      return {Op1, Diff};
-    Diff = GetDiff(Op1);
-    if (Diff)
-      return {Op0, Diff};
-    return {};
-  };
-
-  auto [Acc, Diff] = ExtractOps(Op0, Op1);
-  if (!Diff)
-    return SDValue();
+  SDValue Diff = GetDiff(Op0);
+  if (!Diff) {
+    std::swap(Op0, Op1);
+    Diff = GetDiff(Op0);
+    if (!Diff)
+      return SDValue();
+  }
+  SDValue Acc = Op1;
 
   SDLoc DL(N);
   SDValue DiffA = Diff.getOperand(0);
