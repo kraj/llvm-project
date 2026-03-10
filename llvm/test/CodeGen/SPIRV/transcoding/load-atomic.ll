@@ -11,6 +11,7 @@
 
 ; CHECK-DAG: %[[#Int32:]] = OpTypeInt 32 0
 ; CHECK-DAG: %[[#Float:]] = OpTypeFloat 32
+; CHECK-DAG: %[[#Int32Vec:]] = OpTypeVector %[[#Int32]] 2
 
 define i32 @load_i32_unordered(ptr addrspace(1) %ptr) {
 ; CHECK-LABEL: OpFunction %[[#]]
@@ -96,4 +97,15 @@ define float @load_float_acquire(ptr addrspace(1) %ptr) {
 ; CHECK:       OpReturnValue %[[#val]]
   %val = load atomic float, ptr addrspace(1) %ptr acquire, align 8
   ret float %val
+}
+
+; -- test with a vector type
+
+define <2 x i32> @load_vector_acquire(ptr addrspace(1) %ptr) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#]] = OpLoad %[[#Int32Vec]] %[[#ptr]] Aligned 8
+; CHECK:       OpReturnValue
+  %val = load atomic <2 x i32>, ptr addrspace(1) %ptr acquire, align 8
+  ret <2 x i32> %val
 }

@@ -11,6 +11,7 @@
 
 ; CHECK-DAG: %[[#Int32:]] = OpTypeInt 32 0
 ; CHECK-DAG: %[[#Float:]] = OpTypeFloat 32
+; CHECK-DAG: %[[#Int32Vec:]] = OpTypeVector %[[#Int32]] 2
 
 define void @store_i32_unordered(ptr addrspace(1) %ptr, i32 %val) {
 ; CHECK-LABEL: OpFunction %[[#]]
@@ -104,5 +105,17 @@ define void @store_float_release(ptr addrspace(1) %ptr, float %val) {
 ; CHECK:       OpStore %[[#ptr]] %[[#cast]] Aligned 8
 ; CHECK:       OpReturn
   store atomic float %val, ptr addrspace(1) %ptr release, align 8
+  ret void
+}
+
+; -- test with a vector type
+
+define void @store_vector_release(ptr addrspace(1) %ptr, <2 x i32> %val) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#val:]] = OpFunctionParameter %[[#Int32Vec]]
+; CHECK:       OpStore %[[#ptr]] %[[#val]] Aligned 8
+; CHECK:       OpReturn
+  store atomic <2 x i32> %val, ptr addrspace(1) %ptr release, align 8
   ret void
 }
