@@ -1078,11 +1078,13 @@ void emitBoundsSafetyInfo(raw_ostream &OS, const BoundsSafetyInfo &BSI) {
   llvm::support::endian::Writer writer(OS, llvm::endianness::little);
   uint8_t flags = 0;
   if (auto kind = BSI.getKind()) {
+    assert((uint8_t)*kind < (1 << 3));
     flags |= 0x01;                // 1 bit
     flags |= (uint8_t)*kind << 1; // 3 bits
   }
   flags <<= 4;
   if (auto level = BSI.getLevel()) {
+    assert((uint8_t)*level < (1 << 3));
     flags |= 0x01;        // 1 bit
     flags |= *level << 1; // 3 bits
   }
