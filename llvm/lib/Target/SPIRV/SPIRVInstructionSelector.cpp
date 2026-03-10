@@ -1635,6 +1635,7 @@ static void addMemoryOperands(uint64_t Flags, MachineInstrBuilder &MIB) {
 bool SPIRVInstructionSelector::selectLoad(Register ResVReg,
                                           SPIRVTypeInst ResType,
                                           MachineInstr &I) const {
+  LLVMContext &Context = I.getMF()->getFunction().getContext();
   unsigned OpOffset = isa<GIntrinsic>(I) ? 1 : 0;
   Register Ptr = I.getOperand(1 + OpOffset).getReg();
 
@@ -1658,7 +1659,31 @@ bool SPIRVInstructionSelector::selectLoad(Register ResVReg,
     }
   }
 
-  auto MIB = BuildMI(*I.getParent(), I, I.getDebugLoc(), TII.get(SPIRV::OpLoad))
+  MachineIRBuilder MIRBuilder(I);
+
+  if (I.getNumMemOperands()) {
+    const MachineMemOperand *MemOp = *I.memoperands_begin();
+    if (MemOp->isAtomic()) {
+      uint32_t Scope = static_cast<uint32_t>(getMemScope(
+          Context, MemOp->getSyncScopeID()));
+      Register ScopeReg = buildI32Constant(Scope, I);
+
+      AtomicOrdering AO = MemOp->getSuccessOrdering();
+      uint32_t MemSem = static_cast<uint32_t>(getMemSemantics(AO));
+      Register MemSemReg = buildI32Constant(MemSem, I);
+
+      auto Load = MIRBuilder.buildInstr(SPIRV::OpAtomicLoad)
+          .addDef(ResVReg)
+          .addUse(GR.getSPIRVTypeID(ResType))
+          .addUse(Ptr)
+          .addUse(ScopeReg)
+          .addUse(MemSemReg);
+      Load.constrainAllUses(TII, TRI, RBI);
+      return true;
+    }
+  }
+
+  auto MIB = MIRBuilder.buildInstr(SPIRV::OpLoad)
                  .addDef(ResVReg)
                  .addUse(GR.getSPIRVTypeID(ResType))
                  .addUse(Ptr);
@@ -1676,6 +1701,7 @@ bool SPIRVInstructionSelector::selectLoad(Register ResVReg,
 }
 
 bool SPIRVInstructionSelector::selectStore(MachineInstr &I) const {
+  LLVMContext &Context = I.getMF()->getFunction().getContext();
   unsigned OpOffset = isa<GIntrinsic>(I) ? 1 : 0;
   Register StoreVal = I.getOperand(0 + OpOffset).getReg();
   Register Ptr = I.getOperand(1 + OpOffset).getReg();
@@ -1710,8 +1736,30 @@ bool SPIRVInstructionSelector::selectStore(MachineInstr &I) const {
     }
   }
 
-  MachineBasicBlock &BB = *I.getParent();
-  auto MIB = BuildMI(BB, I, I.getDebugLoc(), TII.get(SPIRV::OpStore))
+  MachineIRBuilder MIRBuilder(I);
+
+  if (I.getNumMemOperands()) {
+    const MachineMemOperand *MemOp = *I.memoperands_begin();
+    if (MemOp->isAtomic()) {
+      uint32_t Scope = static_cast<uint32_t>(getMemScope(
+          Context, MemOp->getSyncScopeID()));
+      Register ScopeReg = buildI32Constant(Scope, I);
+
+      AtomicOrdering AO = MemOp->getSuccessOrdering();
+      uint32_t MemSem = static_cast<uint32_t>(getMemSemantics(AO));
+      Register MemSemReg = buildI32Constant(MemSem, I);
+
+      auto Store = MIRBuilder.buildInstr(SPIRV::OpAtomicStore)
+          .addUse(Ptr)
+          .addUse(ScopeReg)
+          .addUse(MemSemReg)
+          .addUse(StoreVal);
+      Store.constrainAllUses(TII, TRI, RBI);
+      return true;
+    }
+  }
+
+  auto MIB = MIRBuilder.buildInstr(SPIRV::OpStore)
                  .addUse(Ptr)
                  .addUse(StoreVal);
   if (!I.getNumMemOperands()) {
