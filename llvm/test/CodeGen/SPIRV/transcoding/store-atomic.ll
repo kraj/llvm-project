@@ -52,6 +52,48 @@ define void @store_i32_seq_cst(ptr addrspace(1) %ptr, i32 %val) {
   ret void
 }
 
+; -- test with different syncscopes 
+
+define void @store_i32_release_singlethread(ptr addrspace(1) %ptr, i32 %val) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#val:]] = OpFunctionParameter %[[#Int32]]
+; CHECK:       OpStore %[[#ptr]] %[[#val]] Aligned 4
+; CHECK:       OpReturn
+  store atomic i32 %val, ptr addrspace(1) %ptr syncscope("singlethread") release, align 4
+  ret void
+}
+
+define void @store_i32_release_subgroup(ptr addrspace(1) %ptr, i32 %val) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#val:]] = OpFunctionParameter %[[#Int32]]
+; CHECK:       OpStore %[[#ptr]] %[[#val]] Aligned 4
+; CHECK:       OpReturn
+  store atomic i32 %val, ptr addrspace(1) %ptr syncscope("subgroup") release, align 4
+  ret void
+}
+
+define void @store_i32_release_workgroup(ptr addrspace(1) %ptr, i32 %val) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#val:]] = OpFunctionParameter %[[#Int32]]
+; CHECK:       OpStore %[[#ptr]] %[[#val]] Aligned 4
+; CHECK:       OpReturn
+  store atomic i32 %val, ptr addrspace(1) %ptr syncscope("workgroup") release, align 4
+  ret void
+}
+
+define void @store_i32_release_device(ptr addrspace(1) %ptr, i32 %val) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#val:]] = OpFunctionParameter %[[#Int32]]
+; CHECK:       OpStore %[[#ptr]] %[[#val]] Aligned 4
+; CHECK:       OpReturn
+  store atomic i32 %val, ptr addrspace(1) %ptr syncscope("device") release, align 4
+  ret void
+}
+
 ; -- test with a different scalar type
 
 define void @store_float_release(ptr addrspace(1) %ptr, float %val) {

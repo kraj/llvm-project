@@ -48,6 +48,44 @@ define i32 @load_i32_seq_cst(ptr addrspace(1) %ptr) {
   ret i32 %val
 }
 
+; -- test with different syncscopes 
+
+define i32 @load_i32_acquire_singlethread(ptr addrspace(1) %ptr) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#]] = OpLoad %[[#Int32]] %[[#ptr]] Aligned 4
+; CHECK:       OpReturnValue
+  %val = load atomic i32, ptr addrspace(1) %ptr syncscope("singlethread") acquire, align 4
+  ret i32 %val
+}
+
+define i32 @load_i32_acquire_subgroup(ptr addrspace(1) %ptr) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#]] = OpLoad %[[#Int32]] %[[#ptr]] Aligned 4
+; CHECK:       OpReturnValue
+  %val = load atomic i32, ptr addrspace(1) %ptr syncscope("subgroup") acquire, align 4
+  ret i32 %val
+}
+
+define i32 @load_i32_acquire_workgroup(ptr addrspace(1) %ptr) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#]] = OpLoad %[[#Int32]] %[[#ptr]] Aligned 4
+; CHECK:       OpReturnValue
+  %val = load atomic i32, ptr addrspace(1) %ptr syncscope("workgroup") acquire, align 4
+  ret i32 %val
+}
+
+define i32 @load_i32_acquire_device(ptr addrspace(1) %ptr) {
+; CHECK-LABEL: OpFunction %[[#]]
+; CHECK:       %[[#ptr:]] = OpFunctionParameter %[[#]]
+; CHECK:       %[[#]] = OpLoad %[[#Int32]] %[[#ptr]] Aligned 4
+; CHECK:       OpReturnValue
+  %val = load atomic i32, ptr addrspace(1) %ptr syncscope("device") acquire, align 4
+  ret i32 %val
+}
+
 ; -- test with a different scalar type
 
 define float @load_float_acquire(ptr addrspace(1) %ptr) {
