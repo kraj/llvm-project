@@ -74,9 +74,6 @@ int main() {
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_default_mem_space)
       ++Failed;
-    bool IsFallback = true; // FIX
-    if (!IsFallback)
-      ++Failed;
   }
 
 // Verify that the fallback(null) modifier works.
@@ -92,9 +89,6 @@ int main() {
     if (omp_get_dyn_gprivate_size())
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_null_mem_space)
-      ++Failed;
-    bool IsFallback = true; // FIX
-    if (!IsFallback)
       ++Failed;
   }
 
@@ -112,9 +106,6 @@ int main() {
     if (omp_get_dyn_gprivate_size() != ExceededSize)
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_default_mem_space)
-      ++Failed;
-    bool IsFallback = true; // FIX
-    if (!IsFallback)
       ++Failed;
   }
 
@@ -135,9 +126,6 @@ int main() {
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_cgroup_mem_space)
       ++Failed;
-    bool IsFallback = false; // FIX
-    if (IsFallback)
-      ++Failed;
   }
 
 // Verify that the fallback(default_mem) does not trigger when not needed.
@@ -156,9 +144,6 @@ int main() {
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_cgroup_mem_space)
       ++Failed;
-    bool IsFallback = false; // FIX
-    if (IsFallback)
-      ++Failed;
   }
 
 // Verify that the clause works when passing a zero size.
@@ -173,9 +158,6 @@ int main() {
     if (omp_get_dyn_gprivate_size())
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_null_mem_space)
-      ++Failed;
-    bool IsFallback = false; // FIX
-    if (IsFallback)
       ++Failed;
   }
 
@@ -194,9 +176,6 @@ int main() {
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_null_mem_space)
       ++Failed;
-    bool IsFallback = false; // FIX
-    if (IsFallback)
-      ++Failed;
   }
 
 // Verify that omitting the clause is the same as setting zero size.
@@ -211,9 +190,6 @@ int main() {
     if (omp_get_dyn_gprivate_size())
       ++Failed;
     if (omp_get_dyn_gprivate_memspace() != omp_null_mem_space)
-      ++Failed;
-    bool IsFallback = false; // FIX
-    if (IsFallback)
       ++Failed;
   }
 
