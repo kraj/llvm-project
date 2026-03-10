@@ -4714,6 +4714,31 @@ void SemaHLSL::deduceAddressSpace(VarDecl *Decl) {
 }
 
 void SemaHLSL::ActOnVariableDeclarator(VarDecl *VD) {
+  auto CheckType = [&](QualType T) {
+    if (const auto *RT = T->getAs<RecordType>()) {
+      const CXXRecordDecl *RD = cast<CXXRecordDecl>(RT->getDecl());
+      if (RD->getIdentifier() && (RD->getName() == "mips_type" ||
+                                  RD->getName() == "mips_slice_type")) {
+        const DeclContext *DC = RD->getDeclContext();
+        if (const auto *ParentRD = dyn_cast<CXXRecordDecl>(DC)) {
+          QualType ParentTy =
+              SemaRef.getASTContext().getTypeDeclType(cast<TypeDecl>(ParentRD));
+          if (ParentTy->isHLSLResourceRecord()) {
+            SemaRef.Diag(VD->getLocation(),
+                         diag::err_hlsl_intermediate_type_variable)
+                << T;
+            VD->setInvalidDecl();
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  if (CheckType(VD->getType()))
+    return;
+
   if (VD->hasGlobalStorage()) {
     // make sure the declaration has a complete type
     if (SemaRef.RequireCompleteType(
@@ -5660,6 +5685,31 @@ bool SemaHLSL::handleInitialization(VarDecl *VDecl, Expr *&Init) {
   // If initializing a local resource, track the resource binding it is using
   if (VDecl->getType()->isHLSLResourceRecord() && !VDecl->hasGlobalStorage())
     trackLocalResource(VDecl, Init);
+
+  auto CheckType = [&](QualType T) {
+    if (const auto *RT = T->getAs<RecordType>()) {
+      const CXXRecordDecl *RD = cast<CXXRecordDecl>(RT->getDecl());
+      if (RD->getIdentifier() && (RD->getName() == "mips_type" ||
+                                  RD->getName() == "mips_slice_type")) {
+        const DeclContext *DC = RD->getDeclContext();
+        if (const auto *ParentRD = dyn_cast<CXXRecordDecl>(DC)) {
+          QualType ParentTy =
+              SemaRef.getASTContext().getTypeDeclType(cast<TypeDecl>(ParentRD));
+          if (ParentTy->isHLSLResourceRecord()) {
+            SemaRef.Diag(VDecl->getLocation(),
+                         diag::err_hlsl_intermediate_type_variable)
+                << T;
+            VDecl->setInvalidDecl();
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  if (CheckType(VDecl->getType()))
+    return false;
 
   const HLSLVkConstantIdAttr *ConstIdAttr =
       VDecl->getAttr<HLSLVkConstantIdAttr>();
