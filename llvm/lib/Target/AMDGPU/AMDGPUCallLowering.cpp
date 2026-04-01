@@ -32,10 +32,15 @@ namespace {
 
 /// Wrapper around extendRegister to ensure we extend to a full 32-bit register.
 static Register extendRegisterMin32(CallLowering::ValueHandler &Handler,
-                                    Register ValVReg, const CCValAssign &VA) {
-  if (VA.getLocVT().getSizeInBits() < 32) {
+                                    Register ValVReg, const CCValAssign &VA,
+                                    bool isPhyRegSGPR, const GCNSubtarget &ST) {
+  if (VA.getLocVT().getSizeInBits() < 32 &&
+      (isPhyRegSGPR || !ST.useRealTrue16Insts())) {
     // 16-bit types are reported as legal for 32-bit registers. We need to
     // extend and do a 32-bit copy to avoid the verifier complaining about it.
+    //
+    // In true16 mode, we still do this ext if the physical reg is a sgpr since
+    // there is no 16bit read_first_lane
     return Handler.MIRBuilder.buildAnyExt(LLT::integer(32), ValVReg).getReg(0);
   }
 
@@ -64,14 +69,17 @@ struct AMDGPUOutgoingValueHandler : public CallLowering::OutgoingValueHandler {
   void assignValueToReg(Register ValVReg, Register PhysReg,
                         const CCValAssign &VA,
                         ISD::ArgFlagsTy Flags = {}) override {
-    Register ExtReg = extendRegisterMin32(*this, ValVReg, VA);
+    const SIRegisterInfo *TRI =
+        static_cast<const SIRegisterInfo *>(MRI.getTargetRegisterInfo());
+    const GCNSubtarget &ST = MIRBuilder.getMF().getSubtarget<GCNSubtarget>();
+    bool isPhyRegSGPR = TRI->isSGPRReg(MRI, PhysReg);
+
+    Register ExtReg = extendRegisterMin32(*this, ValVReg, VA, isPhyRegSGPR, ST);
 
     // If this is a scalar return, insert a readfirstlane just in case the value
     // ends up in a VGPR.
     // FIXME: Assert this is a shader return.
-    const SIRegisterInfo *TRI
-      = static_cast<const SIRegisterInfo *>(MRI.getTargetRegisterInfo());
-    if (TRI->isSGPRReg(MRI, PhysReg)) {
+    if (isPhyRegSGPR) {
       LLT Ty = MRI.getType(ExtReg);
       LLT I32 = LLT::integer(32);
       if (Ty != I32 && Ty != LLT::float32()) {
@@ -91,7 +99,17 @@ struct AMDGPUOutgoingValueHandler : public CallLowering::OutgoingValueHandler {
       ExtReg = ToSGPR.getReg(0);
     }
 
-    MIRBuilder.buildCopy(PhysReg, ExtReg);
+    // Trunc to 16bit or insert copy
+    unsigned PhyRegSize = VA.getLocVT().getSizeInBits();
+    if (PhyRegSize < 32 && isPhyRegSGPR && ST.useRealTrue16Insts()) {
+      auto Trunc = MIRBuilder.buildTrunc(LLT::integer(PhyRegSize), ExtReg);
+      if (VA.getLocVT().isInteger())
+        MIRBuilder.buildCopy(PhysReg, Trunc);
+      else
+        MIRBuilder.buildBitcast(PhysReg, Trunc);
+    } else {
+      MIRBuilder.buildCopy(PhysReg, ExtReg);
+    }
     MIB.addUse(PhysReg, RegState::Implicit);
   }
 };
@@ -119,7 +137,8 @@ struct AMDGPUIncomingArgHandler : public CallLowering::IncomingValueHandler {
   }
 
   void copyToReg(Register ValVReg, Register PhysReg, const CCValAssign &VA) {
-    if (VA.getLocVT().getSizeInBits() < 32) {
+    const GCNSubtarget &ST = MIRBuilder.getMF().getSubtarget<GCNSubtarget>();
+    if (VA.getLocVT().getSizeInBits() < 32 && !ST.useRealTrue16Insts()) {
       // 16-bit types are reported as legal for 32-bit registers. We need to
       // do a 32-bit copy, and truncate to avoid the verifier complaining
       // about it.

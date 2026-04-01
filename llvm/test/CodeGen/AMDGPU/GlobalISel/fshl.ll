@@ -847,31 +847,58 @@ define amdgpu_ps i16 @s_fshl_v2i8(i16 inreg %lhs.arg, i16 inreg %rhs.arg, i16 in
 ; GFX10-NEXT:    s_or_b32 s0, s0, s1
 ; GFX10-NEXT:    ; return to shader part epilog
 ;
-; GFX11-LABEL: s_fshl_v2i8:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_lshr_b32 s4, s1, 8
-; GFX11-NEXT:    s_lshr_b32 s5, s2, 8
-; GFX11-NEXT:    s_and_b32 s6, s2, 7
-; GFX11-NEXT:    s_and_b32 s4, s4, 0xff
-; GFX11-NEXT:    s_lshr_b32 s3, s0, 8
-; GFX11-NEXT:    s_and_b32 s1, s1, 0xff
-; GFX11-NEXT:    s_lshl_b32 s0, s0, s6
-; GFX11-NEXT:    s_and_b32 s6, s5, 7
-; GFX11-NEXT:    s_lshr_b32 s4, s4, 1
-; GFX11-NEXT:    s_and_not1_b32 s5, 7, s5
-; GFX11-NEXT:    s_lshr_b32 s1, s1, 1
-; GFX11-NEXT:    s_and_not1_b32 s2, 7, s2
-; GFX11-NEXT:    s_lshl_b32 s3, s3, s6
-; GFX11-NEXT:    s_lshr_b32 s4, s4, s5
-; GFX11-NEXT:    s_lshr_b32 s1, s1, s2
-; GFX11-NEXT:    s_or_b32 s2, s3, s4
-; GFX11-NEXT:    s_or_b32 s0, s0, s1
-; GFX11-NEXT:    s_and_b32 s1, s2, 0xff
-; GFX11-NEXT:    s_and_b32 s0, s0, 0xff
-; GFX11-NEXT:    s_lshl_b32 s1, s1, 8
-; GFX11-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
-; GFX11-NEXT:    s_or_b32 s0, s0, s1
-; GFX11-NEXT:    ; return to shader part epilog
+; GFX11-TRUE16-LABEL: s_fshl_v2i8:
+; GFX11-TRUE16:       ; %bb.0:
+; GFX11-TRUE16-NEXT:    s_and_b32 s4, 0xffff, s2
+; GFX11-TRUE16-NEXT:    s_and_b32 s3, 0xffff, s0
+; GFX11-TRUE16-NEXT:    s_lshr_b32 s4, s4, 8
+; GFX11-TRUE16-NEXT:    s_and_b32 s5, s2, 7
+; GFX11-TRUE16-NEXT:    s_and_b32 s6, s1, 0xff
+; GFX11-TRUE16-NEXT:    s_and_b32 s1, 0xffff, s1
+; GFX11-TRUE16-NEXT:    s_lshr_b32 s3, s3, 8
+; GFX11-TRUE16-NEXT:    s_lshl_b32 s0, s0, s5
+; GFX11-TRUE16-NEXT:    s_lshr_b32 s5, s6, 1
+; GFX11-TRUE16-NEXT:    s_and_b32 s6, s4, 7
+; GFX11-TRUE16-NEXT:    s_lshr_b32 s1, s1, 9
+; GFX11-TRUE16-NEXT:    s_and_not1_b32 s4, 7, s4
+; GFX11-TRUE16-NEXT:    s_and_not1_b32 s2, 7, s2
+; GFX11-TRUE16-NEXT:    s_lshl_b32 s3, s3, s6
+; GFX11-TRUE16-NEXT:    s_lshr_b32 s1, s1, s4
+; GFX11-TRUE16-NEXT:    s_lshr_b32 s2, s5, s2
+; GFX11-TRUE16-NEXT:    s_or_b32 s1, s3, s1
+; GFX11-TRUE16-NEXT:    s_or_b32 s0, s0, s2
+; GFX11-TRUE16-NEXT:    s_and_b32 s1, s1, 0xff
+; GFX11-TRUE16-NEXT:    s_and_b32 s0, s0, 0xff
+; GFX11-TRUE16-NEXT:    s_lshl_b32 s1, s1, 8
+; GFX11-TRUE16-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
+; GFX11-TRUE16-NEXT:    s_or_b32 s0, s0, s1
+; GFX11-TRUE16-NEXT:    ; return to shader part epilog
+;
+; GFX11-FAKE16-LABEL: s_fshl_v2i8:
+; GFX11-FAKE16:       ; %bb.0:
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s4, s1, 8
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s5, s2, 8
+; GFX11-FAKE16-NEXT:    s_and_b32 s6, s2, 7
+; GFX11-FAKE16-NEXT:    s_and_b32 s4, s4, 0xff
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s3, s0, 8
+; GFX11-FAKE16-NEXT:    s_and_b32 s1, s1, 0xff
+; GFX11-FAKE16-NEXT:    s_lshl_b32 s0, s0, s6
+; GFX11-FAKE16-NEXT:    s_and_b32 s6, s5, 7
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s4, s4, 1
+; GFX11-FAKE16-NEXT:    s_and_not1_b32 s5, 7, s5
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s1, s1, 1
+; GFX11-FAKE16-NEXT:    s_and_not1_b32 s2, 7, s2
+; GFX11-FAKE16-NEXT:    s_lshl_b32 s3, s3, s6
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s4, s4, s5
+; GFX11-FAKE16-NEXT:    s_lshr_b32 s1, s1, s2
+; GFX11-FAKE16-NEXT:    s_or_b32 s2, s3, s4
+; GFX11-FAKE16-NEXT:    s_or_b32 s0, s0, s1
+; GFX11-FAKE16-NEXT:    s_and_b32 s1, s2, 0xff
+; GFX11-FAKE16-NEXT:    s_and_b32 s0, s0, 0xff
+; GFX11-FAKE16-NEXT:    s_lshl_b32 s1, s1, 8
+; GFX11-FAKE16-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
+; GFX11-FAKE16-NEXT:    s_or_b32 s0, s0, s1
+; GFX11-FAKE16-NEXT:    ; return to shader part epilog
   %lhs = bitcast i16 %lhs.arg to <2 x i8>
   %rhs = bitcast i16 %rhs.arg to <2 x i8>
   %amt = bitcast i16 %amt.arg to <2 x i8>
@@ -987,31 +1014,29 @@ define i16 @v_fshl_v2i8(i16 %lhs.arg, i16 %rhs.arg, i16 %amt.arg) {
 ; GFX11-TRUE16-LABEL: v_fshl_v2i8:
 ; GFX11-TRUE16:       ; %bb.0:
 ; GFX11-TRUE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-TRUE16-NEXT:    v_lshrrev_b32_e32 v3, 8, v1
-; GFX11-TRUE16-NEXT:    v_lshrrev_b32_e32 v4, 8, v2
-; GFX11-TRUE16-NEXT:    v_lshrrev_b32_e32 v5, 8, v0
-; GFX11-TRUE16-NEXT:    v_and_b16 v1.l, 0xff, v1.l
-; GFX11-TRUE16-NEXT:    v_xor_b16 v2.h, v2.l, -1
-; GFX11-TRUE16-NEXT:    v_and_b16 v0.h, 0xff, v3.l
-; GFX11-TRUE16-NEXT:    v_xor_b16 v1.h, v4.l, -1
-; GFX11-TRUE16-NEXT:    v_and_b16 v3.l, v4.l, 7
+; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v0.h, 8, v2.l
+; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v1.h, 8, v0.l
+; GFX11-TRUE16-NEXT:    v_and_b16 v3.l, 0xff, v1.l
+; GFX11-TRUE16-NEXT:    v_xor_b16 v3.h, v2.l, -1
+; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v1.l, 9, v1.l
+; GFX11-TRUE16-NEXT:    v_xor_b16 v2.h, v0.h, -1
+; GFX11-TRUE16-NEXT:    v_and_b16 v0.h, v0.h, 7
 ; GFX11-TRUE16-NEXT:    v_and_b16 v2.l, v2.l, 7
-; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v1.l, 1, v1.l
-; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v0.h, 1, v0.h
-; GFX11-TRUE16-NEXT:    v_and_b16 v1.h, v1.h, 7
+; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v3.l, 1, v3.l
+; GFX11-TRUE16-NEXT:    v_and_b16 v3.h, v3.h, 7
 ; GFX11-TRUE16-NEXT:    v_and_b16 v2.h, v2.h, 7
-; GFX11-TRUE16-NEXT:    v_lshlrev_b16 v3.l, v3.l, v5.l
+; GFX11-TRUE16-NEXT:    v_lshlrev_b16 v0.h, v0.h, v1.h
 ; GFX11-TRUE16-NEXT:    v_lshlrev_b16 v0.l, v2.l, v0.l
 ; GFX11-TRUE16-NEXT:    s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
-; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v0.h, v1.h, v0.h
+; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v1.h, v3.h, v3.l
 ; GFX11-TRUE16-NEXT:    v_lshrrev_b16 v1.l, v2.h, v1.l
 ; GFX11-TRUE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
-; GFX11-TRUE16-NEXT:    v_or_b16 v0.h, v3.l, v0.h
-; GFX11-TRUE16-NEXT:    v_or_b16 v0.l, v0.l, v1.l
+; GFX11-TRUE16-NEXT:    v_or_b16 v0.l, v0.l, v1.h
+; GFX11-TRUE16-NEXT:    v_or_b16 v0.h, v0.h, v1.l
 ; GFX11-TRUE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
-; GFX11-TRUE16-NEXT:    v_and_b16 v0.h, 0xff, v0.h
 ; GFX11-TRUE16-NEXT:    v_and_b16 v0.l, 0xff, v0.l
-; GFX11-TRUE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_1)
+; GFX11-TRUE16-NEXT:    v_and_b16 v0.h, 0xff, v0.h
+; GFX11-TRUE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX11-TRUE16-NEXT:    v_lshlrev_b16 v0.h, 8, v0.h
 ; GFX11-TRUE16-NEXT:    v_or_b16 v0.l, v0.l, v0.h
 ; GFX11-TRUE16-NEXT:    s_setpc_b64 s[30:31]
