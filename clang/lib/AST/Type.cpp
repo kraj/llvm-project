@@ -428,9 +428,16 @@ BitIntType::BitIntType(bool IsUnsigned, unsigned NumBits)
       NumBits(NumBits) {}
 
 DependentBitIntType::DependentBitIntType(bool IsUnsigned, Expr *NumBitsExpr)
+    // DependentBitIntType must always be type-dependent.
+    // The expression must be value-dependent, so will also be
+    // instantiation-dependent.
     : Type(DependentBitInt, QualType{},
-           toTypeDependence(NumBitsExpr->getDependence())),
-      ExprAndUnsigned(NumBitsExpr, IsUnsigned) {}
+           toTypeDependence(NumBitsExpr->getDependence()) |
+               TypeDependence::Dependent),
+      ExprAndUnsigned(NumBitsExpr, IsUnsigned) {
+  assert(NumBitsExpr->isValueDependent() &&
+         "NumBitsExpr must be value-dependent");
+}
 
 bool DependentBitIntType::isUnsigned() const {
   return ExprAndUnsigned.getInt();
@@ -4219,15 +4226,10 @@ DecltypeType::DecltypeType(Expr *E, QualType underlyingType, QualType can)
     // C++11 [temp.type]p2: "If an expression e involves a template parameter,
     // decltype(e) denotes a unique dependent type." Hence a decltype type is
     // type-dependent even if its expression is only instantiation-dependent.
-    : Type(Decltype, can,
-           toTypeDependence(E->getDependence()) |
-               (E->isInstantiationDependent() ? TypeDependence::Dependent
-                                              : TypeDependence::None) |
-               (E->getType()->getDependence() &
-                TypeDependence::VariablyModified)),
-      E(E), UnderlyingType(underlyingType) {}
+    : Type(Decltype, can, toTypeDependence(E->getDependence())), E(E),
+      UnderlyingType(underlyingType) {}
 
-bool DecltypeType::isSugared() const { return !E->isInstantiationDependent(); }
+bool DecltypeType::isSugared() const { return !E->isTypeDependent(); }
 
 QualType DecltypeType::desugar() const {
   if (isSugared())

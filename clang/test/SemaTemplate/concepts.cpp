@@ -1824,3 +1824,12 @@ namespace GH176402 {
     recursiveLambda(recursiveLambda, 5);
   }
 }
+
+namespace GH61818 {
+  template <typename T> concept C = true;
+  template <typename T> struct A;
+  template <> struct A<bool> { using type = bool; };
+
+  template <typename T>
+  void f(A<decltype(C<T>)>::type); // OK, no 'typename' needed
+} // namespace GH61818

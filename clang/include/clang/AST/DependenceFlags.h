@@ -194,7 +194,7 @@ public:
   TypeDependence type() const {
     return translate(V, UnexpandedPack, TypeDependence::UnexpandedPack) |
            translate(V, Instantiation, TypeDependence::Instantiation) |
-           translate(V, Dependent, TypeDependence::Dependent) |
+           translate(V, Type, TypeDependence::Dependent) |
            translate(V, Error, TypeDependence::Error) |
            translate(V, VariablyModified, TypeDependence::VariablyModified);
   }

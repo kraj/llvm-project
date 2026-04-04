@@ -13,12 +13,12 @@ namespace PR6045 {
     static const unsigned int member = r;
     void f();
   };
-  
+
   template<unsigned int r>
   const unsigned int A<r>::member;
-  
+
   template<unsigned int r>
-  void A<r>::f() 
+  void A<r>::f()
   {
     unsigned k;
     (void)(k % member);
@@ -129,7 +129,7 @@ namespace PR45083 {
   template<typename> void f() {
     decltype(({})) x; // expected-error {{incomplete type}}
   }
-  template void f<int>(); // expected-note {{instantiation of}}
+  template void f<int>();
 
   template<typename> auto g() {
     auto c = [](auto, int) -> decltype(({})) {};

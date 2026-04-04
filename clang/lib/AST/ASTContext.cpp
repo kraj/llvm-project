@@ -6691,12 +6691,11 @@ QualType ASTContext::getReferenceQualifiedType(const Expr *E) const {
 /// expression, and would not give a significant memory saving, since there
 /// is an Expr tree under each such type.
 QualType ASTContext::getDecltypeType(Expr *E, QualType UnderlyingType) const {
-  // C++11 [temp.type]p2:
-  //   If an expression e involves a template parameter, decltype(e) denotes a
-  //   unique dependent type. Two such decltype-specifiers refer to the same
-  //   type only if their expressions are equivalent (14.5.6.1).
+  // C++26 [temp.type]p4: If an expression e is type-dependent, decltype(e)
+  // denotes a unique dependent type. Two such decltype-specifiers refer to the
+  // same type only if their expressions are equivalent ([temp.over.link]).
   QualType CanonType;
-  if (!E->isInstantiationDependent()) {
+  if (!E->isTypeDependent()) {
     CanonType = getCanonicalType(UnderlyingType);
   } else if (!UnderlyingType.isNull()) {
     CanonType = getDecltypeType(E, QualType());

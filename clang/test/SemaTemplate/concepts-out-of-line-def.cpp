@@ -533,12 +533,12 @@ template <class T>
 void X<T>::foo() requires requires { requires is_not_same_v<T, int>; } {} // ok
 
 template <class T>
-void X<T>::bar(decltype(requires { requires something_interesting<T>; })) {}
-// expected-error@-1{{definition of 'bar' does not match any declaration}}
-// expected-note@#defined-here{{defined here}}
+void X<T>::bar(decltype(requires { requires something_interesting<T>; })) {} // #GH74314-bar-prev-def-here
 
 template <class T>
 void X<T>::bar(decltype(requires { requires is_not_same_v<T, int>; })) {}
+// expected-error@-1 {{redefinition of 'bar'}}
+// expected-note@#GH74314-bar-prev-def-here {{previous definition is here}}
 } // namespace GH74314
 
 namespace GH56482 {

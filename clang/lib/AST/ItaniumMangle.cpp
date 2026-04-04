@@ -3008,6 +3008,11 @@ void CXXNameMangler::mangleType(QualType T) {
         if (!TST->isTypeAlias())
           break;
 
+      // instantiation-dependent decltypes are mangled through their
+      // expressions.
+      if (T->isInstantiationDependentType() && isa<DecltypeType>(T))
+        break;
+
       // FIXME: We presumably shouldn't strip off ElaboratedTypes with
       // instantation-dependent qualifiers. See
       // https://github.com/itanium-cxx-abi/cxx-abi/issues/114.
@@ -7005,8 +7010,9 @@ static bool hasMangledSubstitutionQualifiers(QualType T) {
 
 bool CXXNameMangler::mangleSubstitution(QualType T) {
   if (!hasMangledSubstitutionQualifiers(T)) {
-    if (const auto *RD = T->getAsCXXRecordDecl())
-      return mangleSubstitution(RD);
+    if (const auto *TT = dyn_cast<TagType>(T);
+        isa_and_nonnull<RecordType, InjectedClassNameType>(TT))
+      return mangleSubstitution(TT->getDecl());
   }
 
   uintptr_t TypePtr = reinterpret_cast<uintptr_t>(T.getAsOpaquePtr());
@@ -7175,8 +7181,9 @@ bool CXXNameMangler::mangleStandardSubstitution(const NamedDecl *ND) {
 
 void CXXNameMangler::addSubstitution(QualType T) {
   if (!hasMangledSubstitutionQualifiers(T)) {
-    if (const auto *RD = T->getAsCXXRecordDecl()) {
-      addSubstitution(RD);
+    if (const auto *TT = dyn_cast<TagType>(T);
+        isa_and_nonnull<RecordType, InjectedClassNameType>(TT)) {
+      addSubstitution(TT->getDecl());
       return;
     }
   }
