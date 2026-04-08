@@ -13057,7 +13057,7 @@ MachineBasicBlock *PPCTargetLowering::EmitAtomicBinary(MachineInstr &MI,
   // CmpOpcode != 0: Handles atomic load with MIN/MAX etc.
   // BinOpcode == 0 && CmpOpcode == 0: Handles ATOMIC_SWAP.
   const TargetInstrInfo *TII = Subtarget.getInstrInfo();
-  unsigned AtomicSize = MI.getOperand(MI.getNumExplicitOperands()-1).getImm();
+  unsigned AtomicSize = MI.getOperand(MI.getNumExplicitOperands() - 1).getImm();
 
   auto LoadMnemonic = PPC::LDARX;
   auto StoreMnemonic = PPC::STDCX;
@@ -13245,7 +13245,8 @@ MachineBasicBlock *PPCTargetLowering::EmitPartwordAtomicBinary(
   bool IsSignExtended =
       incr.isVirtual() && isSignExtended(*RegInfo.getVRegDef(incr), TII);
 
-  const bool is8bit = MI.getOperand(MI.getNumExplicitOperands()-1).getImm() == 1;
+  const bool is8bit =
+      MI.getOperand(MI.getNumExplicitOperands() - 1).getImm() == 1;
   if (CmpOpcode == PPC::CMPW && !IsSignExtended) {
     Register ValueReg = RegInfo.createVirtualRegister(&PPC::GPRCRegClass);
     BuildMI(*BB, MI, dl, TII->get(is8bit ? PPC::EXTSB : PPC::EXTSH), ValueReg)
