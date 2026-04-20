@@ -91,7 +91,7 @@ template <typename T> SmallVector<T> sortByName(SmallVector<T> &&V) {
 
 // Main utility function for special LDS variables lowering.
 static bool lowerExecSyncGlobalVariables(
-    Module &M, LDSUsesInfoTy &LDSUsesInfo,
+    Module &M, GVUsesInfoTy &LDSUsesInfo,
     VariableFunctionMap &LDSToKernelsThatNeedToAccessItIndirectly) {
   bool Changed = false;
   const DataLayout &DL = M.getDataLayout();
@@ -110,7 +110,7 @@ static bool lowerExecSyncGlobalVariables(
     } else {
       // leave it to the 2nd round, which will give a kernel-relative
       // assignment if it is only indirectly accessed by one kernel
-      LDSUsesInfo.direct_access[*K.second.begin()].insert(GV);
+      LDSUsesInfo.DirectAccess[*K.second.begin()].insert(GV);
     }
     LDSToKernelsThatNeedToAccessItIndirectly.erase(GV);
   }
@@ -132,7 +132,7 @@ static bool lowerExecSyncGlobalVariables(
   // either only indirectly accessed by single kernel or only directly
   // accessed by multiple kernels.
   SmallVector<Function *> OrderedKernels;
-  for (auto &K : LDSUsesInfo.direct_access) {
+  for (auto &K : LDSUsesInfo.DirectAccess) {
     Function *F = K.first;
     assert(isKernel(*F));
     OrderedKernels.push_back(F);
@@ -141,11 +141,11 @@ static bool lowerExecSyncGlobalVariables(
 
   DenseMap<Function *, uint32_t> Kernel2BarId;
   for (Function *F : OrderedKernels) {
-    for (GlobalVariable *GV : LDSUsesInfo.direct_access[F]) {
+    for (GlobalVariable *GV : LDSUsesInfo.DirectAccess[F]) {
       if (!isNamedBarrier(*GV))
         continue;
 
-      LDSUsesInfo.direct_access[F].erase(GV);
+      LDSUsesInfo.DirectAccess[F].erase(GV);
       if (GV->isAbsoluteSymbolRef()) {
         // already assigned
         continue;
@@ -169,7 +169,7 @@ static bool lowerExecSyncGlobalVariables(
     OrderedGVs.clear();
   }
   // Also erase those special LDS variables from indirect_access.
-  for (auto &K : LDSUsesInfo.indirect_access) {
+  for (auto &K : LDSUsesInfo.IndirectAccess) {
     assert(isKernel(*K.first));
     for (GlobalVariable *GV : K.second) {
       if (isNamedBarrier(*GV))
@@ -177,6 +177,18 @@ static bool lowerExecSyncGlobalVariables(
     }
   }
   return Changed;
+}
+
+static bool hasBarrierToLower(const GVUsesInfoTy &LDSUsesInfo) {
+  for (auto &Map : {LDSUsesInfo.DirectAccess, LDSUsesInfo.IndirectAccess}) {
+    for (auto &[Fn, GVs] : Map) {
+      for (auto &GV : GVs) {
+        if (AMDGPU::isNamedBarrier(*GV))
+          return true;
+      }
+    }
+  }
+  return false;
 }
 
 // With object linking, barrier ID assignment is deferred to the linker.
@@ -225,15 +237,16 @@ static bool runLowerExecSyncGlobals(Module &M) {
 
   CallGraph CG = CallGraph(M);
   bool Changed = false;
-  Changed |= eliminateConstantExprUsesOfLDSFromAllInstructions(M);
+  Changed |=
+      eliminateGVConstantExprUsesFromAllInstructions(M, isLDSVariableToLower);
 
   // For each kernel, what variables does it access directly or through
   // callees
-  LDSUsesInfoTy LDSUsesInfo = getTransitiveUsesOfLDS(CG, M);
+  GVUsesInfoTy LDSUsesInfo = getTransitiveUsesOfLDSForLowering(CG, M);
 
   // For each variable accessed through callees, which kernels access it
   VariableFunctionMap LDSToKernelsThatNeedToAccessItIndirectly;
-  for (auto &K : LDSUsesInfo.indirect_access) {
+  for (auto &K : LDSUsesInfo.IndirectAccess) {
     Function *F = K.first;
     assert(isKernel(*F));
     for (GlobalVariable *GV : K.second) {
@@ -241,11 +254,12 @@ static bool runLowerExecSyncGlobals(Module &M) {
     }
   }
 
-  if (LDSUsesInfo.HasSpecialGVs) {
+  if (hasBarrierToLower(LDSUsesInfo)) {
     // Special LDS variables need special address assignment
     Changed |= lowerExecSyncGlobalVariables(
         M, LDSUsesInfo, LDSToKernelsThatNeedToAccessItIndirectly);
   }
+
   return Changed;
 }
 
