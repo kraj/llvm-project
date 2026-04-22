@@ -24,6 +24,7 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
+#include "llvm/Support/AMDGPUAddrSpace.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Target/TargetMachine.h"
@@ -1529,24 +1530,37 @@ SDValue AMDGPUTargetLowering::LowerGlobalAddress(AMDGPUMachineFunctionInfo *MFI,
   const GlobalValue *GV = G->getGlobal();
 
   if (!MFI->isModuleEntryFunction()) {
-    auto IsNamedBarrier = AMDGPU::isNamedBarrier(*cast<GlobalVariable>(GV));
-    if (std::optional<uint32_t> Address =
-            AMDGPUMachineFunctionInfo::getLDSAbsoluteAddress(*GV)) {
-      if (IsNamedBarrier) {
-        unsigned BarCnt = cast<GlobalVariable>(GV)->getGlobalSize(DL) / 16;
-        MFI->recordNumNamedBarriers(Address.value(), BarCnt);
-      }
+    auto *IsNamedBarrier = AMDGPU::isNamedBarrier(*cast<GlobalVariable>(GV));
+    if (IsNamedBarrier) {
+      std::optional<uint32_t> Address =
+          AMDGPUMachineFunctionInfo::get32BitAbsoluteAddress(
+              *GV, AMDGPUAS::EXECSYNC);
+      if (!Address)
+        llvm_unreachable("named barrier should have an assigned address");
+      unsigned BarCnt = cast<GlobalVariable>(GV)->getGlobalSize(DL) / 16;
+      MFI->recordNumNamedBarriers(Address.value(), BarCnt);
       return DAG.getConstant(*Address, SDLoc(Op), Op.getValueType());
-    } else if (IsNamedBarrier) {
-      llvm_unreachable("named barrier should have an assigned address");
     }
+
+    if (std::optional<uint32_t> Address =
+            AMDGPUMachineFunctionInfo::get32BitAbsoluteAddress(
+                *GV, AMDGPUAS::LOCAL_ADDRESS)) {
+      return DAG.getConstant(*Address, SDLoc(Op), Op.getValueType());
+    }
+  }
+
+  if (G->getAddressSpace() == AMDGPUAS::EXECSYNC) {
+    const GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV);
+    assert(GVar && AMDGPU::isNamedBarrier(*GVar) &&
+           "Unsupport use for EXECSYNC address space!");
+    unsigned Offset = MFI->allocateBarrierGlobal(DL, *cast<GlobalVariable>(GV));
+    return DAG.getConstant(Offset, SDLoc(Op), Op.getValueType());
   }
 
   if (G->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS ||
       G->getAddressSpace() == AMDGPUAS::REGION_ADDRESS) {
     if (!MFI->isModuleEntryFunction() &&
-        GV->getName() != "llvm.amdgcn.module.lds" &&
-        !AMDGPU::isNamedBarrier(*cast<GlobalVariable>(GV))) {
+        GV->getName() != "llvm.amdgcn.module.lds") {
       SDLoc DL(Op);
       const Function &Fn = DAG.getMachineFunction().getFunction();
       DAG.getContext()->diagnose(DiagnosticInfoUnsupported(

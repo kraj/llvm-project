@@ -43,6 +43,7 @@
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsR600.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/Support/AMDGPUAddrSpace.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/ModRef.h"
@@ -8353,9 +8354,11 @@ bool SITargetLowering::shouldUseLDSConstAddress(const GlobalValue *GV) const {
   // linker can assign their offsets.
   if (AMDGPUTargetMachine::EnableObjectLinking) {
     if (const auto *GVar = dyn_cast<GlobalVariable>(GV)) {
-      if (GVar->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS) {
-        assert(GVar->isDeclaration() && "AS3 GVs should be declaration here "
-                                        "when object linking is enabled");
+      if (GVar->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS ||
+          GVar->getAddressSpace() == AMDGPUAS::EXECSYNC) {
+        assert(GVar->isDeclaration() &&
+               "AS 3 & 13 GVs should be declaration here "
+               "when object linking is enabled");
         return false;
       }
     }
@@ -9000,7 +9003,7 @@ SDValue SITargetLowering::lowerDEBUGTRAP(SDValue Op, SelectionDAG &DAG) const {
 SDValue SITargetLowering::getSegmentAperture(unsigned AS, const SDLoc &DL,
                                              SelectionDAG &DAG) const {
   if (Subtarget->hasApertureRegs()) {
-    const unsigned ApertureRegNo = (AS == AMDGPUAS::LOCAL_ADDRESS)
+    const unsigned ApertureRegNo = (AS == AMDGPUAS::LOCAL_ADDRESS || AS == AMDGPUAS::EXECSYNC)
                                        ? AMDGPU::SRC_SHARED_BASE
                                        : AMDGPU::SRC_PRIVATE_BASE;
     assert((ApertureRegNo != AMDGPU::SRC_PRIVATE_BASE ||
@@ -9099,10 +9102,10 @@ SDValue SITargetLowering::lowerADDRSPACECAST(SDValue Op,
 
   SDValue FlatNullPtr = DAG.getConstant(0, SL, MVT::i64);
 
-  // flat -> local/private
+  // flat -> local/private/execsync
   if (SrcAS == AMDGPUAS::FLAT_ADDRESS) {
     if (DestAS == AMDGPUAS::LOCAL_ADDRESS ||
-        DestAS == AMDGPUAS::PRIVATE_ADDRESS) {
+        DestAS == AMDGPUAS::PRIVATE_ADDRESS || DestAS == AMDGPUAS::EXECSYNC) {
       SDValue Ptr = DAG.getNode(ISD::TRUNCATE, SL, MVT::i32, Src);
 
       if (DestAS == AMDGPUAS::PRIVATE_ADDRESS &&
@@ -9129,10 +9132,10 @@ SDValue SITargetLowering::lowerADDRSPACECAST(SDValue Op,
     }
   }
 
-  // local/private -> flat
+  // local/private/execsync -> flat
   if (DestAS == AMDGPUAS::FLAT_ADDRESS) {
     if (SrcAS == AMDGPUAS::LOCAL_ADDRESS ||
-        SrcAS == AMDGPUAS::PRIVATE_ADDRESS) {
+        SrcAS == AMDGPUAS::PRIVATE_ADDRESS || SrcAS == AMDGPUAS::EXECSYNC) {
       SDValue CvtPtr;
       if (SrcAS == AMDGPUAS::PRIVATE_ADDRESS &&
           Subtarget->hasGloballyAddressableScratch()) {
@@ -9711,12 +9714,11 @@ SDValue SITargetLowering::LowerGlobalAddress(AMDGPUMachineFunctionInfo *MFI,
   EVT PtrVT = Op.getValueType();
 
   const GlobalValue *GV = GSD->getGlobal();
-  if ((GSD->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS &&
+  const unsigned AS = GSD->getAddressSpace();
+  if (((AS == AMDGPUAS::LOCAL_ADDRESS || AS == AMDGPUAS::EXECSYNC) &&
        shouldUseLDSConstAddress(GV)) ||
-      GSD->getAddressSpace() == AMDGPUAS::REGION_ADDRESS ||
-      GSD->getAddressSpace() == AMDGPUAS::PRIVATE_ADDRESS) {
-    if (GSD->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS &&
-        GV->hasExternalLinkage()) {
+      AS == AMDGPUAS::REGION_ADDRESS || AS == AMDGPUAS::PRIVATE_ADDRESS) {
+    if (AS == AMDGPUAS::LOCAL_ADDRESS && GV->hasExternalLinkage()) {
       const GlobalVariable &GVar = *cast<GlobalVariable>(GV);
       // HIP uses an unsized array `extern __shared__ T s[]` or similar
       // zero-sized type in other languages to declare the dynamic shared
@@ -9736,7 +9738,13 @@ SDValue SITargetLowering::LowerGlobalAddress(AMDGPUMachineFunctionInfo *MFI,
     return AMDGPUTargetLowering::LowerGlobalAddress(MFI, Op, DAG);
   }
 
-  if (GSD->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS) {
+  if (AS == AMDGPUAS::EXECSYNC) {
+    SDValue GA = DAG.getTargetGlobalAddress(GV, DL, MVT::i32, GSD->getOffset(),
+                                            SIInstrInfo::MO_ABS32_LO);
+    return SDValue(DAG.getMachineNode(AMDGPU::S_MOV_B32, DL, MVT::i32, GA), 0);
+  }
+
+  if (AS == AMDGPUAS::LOCAL_ADDRESS) {
     SDValue GA = DAG.getTargetGlobalAddress(GV, DL, MVT::i32, GSD->getOffset(),
                                             SIInstrInfo::MO_ABS32_LO);
     return DAG.getNode(AMDGPUISD::LDS, DL, MVT::i32, GA);
@@ -12293,8 +12301,8 @@ SDValue SITargetLowering::LowerINTRINSIC_VOID(SDValue Op,
       if (auto *C = dyn_cast<ConstantSDNode>(BarOp))
         BarVal = C->getZExtValue();
       else if (auto *GA = dyn_cast<GlobalAddressSDNode>(BarOp))
-        if (auto Addr = AMDGPUMachineFunctionInfo::getLDSAbsoluteAddress(
-                *GA->getGlobal()))
+        if (auto Addr = AMDGPUMachineFunctionInfo::get32BitAbsoluteAddress(
+                *GA->getGlobal(), AMDGPUAS::EXECSYNC))
           BarVal = *Addr + GA->getOffset();
 
       if (BarVal) {

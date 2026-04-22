@@ -36,6 +36,7 @@
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsR600.h"
+#include "llvm/Support/AMDGPUAddrSpace.h"
 
 #define DEBUG_TYPE "amdgpu-legalinfo"
 
@@ -3262,10 +3263,19 @@ bool AMDGPULegalizerInfo::legalizeGlobalValue(
   MachineFunction &MF = B.getMF();
   SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
 
+  if (AS == AMDGPUAS::EXECSYNC) {
+    const GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV);
+    assert(GVar && AMDGPU::isNamedBarrier(*GVar) &&
+           "Unsupported use of EXECSYNC address space!");
+    B.buildConstant(DstReg,
+                    MFI->allocateBarrierGlobal(B.getDataLayout(), *GVar));
+    MI.eraseFromParent();
+    return true;
+  }
+
   if (AS == AMDGPUAS::LOCAL_ADDRESS || AS == AMDGPUAS::REGION_ADDRESS) {
     if (!MFI->isModuleEntryFunction() &&
-        GV->getName() != "llvm.amdgcn.module.lds" &&
-        !AMDGPU::isNamedBarrier(*cast<GlobalVariable>(GV))) {
+        GV->getName() != "llvm.amdgcn.module.lds") {
       const Function &Fn = MF.getFunction();
       Fn.getContext().diagnose(DiagnosticInfoUnsupported(
           Fn, "local memory global used by non-kernel function",

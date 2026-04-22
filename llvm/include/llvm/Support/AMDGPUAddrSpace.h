@@ -26,8 +26,7 @@ namespace llvm {
 /// memory locations.
 namespace AMDGPUAS {
 enum : unsigned {
-  // The maximum value for flat, generic, local, private, constant and region.
-  MAX_AMDGPU_ADDRESS = 9,
+  MAX_AMDGPU_ADDRESS = 15,
 
   FLAT_ADDRESS = 0,   ///< Address space for flat memory.
   GLOBAL_ADDRESS = 1, ///< Address space for global memory (RAT0, VTX0).
@@ -46,6 +45,16 @@ enum : unsigned {
 
   BUFFER_STRIDED_POINTER = 9, ///< Address space for 192-bit fat buffer
                               ///< pointers with an additional index.
+
+  RESERVED_0 = 10,
+  RESERVED_1 = 11,
+  RESERVED_2 = 12,
+  RESERVED_3 = 13,
+  RESERVED_4 = 14,
+
+  EXECSYNC = 15, ///< Address space that models non-addressable
+                 ///< execution synchronization resources such
+                 ///< as barrier IDs.
 
   /// Internal address spaces. Can be freely renumbered.
   STREAMOUT_REGISTER = 128, ///< Address space for GS NGG Streamout registers.
@@ -175,6 +184,7 @@ constexpr int64_t getNullPointerValue(unsigned AS) {
   case PRIVATE_ADDRESS:
   case LOCAL_ADDRESS:
   case REGION_ADDRESS:
+  case EXECSYNC:
     return -1;
   default:
     return 0;

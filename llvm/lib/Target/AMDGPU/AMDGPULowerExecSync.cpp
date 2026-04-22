@@ -6,12 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Lower LDS global variables with target extension type "amdgpu.named.barrier"
+// Lower global variables with target extension type "amdgpu.named.barrier"
 // that require specialized address assignment. It assigns a unique
-// barrier identifier to each named-barrier LDS variable and encodes
+// barrier identifier to each named-barrier variable and encodes
 // this identifier within the !absolute_symbol metadata of that global.
-// This encoding ensures that subsequent LDS lowering passes can process these
-// barriers correctly without conflicts.
 //
 //===----------------------------------------------------------------------===//
 
@@ -36,6 +34,10 @@ using namespace llvm;
 using namespace AMDGPU;
 
 namespace {
+
+static bool isNamedBarrierToLower(const GlobalVariable &GV) {
+  return isNamedBarrier(GV) && !GV.isAbsoluteSymbolRef();
+}
 
 // If GV is also used directly by other kernels, create a new GV
 // used only by this kernel and its function.
@@ -72,8 +74,8 @@ static GlobalVariable *uniquifyGVPerKernel(Module &M, GlobalVariable *GV,
 
 // Write the specified address into metadata where it can be retrieved by
 // the assembler. Format is a half open range, [Address Address+1)
-static void recordLDSAbsoluteAddress(Module *M, GlobalVariable *GV,
-                                     uint32_t Address) {
+static void recordAbsoluteAddress(Module *M, GlobalVariable *GV,
+                                  uint32_t Address) {
   LLVMContext &Ctx = M->getContext();
   auto *IntTy = M->getDataLayout().getIntPtrType(Ctx, AMDGPUAS::LOCAL_ADDRESS);
   auto *MinC = ConstantAsMetadata::get(ConstantInt::get(IntTy, Address));
@@ -89,30 +91,29 @@ template <typename T> SmallVector<T> sortByName(SmallVector<T> &&V) {
   return {std::move(V)};
 }
 
-// Main utility function for special LDS variables lowering.
 static bool lowerExecSyncGlobalVariables(
-    Module &M, GVUsesInfoTy &LDSUsesInfo,
-    VariableFunctionMap &LDSToKernelsThatNeedToAccessItIndirectly) {
+    Module &M, GVUsesInfoTy &UsesInfo,
+    VariableFunctionMap &GVsToKernelsThatNeedToAccessItIndirectly) {
   bool Changed = false;
   const DataLayout &DL = M.getDataLayout();
   // The 1st round: give module-absolute assignments
   int NumAbsolutes = 0;
   SmallVector<GlobalVariable *> OrderedGVs;
-  for (auto &K : LDSToKernelsThatNeedToAccessItIndirectly) {
+  for (auto &K : GVsToKernelsThatNeedToAccessItIndirectly) {
     GlobalVariable *GV = K.first;
-    if (!isNamedBarrier(*GV))
-      continue;
+    assert(isNamedBarrierToLower(*GV));
+
     // give a module-absolute assignment if it is indirectly accessed by
     // multiple kernels. This is not precise, but we don't want to duplicate
     // a function when it is called by multiple kernels.
-    if (LDSToKernelsThatNeedToAccessItIndirectly[GV].size() > 1) {
+    if (GVsToKernelsThatNeedToAccessItIndirectly[GV].size() > 1) {
       OrderedGVs.push_back(GV);
     } else {
       // leave it to the 2nd round, which will give a kernel-relative
       // assignment if it is only indirectly accessed by one kernel
-      LDSUsesInfo.DirectAccess[*K.second.begin()].insert(GV);
+      UsesInfo.DirectAccess[*K.second.begin()].insert(GV);
     }
-    LDSToKernelsThatNeedToAccessItIndirectly.erase(GV);
+    GVsToKernelsThatNeedToAccessItIndirectly.erase(GV);
   }
   OrderedGVs = sortByName(std::move(OrderedGVs));
   for (GlobalVariable *GV : OrderedGVs) {
@@ -124,7 +125,7 @@ static bool lowerExecSyncGlobalVariables(
     // 4 bits for alignment, 5 bits for the barrier num,
     // 3 bits for the barrier scope
     unsigned Offset = 0x802000u | BarrierScope << 9 | BarId << 4;
-    recordLDSAbsoluteAddress(&M, GV, Offset);
+    recordAbsoluteAddress(&M, GV, Offset);
   }
   OrderedGVs.clear();
 
@@ -132,7 +133,7 @@ static bool lowerExecSyncGlobalVariables(
   // either only indirectly accessed by single kernel or only directly
   // accessed by multiple kernels.
   SmallVector<Function *> OrderedKernels;
-  for (auto &K : LDSUsesInfo.DirectAccess) {
+  for (auto &K : UsesInfo.DirectAccess) {
     Function *F = K.first;
     assert(isKernel(*F));
     OrderedKernels.push_back(F);
@@ -141,11 +142,10 @@ static bool lowerExecSyncGlobalVariables(
 
   DenseMap<Function *, uint32_t> Kernel2BarId;
   for (Function *F : OrderedKernels) {
-    for (GlobalVariable *GV : LDSUsesInfo.DirectAccess[F]) {
-      if (!isNamedBarrier(*GV))
-        continue;
+    for (GlobalVariable *GV : UsesInfo.DirectAccess[F]) {
+      assert(isNamedBarrierToLower(*GV));
 
-      LDSUsesInfo.DirectAccess[F].erase(GV);
+      UsesInfo.DirectAccess[F].erase(GV);
       if (GV->isAbsoluteSymbolRef()) {
         // already assigned
         continue;
@@ -156,7 +156,7 @@ static bool lowerExecSyncGlobalVariables(
     for (GlobalVariable *GV : OrderedGVs) {
       // GV could also be used directly by other kernels. If so, we need to
       // create a new GV used only by this kernel and its function.
-      auto NewGV = uniquifyGVPerKernel(M, GV, F);
+      auto *NewGV = uniquifyGVPerKernel(M, GV, F);
       Changed |= (NewGV != GV);
       unsigned BarrierScope = AMDGPU::Barrier::BARRIER_SCOPE_WORKGROUP;
       unsigned BarId = Kernel2BarId[F];
@@ -164,12 +164,13 @@ static bool lowerExecSyncGlobalVariables(
       unsigned BarCnt = GV->getGlobalSize(DL) / 16;
       Kernel2BarId[F] += BarCnt;
       unsigned Offset = 0x802000u | BarrierScope << 9 | BarId << 4;
-      recordLDSAbsoluteAddress(&M, NewGV, Offset);
+      recordAbsoluteAddress(&M, NewGV, Offset);
     }
     OrderedGVs.clear();
   }
-  // Also erase those special LDS variables from indirect_access.
-  for (auto &K : LDSUsesInfo.IndirectAccess) {
+  // TODO: is this even necessary?
+  // Also erase those special variables from indirect_access.
+  for (auto &K : UsesInfo.IndirectAccess) {
     assert(isKernel(*K.first));
     for (GlobalVariable *GV : K.second) {
       if (isNamedBarrier(*GV))
@@ -177,18 +178,6 @@ static bool lowerExecSyncGlobalVariables(
     }
   }
   return Changed;
-}
-
-static bool hasBarrierToLower(const GVUsesInfoTy &LDSUsesInfo) {
-  for (auto &Map : {LDSUsesInfo.DirectAccess, LDSUsesInfo.IndirectAccess}) {
-    for (auto &[Fn, GVs] : Map) {
-      for (auto &GV : GVs) {
-        if (AMDGPU::isNamedBarrier(*GV))
-          return true;
-      }
-    }
-  }
-  return false;
 }
 
 // With object linking, barrier ID assignment is deferred to the linker.
@@ -238,27 +227,25 @@ static bool runLowerExecSyncGlobals(Module &M) {
   CallGraph CG = CallGraph(M);
   bool Changed = false;
   Changed |=
-      eliminateGVConstantExprUsesFromAllInstructions(M, isLDSVariableToLower);
+      eliminateGVConstantExprUsesFromAllInstructions(M, isNamedBarrierToLower);
 
   // For each kernel, what variables does it access directly or through
   // callees
-  GVUsesInfoTy LDSUsesInfo = getTransitiveUsesOfLDSForLowering(CG, M);
+  GVUsesInfoTy BarrierUsesInfo =
+      getTransitiveUsesOfGV(CG, M, isNamedBarrierToLower);
 
   // For each variable accessed through callees, which kernels access it
-  VariableFunctionMap LDSToKernelsThatNeedToAccessItIndirectly;
-  for (auto &K : LDSUsesInfo.IndirectAccess) {
+  VariableFunctionMap BarriersToKernelsThatNeedToAccessItIndirectly;
+  for (auto &K : BarrierUsesInfo.IndirectAccess) {
     Function *F = K.first;
     assert(isKernel(*F));
     for (GlobalVariable *GV : K.second) {
-      LDSToKernelsThatNeedToAccessItIndirectly[GV].insert(F);
+      BarriersToKernelsThatNeedToAccessItIndirectly[GV].insert(F);
     }
   }
 
-  if (hasBarrierToLower(LDSUsesInfo)) {
-    // Special LDS variables need special address assignment
-    Changed |= lowerExecSyncGlobalVariables(
-        M, LDSUsesInfo, LDSToKernelsThatNeedToAccessItIndirectly);
-  }
+  Changed |= lowerExecSyncGlobalVariables(
+      M, BarrierUsesInfo, BarriersToKernelsThatNeedToAccessItIndirectly);
 
   return Changed;
 }
