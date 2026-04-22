@@ -379,23 +379,6 @@ LogicalResult cir::BreakOp::verify() {
 // BranchOpTerminatorInterface Methods
 //===----------------------------------
 
-void cir::ConditionOp::getSuccessorRegions(
-    ArrayRef<Attribute> operands, SmallVectorImpl<RegionSuccessor> &regions) {
-  // TODO(cir): The condition value may be folded to a constant, narrowing
-  // down its list of possible successors.
-
-  // Parent is a loop: condition may branch to the body or to the parent op.
-  if (auto loopOp = dyn_cast<LoopOpInterface>(getOperation()->getParentOp())) {
-    regions.emplace_back(&loopOp.getBody());
-    regions.push_back(RegionSuccessor::parent());
-  }
-
-  // Parent is an await: condition may branch to resume or suspend regions.
-  auto await = cast<AwaitOp>(getOperation()->getParentOp());
-  regions.emplace_back(&await.getResume());
-  regions.emplace_back(&await.getSuspend());
-}
-
 MutableOperandRange
 cir::ConditionOp::getMutableSuccessorOperands(RegionSuccessor point) {
   // No values are yielded to the successor region.
@@ -2926,19 +2909,28 @@ void cir::AwaitOp::build(OpBuilder &builder, OperationState &result,
 
 void cir::AwaitOp::getSuccessorRegions(
     mlir::RegionBranchPoint point, SmallVectorImpl<RegionSuccessor> &regions) {
-  // If any index all the underlying regions branch back to the parent
-  // operation.
-  if (!point.isParent()) {
-    regions.push_back(RegionSuccessor::parent());
-    return;
-  }
-
   // TODO: retrieve information from the promise and only push the
   // necessary ones. Example: `std::suspend_never` on initial or final
   // await's might allow suspend region to be skipped.
-  regions.push_back(RegionSuccessor(&this->getReady()));
-  regions.push_back(RegionSuccessor(&this->getSuspend()));
-  regions.push_back(RegionSuccessor(&this->getResume()));
+  if (point.isParent()) {
+    regions.push_back(RegionSuccessor(&this->getReady()));
+    regions.push_back(RegionSuccessor(&this->getSuspend()));
+    regions.push_back(RegionSuccessor(&this->getResume()));
+    return;
+  }
+
+  // Branching from the `cir.condition` terminator inside the `ready` region:
+  // the await may branch to either `resume` or `suspend`.
+  Region *parentRegion =
+      point.getTerminatorPredecessorOrNull()->getParentRegion();
+  if (parentRegion == &this->getReady()) {
+    regions.emplace_back(&this->getResume());
+    regions.emplace_back(&this->getSuspend());
+    return;
+  }
+
+  // From any other terminator: branch back to the parent op.
+  regions.push_back(RegionSuccessor::parent());
 }
 
 mlir::ValueRange cir::AwaitOp::getSuccessorInputs(RegionSuccessor successor) {
