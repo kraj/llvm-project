@@ -243,6 +243,8 @@ void makeVariantMatchInfo(llvm::omp::VariantMatchInfo &vmi,
                           mlir::Location loc,
                           const parser::ScalarExpr *&dynamicCondExpr);
 
+bool isMetadirectiveEval(lower::pft::Evaluation &eval);
+
 } // namespace omp
 } // namespace lower
 } // namespace Fortran

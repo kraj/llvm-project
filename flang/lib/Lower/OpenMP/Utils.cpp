@@ -713,6 +713,20 @@ pft::Evaluation *getNestedDoConstruct(pft::Evaluation &eval) {
   llvm_unreachable("Expected do loop to be in the nested evaluations");
 }
 
+/// Return true if \p eval holds a metadirective.
+bool isMetadirectiveEval(lower::pft::Evaluation &eval) {
+  if (const auto *decl = eval.getIf<parser::OpenMPDeclarativeConstruct>())
+    return std::holds_alternative<parser::OmpMetadirectiveDirective>(decl->u);
+  if (const auto *ompConstruct = eval.getIf<parser::OpenMPConstruct>()) {
+    if (const auto *standalone =
+            std::get_if<parser::OpenMPStandaloneConstruct>(&ompConstruct->u)) {
+      return std::holds_alternative<parser::OmpMetadirectiveDirective>(
+          standalone->u);
+    }
+  }
+  return false;
+}
+
 /// Populates the sizes vector with values if the given OpenMPConstruct
 /// contains a loop construct with an inner tiling construct.
 void collectTileSizesFromOpenMPConstruct(
