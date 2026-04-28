@@ -417,7 +417,9 @@ defvar Operations = [
   WaveReduceOp<"umin", "U16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
   WaveReduceOp<"min", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
   WaveReduceOp<"umax", "U16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
-  WaveReduceOp<"max", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>
+  WaveReduceOp<"max", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
+  WaveReduceOp<"add", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
+  WaveReduceOp<"sub", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>
 ];
 
 foreach Op = Operations in {
