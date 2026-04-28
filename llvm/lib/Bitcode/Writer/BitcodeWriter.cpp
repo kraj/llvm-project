@@ -64,6 +64,7 @@
 #include "llvm/Object/IRSymtab.h"
 #include "llvm/ProfileData/MemProf.h"
 #include "llvm/ProfileData/MemProfRadixTree.h"
+#include "llvm/Support/AMDGPUSummary.h"
 #include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
@@ -450,6 +451,7 @@ private:
                 DenseMap<const Function *, uint64_t> &FunctionToBitcodeIndex);
   void writeBlockInfo();
   void writeModuleHash(StringRef View);
+  void writeAMDGPUSummaryBlock();
 
   unsigned getEncodedSyncScopeID(SyncScope::ID SSID) {
     return unsigned(SSID);
@@ -5360,6 +5362,94 @@ void ModuleBitcodeWriter::writeModuleHash(StringRef View) {
   }
 }
 
+void ModuleBitcodeWriter::writeAMDGPUSummaryBlock() {
+  Triple TT(M.getTargetTriple());
+  // Object linking is only supported on AMDHSA platforms.
+  if (TT.getArch() != Triple::amdgcn || TT.getOS() != Triple::AMDHSA)
+    return;
+
+  SmallVector<const Function *, 8> Worklist;
+  for (const Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    if (F.getCallingConv() == CallingConv::AMDGPU_KERNEL ||
+        F.getCallingConv() == CallingConv::SPIR_KERNEL ||
+        F.hasFnAttribute("amdgpu-flat-work-group-size") ||
+        F.hasFnAttribute("amdgpu-waves-per-eu") ||
+        F.hasFnAttribute("amdgpu-max-num-workgroups"))
+      Worklist.push_back(&F);
+  }
+  if (Worklist.empty())
+    return;
+
+  Stream.EnterSubblock(bitc::AMDGPU_SUMMARY_BLOCK_ID, 4);
+
+  SmallVector<uint64_t, 10> Record;
+  Record.push_back(1);
+  Stream.EmitRecord(bitc::AMDGPU_SUMMARY_VERSION, Record);
+
+  for (const Function *F : Worklist) {
+    bool IsEntry = (F->getCallingConv() == CallingConv::AMDGPU_KERNEL ||
+                    F->getCallingConv() == CallingConv::SPIR_KERNEL);
+
+    AMDGPU::FunctionSummary FS;
+    FS.IsEntry = IsEntry;
+
+    if (Attribute A = F->getFnAttribute("amdgpu-flat-work-group-size");
+        A.isStringAttribute()) {
+      auto [MinS, MaxS] = A.getValueAsString().split(',');
+      unsigned Min, Max;
+      if (!MinS.trim().getAsInteger(0, Min) &&
+          !MaxS.trim().getAsInteger(0, Max)) {
+        FS.FlatWGSizeMin = Min;
+        FS.FlatWGSizeMax = Max;
+      }
+    }
+
+    if (Attribute A = F->getFnAttribute("amdgpu-waves-per-eu");
+        A.isStringAttribute()) {
+      auto [MinS, MaxS] = A.getValueAsString().split(',');
+      unsigned Min;
+      if (!MinS.trim().getAsInteger(0, Min)) {
+        FS.WavesPerEUMin = Min;
+        unsigned Max;
+        if (!MaxS.trim().empty() && !MaxS.trim().getAsInteger(0, Max))
+          FS.WavesPerEUMax = Max;
+      }
+    }
+
+    if (Attribute A = F->getFnAttribute("amdgpu-max-num-workgroups");
+        A.isStringAttribute()) {
+      SmallVector<StringRef, 3> Parts;
+      A.getValueAsString().split(Parts, ',');
+      if (Parts.size() == 3) {
+        unsigned X, Y, Z;
+        if (!Parts[0].trim().getAsInteger(0, X) &&
+            !Parts[1].trim().getAsInteger(0, Y) &&
+            !Parts[2].trim().getAsInteger(0, Z)) {
+          FS.MaxNumWGX = X;
+          FS.MaxNumWGY = Y;
+          FS.MaxNumWGZ = Z;
+        }
+      }
+    }
+
+    Record.clear();
+    Record.push_back(F->getGUID());
+    Record.push_back(FS.IsEntry ? 1 : 0);
+    Record.push_back(FS.FlatWGSizeMin);
+    Record.push_back(FS.FlatWGSizeMax);
+    Record.push_back(FS.WavesPerEUMin);
+    Record.push_back(FS.WavesPerEUMax);
+    Record.push_back(FS.MaxNumWGX);
+    Record.push_back(FS.MaxNumWGY);
+    Record.push_back(FS.MaxNumWGZ);
+    Stream.EmitRecord(bitc::AMDGPU_SUMMARY_ENTRY, Record);
+  }
+
+  Stream.ExitBlock();
+}
+
 void ModuleBitcodeWriter::write() {
   writeIdentificationBlock(Stream);
 
@@ -5414,6 +5504,8 @@ void ModuleBitcodeWriter::write() {
   // the summary information in the index.
   if (Index)
     writePerModuleGlobalValueSummary();
+
+  writeAMDGPUSummaryBlock();
 
   writeGlobalValueSymbolTable(FunctionToBitcodeIndex);
 
