@@ -5631,6 +5631,7 @@ static uint64_t getIdentityValueForWaveReduction(unsigned Opc) {
   case AMDGPU::V_MIN_U16_opsel_e64:
   case AMDGPU::V_MIN_U16_fake16_e64:
   case AMDGPU::V_MIN_U16_t16_e64:
+  case AMDGPU::V_AND_B16_fake16_e64:
     return 0xffff;
   case AMDGPU::V_MIN_I16_e64:
   case AMDGPU::V_MIN_I16_opsel_e64:
@@ -5647,6 +5648,8 @@ static uint64_t getIdentityValueForWaveReduction(unsigned Opc) {
   case AMDGPU::V_SUB_I16_fake16_e64:
   case AMDGPU::V_ADD_I16_t16_e64:
   case AMDGPU::V_SUB_I16_t16_e64:
+  case AMDGPU::V_OR_B16_fake16_e64:
+  case AMDGPU::V_XOR_B16_fake16_e64:
     return 0x0;
   case AMDGPU::V_MAX_I16_e64:
   case AMDGPU::V_MAX_I16_opsel_e64:
@@ -5716,7 +5719,10 @@ static bool is16bitWaveReduceOperation(unsigned Opc) {
          Opc == AMDGPU::V_MAX_U16_t16_e64 || Opc == AMDGPU::V_MAX_I16_t16_e64 ||
          Opc == AMDGPU::V_ADD_I16_e64 || Opc == AMDGPU::V_ADD_I16_fake16_e64 ||
          Opc == AMDGPU::V_SUB_I16_e64 || Opc == AMDGPU::V_SUB_I16_fake16_e64 ||
-         Opc == AMDGPU::V_ADD_I16_t16_e64 || Opc == AMDGPU::V_SUB_I16_t16_e64;
+         Opc == AMDGPU::V_ADD_I16_t16_e64 || Opc == AMDGPU::V_SUB_I16_t16_e64 ||
+         Opc == AMDGPU::V_AND_B16_fake16_e64 ||
+         Opc == AMDGPU::V_OR_B16_fake16_e64 ||
+         Opc == AMDGPU::V_XOR_B16_fake16_e64;
 }
 
 static bool is32bitWaveReduceOperation(unsigned Opc) {
@@ -5882,6 +5888,8 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
     case AMDGPU::S_MAX_U32:
     case AMDGPU::S_MAX_I32:
     case AMDGPU::V_MAX_F32_e64:
+    case AMDGPU::V_AND_B16_fake16_e64:
+    case AMDGPU::V_OR_B16_fake16_e64:
     case AMDGPU::S_AND_B32:
     case AMDGPU::S_OR_B32: {
       // Idempotent operations.
@@ -5904,6 +5912,7 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
       RetBB = &BB;
       break;
     }
+    case AMDGPU::V_XOR_B16_fake16_e64:
     case AMDGPU::S_XOR_B32:
     case AMDGPU::S_XOR_B64:
     case AMDGPU::V_ADD_I16_e64:
@@ -5939,6 +5948,7 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
               .addReg(ExecMask);
 
       switch (Opc) {
+      case AMDGPU::V_XOR_B16_fake16_e64:
       case AMDGPU::S_XOR_B32:
       case AMDGPU::S_XOR_B64: {
         // Performing an XOR operation on a uniform value
@@ -5952,7 +5962,7 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
             .addReg(NewAccumulator->getOperand(0).getReg())
             .addImm(1)
             .setOperandDead(3); // Dead scc
-        if (Opc == AMDGPU::S_XOR_B32) {
+        if (Opc == AMDGPU::S_XOR_B32 || Opc == AMDGPU::V_XOR_B16_fake16_e64) {
           BuildMI(BB, MI, DL, TII->get(AMDGPU::S_MUL_I32), DstReg)
               .addReg(SrcReg)
               .addReg(ParityRegister);
@@ -6894,14 +6904,26 @@ SITargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                            ST.getGeneration() >= AMDGPUSubtarget::GFX12
                                ? AMDGPU::V_ADD_F64_pseudo_e64
                                : AMDGPU::V_ADD_F64_e64);
+  case AMDGPU::WAVE_REDUCE_AND_PSEUDO_B16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(),
+                           ST.hasTrue16BitInsts() ? AMDGPU::V_AND_B16_fake16_e64
+                                                  : AMDGPU::S_AND_B32);
   case AMDGPU::WAVE_REDUCE_AND_PSEUDO_B32:
     return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::S_AND_B32);
   case AMDGPU::WAVE_REDUCE_AND_PSEUDO_B64:
     return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::S_AND_B64);
+  case AMDGPU::WAVE_REDUCE_OR_PSEUDO_B16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(),
+                           ST.hasTrue16BitInsts() ? AMDGPU::V_OR_B16_fake16_e64
+                                                  : AMDGPU::S_OR_B32);
   case AMDGPU::WAVE_REDUCE_OR_PSEUDO_B32:
     return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::S_OR_B32);
   case AMDGPU::WAVE_REDUCE_OR_PSEUDO_B64:
     return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::S_OR_B64);
+  case AMDGPU::WAVE_REDUCE_XOR_PSEUDO_B16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(),
+                           ST.hasTrue16BitInsts() ? AMDGPU::V_XOR_B16_fake16_e64
+                                                  : AMDGPU::S_XOR_B32);
   case AMDGPU::WAVE_REDUCE_XOR_PSEUDO_B32:
     return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::S_XOR_B32);
   case AMDGPU::WAVE_REDUCE_XOR_PSEUDO_B64:
