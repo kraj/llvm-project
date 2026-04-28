@@ -5630,18 +5630,22 @@ static uint64_t getIdentityValueForWaveReduction(unsigned Opc) {
   case AMDGPU::V_MIN_U16_e64:
   case AMDGPU::V_MIN_U16_opsel_e64:
   case AMDGPU::V_MIN_U16_fake16_e64:
+  case AMDGPU::V_MIN_U16_t16_e64:
     return 0xffff;
   case AMDGPU::V_MIN_I16_e64:
   case AMDGPU::V_MIN_I16_opsel_e64:
   case AMDGPU::V_MIN_I16_fake16_e64:
+  case AMDGPU::V_MIN_I16_t16_e64:
     return 0x7fff;
   case AMDGPU::V_MAX_U16_e64:
   case AMDGPU::V_MAX_U16_opsel_e64:
   case AMDGPU::V_MAX_U16_fake16_e64:
+  case AMDGPU::V_MAX_U16_t16_e64:
     return 0x0;
   case AMDGPU::V_MAX_I16_e64:
   case AMDGPU::V_MAX_I16_opsel_e64:
   case AMDGPU::V_MAX_I16_fake16_e64:
+  case AMDGPU::V_MAX_I16_t16_e64:
     return 0x8000;
   case AMDGPU::S_MIN_U32:
     return std::numeric_limits<uint32_t>::max();
@@ -5701,7 +5705,9 @@ static bool is16bitWaveReduceOperation(unsigned Opc) {
          Opc == AMDGPU::V_MAX_U16_opsel_e64 ||
          Opc == AMDGPU::V_MAX_U16_fake16_e64 || Opc == AMDGPU::V_MAX_U16_e64 ||
          Opc == AMDGPU::V_MAX_I16_opsel_e64 ||
-         Opc == AMDGPU::V_MAX_I16_fake16_e64 || Opc == AMDGPU::V_MAX_I16_e64;
+         Opc == AMDGPU::V_MAX_I16_fake16_e64 || Opc == AMDGPU::V_MAX_I16_e64 ||
+         Opc == AMDGPU::V_MIN_U16_t16_e64 || Opc == AMDGPU::V_MIN_I16_t16_e64 ||
+         Opc == AMDGPU::V_MAX_U16_t16_e64 || Opc == AMDGPU::V_MAX_I16_t16_e64;
 }
 
 static bool is32bitWaveReduceOperation(unsigned Opc) {
@@ -5848,15 +5854,19 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
     case AMDGPU::V_MIN_U16_e64:
     case AMDGPU::V_MIN_U16_opsel_e64:
     case AMDGPU::V_MIN_U16_fake16_e64:
+    case AMDGPU::V_MIN_U16_t16_e64:
     case AMDGPU::V_MIN_I16_e64:
     case AMDGPU::V_MIN_I16_opsel_e64:
     case AMDGPU::V_MIN_I16_fake16_e64:
+    case AMDGPU::V_MIN_I16_t16_e64:
     case AMDGPU::V_MAX_U16_e64:
     case AMDGPU::V_MAX_U16_opsel_e64:
     case AMDGPU::V_MAX_U16_fake16_e64:
+    case AMDGPU::V_MAX_U16_t16_e64:
     case AMDGPU::V_MAX_I16_e64:
     case AMDGPU::V_MAX_I16_opsel_e64:
     case AMDGPU::V_MAX_I16_fake16_e64:
+    case AMDGPU::V_MAX_I16_t16_e64:
     case AMDGPU::S_MIN_U32:
     case AMDGPU::S_MIN_I32:
     case AMDGPU::V_MIN_F32_e64:
@@ -6089,6 +6099,7 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
     bool is16BitOpc = is16bitWaveReduceOperation(Opc);
     bool isFPOp = isFloatingPointWaveReduceOperation(Opc);
     bool NeedsMovDPP = !is32BitOpc;
+    bool useRealTrue16 = ST.useRealTrue16Insts();
     // Create virtual registers required for lowering.
     const TargetRegisterClass *WaveMaskRegClass = TRI->getWaveMaskRegClass();
     const TargetRegisterClass *DstRegClass = MRI.getRegClass(DstReg);
@@ -6154,9 +6165,18 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
       BuildMI(*ComputeLoop, I, DL, TII->get(SFFOpc), FF1Reg)
           .addReg(ActiveBitsReg);
       if (is32BitOpc || is16BitOpc) {
+        Register ReadLaneSrc = SrcReg;
+        if (useRealTrue16) {
+          // Copy the 16-bit src to a 32-bit vgpr for the v_readlane
+          Register SrcReg32 =
+              MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+          BuildMI(*ComputeLoop, I, DL, TII->get(AMDGPU::COPY), SrcReg32)
+              .addReg(SrcReg);
+          ReadLaneSrc = SrcReg32;
+        }
         BuildMI(*ComputeLoop, I, DL, TII->get(AMDGPU::V_READLANE_B32),
                 LaneValueReg)
-            .addReg(SrcReg)
+            .addReg(ReadLaneSrc)
             .addReg(FF1Reg);
         if (is16BitOpc) {
           Register LaneValVgpr = MRI.createVirtualRegister(SrcRegClass);
@@ -6167,20 +6187,30 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
               .addReg(LaneValueReg);
           auto OpInstr =
               BuildMI(*ComputeLoop, I, DL, TII->get(Opc), VgprResultReg);
-          if (isGFX10)
+          if (isGFX10 || useRealTrue16)
             OpInstr.addImm(SISrcMods::NONE); // src0 modifier
           OpInstr.addReg(AccumulatorReg);    // src0
-          if (isGFX10)
+          if (isGFX10 || useRealTrue16)
             OpInstr.addImm(SISrcMods::NONE); // src1 modifier
           OpInstr.addReg(LaneValVgpr);       // src1
-          if (isGFX10) {
+          if (isGFX10)
             OpInstr.addImm(0); // omod
+          if (isGFX10 || useRealTrue16)
             OpInstr.addImm(0); // opsel
+          Register ReadFirstLaneSrc = VgprResultReg;
+          if (useRealTrue16) {
+            // Copy the 16-bit src to a 32-bit vgpr for the v_readlane
+            Register VgprResultReg32 =
+                MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+            BuildMI(*ComputeLoop, I, DL, TII->get(AMDGPU::COPY),
+                    VgprResultReg32)
+                .addReg(VgprResultReg);
+            ReadFirstLaneSrc = VgprResultReg32;
           }
           NewAccumulator =
               BuildMI(*ComputeLoop, I, DL,
                       TII->get(AMDGPU::V_READFIRSTLANE_B32), DstReg)
-                  .addReg(VgprResultReg);
+                  .addReg(ReadFirstLaneSrc);
         } else if (isFPOp) {
           Register LaneValVreg =
               MRI.createVirtualRegister(MRI.getRegClass(SrcReg));
@@ -6735,6 +6765,8 @@ SITargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   const DebugLoc &DL = MI.getDebugLoc();
 
   switch (MI.getOpcode()) {
+  case AMDGPU::WAVE_REDUCE_UMIN_PSEUDO_U16_t16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::V_MIN_U16_t16_e64);
   case AMDGPU::WAVE_REDUCE_UMIN_PSEUDO_U16:
     return lowerWaveReduce(MI, *BB, *getSubtarget(),
                            ST.getGeneration() == AMDGPUSubtarget::GFX10
@@ -6742,6 +6774,8 @@ SITargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                            : ST.hasTrue16BitInsts()
                                ? AMDGPU::V_MIN_U16_fake16_e64
                                : AMDGPU::V_MIN_U16_e64);
+  case AMDGPU::WAVE_REDUCE_MIN_PSEUDO_I16_t16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::V_MIN_I16_t16_e64);
   case AMDGPU::WAVE_REDUCE_MIN_PSEUDO_I16:
     return lowerWaveReduce(MI, *BB, *getSubtarget(),
                            ST.getGeneration() == AMDGPUSubtarget::GFX10
@@ -6749,6 +6783,8 @@ SITargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                            : ST.hasTrue16BitInsts()
                                ? AMDGPU::V_MIN_I16_fake16_e64
                                : AMDGPU::V_MIN_I16_e64);
+  case AMDGPU::WAVE_REDUCE_UMAX_PSEUDO_U16_t16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::V_MAX_U16_t16_e64);
   case AMDGPU::WAVE_REDUCE_UMAX_PSEUDO_U16:
     return lowerWaveReduce(MI, *BB, *getSubtarget(),
                            ST.getGeneration() == AMDGPUSubtarget::GFX10
@@ -6756,6 +6792,8 @@ SITargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                            : ST.hasTrue16BitInsts()
                                ? AMDGPU::V_MAX_U16_fake16_e64
                                : AMDGPU::V_MAX_U16_e64);
+  case AMDGPU::WAVE_REDUCE_MAX_PSEUDO_I16_t16:
+    return lowerWaveReduce(MI, *BB, *getSubtarget(), AMDGPU::V_MAX_I16_t16_e64);
   case AMDGPU::WAVE_REDUCE_MAX_PSEUDO_I16:
     return lowerWaveReduce(MI, *BB, *getSubtarget(),
                            ST.getGeneration() == AMDGPUSubtarget::GFX10

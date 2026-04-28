@@ -350,8 +350,10 @@ def : GCNPat<(i32 (int_amdgcn_set_inactive_chain_arg i32:$src, i32:$inactive)),
 // clang-format off
 
 multiclass
-    AMDGPUWaveReducePseudoGenerator<string Op, string DataType, ValueType ty, RegisterClass RetReg, SrcRegOrImm9 Reg> {
-  let usesCustomInserter = 1, hasSideEffects = 0, mayLoad = 0, mayStore = 0, UseNamedOperandTable = 1, Uses = [EXEC] in {
+    AMDGPUWaveReducePseudoGenerator<string Op, string DataType, ValueType ty, RegisterClass RetReg,
+                                    SrcRegOrImm9 Reg, True16PredicateClass T16Pred = NoTrue16Predicate> {
+  let usesCustomInserter = 1, hasSideEffects = 0, mayLoad = 0, mayStore = 0,
+      UseNamedOperandTable = 1, Uses = [EXEC], True16Predicate = T16Pred in {
     def !toupper(Op) #"_PSEUDO_" #DataType
         : VPseudoInstSI<(outs RetReg : $sdst),
                         (ins Reg : $src, i32imm : $strategy),
@@ -361,12 +363,14 @@ multiclass
 // clang-format on
 
 class WaveReduceOp<string OpName, string TypeStr, ValueType Ty,
-                   RegisterClass ReturnRegisterClass, SrcRegOrImm9 RC> {
+                   RegisterClass ReturnRegisterClass, SrcRegOrImm9 RC,
+                   True16PredicateClass T16Pred = NoTrue16Predicate> {
   string Name = OpName;
   string TypeString = TypeStr;
   ValueType VT = Ty;
   RegisterClass RetReg = ReturnRegisterClass;
   SrcRegOrImm9 Reg = RC;
+  True16PredicateClass T16Predicate = T16Pred;
 }
 
 // Input list : [Operation_name,
@@ -404,15 +408,20 @@ defvar Operations = [
   WaveReduceOp<"fsub", "F32", f32, SGPR_32, VSrc_b32>,
   WaveReduceOp<"fsub", "F64", f64, SGPR_64, VSrc_b64>,
 
-  WaveReduceOp<"umin", "U16", i16, SGPR_32, VSrc_b16>,
-  WaveReduceOp<"min", "I16", i16, SGPR_32, VSrc_b16>,
-  WaveReduceOp<"umax", "U16", i16, SGPR_32, VSrc_b16>,
-  WaveReduceOp<"max", "I16", i16, SGPR_32, VSrc_b16>
+  WaveReduceOp<"umin", "U16", i16, SGPR_32, VSrc_b16, NotUseRealTrue16Insts>,
+  WaveReduceOp<"min", "I16", i16, SGPR_32, VSrc_b16, NotUseRealTrue16Insts>,
+  WaveReduceOp<"umax", "U16", i16, SGPR_32, VSrc_b16, NotUseRealTrue16Insts>,
+  WaveReduceOp<"max", "I16", i16, SGPR_32, VSrc_b16, NotUseRealTrue16Insts>,
+  WaveReduceOp<"umin", "U16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
+  WaveReduceOp<"min", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
+  WaveReduceOp<"umax", "U16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>,
+  WaveReduceOp<"max", "I16_t16", i16, SGPR_32, VSrcT_b16, UseRealTrue16Insts>
 ];
 
 foreach Op = Operations in {
   defm WAVE_REDUCE_ : AMDGPUWaveReducePseudoGenerator<Op.Name, Op.TypeString,
-                                                      Op.VT, Op.RetReg, Op.Reg>;
+                                                      Op.VT, Op.RetReg, Op.Reg,
+                                                      Op.T16Predicate>;
 }
 
 let usesCustomInserter = 1, Defs = [VCC] in {
