@@ -645,11 +645,22 @@ void AArch64::relocate(uint8_t *loc, const Relocation &rel,
     write64(ctx, loc, val);
     break;
   case R_AARCH64_AUTH_ABS64:
-    // This is used for the addend of a .relr.auth.dyn entry,
-    // which is a 32-bit value; the upper 32 bits are used to
-    // encode the schema.
-    checkInt(ctx, loc, val, 32, rel);
-    write32(ctx, loc, val);
+    if (rel.sym->isUndefined() && !rel.sym->isPreemptible) {
+      // Undefined weak non-preemptible symbols are statically resolved to the
+      // addend. No dynamic relocation and corresponding signing schema encoding
+      // is needed.
+      //
+      // Note: at this point, binding of undefined weak non-preemptible symbols
+      // has already been changed from weak to local by computeBinding call, so
+      // just check against isUndefined().
+      write64(ctx, loc, val);
+    } else {
+      // This is used for the addend of a .relr.auth.dyn entry,
+      // which is a 32-bit value; the upper 32 bits are used to
+      // encode the schema.
+      checkInt(ctx, loc, val, 32, rel);
+      write32(ctx, loc, val);
+    }
     break;
   case R_AARCH64_TLS_DTPREL64:
     write64(ctx, loc, val);
