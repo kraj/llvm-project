@@ -80,7 +80,7 @@ void ppp() { B b; }
 // CIR: cir.func {{.*}}@_Z1gv()
 // CIR:   %[[DF:.+]] = cir.alloca !rec_DerivedFinal, !cir.ptr<!rec_DerivedFinal>, ["df", init]
 // CIR:   cir.call @_ZN12DerivedFinalC1Ev(%[[DF]]) nothrow : (!cir.ptr<!rec_DerivedFinal> {{.*}}) -> ()
-// CIR:   %[[BASE_THIS_2:.+]] = cir.base_class_addr %[[DF]] : !cir.ptr<!rec_DerivedFinal> nonnull [0] -> !cir.ptr<!rec_Base>
+// CIR:   %[[BASE_THIS_2:.+]] = cir.base_class_addr nonnull %[[DF]] [0] : !cir.ptr<!rec_DerivedFinal> -> !cir.ptr<!rec_Base>
 // CIR:   %[[BASE_VPTR_PTR_2:.+]] = cir.vtable.get_vptr %[[BASE_THIS_2]] : !cir.ptr<!rec_Base> -> !cir.ptr<!cir.vptr>
 // CIR:   %[[BASE_VPTR_2:.+]] = cir.load {{.*}} %[[BASE_VPTR_PTR_2]] : !cir.ptr<!cir.vptr>, !cir.vptr
 // CIR:   %[[SLOT_PTR_2:.+]] = cir.vtable.get_virtual_fn_addr %[[BASE_VPTR_2]][0] : !cir.vptr -> !cir.ptr<!cir.ptr<!cir.func<(!cir.ptr<!rec_Base>)>>>
@@ -131,7 +131,7 @@ void ppp() { B b; }
 // CIR:   %[[THIS_ADDR:.*]] = cir.alloca !cir.ptr<!rec_B>, !cir.ptr<!cir.ptr<!rec_B>>, ["this", init]
 // CIR:   cir.store %arg0, %[[THIS_ADDR]] : !cir.ptr<!rec_B>, !cir.ptr<!cir.ptr<!rec_B>>
 // CIR:   %[[THIS:.*]] = cir.load %[[THIS_ADDR]] : !cir.ptr<!cir.ptr<!rec_B>>, !cir.ptr<!rec_B>
-// CIR:   %[[BASE_A_ADDR:.*]] = cir.base_class_addr %[[THIS]] : !cir.ptr<!rec_B> nonnull [12] -> !cir.ptr<!rec_A>
+// CIR:   %[[BASE_A_ADDR:.*]] = cir.base_class_addr nonnull %[[THIS]] [12] : !cir.ptr<!rec_B> -> !cir.ptr<!rec_A>
 // CIR:   %[[VTABLE:.*]] = cir.vtable.address_point(@_ZTV1B, address_point = <index = 0, offset = 3>) : !cir.vptr
 // CIR:   %[[B_VPTR:.*]] = cir.vtable.get_vptr %[[THIS]] : !cir.ptr<!rec_B> -> !cir.ptr<!cir.vptr>
 // CIR:   cir.store align(8) %[[VTABLE]], %[[B_VPTR]] : !cir.vptr, !cir.ptr<!cir.vptr>

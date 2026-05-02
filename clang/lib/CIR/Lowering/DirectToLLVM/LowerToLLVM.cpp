@@ -1572,29 +1572,29 @@ mlir::LogicalResult CIRToLLVMBaseClassAddrOpLowering::matchAndRewrite(
     mlir::ConversionPatternRewriter &rewriter) const {
   const mlir::Type resultType =
       getTypeConverter()->convertType(baseClassOp.getType());
-  mlir::Value derivedAddr = adaptor.getDerivedAddr();
+  mlir::Value srcAddr = adaptor.getSrcAddr();
   llvm::SmallVector<mlir::LLVM::GEPArg, 1> offset = {
       adaptor.getOffset().getZExtValue()};
   mlir::Type byteType = mlir::IntegerType::get(resultType.getContext(), 8,
                                                mlir::IntegerType::Signless);
   if (adaptor.getOffset().getZExtValue() == 0) {
-    rewriter.replaceOpWithNewOp<mlir::LLVM::BitcastOp>(
-        baseClassOp, resultType, adaptor.getDerivedAddr());
+    rewriter.replaceOpWithNewOp<mlir::LLVM::BitcastOp>(baseClassOp, resultType,
+                                                       adaptor.getSrcAddr());
     return mlir::success();
   }
 
   if (baseClassOp.getAssumeNotNull()) {
-    rewriter.replaceOpWithNewOp<mlir::LLVM::GEPOp>(
-        baseClassOp, resultType, byteType, derivedAddr, offset);
+    rewriter.replaceOpWithNewOp<mlir::LLVM::GEPOp>(baseClassOp, resultType,
+                                                   byteType, srcAddr, offset);
   } else {
     auto loc = baseClassOp.getLoc();
     mlir::Value isNull = mlir::LLVM::ICmpOp::create(
-        rewriter, loc, mlir::LLVM::ICmpPredicate::eq, derivedAddr,
-        mlir::LLVM::ZeroOp::create(rewriter, loc, derivedAddr.getType()));
-    mlir::Value adjusted = mlir::LLVM::GEPOp::create(
-        rewriter, loc, resultType, byteType, derivedAddr, offset);
+        rewriter, loc, mlir::LLVM::ICmpPredicate::eq, srcAddr,
+        mlir::LLVM::ZeroOp::create(rewriter, loc, srcAddr.getType()));
+    mlir::Value adjusted = mlir::LLVM::GEPOp::create(rewriter, loc, resultType,
+                                                     byteType, srcAddr, offset);
     rewriter.replaceOpWithNewOp<mlir::LLVM::SelectOp>(baseClassOp, isNull,
-                                                      derivedAddr, adjusted);
+                                                      srcAddr, adjusted);
   }
   return mlir::success();
 }
@@ -1604,13 +1604,13 @@ mlir::LogicalResult CIRToLLVMDerivedClassAddrOpLowering::matchAndRewrite(
     mlir::ConversionPatternRewriter &rewriter) const {
   const mlir::Type resultType =
       getTypeConverter()->convertType(derivedClassOp.getType());
-  mlir::Value baseAddr = adaptor.getBaseAddr();
+  mlir::Value srcAddr = adaptor.getSrcAddr();
   // The offset is set in the operation as an unsigned value, but it must be
   // applied as a negative offset.
   int64_t offsetVal = -(adaptor.getOffset().getZExtValue());
   if (offsetVal == 0) {
-    // If the offset is zero, we can just return the base address,
-    rewriter.replaceOp(derivedClassOp, baseAddr);
+    // If the offset is zero, we can just return the source address.
+    rewriter.replaceOp(derivedClassOp, srcAddr);
     return mlir::success();
   }
   llvm::SmallVector<mlir::LLVM::GEPArg, 1> offset = {offsetVal};
@@ -1618,18 +1618,18 @@ mlir::LogicalResult CIRToLLVMDerivedClassAddrOpLowering::matchAndRewrite(
                                                mlir::IntegerType::Signless);
   if (derivedClassOp.getAssumeNotNull()) {
     rewriter.replaceOpWithNewOp<mlir::LLVM::GEPOp>(
-        derivedClassOp, resultType, byteType, baseAddr, offset,
+        derivedClassOp, resultType, byteType, srcAddr, offset,
         mlir::LLVM::GEPNoWrapFlags::inbounds);
   } else {
     mlir::Location loc = derivedClassOp.getLoc();
     mlir::Value isNull = mlir::LLVM::ICmpOp::create(
-        rewriter, loc, mlir::LLVM::ICmpPredicate::eq, baseAddr,
-        mlir::LLVM::ZeroOp::create(rewriter, loc, baseAddr.getType()));
+        rewriter, loc, mlir::LLVM::ICmpPredicate::eq, srcAddr,
+        mlir::LLVM::ZeroOp::create(rewriter, loc, srcAddr.getType()));
     mlir::Value adjusted =
-        mlir::LLVM::GEPOp::create(rewriter, loc, resultType, byteType, baseAddr,
+        mlir::LLVM::GEPOp::create(rewriter, loc, resultType, byteType, srcAddr,
                                   offset, mlir::LLVM::GEPNoWrapFlags::inbounds);
     rewriter.replaceOpWithNewOp<mlir::LLVM::SelectOp>(derivedClassOp, isNull,
-                                                      baseAddr, adjusted);
+                                                      srcAddr, adjusted);
   }
   return mlir::success();
 }
