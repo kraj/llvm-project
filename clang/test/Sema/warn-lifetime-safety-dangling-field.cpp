@@ -162,27 +162,25 @@ struct MemberSetters {
   }
 };
 
-// FIXME: Detect escape to field of field.
 struct IndirectEscape{
   struct {
     const char *p;
-  } b;
+  } b; // expected-note {{this field dangles}}
   
   void foo() {
     std::string s;
-    b.p = s.data();
+    b.p = s.data(); // expected-warning {{address of stack memory escapes to a field}}
   }
 };
 
-// FIXME: Detect escape to field of field.
 struct IndirectEscape2 {
-  struct {
+  struct { // expected-note {{this field dangles}}
     const char *p;
   };
 
   void foo() {
     std::string s;
-    p = s.data();
+    p = s.data(); // expected-warning {{address of stack memory escapes to a field}}
   }
 };
 
