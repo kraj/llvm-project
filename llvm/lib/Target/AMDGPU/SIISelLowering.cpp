@@ -9003,9 +9003,10 @@ SDValue SITargetLowering::lowerDEBUGTRAP(SDValue Op, SelectionDAG &DAG) const {
 SDValue SITargetLowering::getSegmentAperture(unsigned AS, const SDLoc &DL,
                                              SelectionDAG &DAG) const {
   if (Subtarget->hasApertureRegs()) {
-    const unsigned ApertureRegNo = (AS == AMDGPUAS::LOCAL_ADDRESS || AS == AMDGPUAS::EXECSYNC)
-                                       ? AMDGPU::SRC_SHARED_BASE
-                                       : AMDGPU::SRC_PRIVATE_BASE;
+    const unsigned ApertureRegNo =
+        (AS == AMDGPUAS::LOCAL_ADDRESS || AS == AMDGPUAS::EXECSYNC)
+            ? AMDGPU::SRC_SHARED_BASE
+            : AMDGPU::SRC_PRIVATE_BASE;
     assert((ApertureRegNo != AMDGPU::SRC_PRIVATE_BASE ||
             !Subtarget->hasGloballyAddressableScratch()) &&
            "Cannot use src_private_base with globally addressable scratch!");
