@@ -135,8 +135,6 @@ public:
       return std::string(Result);
     return EC;
   }
-
-  LLVM_ABI static bool isEncodingSupported(StringRef Name);
 };
 
 } // namespace llvm
