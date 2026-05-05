@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 %s -emit-llvm -triple s390x-none-zos -std=c++17 -fexec-charset IBM-1047 -o - | FileCheck %s
+// RUN: %clang %s -std=c++17 -emit-llvm -S -target s390x-ibm-zos -o - | FileCheck %s
 
 const char *RawString = R"(Hello\n)";
 //CHECK: c"\C8\85\93\93\96\E0\95\00"
