@@ -90,6 +90,9 @@ template <class ForwardIt, class T>
 void iota(ForwardIt first, ForwardIt last, T value);
 
 template <class ForwardIt>
+ForwardIt unique(ForwardIt first, ForwardIt last);
+
+template <class ForwardIt>
 ForwardIt rotate(ForwardIt first, ForwardIt middle, ForwardIt last);
 } // namespace _V1
 

@@ -432,6 +432,12 @@ Changes in existing checks
   private deleted functions, if they do not have a public overload or are a
   special member function.
 
+- Improved :doc:`modernize-use-ranges
+  <clang-tidy/checks/modernize/use-ranges>` check:
+
+  - Preserved used iterator results when replacing ``std::unique`` calls with
+    ``std::ranges::unique``.
+
 - Improved :doc:`modernize-use-std-format
   <clang-tidy/checks/modernize/use-std-format>` check:
 
