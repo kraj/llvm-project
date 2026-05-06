@@ -57,6 +57,6 @@ attributes #2 = { nounwind readnone }
 ; CHECK: attributes #[[ATTR0]] = { nounwind sanitize_address }
 ; CHECK: attributes #[[ATTR1]] = { nounwind sanitize_address "amdgpu-lds-size"="8" }
 ;.
-; CHECK: [[META0]] = !{i32 8396880, i32 8396881}
-; CHECK: [[META1]] = !{i32 8396816, i32 8396817}
+; CHECK: [[META0]] = !{i32 5, i32 6}
+; CHECK: [[META1]] = !{i32 1, i32 2}
 ;.

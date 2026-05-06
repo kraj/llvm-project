@@ -1529,32 +1529,36 @@ SDValue AMDGPUTargetLowering::LowerGlobalAddress(AMDGPUMachineFunctionInfo *MFI,
   GlobalAddressSDNode *G = cast<GlobalAddressSDNode>(Op);
   const GlobalValue *GV = G->getGlobal();
 
-  if (!MFI->isModuleEntryFunction()) {
-    auto *IsNamedBarrier = AMDGPU::isNamedBarrier(*cast<GlobalVariable>(GV));
-    if (IsNamedBarrier) {
-      std::optional<uint32_t> Address =
-          AMDGPUMachineFunctionInfo::get32BitAbsoluteAddress(
-              *GV, AMDGPUAS::EXECSYNC);
-      if (!Address)
-        llvm_unreachable("named barrier should have an assigned address");
-      unsigned BarCnt = cast<GlobalVariable>(GV)->getGlobalSize(DL) / 16;
-      MFI->recordNumNamedBarriers(Address.value(), BarCnt);
-      return DAG.getConstant(*Address, SDLoc(Op), Op.getValueType());
+  const auto TrapAndPoison = [&] {
+    SDLoc DL(Op);
+    SDValue Trap = DAG.getNode(ISD::TRAP, DL, MVT::Other, DAG.getEntryNode());
+    SDValue OutputChain =
+        DAG.getNode(ISD::TokenFactor, DL, MVT::Other, Trap, DAG.getRoot());
+    DAG.setRoot(OutputChain);
+    return DAG.getPOISON(Op.getValueType());
+  };
+
+  if (G->getAddressSpace() == AMDGPUAS::BARRIER) {
+    const GlobalVariable *GVar = cast<GlobalVariable>(GV);
+
+    if (!AMDGPU::isNamedBarrier(*GVar)) {
+      const Function &Fn = DAG.getMachineFunction().getFunction();
+      DAG.getContext()->diagnose(DiagnosticInfoUnsupported(
+          Fn, "Unsupported use of BARRIER address space!",
+          SDLoc(Op).getDebugLoc(), DS_Error));
+      return TrapAndPoison();
     }
 
+    unsigned Offset = MFI->allocateBarrierGlobal(DL, *cast<GlobalVariable>(GV));
+    return DAG.getConstant(Offset, SDLoc(Op), Op.getValueType());
+  }
+
+  if (!MFI->isModuleEntryFunction()) {
     if (std::optional<uint32_t> Address =
             AMDGPUMachineFunctionInfo::get32BitAbsoluteAddress(
                 *GV, AMDGPUAS::LOCAL_ADDRESS)) {
       return DAG.getConstant(*Address, SDLoc(Op), Op.getValueType());
     }
-  }
-
-  if (G->getAddressSpace() == AMDGPUAS::EXECSYNC) {
-    const GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV);
-    assert(GVar && AMDGPU::isNamedBarrier(*GVar) &&
-           "Unsupport use for EXECSYNC address space!");
-    unsigned Offset = MFI->allocateBarrierGlobal(DL, *cast<GlobalVariable>(GV));
-    return DAG.getConstant(Offset, SDLoc(Op), Op.getValueType());
   }
 
   if (G->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS ||
@@ -1572,11 +1576,7 @@ SDValue AMDGPUTargetLowering::LowerGlobalAddress(AMDGPUMachineFunctionInfo *MFI,
       // functions that use local objects. However, if these dead functions are
       // not eliminated, we don't want a compile time error. Just emit a warning
       // and a trap, since there should be no callable path here.
-      SDValue Trap = DAG.getNode(ISD::TRAP, DL, MVT::Other, DAG.getEntryNode());
-      SDValue OutputChain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other,
-                                        Trap, DAG.getRoot());
-      DAG.setRoot(OutputChain);
-      return DAG.getPOISON(Op.getValueType());
+      return TrapAndPoison();
     }
 
     // XXX: What does the value of G->getOffset() mean?

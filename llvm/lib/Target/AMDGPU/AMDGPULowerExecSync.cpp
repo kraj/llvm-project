@@ -117,15 +117,10 @@ static bool lowerExecSyncGlobalVariables(
   }
   OrderedGVs = sortByName(std::move(OrderedGVs));
   for (GlobalVariable *GV : OrderedGVs) {
-    unsigned BarrierScope = AMDGPU::Barrier::BARRIER_SCOPE_WORKGROUP;
     unsigned BarId = NumAbsolutes + 1;
     unsigned BarCnt = GV->getGlobalSize(DL) / 16;
     NumAbsolutes += BarCnt;
-
-    // 4 bits for alignment, 5 bits for the barrier num,
-    // 3 bits for the barrier scope
-    unsigned Offset = 0x802000u | BarrierScope << 9 | BarId << 4;
-    recordAbsoluteAddress(&M, GV, Offset);
+    recordAbsoluteAddress(&M, GV, BarId);
   }
   OrderedGVs.clear();
 
@@ -158,13 +153,11 @@ static bool lowerExecSyncGlobalVariables(
       // create a new GV used only by this kernel and its function.
       auto *NewGV = uniquifyGVPerKernel(M, GV, F);
       Changed |= (NewGV != GV);
-      unsigned BarrierScope = AMDGPU::Barrier::BARRIER_SCOPE_WORKGROUP;
       unsigned BarId = Kernel2BarId[F];
       BarId += NumAbsolutes + 1;
       unsigned BarCnt = GV->getGlobalSize(DL) / 16;
       Kernel2BarId[F] += BarCnt;
-      unsigned Offset = 0x802000u | BarrierScope << 9 | BarId << 4;
-      recordAbsoluteAddress(&M, NewGV, Offset);
+      recordAbsoluteAddress(&M, NewGV, BarId);
     }
     OrderedGVs.clear();
   }

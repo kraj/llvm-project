@@ -82,7 +82,7 @@ public:
 
   void recordNumNamedBarriers(uint32_t GVAddr, unsigned BarCnt) {
     NumNamedBarriers =
-        std::max(NumNamedBarriers, ((GVAddr & 0x1ff) >> 4) + BarCnt - 1);
+        std::max(NumNamedBarriers, (GVAddr & 0x1ff) + BarCnt - 1);
   }
   uint32_t getNumNamedBarriers() const { return NumNamedBarriers; }
 

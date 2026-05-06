@@ -52,9 +52,7 @@ enum : unsigned {
   RESERVED_3 = 13,
   RESERVED_4 = 14,
 
-  EXECSYNC = 15, ///< Address space that models non-addressable
-                 ///< execution synchronization resources such
-                 ///< as barrier IDs.
+  BARRIER = 15, ///< Address space for modeling barrier IDs as addresses.
 
   /// Internal address spaces. Can be freely renumbered.
   STREAMOUT_REGISTER = 128, ///< Address space for GS NGG Streamout registers.
@@ -91,6 +89,11 @@ enum : unsigned {
   // Some places use this if the address space can't be determined.
   UNKNOWN_ADDRESS_SPACE = ~0u,
 };
+
+/// The BARRIER AS is does not have an aperture in HW, so when converting
+/// BARRIER addresses from/to generic, we represent them as LDS addresses
+/// offset by a large amount so they can never alias with real LDS memory.
+static constexpr unsigned BarrierAddrLDSOffset = 0x802000u;
 } // end namespace AMDGPUAS
 
 namespace AMDGPU {
@@ -184,7 +187,6 @@ constexpr int64_t getNullPointerValue(unsigned AS) {
   case PRIVATE_ADDRESS:
   case LOCAL_ADDRESS:
   case REGION_ADDRESS:
-  case EXECSYNC:
     return -1;
   default:
     return 0;

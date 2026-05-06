@@ -63,7 +63,7 @@
 @nullptr14 = global ptr addrspace(14) addrspacecast (ptr null to ptr addrspace(14))
 
 ; CHECK-LABEL: nullptr15:
-; R600-NEXT: .long -1
+; R600-NEXT: .long 0
 @nullptr15 = global ptr addrspace(15) addrspacecast (ptr null to ptr addrspace(15))
 
 ; CHECK-LABEL: nullptr16:

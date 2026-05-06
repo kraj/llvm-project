@@ -6,6 +6,9 @@
 @bar2 = internal addrspace(15) global target("amdgcn.named.barrier", 0) poison
 @bar3 = internal addrspace(15) global target("amdgcn.named.barrier", 0) poison
 
+; Test using the workgroup barrier with the GV.
+@wgbarr = internal addrspace(15) global target("amdgcn.named.barrier", 0) poison, !absolute_symbol !0
+
 define void @func1() {
 ; GFX12-SDAG-LABEL: func1:
 ; GFX12-SDAG:       ; %bb.0:
@@ -85,9 +88,8 @@ define amdgpu_kernel void @kernel1(ptr addrspace(1) %out, ptr addrspace(15) %in)
 ; GFX12-SDAG-NEXT:    s_mov_b64 s[4:5], s[0:1]
 ; GFX12-SDAG-NEXT:    s_mov_b32 s32, 0
 ; GFX12-SDAG-NEXT:    s_wait_kmcnt 0x0
-; GFX12-SDAG-NEXT:    s_lshr_b32 s2, s2, 4
-; GFX12-SDAG-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
 ; GFX12-SDAG-NEXT:    s_and_b32 s2, s2, 63
+; GFX12-SDAG-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GFX12-SDAG-NEXT:    s_or_b32 s3, 0x90000, s2
 ; GFX12-SDAG-NEXT:    s_cmp_eq_u32 0, 0
 ; GFX12-SDAG-NEXT:    s_mov_b32 m0, s3
@@ -141,9 +143,8 @@ define amdgpu_kernel void @kernel1(ptr addrspace(1) %out, ptr addrspace(15) %in)
 ; GFX12-GISEL-NEXT:    s_mov_b64 s[6:7], s[2:3]
 ; GFX12-GISEL-NEXT:    s_mov_b32 s32, 0
 ; GFX12-GISEL-NEXT:    s_wait_kmcnt 0x0
-; GFX12-GISEL-NEXT:    s_lshr_b32 s0, s0, 4
-; GFX12-GISEL-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
 ; GFX12-GISEL-NEXT:    s_and_b32 s0, s0, 63
+; GFX12-GISEL-NEXT:    s_delay_alu instid0(SALU_CYCLE_1)
 ; GFX12-GISEL-NEXT:    s_or_b32 s1, s0, 0x90000
 ; GFX12-GISEL-NEXT:    s_cmp_eq_u32 0, 0
 ; GFX12-GISEL-NEXT:    s_mov_b32 m0, s1
@@ -280,8 +281,6 @@ define void @signal_var_cnt0_dynamic_bar(ptr addrspace(15) inreg %bar) {
 ; GFX12-NEXT:    s_wait_samplecnt 0x0
 ; GFX12-NEXT:    s_wait_bvhcnt 0x0
 ; GFX12-NEXT:    s_wait_kmcnt 0x0
-; GFX12-NEXT:    s_lshr_b32 s0, s0, 4
-; GFX12-NEXT:    s_wait_alu depctr_sa_sdst(0)
 ; GFX12-NEXT:    s_and_b32 m0, s0, 63
 ; GFX12-NEXT:    s_barrier_signal m0
 ; GFX12-NEXT:    s_setpc_b64 s[30:31]
@@ -308,6 +307,28 @@ define amdgpu_ps void @test_barrier_leave_write_to_scc(i32 inreg %val, ptr addrs
   ret void
 }
 
+
+define amdgpu_kernel void @wgbarr_as_gv() {
+; GFX12-LABEL: wgbarr_as_gv:
+; GFX12:       ; %bb.0:
+; GFX12-NEXT:    s_mov_b32 m0, 0x7003f
+; GFX12-NEXT:    s_barrier_signal m0
+; GFX12-NEXT:    s_barrier_wait -1
+; GFX12-NEXT:    s_endpgm
+    call void @llvm.amdgcn.s.barrier.signal.var(ptr addrspace(15) @wgbarr, i32 7)
+    call void @llvm.amdgcn.s.barrier.wait(i16 -1)
+    ret void
+}
+
+define amdgpu_kernel void @null_barrier() {
+; GFX12-LABEL: null_barrier:
+; GFX12:       ; %bb.0:
+; GFX12-NEXT:    s_barrier_join 0
+; GFX12-NEXT:    s_endpgm
+    call void @llvm.amdgcn.s.barrier.join(ptr addrspace(15) null)
+    ret void
+}
+
 declare void @llvm.amdgcn.s.barrier() #1
 declare void @llvm.amdgcn.s.barrier.wait(i16) #1
 declare void @llvm.amdgcn.s.barrier.signal(i32) #1
@@ -322,3 +343,5 @@ declare i32 @llvm.amdgcn.s.get.named.barrier.state(ptr addrspace(15)) #1
 attributes #0 = { nounwind }
 attributes #1 = { convergent nounwind }
 attributes #2 = { nounwind readnone }
+
+!0 = !{i32 -1, i32 0}

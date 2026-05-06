@@ -927,7 +927,7 @@ supported for the ``amdgcn`` target.
      *reserved for downstream use (LLPC)*  12
      *reserved for future use*             13
      *reserved for future use*             14
-     Execution Synchronization             15              N/A         N/A              32      0xFFFFFFFF
+     Barrier                               15              N/A         N/A              32      0
      Streamout Registers                   128             N/A         GS_REGS
      ===================================== =============== =========== ================ ======= ============================
 
@@ -1140,28 +1140,22 @@ supported for the ``amdgcn`` target.
   a buffer strided pointer, this means that the base pointer is ``align(4)``, that
   the offset is a multiple of 4 bytes, and that the stride is a multiple of 4.
 
-**Execution Synchronization (execsync)**
-  This address space represents hardware resources used to synchronize the execution
-  of wavefronts. It does not map directly to any addressable memory, thus pointers
-  into this address space:
+**Barrier**
+  This address space represents barrier IDs (introduced in GFX12) as addresses.
+  It does not map directly to any addressable memory, thus pointers into this address space:
 
   * Never alias with any other pointers outside this address space.
   * Cannot be dereferenced.
   * Can only be consumed by intrinsics.
   * Are always uniform.
 
-  Pointer are 32 bits. Due to these pointers being a compiler abstraction without
-  a corresponding hardware aperture, the back-end handles them as-if they were
-  local pointers; this is why the NULL pointer for the execsync address space is the
-  same as for local memory. The layout of pointer values into the execsync address space
-  is also designed so that no valid execsync address can conflict with valid local addresses.
+  Pointer are 32 bits and directly correspond to valid barrier IDs. All barrier pointers must,
+  when interpreted as signed 32 bit integers, have a value corresponding to a valid barrier ID
+  on the target. Otherwise, the behavior is undefined.
 
-  The pointer layout for ``s_barrier`` IDs (``Bar#``) is:
-
-  * Offset: ``0x802000u``.
-  * Bits ``[9:11]``: Barrier scope.
-  * Bits ``[4:8]``: Barrier ID.
-  * Bits ``[0:3]`` are zeroes.
+  Due to these pointers being a compiler abstraction without a corresponding hardware aperture,
+  the back-end handles them as-if they were local pointers with a very large offset as to not
+  overlap with any addressable local memory.
 
 **Streamout Registers**
   Dedicated registers used by the GS NGG Streamout Instructions. The register

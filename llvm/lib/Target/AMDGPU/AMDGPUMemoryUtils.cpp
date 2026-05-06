@@ -60,7 +60,7 @@ static TargetExtType *getTargetExtType(const GlobalVariable &GV) {
 }
 
 TargetExtType *isNamedBarrier(const GlobalVariable &GV) {
-  if (GV.getAddressSpace() != AMDGPUAS::EXECSYNC)
+  if (GV.getAddressSpace() != AMDGPUAS::BARRIER)
     return nullptr;
   if (TargetExtType *Ty = getTargetExtType(GV))
     return Ty->getName() == "amdgcn.named.barrier" ? Ty : nullptr;

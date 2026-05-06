@@ -625,12 +625,12 @@ static inline bool addrspacesMayAlias(unsigned AS1, unsigned AS2) {
     /* Buffer Fat Ptr  */     {true,  true,  false, false, true,  false, true,  true,  true,  true, false, false, false, false, false, false},
     /* Buffer Resource */     {true,  true,  false, false, true,  false, true,  true,  true,  true, false, false, false, false, false, false},
     /* Buffer Strided Ptr  */ {true,  true,  false, false, true,  false, true,  true,  true,  true, false, false, false, false, false, false},
-    /* Reserved  */          {false,  false,  false, false, true,  false, false,  false,  false,  false, false, false, false, false, false, false},
-    /* Reserved  */          {false,  false,  false, false, true,  false, false,  false,  false,  false, false, false, false, false, false, false},
-    /* Reserved  */          {false,  false,  false, false, true,  false, false,  false,  false,  false, false, false, false, false, false, false},
-    /* Reserved  */          {false,  false,  false, false, true,  false, false,  false,  false,  false, false, false, false, false, false, false},
-    /* Reserved  */          {false,  false,  false, false, true,  false, false,  false,  false,  false, false, false, false, false, false, false},
-    /* ExecSync  */          {false,  false,  false, false, true,  false, false,  false,  false,  false, false, false, false, false, false, false},
+    /* Reserved  */          {false,  false,  false, false, false,  false, false,  false,  false,  false, false, false, false, false, false, false},
+    /* Reserved  */          {false,  false,  false, false, false,  false, false,  false,  false,  false, false, false, false, false, false, false},
+    /* Reserved  */          {false,  false,  false, false, false,  false, false,  false,  false,  false, false, false, false, false, false, false},
+    /* Reserved  */          {false,  false,  false, false, false,  false, false,  false,  false,  false, false, false, false, false, false, false},
+    /* Reserved  */          {false,  false,  false, false, false,  false, false,  false,  false,  false, false, false, false, false, false, false},
+    /* Barrier  */           {false,  false,  false, false, false,  false, false,  false,  false,  false, false, false, false, false, false, false},
   };
   // clang-format on
   static_assert(std::size(ASAliasRules) == AMDGPUAS::MAX_AMDGPU_ADDRESS + 1);

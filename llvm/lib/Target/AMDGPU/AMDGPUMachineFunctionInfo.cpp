@@ -162,9 +162,16 @@ AMDGPUMachineFunctionInfo::allocateBarrierGlobal(const DataLayout &DL,
                                                  const GlobalVariable &GV) {
   assert(AMDGPU::isNamedBarrier(GV));
   std::optional<unsigned> BarAddr =
-      get32BitAbsoluteAddress(GV, AMDGPUAS::EXECSYNC);
+      get32BitAbsoluteAddress(GV, AMDGPUAS::BARRIER);
   if (!BarAddr)
     llvm_unreachable("named barrier should have an assigned address");
+  if (*BarAddr == 0) {
+    // We cannot allow this because some places in CodeGen (rightfully) assume a
+    // GV address is never null. For example, there are no null checks on
+    // addrspacecast if the pointer is a GV pointer.
+    report_fatal_error(
+        "named barrier GV cannot be used to represent the NULL named barrier");
+  }
   unsigned BarCnt = GV.getGlobalSize(DL) / 16;
   recordNumNamedBarriers(BarAddr.value(), BarCnt);
   return BarAddr.value();

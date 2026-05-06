@@ -566,7 +566,7 @@ LangAS AMDGPUTargetCodeGenInfo::adjustGlobalVarAddressSpace(
         Ty = Ty->getBaseElementTypeUnsafe();
       const BuiltinType *BTy = dyn_cast<BuiltinType>(Ty);
       if (BTy && BTy->getKind() == BuiltinType::AMDGPUNamedWorkgroupBarrier)
-        return getLangASFromTargetAS(llvm::AMDGPUAS::EXECSYNC);
+        return getLangASFromTargetAS(llvm::AMDGPUAS::BARRIER);
     }
     return *AS;
   }
