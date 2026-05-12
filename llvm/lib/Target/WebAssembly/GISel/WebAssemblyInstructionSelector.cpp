@@ -46,6 +46,7 @@ public:
 
 private:
   bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectCopy(MachineInstr &I, MachineRegisterInfo &MRI) const;
 
   const WebAssemblyTargetMachine &TM;
   // const WebAssemblySubtarget &STI;
@@ -83,13 +84,39 @@ WebAssemblyInstructionSelector::WebAssemblyInstructionSelector(
 {
 }
 
+bool WebAssemblyInstructionSelector::selectCopy(
+    MachineInstr &I, MachineRegisterInfo &MRI) const {
+  const TargetRegisterClass *DstRC =
+      TRI.getConstrainedRegClassForOperand(I.getOperand(0), MRI);
+  if (!DstRC)
+    return false;
+
+  const TargetRegisterClass *SrcRC =
+      TRI.getConstrainedRegClassForOperand(I.getOperand(1), MRI);
+  if (!SrcRC)
+    return false;
+
+  if (DstRC != SrcRC)
+    return false;
+
+  if (I.getOperand(0).getReg().isVirtual())
+    MRI.setRegClass(I.getOperand(0).getReg(), DstRC);
+  if (I.getOperand(1).getReg().isVirtual())
+    MRI.setRegClass(I.getOperand(1).getReg(), SrcRC);
+
+  return true;
+}
+
 bool WebAssemblyInstructionSelector::select(MachineInstr &I) {
   MachineBasicBlock &MBB = *I.getParent();
   MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &MRI = MF.getRegInfo();
 
-  if (!I.isPreISelOpcode())
+  if (!I.isPreISelOpcode()) {
+    if (I.isCopy())
+      return selectCopy(I, MRI);
     return true;
+  }
 
   if (selectImpl(I, *CoverageInfo))
     return true;
