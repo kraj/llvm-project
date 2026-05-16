@@ -152,6 +152,55 @@ set(MLIR_ENABLE_NVPTXCOMPILER 0 CACHE BOOL
 
 set(MLIR_ENABLE_PDL_IN_PATTERNMATCH 1 CACHE BOOL "Enable PDL in PatternMatch")
 
+#-------------------------------------------------------------------------------
+# Private name obfuscation / stripping
+#
+# When MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION is ON, dialects, ops, attributes,
+# types, and passes whose TableGen definitions set `let isPrivate = 1;` have
+# their mnemonics replaced with deterministic opaque hashes derived from a
+# build-time salt (SipHash-2-4-64, base32-truncated). This makes it harder to
+# reverse engineer the resulting binary while keeping registration, pattern
+# matching, bytecode, and IR printing internally consistent.
+#
+# When MLIR_STRIP_PASS_METADATA is ON, private passes additionally lose their
+# command-line description, per-option descriptions, and per-pass
+# `register*Pass()` / `mlirRegister*` registration helpers. They can still be
+# constructed and run from C++, but cannot be invoked via a textual pass
+# pipeline or through the C API.
+#
+# MLIR_PRIVATE_NAME_SALT can be set to a hex string to pin the salt across
+# builds; otherwise a random per-build salt is generated and stored in
+# `${CMAKE_BINARY_DIR}/mlir-obfuscation.salt`. Note that bytecode produced by
+# a build with a different salt is unreadable by any other build.
+#-------------------------------------------------------------------------------
+option(MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION
+       "Replace TableGen `isPrivate` dialect/op/attribute/type/pass mnemonics with opaque hashes."
+       OFF)
+set(MLIR_PRIVATE_NAME_SALT "" CACHE STRING
+    "Hex salt fed to mlir-tblgen for private-name obfuscation; if empty and obfuscation is enabled, a random per-build salt is generated.")
+option(MLIR_STRIP_PASS_METADATA
+       "For passes marked `isPrivate`, drop description, per-option `cl::desc` text, and CLI/C-API registration helpers."
+       OFF)
+
+if(MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION)
+  if(NOT MLIR_PRIVATE_NAME_SALT)
+    set(_mlir_salt_file "${CMAKE_BINARY_DIR}/mlir-obfuscation.salt")
+    if(EXISTS "${_mlir_salt_file}")
+      file(READ "${_mlir_salt_file}" MLIR_PRIVATE_NAME_SALT)
+      string(STRIP "${MLIR_PRIVATE_NAME_SALT}" MLIR_PRIVATE_NAME_SALT)
+    else()
+      string(RANDOM LENGTH 32 ALPHABET "0123456789abcdef" MLIR_PRIVATE_NAME_SALT)
+      file(WRITE "${_mlir_salt_file}" "${MLIR_PRIVATE_NAME_SALT}\n")
+      message(STATUS "MLIR: generated obfuscation salt at ${_mlir_salt_file}")
+    endif()
+  endif()
+  list(APPEND LLVM_TABLEGEN_FLAGS "--mlir-obfuscate-private")
+  list(APPEND LLVM_TABLEGEN_FLAGS "--mlir-obfuscation-salt=${MLIR_PRIVATE_NAME_SALT}")
+endif()
+if(MLIR_STRIP_PASS_METADATA)
+  list(APPEND LLVM_TABLEGEN_FLAGS "--mlir-strip-private-pass-metadata")
+endif()
+
 option(MLIR_INCLUDE_TESTS
        "Generate build targets for the MLIR unit tests."
        ${LLVM_INCLUDE_TESTS})

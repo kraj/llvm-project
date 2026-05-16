@@ -19,6 +19,7 @@
 #include "mlir/TableGen/Operator.h"
 #include "mlir/TableGen/Pattern.h"
 #include "mlir/TableGen/Predicate.h"
+#include "mlir/TableGen/PrivateName.h"
 #include "mlir/TableGen/Property.h"
 #include "mlir/TableGen/Type.h"
 #include "llvm/ADT/FunctionExtras.h"
@@ -723,13 +724,15 @@ void PatternEmitter::emitOperandMatch(DagNode tree, StringRef opName,
       }
       auto self = formatv("(*{0}.begin()).getType()", operandName);
       StringRef verifier = staticMatcherHelper.getVerifierName(operandMatcher);
-      emitStaticVerifierCall(
-          verifier, opName, self.str(),
-          formatv(
-              "\"operand {0} of op '{1}' failed to satisfy constraint: '{2}'\"",
-              operandIndex, op.getOperationName(),
-              escapeString(constraint.getSummary()))
-              .str());
+    emitStaticVerifierCall(
+        verifier, opName, self.str(),
+        formatv(
+            "\"operand {0} of op '{1}' failed to satisfy constraint: '{2}'\"",
+            operandIndex,
+            tblgen::maybeObfuscateDotted(op.getOperationName(),
+                                         op.isPrivate()),
+            escapeString(constraint.getSummary()))
+            .str());
     }
   }
 
@@ -911,8 +914,9 @@ void PatternEmitter::emitAttributeMatch(DagNode tree, StringRef castedName,
     emitMatchCheck(castedName, tgfmt("tblgen_attr", &fmtCtx),
                    formatv("\"expected op '{0}' to have attribute '{1}' "
                            "of type '{2}'\"",
-                           op.getOperationName(), namedAttr->name,
-                           attr.getStorageType()));
+                           tblgen::maybeObfuscateDotted(op.getOperationName(),
+                                                        op.isPrivate()),
+                           namedAttr->name, attr.getStorageType()));
   }
 
   auto matcher = tree.getArgAsLeaf(argIndex);
@@ -942,7 +946,9 @@ void PatternEmitter::emitAttributeMatch(DagNode tree, StringRef castedName,
         verifier, castedName, "tblgen_attr",
         formatv("\"op '{0}' attribute '{1}' failed to satisfy constraint: "
                 "'{2}'\"",
-                op.getOperationName(), namedAttr->name,
+                tblgen::maybeObfuscateDotted(op.getOperationName(),
+                                             op.isPrivate()),
+                namedAttr->name,
                 escapeString(matcher.getAsConstraint().getSummary()))
             .str());
   }
@@ -982,7 +988,9 @@ void PatternEmitter::emitPropertyMatch(DagNode tree, StringRef castedName,
         verifier, castedName, "tblgen_prop",
         formatv("\"op '{0}' property '{1}' failed to satisfy constraint: "
                 "'{2}'\"",
-                op.getOperationName(), namedProp->name,
+                tblgen::maybeObfuscateDotted(op.getOperationName(),
+                                             op.isPrivate()),
+                namedProp->name,
                 escapeString(matcher.getAsConstraint().getSummary()))
             .str());
   }

@@ -88,6 +88,11 @@ public:
   /// operations or types.
   bool isExtensible() const;
 
+  /// Returns true if this dialect has been marked private. Private dialect,
+  /// op, attribute, and type names are eligible for obfuscation when
+  /// MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION is enabled in mlir-tblgen.
+  bool isPrivate() const;
+
   const llvm::DagInit *getDiscardableAttributes() const;
 
   const llvm::Record *getDef() const { return def; }

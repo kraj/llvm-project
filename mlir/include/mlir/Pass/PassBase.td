@@ -89,6 +89,18 @@ class PassBase<string passArg, string base> {
 
   // A set of statistics provided by this pass.
   list<Statistic> statistics = [];
+
+  // Marks this pass as "private". When the build is configured with
+  // `-DMLIR_ENABLE_PRIVATE_NAME_OBFUSCATION=ON`, the pass argument and pass
+  // name are replaced with deterministic opaque identifiers derived from a
+  // build-time salt. When the build is configured with
+  // `-DMLIR_STRIP_PASS_METADATA=ON`, the description, the per-option
+  // descriptions, and the per-statistic descriptions are emitted as empty
+  // strings. Additionally, the pass is omitted from the generated
+  // `register*Passes()` aggregate registration function and from the
+  // generated C-API `mlirRegister*` registration entry points, so private
+  // passes cannot be invoked via `--pass-pipeline=...` or via the C API.
+  bit isPrivate = 0;
 }
 
 // This class represents an mlir::OperationPass.

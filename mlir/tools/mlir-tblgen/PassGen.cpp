@@ -13,6 +13,7 @@
 
 #include "mlir/TableGen/GenInfo.h"
 #include "mlir/TableGen/Pass.h"
+#include "mlir/TableGen/PrivateName.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FormatVariadic.h"
@@ -147,16 +148,30 @@ static void emitPassDecls(const Pass &pass, raw_ostream &os) {
   os << "#endif // " << enableVarName << "\n";
 }
 
+/// Returns true if all per-pass registration helpers and CLI/C-API exposure
+/// for `pass` should be skipped. This is the case for passes marked
+/// `isPrivate` when `--mlir-strip-private-pass-metadata` is set: such passes
+/// can only be created by C++ code, not invoked via a textual pass pipeline
+/// or via the C API.
+static bool shouldSkipRegistration(const Pass &pass) {
+  return pass.isPrivate() && stripPrivatePassMetadataEnabled();
+}
+
 /// Emit the code for registering each of the given passes with the global
 /// PassRegistry.
 static void emitRegistrations(llvm::ArrayRef<Pass> passes, raw_ostream &os) {
   os << "#ifdef GEN_PASS_REGISTRATION\n";
   os << "// Generate registrations for all passes.\n";
-  for (const Pass &pass : passes)
+  for (const Pass &pass : passes) {
+    if (shouldSkipRegistration(pass))
+      continue;
     os << "#define " << getPassRegistrationVarName(pass) << "\n";
+  }
   os << "#endif // GEN_PASS_REGISTRATION\n";
 
   for (const Pass &pass : passes) {
+    if (shouldSkipRegistration(pass))
+      continue;
     std::string passName = pass.getDef()->getName().str();
     std::string passEnableVarName = getPassRegistrationVarName(pass);
 
@@ -172,8 +187,11 @@ static void emitRegistrations(llvm::ArrayRef<Pass> passes, raw_ostream &os) {
   os << "#ifdef GEN_PASS_REGISTRATION\n";
   os << formatv(passGroupRegistrationCode, groupName);
 
-  for (const Pass &pass : passes)
+  for (const Pass &pass : passes) {
+    if (shouldSkipRegistration(pass))
+      continue;
     os << "  register" << pass.getDef()->getName() << "();\n";
+  }
 
   os << "}\n";
   os << "#undef GEN_PASS_REGISTRATION\n";
@@ -186,11 +204,14 @@ static void emitRegistrations(llvm::ArrayRef<Pass> passes, raw_ostream &os) {
 
 /// The code snippet used to generate the start of a pass base class.
 ///
-/// {0}: The def name of the pass record.
+/// {0}: The def name of the pass record (used as the C++ class identifier).
 /// {1}: The base class for the pass.
-/// {2): The command line argument for the pass.
-/// {3}: The summary for the pass.
+/// {2}: The command line argument for the pass (possibly obfuscated).
+/// {3}: The summary for the pass (possibly emptied for private passes).
 /// {4}: The dependent dialects registration.
+/// {5}: The display name returned by `getName()` / `getPassName()` (possibly
+///      obfuscated). Distinct from {0} so the C++ class identifier remains
+///      stable when the displayed name is obfuscated.
 const char *const baseClassBegin = R"(
 template <typename DerivedT>
 class {0}Base : public {1} {
@@ -214,9 +235,9 @@ public:
 
   /// Returns the derived pass name.
   static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("{0}");
+    return ::llvm::StringLiteral("{5}");
   }
-  ::llvm::StringRef getName() const override { return "{0}"; }
+  ::llvm::StringRef getName() const override { return "{5}"; }
 
   /// Support isa/dyn_cast functionality for the derived pass class.
   static bool classof(const ::mlir::Pass *pass) {{
@@ -282,13 +303,16 @@ std::unique_ptr<::mlir::Pass> create{0}({0}Options options) {{
 
 /// Emit the declarations for each of the pass options.
 static void emitPassOptionDecls(const Pass &pass, raw_ostream &os) {
+  bool stripDescriptions =
+      pass.isPrivate() && stripPrivatePassMetadataEnabled();
   for (const PassOption &opt : pass.getOptions()) {
     os.indent(2) << "::mlir::Pass::"
                  << (opt.isListOption() ? "ListOption" : "Option");
 
+    StringRef desc = stripDescriptions ? StringRef("") : opt.getDescription();
     os << formatv(R"(<{0}> {1}{{*this, "{2}", ::llvm::cl::desc(R"PO({3})PO"))",
                   opt.getType(), opt.getCppVariableName(), opt.getArgument(),
-                  opt.getDescription().trim());
+                  desc.trim());
     if (std::optional<StringRef> defaultVal = opt.getDefaultValue())
       os << ", ::llvm::cl::init(" << defaultVal << ")";
     if (std::optional<StringRef> additionalFlags = opt.getAdditionalFlags())
@@ -299,11 +323,13 @@ static void emitPassOptionDecls(const Pass &pass, raw_ostream &os) {
 
 /// Emit the declarations for each of the pass statistics.
 static void emitPassStatisticDecls(const Pass &pass, raw_ostream &os) {
+  bool stripDescriptions =
+      pass.isPrivate() && stripPrivatePassMetadataEnabled();
   for (const PassStatistic &stat : pass.getStatistics()) {
+    StringRef desc = stripDescriptions ? StringRef("") : stat.getDescription();
     os << formatv(
         "  ::mlir::Pass::Statistic {0}{{this, \"{1}\", R\"PS({2})PS\"};\n",
-        stat.getCppVariableName(), stat.getName(),
-        stat.getDescription().trim());
+        stat.getCppVariableName(), stat.getName(), desc.trim());
   }
 }
 
@@ -334,10 +360,26 @@ static void emitPassDefs(const Pass &pass, raw_ostream &os) {
         "\n    ");
   }
 
+  // Privacy-aware substitutions for the base class template.
+  // - The display name returned by `getName()` / `getPassName()` is
+  //   obfuscated when `--mlir-obfuscate-private` is set and the pass is
+  //   marked `isPrivate`.
+  // - The CLI argument and summary are dropped when
+  //   `--mlir-strip-private-pass-metadata` is set and the pass is private,
+  //   since those passes are also omitted from CLI/C-API registration.
+  std::string displayName =
+      tblgen::maybeObfuscate(passName, pass.isPrivate()).str();
+  std::string argument =
+      tblgen::maybeObfuscate(pass.getArgument(), pass.isPrivate()).str();
+  std::string summary = pass.getSummary().trim().str();
+  if (pass.isPrivate() && stripPrivatePassMetadataEnabled()) {
+    argument.clear();
+    summary.clear();
+  }
+
   os << "namespace impl {\n";
-  os << formatv(baseClassBegin, passName, pass.getBaseClass(),
-                pass.getArgument(), pass.getSummary().trim(),
-                dependentDialectRegistrations);
+  os << formatv(baseClassBegin, passName, pass.getBaseClass(), argument,
+                summary, dependentDialectRegistrations, displayName);
 
   if (ArrayRef<PassOption> options = pass.getOptions(); !options.empty()) {
     os.indent(2) << formatv("{0}Base({0}Options options) : {0}Base() {{\n",

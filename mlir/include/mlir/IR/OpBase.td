@@ -335,6 +335,13 @@ class Op<Dialect dialect, string mnemonic, list<Trait> props = []> {
   // The mnemonic of the op.
   string opName = mnemonic;
 
+  // Marks this op as "private". Defaults to `dialect.isPrivate` and can be
+  // overridden per op. When the build is configured with
+  // `-DMLIR_ENABLE_PRIVATE_NAME_OBFUSCATION=ON`, the op's mnemonic (and the
+  // dialect prefix in its registered name) is replaced with a deterministic
+  // opaque identifier derived from a build-time salt.
+  bit isPrivate = dialect.isPrivate;
+
   // The C++ namespace to use for this op.
   string cppNamespace = dialect.cppNamespace;
 

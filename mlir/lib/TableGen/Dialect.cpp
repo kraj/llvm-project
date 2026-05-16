@@ -102,6 +102,10 @@ bool Dialect::isExtensible() const {
   return def->getValueAsBit("isExtensible");
 }
 
+bool Dialect::isPrivate() const {
+  return def->getValueAsBit("isPrivate");
+}
+
 const llvm::DagInit *Dialect::getDiscardableAttributes() const {
   return def->getValueAsDag("discardableAttrs");
 }

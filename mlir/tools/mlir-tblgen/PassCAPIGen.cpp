@@ -12,6 +12,7 @@
 
 #include "mlir/TableGen/GenInfo.h"
 #include "mlir/TableGen/Pass.h"
+#include "mlir/TableGen/PrivateName.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FormatVariadic.h"
@@ -57,6 +58,14 @@ const char *const fileFooter = R"(
 #endif
 )";
 
+/// Returns true if `pass` should not be exposed via the C API. Private passes
+/// are skipped from the per-pass `mlirCreate*`/`mlirRegister*` entry points
+/// when `--mlir-strip-private-pass-metadata` is set, so they cannot be
+/// invoked from outside C++ code.
+static bool shouldSkipCAPI(const Pass &pass) {
+  return pass.isPrivate() && stripPrivatePassMetadataEnabled();
+}
+
 /// Emit TODO
 static bool emitCAPIHeader(const RecordKeeper &records, raw_ostream &os) {
   os << fileHeader;
@@ -65,6 +74,8 @@ static bool emitCAPIHeader(const RecordKeeper &records, raw_ostream &os) {
      << "Passes(void);\n\n";
   for (const auto *def : records.getAllDerivedDefinitions("PassBase")) {
     Pass pass(def);
+    if (shouldSkipCAPI(pass))
+      continue;
     StringRef defName = pass.getDef()->getName();
     os << formatv(passDecl, groupName, defName);
   }
@@ -99,6 +110,8 @@ static bool emitCAPIImpl(const RecordKeeper &records, raw_ostream &os) {
 
   for (const auto *def : records.getAllDerivedDefinitions("PassBase")) {
     Pass pass(def);
+    if (shouldSkipCAPI(pass))
+      continue;
     StringRef defName = pass.getDef()->getName();
 
     std::string constructorCall;

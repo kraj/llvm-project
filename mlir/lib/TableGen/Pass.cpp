@@ -98,3 +98,5 @@ ArrayRef<StringRef> Pass::getDependentDialects() const {
 ArrayRef<PassOption> Pass::getOptions() const { return options; }
 
 ArrayRef<PassStatistic> Pass::getStatistics() const { return statistics; }
+
+bool Pass::isPrivate() const { return def->getValueAsBit("isPrivate"); }

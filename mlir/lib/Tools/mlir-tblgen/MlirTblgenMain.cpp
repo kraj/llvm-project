@@ -14,6 +14,7 @@
 
 #include "mlir/TableGen/GenInfo.h"
 #include "mlir/TableGen/GenNameParser.h"
+#include "mlir/TableGen/PrivateName.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/Signals.h"
@@ -151,7 +152,40 @@ int mlir::MlirTblgenMain(int argc, char **argv) {
   llvm::cl::opt<const mlir::GenInfo *, true, mlir::GenNameParser> generator(
       "", llvm::cl::desc("Generator to run"), cl::location(::generator));
 
+  // Options driving private-name obfuscation and pass-metadata stripping.
+  // See `mlir/include/mlir/TableGen/PrivateName.h` and the
+  // `MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION` / `MLIR_STRIP_PASS_METADATA`
+  // CMake variables for the user-facing entry points.
+  llvm::cl::opt<bool> obfuscatePrivateNames(
+      "mlir-obfuscate-private",
+      llvm::cl::desc(
+          "Replace mnemonics of dialects/ops/attributes/types/passes that "
+          "are marked `isPrivate` in their TableGen definitions with "
+          "deterministic opaque hashes."),
+      llvm::cl::init(false));
+  llvm::cl::opt<std::string> obfuscationSalt(
+      "mlir-obfuscation-salt",
+      llvm::cl::desc(
+          "Hex-encoded (up to 32 hex chars / 16 bytes) salt used as the "
+          "SipHash-2-4 key for `--mlir-obfuscate-private`. If empty, the "
+          "all-zero key is used."),
+      llvm::cl::init(""));
+  llvm::cl::opt<bool> stripPrivatePassMetadata(
+      "mlir-strip-private-pass-metadata",
+      llvm::cl::desc(
+          "For passes whose TableGen definition is marked `isPrivate`, "
+          "drop the pass description, per-option `cl::desc` strings, and "
+          "the per-pass `registerXxxPass()` and `mlirRegisterXxx` "
+          "registration helpers, so that the pass cannot be invoked via "
+          "`--pass-pipeline=...` or via the C API."),
+      llvm::cl::init(false));
+
   cl::ParseCommandLineOptions(argc, argv);
+
+  // Push parsed flag values into the helper's lazy state.
+  mlir::tblgen::setObfuscatePrivateNames(obfuscatePrivateNames);
+  mlir::tblgen::setStripPrivatePassMetadata(stripPrivatePassMetadata);
+  mlir::tblgen::setObfuscationSalt(obfuscationSalt);
 
   return TableGenMain(
       argv[0], [](TableGenOutputFiles &OutFiles, const RecordKeeper &RK) {

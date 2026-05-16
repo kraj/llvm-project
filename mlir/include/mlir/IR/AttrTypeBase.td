@@ -252,6 +252,13 @@ class AttrOrTypeDef<string valueType, string name, list<Trait> defTraits,
 
   // Generate a default 'getAlias' method for OpAsm{Type,Attr}Interface.
   bit genMnemonicAlias = 0;
+
+  // Marks this attribute or type as "private". Subclasses (`AttrDef` and
+  // `TypeDef`) default this to the owning dialect's `isPrivate` bit. When the
+  // build is configured with `-DMLIR_ENABLE_PRIVATE_NAME_OBFUSCATION=ON`, the
+  // mnemonic and the dialect-qualified name of this def are replaced with
+  // deterministic opaque identifiers derived from a build-time salt.
+  bit isPrivate = 0;
 }
 
 // Define a new attribute, named `name`, belonging to `dialect` that inherits
@@ -272,6 +279,9 @@ class AttrDef<Dialect dialect, string name, list<Trait> traits = [],
 
   // The unique attribute name.
   string attrName = dialect.name # "." # mnemonic;
+
+  // Inherit privacy from the owning dialect by default.
+  let isPrivate = dialect.isPrivate;
 
   // The call expression to convert from the storage type to the return
   // type. For example, an enum can be stored as an int but returned as an
@@ -307,6 +317,9 @@ class TypeDef<Dialect dialect, string name, list<Trait> traits = [],
 
   // The unique type name.
   string typeName = dialect.name # "." # mnemonic;
+
+  // Inherit privacy from the owning dialect by default.
+  let isPrivate = dialect.isPrivate;
 
   // A constant builder provided when the type has no parameters.
   let builderCall = !if(!empty(parameters),

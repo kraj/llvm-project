@@ -220,6 +220,11 @@ public:
   /// using the mnemonic.
   bool genMnemonicAlias() const;
 
+  /// Returns true if this attribute or type has been marked private. Private
+  /// def names are eligible for obfuscation when
+  /// MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION is enabled in mlir-tblgen.
+  bool isPrivate() const;
+
   /// Get the code location (for error printing).
   ArrayRef<SMLoc> getLoc() const;
 

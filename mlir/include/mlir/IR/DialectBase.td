@@ -92,6 +92,14 @@ class Dialect {
 
   // If this dialect can be extended at runtime with new operations or types.
   bit isExtensible = 0;
+
+  // Marks the dialect as "private". When the build is configured with
+  // `-DMLIR_ENABLE_PRIVATE_NAME_OBFUSCATION=ON`, mlir-tblgen replaces the
+  // dialect's namespace and the mnemonics of all of its ops/attributes/types
+  // with deterministic opaque identifiers derived from a build-time salt.
+  // Operations, attributes, and types defined on this dialect inherit this
+  // bit by default and can override it individually if needed.
+  bit isPrivate = 0;
 }
 
 #endif // DIALECTBASE_TD

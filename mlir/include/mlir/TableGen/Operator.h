@@ -86,6 +86,11 @@ public:
   /// format if its dialect name is not empty.
   std::string getOperationName() const;
 
+  /// Returns true if this op has been marked private. When private and
+  /// MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION is enabled in mlir-tblgen, the op's
+  /// dialect prefix and mnemonic in its registered name are obfuscated.
+  bool isPrivate() const;
+
   /// Returns this op's C++ class name.
   StringRef getCppClassName() const;
 

@@ -24,6 +24,7 @@
 #include "mlir/TableGen/GenInfo.h"
 #include "mlir/TableGen/Interfaces.h"
 #include "mlir/TableGen/Operator.h"
+#include "mlir/TableGen/PrivateName.h"
 #include "mlir/TableGen/Property.h"
 #include "mlir/TableGen/Region.h"
 #include "mlir/TableGen/SideEffects.h"
@@ -273,6 +274,14 @@ static std::string getArgumentName(const Operator &op, int index) {
   return std::string(formatv("{0}_{1}", generatedArgName, index));
 }
 
+/// Returns true if a private op should behave as if it did not specify any
+/// custom or declarative assembly format. The op remains registered and can
+/// still be printed in generic form, but its custom textual syntax is not
+/// accepted in private-name obfuscation builds.
+static bool shouldStripPrivateAssemblyFormat(const Operator &op) {
+  return op.isPrivate() && tblgen::obfuscatePrivateNamesEnabled();
+}
+
 // Returns true if we can use unwrapped value for the given `attr` in builders.
 static bool canUseUnwrappedRawValue(const tblgen::Attribute &attr) {
   return attr.getReturnType() != attr.getStorageType() &&
@@ -381,7 +390,9 @@ public:
     return [this](raw_ostream &os) -> raw_ostream & {
       if (emitForOp)
         return os << "emitOpError(\"";
-      return os << formatv("emitError(loc, \"'{0}' op ", op.getOperationName());
+      return os << formatv("emitError(loc, \"'{0}' op ",
+                           tblgen::maybeObfuscateDotted(op.getOperationName(),
+                                                        op.isPrivate()));
     };
   }
 
@@ -1168,7 +1179,8 @@ OpEmitter::OpEmitter(const Operator &op,
   genFolderDecls();
   genTypeInterfaceMethods();
   genOpInterfaceMethods();
-  generateOpFormat(op, opClass, emitHelper.hasProperties());
+  if (!shouldStripPrivateAssemblyFormat(op))
+    generateOpFormat(op, opClass, emitHelper.hasProperties());
   genSideEffectInterfaceMethods();
 }
 void OpEmitter::emitDecl(
@@ -3835,6 +3847,9 @@ void OpEmitter::genTypeInterfaceMethods() {
 }
 
 void OpEmitter::genParser() {
+  if (shouldStripPrivateAssemblyFormat(op))
+    return;
+
   if (hasStringAttribute(def, "assemblyFormat"))
     return;
 
@@ -3851,6 +3866,9 @@ void OpEmitter::genParser() {
 }
 
 void OpEmitter::genPrinter() {
+  if (shouldStripPrivateAssemblyFormat(op))
+    return;
+
   if (hasStringAttribute(def, "assemblyFormat"))
     return;
 
@@ -4160,7 +4178,9 @@ void OpEmitter::genOpNameGetter() {
   auto *method = opClass.addStaticMethod<Method::Constexpr>(
       "::llvm::StringLiteral", "getOperationName");
   ERROR_IF_PRUNED(method, "getOperationName", op);
-  method->body() << "  return ::llvm::StringLiteral(\"" << op.getOperationName()
+  method->body() << "  return ::llvm::StringLiteral(\""
+                 << tblgen::maybeObfuscateDotted(op.getOperationName(),
+                                                 op.isPrivate())
                  << "\");";
 }
 
@@ -4427,7 +4447,7 @@ OpOperandAdaptorEmitter::OpOperandAdaptorEmitter(
     body.indent() << "if (odsAttrs)\n";
     body.indent() << formatv(
         "odsOpName.emplace(\"{0}\", odsAttrs.getContext());\n",
-        op.getOperationName());
+        tblgen::maybeObfuscateDotted(op.getOperationName(), op.isPrivate()));
 
     paramList.insert(paramList.begin(), MethodParameter("RangeT", "values"));
     auto *constructor = genericAdaptor.addConstructor(paramList);

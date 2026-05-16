@@ -103,6 +103,13 @@ public:
   /// Return the statistics provided by this pass.
   ArrayRef<PassStatistic> getStatistics() const;
 
+  /// Return true if this pass has been marked private. When private and
+  /// MLIR_ENABLE_PRIVATE_NAME_OBFUSCATION is enabled in mlir-tblgen, the pass
+  /// argument and pass name are obfuscated; when MLIR_STRIP_PASS_METADATA is
+  /// enabled in mlir-tblgen, descriptions are dropped and registration helpers
+  /// are omitted.
+  bool isPrivate() const;
+
   const llvm::Record *getDef() const { return def; }
 
 private:
