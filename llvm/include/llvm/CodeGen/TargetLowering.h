@@ -2452,6 +2452,10 @@ public:
     return AtomicExpansionKind::None;
   }
 
+  virtual bool supportsUnalignedAtomicLoadInIR(const LoadInst *LI) const {
+    return SupportsUnalignedAtomics;
+  }
+
   /// Returns how the given (atomic) load should be cast by the IR-level
   /// AtomicExpand pass.
   virtual AtomicExpansionKind shouldCastAtomicLoadInIR(LoadInst *LI) const {
@@ -2465,6 +2469,10 @@ public:
   /// will try to use an atomicrmw xchg.
   virtual AtomicExpansionKind shouldExpandAtomicStoreInIR(StoreInst *SI) const {
     return AtomicExpansionKind::None;
+  }
+
+  virtual bool supportsUnalignedAtomicStoreInIR(const StoreInst *SI) const {
+    return SupportsUnalignedAtomics;
   }
 
   /// Returns how the given (atomic) store should be cast by the IR-level
