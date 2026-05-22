@@ -81,12 +81,30 @@ PreservedAnalyses LowerCommentStringPass::run(Module &M,
 
   LLVMContext &Ctx = M.getContext();
 
-  // Collect all globals that need implicit refs, both string and variables
+  // This pass processes two types of copyright/identifying information:
+  // 1. A single TU-wide copyright string from #pragma comment(copyright, "...")
+  // 2. Multiple user-specified variables from -mloadtime-comment-vars=...
+  //
+  // Both need implicit references from every function to survive:
+  // - Dead code elimination (DCE) - variables appear unused
+  // - Link-time optimization (LTO) - cross-TU analysis may remove them
+  // - Aggressive garbage collection - static variables with no direct uses
+  //
+  // Strategy: Collect all copyright globals, then create implicit references
+  // from every function definition to each global. This forces the backend
+  // to treat them as reachable and preserve them in the final object file.
   SmallVector<GlobalValue *, 4> CopyrightGlobals;
 
-  // 1. Process pragma comment copyright (string literal) Once per TU
-  // Single-metadata: !comment_string.loadtime = !{!0}
-  // Each operand node is expected to have one MDString operand.
+  // =========================================================================
+  // Step 1: Process #pragma comment(copyright, "...") - at most one per TU
+  // =========================================================================
+  // Frontend (Clang) emits module-level metadata:
+  //   !comment_string.loadtime = !{!0}
+  //   !0 = !{!"Copyright text here"}
+  //
+  // We materialize this as a global string in the __loadtime_comment section,
+  // which AIX linkers recognize and include in the object file's loadtime
+  // comment area (visible via 'what' command or dump -H).
   NamedMDNode *MD = M.getNamedMetadata("comment_string.loadtime");
   if (MD && MD->getNumOperands() > 0) {
     MDNode *MdNode = MD->getOperand(0);
@@ -95,7 +113,7 @@ PreservedAnalyses LowerCommentStringPass::run(Module &M,
       if (MdString && !MdString->getString().empty()) {
         StringRef Text = MdString->getString();
 
-        // Create the string global
+        // Create a null-terminated string constant in the special section
         Constant *StrInit =
             ConstantDataArray::getString(Ctx, Text, /*AddNull*/ true);
         auto *StrGV = new GlobalVariable(M, StrInit->getType(),
@@ -104,38 +122,56 @@ PreservedAnalyses LowerCommentStringPass::run(Module &M,
                                          "__loadtime_comment_str");
         StrGV->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
         StrGV->setAlignment(Align(1));
+        // Backend recognizes this section and emits it to .loadtime_comment
         StrGV->setSection("__loadtime_comment");
 
-        // Add the string to llvm.used to prevent LLVM optimization/LTO passes
-        // from removing it
+        // Prevent removal by optimizer passes (but not sufficient for linker)
         appendToUsed(M, {StrGV});
 
-        // Add to list of globals needing implicti refs
+        // Add to list - will get implicit refs from all functions below
         CopyrightGlobals.push_back(StrGV);
       }
     }
+    // Clean up the metadata - we've consumed it
     MD->eraseFromParent();
-  }  
+  }
 
-  // 2. Process copyright variables - multiple allowed per TU
+  // =========================================================================
+  // Step 2: Process -mloadtime-comment-vars=sccsid,version,... (CLI flag)
+  // =========================================================================
+  // Frontend (Clang) marks qualifying variables with metadata:
+  //   @sccsid = internal global ptr @.str, !copyright.variable !{!"sccsid"}
+  //
+  // These are user-defined globals (char*/char[]) that should be preserved.
+  // Unlike pragma strings, these already exist in the IR - we just need to
+  // ensure they survive to the object file by adding implicit references.
   for (GlobalVariable &GV : M.globals()) {
     if (GV.getMetadata("copyright.variable")) {
-      // Add to list of globals needing implcit refs
       CopyrightGlobals.push_back(&GV);
     }
   }
 
-  // Lambda to attach implicit ref metadata to a function
+  // =========================================================================
+  // Step 3: Create implicit references from every function to each global
+  // =========================================================================
+  // The backend interprets !implicit.ref metadata as "this function uses this
+  // global, even though there's no explicit load/store in the IR". This:
+  // - Prevents DCE from removing the globals
+  // - Forces the linker to keep them when the function is kept
+  // - Works across LTO boundaries since metadata is preserved
+  //
+  // Each implicit.ref node references exactly ONE global. Multiple nodes
+  // can be attached to a single function (e.g., !implicit.ref !1, !implicit.ref !2)
   auto AddImplicitRef = [&](Function &F, GlobalValue *GV) {
     if (F.isDeclaration())
       return;
 
-    // Create a new MDNode with exactly ONE operand (the global variable)
+    // Create metadata: !N = !{ptr @global_variable}
     Metadata *Ops[] = {ConstantAsMetadata::get(GV)};
     MDNode *NewMD = MDNode::get(Ctx, Ops);
 
-    // addMetadata allows multiple nodes of the same kind to be attached to a
-    // function. This correctly creates a list of single-operand MDNodes.
+    // Attach to function - addMetadata (not setMetadata) allows multiple
+    // !implicit.ref nodes per function, one for each copyright global
     F.addMetadata(LLVMContext::MD_implicit_ref, *NewMD);
 
     LLVM_DEBUG(dbgs() << "[copyright] attached implicit.ref to function: "
@@ -143,9 +179,8 @@ PreservedAnalyses LowerCommentStringPass::run(Module &M,
                       << "\n");
   };
 
-  // 3. Attach implicit ref to all functions for each copyright gglobal
+  // Apply implicit references: for each global, mark all functions as users
   if (!CopyrightGlobals.empty()) {
-    // Apply to all functions for all copyright globals
     for (GlobalValue *GV : CopyrightGlobals) {
       for (Function &F : M)
         AddImplicitRef(F, GV);
