@@ -1634,8 +1634,8 @@ void CodeGenModule::Release() {
   EmitBackendOptionsMetadata(getCodeGenOpts());
 
   EmitLoadTimeComment();
-  
-  // Handle CLI load-time string variables
+
+  // Emit loadtime comment variables specified via -mloadtime-comment-vars.
   EmitLoadTimeCommentVars();
 
   // If there is device offloading code embed it in the host now.
@@ -4110,6 +4110,9 @@ void CodeGenModule::EmitLoadTimeComment() {
   }
 }
 
+/// Check if a variable declaration is suitable to be treated as a loadtime
+/// comment variable. Valid variables must be character pointers or character
+/// arrays with an initializer.
 bool CodeGenModule::isValidLoadTimeCommentVariable(const VarDecl *D) const {
   // Must be a valid declaration and must have an initializer (the string)
   if (!D || !D->hasInit())
@@ -4133,8 +4136,11 @@ bool CodeGenModule::isValidLoadTimeCommentVariable(const VarDecl *D) const {
   return false; // Reject ints, structs, etc.
 }
 
+/// Emit global variables specified via -mloadtime-comment-vars as loadtime
+/// comment variables. These variables are tagged with metadata and marked as
+/// used to prevent garbage collection. Only valid on AIX.
 void CodeGenModule::EmitLoadTimeCommentVars() {
-  // Handle CLI loadtime comment variables
+  // Only supported on AIX
   if (!getTriple().isOSAIX())
     return;
 
@@ -4143,11 +4149,11 @@ void CodeGenModule::EmitLoadTimeCommentVars() {
     return;
 
   TranslationUnitDecl *TU = getContext().getTranslationUnitDecl();
-  // Iterate through ALL top-level declarations
+  // Iterate through all top-level declarations
   for (auto *D : TU->decls()) {
     if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
 
-      // Check if the variable name is in our parsed list
+      // Check if the variable name is in the loadtime comment vars list
       if (!llvm::is_contained(LoadTimeCommentVars, VD->getName()))
         continue;
 
@@ -4166,12 +4172,12 @@ void CodeGenModule::EmitLoadTimeCommentVars() {
           EmitGlobalDefinition(VD);
 
         if (!GV->isDeclaration()) {
-          // Tag it for the backend and prevent GC
+          // Tag with metadata for backend processing
           auto &C = getLLVMContext();
           llvm::Metadata *Ops[] = {llvm::MDString::get(C, VD->getName())};
           GV->setMetadata("copyright.variable", llvm::MDNode::get(C, Ops));
 
-          // Prevent Linker/Optimization GC
+          // Prevent linker and optimization passes from removing this variable
           addUsedGlobal(GV);
         }
       }

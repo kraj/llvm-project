@@ -2086,10 +2086,12 @@ private:
   /// be processed by the backend to include it in the generated executable.
   void EmitLoadTimeComment();
 
-  /// Helper method to check if a variable Decl is part of
-  /// LoadTimeCommentVars
+  /// Check if a variable declaration is suitable to be treated as a loadtime
+  /// comment variable (must be a character pointer or array with initializer).
   bool isValidLoadTimeCommentVariable(const VarDecl *D) const;
 
+  /// Emit global variables specified via -mloadtime-comment-vars as loadtime
+  /// comment variables, tagging them with metadata and preventing removal.
   void EmitLoadTimeCommentVars();
 
   /// Determine whether the definition can be emitted eagerly, or should be
