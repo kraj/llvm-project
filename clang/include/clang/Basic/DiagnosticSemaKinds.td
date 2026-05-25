@@ -14232,6 +14232,10 @@ def note_amdgcn_unguarded_builtin_silence
 
 def err_amdgcn_coop_atomic_invalid_as : Error<"cooperative atomic requires a global or generic pointer">;
 
+def warn_amdgcn_av_requires_atomic : Warning<
+  "%0 attribute only applies to atomic operations">,
+  InGroup<AMDGCNAVNonAtomic>;
+
 def err_amdgcn_dmask_has_too_many_bits_set
     : Error<"dmask argument cannot have more bits set than there are elements "
             "in return type">;

@@ -1875,6 +1875,7 @@ Value *CodeGenFunction::EmitAMDGPUBuiltinExpr(unsigned BuiltinID,
     FenceInst *Fence = Builder.CreateFence(AO, SSID);
     if (E->getNumArgs() > 2)
       AddAMDGPUFenceAddressSpaceMMRA(Fence, E);
+    getTargetHooks().setTargetAtomicMetadata(*this, *Fence);
     return Fence;
   }
   case AMDGPU::BI__builtin_amdgcn_atomic_inc32:
