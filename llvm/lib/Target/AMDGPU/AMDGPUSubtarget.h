@@ -132,6 +132,13 @@ public:
                          std::pair<unsigned, unsigned> FlatWorkGroupSizes,
                          unsigned LDSBytes) const;
 
+  /// \returns The default ABI occupancy.
+  unsigned getDefaultABIOccupancy() const;
+
+  /// \returns The ABI occupancy for \p F. A function-specific flat-workgroup
+  /// attribute overrides the default ABI occupancy.
+  unsigned getFunctionABIOccupancy(const Function &F) const;
+
   /// Return the amount of LDS that can be used that will not restrict the
   /// occupancy lower than WaveCount.
   unsigned getMaxLocalMemSizeWithWaveCount(unsigned WaveCount,

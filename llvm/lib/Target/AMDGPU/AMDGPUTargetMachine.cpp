@@ -553,6 +553,12 @@ static cl::opt<bool, true> EnableObjectLinking(
     cl::location(AMDGPUTargetMachine::EnableObjectLinking), cl::init(false),
     cl::Hidden);
 
+static cl::opt<unsigned, true>
+    ABIWavesPerEU("amdgpu-abi-waves-per-eu",
+                  cl::desc("Override ABI occupancy in waves per EU"),
+                  cl::location(AMDGPUTargetMachine::ABIWavesPerEU), cl::init(0),
+                  cl::Hidden);
+
 static cl::opt<bool, true> EnableLowerModuleLDS(
     "amdgpu-enable-lower-module-lds", cl::desc("Enable lower module lds pass"),
     cl::location(AMDGPUTargetMachine::EnableLowerModuleLDS), cl::init(true),
@@ -888,6 +894,7 @@ AMDGPUTargetMachine::AMDGPUTargetMachine(const Target &T, const Triple &TT,
 bool AMDGPUTargetMachine::EnableFunctionCalls = false;
 bool AMDGPUTargetMachine::EnableObjectLinking = false;
 bool AMDGPUTargetMachine::EnableLowerModuleLDS = true;
+unsigned AMDGPUTargetMachine::ABIWavesPerEU = 0;
 
 AMDGPUTargetMachine::~AMDGPUTargetMachine() = default;
 
