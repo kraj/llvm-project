@@ -11885,7 +11885,8 @@ void OpenMPIRBuilder::createOffloadEntriesAndInfoMetadata(
       }
       createOffloadEntry(CE->getID(), CE->getAddress(),
                          /*Size=*/0, CE->getFlags(),
-                         GlobalValue::WeakAnyLinkage);
+                         GlobalValue::WeakAnyLinkage,
+                         E.second.UserProvidedName);
     } else if (const auto *CE = dyn_cast<
                    OffloadEntriesInfoManager::OffloadEntryInfoDeviceGlobalVar>(
                    E.first)) {
@@ -11969,7 +11970,12 @@ void OpenMPIRBuilder::createOffloadEntriesAndInfoMetadata(
 
 void TargetRegionEntryInfo::getTargetRegionEntryFnName(
     SmallVectorImpl<char> &Name, StringRef ParentName, unsigned DeviceID,
-    unsigned FileID, unsigned Line, unsigned Count) {
+    unsigned FileID, unsigned Line, unsigned Count,
+    StringRef UserProvidedName) {
+  if (!UserProvidedName.empty()) {
+    Name.append(UserProvidedName.begin(), UserProvidedName.end());
+    return;
+  }
   raw_svector_ostream OS(Name);
   OS << KernelNamePrefix << llvm::format("%x", DeviceID)
      << llvm::format("_%x_", FileID) << ParentName << "_l" << Line;
@@ -11982,7 +11988,7 @@ void OffloadEntriesInfoManager::getTargetRegionEntryFnName(
   unsigned NewCount = getTargetRegionEntryInfoCount(EntryInfo);
   TargetRegionEntryInfo::getTargetRegionEntryFnName(
       Name, EntryInfo.ParentName, EntryInfo.DeviceID, EntryInfo.FileID,
-      EntryInfo.Line, NewCount);
+      EntryInfo.Line, NewCount, EntryInfo.UserProvidedName);
 }
 
 TargetRegionEntryInfo
