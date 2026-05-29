@@ -28,9 +28,9 @@ def install(config, lit_config):
     pass, opt-only); otherwise `lit.llvm.fn_extract` is used (prepends
     llvm-extract, tool-agnostic)."""
     if lit_config.params.get("fn-pass"):
-        # from lit.llvm import fn_selection
-        # fn_selection.install(config, lit_config)
-        pass
+        from lit.llvm import fn_selection
+
+        fn_selection.install(config, lit_config)
     else:
         from lit.llvm import fn_extract
 
