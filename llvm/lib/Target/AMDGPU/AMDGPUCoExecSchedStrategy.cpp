@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPUCoExecSchedStrategy.h"
+#include "AMDGPUBarrierLatency.h"
 #include "llvm/Support/Debug.h"
 
 using namespace llvm;
@@ -988,8 +989,12 @@ ScheduleDAGInstrs *
 llvm::createGCNCoExecMachineScheduler(MachineSchedContext *C) {
   LLVM_DEBUG(dbgs() << "AMDGPU coexec preRA scheduler selected for "
                     << C->MF->getName() << '\n');
-  return new GCNScheduleDAGMILive(
+
+  ScheduleDAGMILive *DAG = new GCNScheduleDAGMILive(
       C, std::make_unique<AMDGPUCoExecSchedStrategy>(C));
+
+  DAG->addMutation(createAMDGPUBarrierLatencyDAGMutation(C->MF));
+  return DAG;
 }
 
 ScheduleDAGInstrs *
