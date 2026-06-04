@@ -142,6 +142,9 @@ private:
   void handleUse(const Expr *E);
 
   void markUseAsWrite(const DeclRefExpr *DRE);
+  /// Walks the full subtree so origins on the pointee chain and on field
+  /// children both escape with the returned value.
+  void emitReturnEscapes(OriginNode *N, const Expr *RetExpr);
 
   bool escapesViaReturn(OriginID OID) const;
 

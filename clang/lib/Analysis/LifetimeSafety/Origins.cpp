@@ -193,8 +193,9 @@ OriginNode *OriginManager::createSingleOriginNode(OriginID OID) {
 void OriginManager::attachPointeeChild(OriginNode *Parent,
                                        OriginNode *Pointee) {
   assert(Pointee && "pointee subtree must be non-null");
-  Parent->setChildren(
-      {new (Allocator.Allocate<OriginNode *>()) OriginNode *(Pointee), 1});
+  auto *E = new (Allocator.Allocate<OriginNode::Edge>())
+      OriginNode::Edge{nullptr, Pointee};
+  Parent->setChildren({E, 1});
 }
 
 template <typename T>

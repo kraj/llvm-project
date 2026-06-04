@@ -66,47 +66,78 @@ struct Origin {
   }
 };
 
-/// A list of origins representing levels of indirection for pointer-like types.
+/// A tree of origins representing the structure of a pointer-like or
+/// record type.
 ///
-/// Each node in the list contains an OriginID representing a level of
-/// indirection. The list structure captures the multi-level nature of
-/// pointer and reference types in the lifetime analysis.
+/// Each node carries an OriginID and is connected to children via labeled
+/// edges: either a pointee edge (one level of pointer/reference indirection)
+/// or a field edge (a named field of a record). Pointer-like types form a
+/// pointee chain; record types fan out via field edges.
 ///
 /// Examples:
-///   - For `int& x`, the list has size 2:
+///   - For `int& x`, the chain has length 2:
 ///     * Outer: origin for the reference storage itself (the lvalue `x`)
 ///     * Inner: origin for what `x` refers to
 ///
-///   - For `int* p`, the list has size 2:
+///   - For `int* p`, the chain has length 2:
 ///     * Outer: origin for the pointer variable `p`
 ///     * Inner: origin for what `p` points to
 ///
-///   - For `View v` (where View is gsl::Pointer), the list has size 2:
+///   - For `View v` (where View is gsl::Pointer), the chain has length 2:
 ///     * Outer: origin for the view object itself
 ///     * Inner: origin for what the view refers to
 ///
-///   - For `int** pp`, the list has size 3:
+///   - For `int** pp`, the chain has length 3:
 ///     * Outer: origin for `pp` itself
 ///     * Inner: origin for `*pp` (what `pp` points to)
 ///     * Inner->Inner: origin for `**pp` (what `*pp` points to)
 ///
-/// The list structure enables the analysis to track how loans flow through
-/// different levels of indirection when assignments and dereferences occur.
-///
-/// TODO: Currently list-shaped (each node has at most one pointee child).
-/// Will become tree-shaped once field children are added to support
-/// origin trees for records whose fields have origins.
+/// The structure enables the analysis to track how loans flow through
+/// levels of indirection and across record fields when assignments and
+/// dereferences occur.
 class OriginNode {
 public:
-  OriginNode(OriginID OID) : OID(OID) {}
+  /// A labeled edge from this node to a child. The label distinguishes how
+  /// the child is reached: a null `FD` means a pointee edge (one level of
+  /// pointer/reference indirection); a non-null `FD` means a field edge
+  /// (the named field of a record). Putting the label on the edge lets
+  /// one child node play different roles per parent. For example, the subtree
+  /// for `s`'s `v` field is reached from `s`'s record (FD=v) and from
+  /// the lvalue outer built for the MemberExpr `s.v` (FD=null).
+  struct Edge {
+    const FieldDecl *FD;
+    OriginNode *Child;
+  };
 
-  OriginNode *getPointeeChild() const {
-    return Children.empty() ? nullptr : Children[0];
-  }
+  OriginNode(OriginID OID) : OID(OID) {}
 
   OriginID getOriginID() const { return OID; }
 
-  void setChildren(llvm::ArrayRef<OriginNode *> NewChildren) {
+  llvm::ArrayRef<Edge> children() const { return Children; }
+
+  OriginNode *getPointeeChild() const {
+    for (const Edge &E : Children)
+      if (!E.FD)
+        return E.Child;
+    return nullptr;
+  }
+
+  OriginNode *getFieldChild(const FieldDecl *F) const {
+    assert(F);
+    for (const Edge &E : Children)
+      if (E.FD == F)
+        return E.Child;
+    return nullptr;
+  }
+
+  OriginNode *getFieldChildInChain(const FieldDecl *FD) const {
+    for (const OriginNode *N = this; N; N = N->getPointeeChild())
+      if (OriginNode *Child = N->getFieldChild(FD))
+        return Child;
+    return nullptr;
+  }
+
+  void setChildren(llvm::ArrayRef<Edge> NewChildren) {
     assert(Children.empty() && "children must be set at most once");
     Children = NewChildren;
   }
@@ -125,7 +156,7 @@ public:
 
 private:
   OriginID OID;
-  llvm::ArrayRef<OriginNode *> Children;
+  llvm::ArrayRef<Edge> Children;
 };
 
 bool doesDeclHaveStorage(const ValueDecl *D);
@@ -138,18 +169,19 @@ public:
 
   /// Gets or creates the OriginNode for a given ValueDecl.
   ///
-  /// Creates a list structure mirroring the levels of indirection in the
-  /// declaration's type (e.g., `int** p` creates list of size 2).
+  /// Creates a tree structure mirroring the levels of indirection in the
+  /// declaration's type (e.g., `int* p` creates a chain of length 2).
   ///
   /// \returns The OriginNode, or nullptr if the type is not pointer-like.
   OriginNode *getOrCreateNode(const ValueDecl *D);
 
   /// Gets or creates the OriginNode for a given Expr.
   ///
-  /// Creates a list based on the expression's type and value category:
+  /// Creates a tree structure based on the expression's type and value
+  /// category:
   /// - Lvalues get an implicit reference level (modeling addressability)
   /// - Rvalues of non-pointer type return nullptr (no trackable origin)
-  /// - DeclRefExpr may reuse the underlying declaration's list
+  /// - DeclRefExpr may reuse the underlying declaration's tree
   ///
   /// \returns The OriginNode, or nullptr for non-pointer rvalues.
   OriginNode *getOrCreateNode(const Expr *E);
