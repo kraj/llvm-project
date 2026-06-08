@@ -570,6 +570,12 @@ llvm.func @intel_reqd_sub_group_size_hint() attributes {llvm.intel_reqd_sub_grou
 
 // -----
 
+// CHECK: @generic_function_metadata()
+// CHECK-SAME: function_metadata = [#llvm.func_metadata<"annotation", <#llvm.md_string<"function annotation">>>, #llvm.func_metadata<"type", <#llvm.md_const<0 : i64>, #llvm.md_string<"typeid">>>]
+llvm.func @generic_function_metadata() attributes {function_metadata = [#llvm.func_metadata<"annotation", #llvm.md_node<#llvm.md_string<"function annotation">>>, #llvm.func_metadata<"type", #llvm.md_node<#llvm.md_const<0 : i64>, #llvm.md_string<"typeid">>>]}
+
+// -----
+
 // CHECK: @workgroup_attribution
 // CHECK-SAME: llvm.workgroup_attribution = #llvm.mlir.workgroup_attribution<512 : i64, i32>
 // CHECK-SAME: llvm.workgroup_attribution = #llvm.mlir.workgroup_attribution<128 : i64, !llvm.struct<(i32, i64, f32)>
