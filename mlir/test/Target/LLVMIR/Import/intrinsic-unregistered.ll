@@ -11,7 +11,6 @@ define dso_local void @t0(ptr %a) {
 ; CHECK-LABEL: llvm.func @t0
 ; CHECK:   llvm.call_intrinsic "llvm.aarch64.ldxr.p0"({{.*}}) : (!llvm.ptr {llvm.elementtype = i8}) -> i64
 ; CHECK:   llvm.return
-; CHECK: }
 
 ; // -----
 
@@ -22,10 +21,9 @@ define dso_local <8 x i8> @t1(<8 x i8> %lhs, <8 x i8> %rhs) {
   ret <8 x i8> %r
 }
 
-; CHECK: llvm.func @t1(%[[A0:.*]]: vector<8xi8>, %[[A1:.*]]: vector<8xi8>) -> vector<8xi8> {{.*}} {
+; CHECK: llvm.func @t1(%[[A0:.*]]: vector<8xi8>, %[[A1:.*]]: vector<8xi8>) -> vector<8xi8> {{.*}}
 ; CHECK:   %[[R:.*]] = llvm.call_intrinsic "llvm.aarch64.neon.uabd.v8i8"(%[[A0]], %[[A1]]) : (vector<8xi8>, vector<8xi8>) -> vector<8xi8>
 ; CHECK:   llvm.return %[[R]] : vector<8xi8>
-; CHECK: }
 
 ; // -----
 
@@ -36,10 +34,9 @@ define dso_local void @t2(<8 x i8> %lhs, <8 x i8> %rhs, ptr %a) {
   ret void
 }
 
-; CHECK: llvm.func @t2(%[[A0:.*]]: vector<8xi8>, %[[A1:.*]]: vector<8xi8>, %[[A2:.*]]: !llvm.ptr) {{.*}} {
+; CHECK: llvm.func @t2(%[[A0:.*]]: vector<8xi8>, %[[A1:.*]]: vector<8xi8>, %[[A2:.*]]: !llvm.ptr) {{.*}}
 ; CHECK:   llvm.call_intrinsic "llvm.aarch64.neon.st2.v8i8.p0"(%[[A0]], %[[A1]], %[[A2]]) : (vector<8xi8>, vector<8xi8>, !llvm.ptr) -> ()
 ; CHECK:   llvm.return
-; CHECK: }
 
 ; // -----
 
@@ -115,3 +112,79 @@ define i32 @read_named_register() {
 }
 
 !0 = !{!"sp"}
+
+; // -----
+
+; Function references inside metadata operands should import as metadata
+; function-reference attributes.
+
+declare i32 @llvm.read_register.i32(metadata)
+declare void @callee()
+
+; CHECK-LABEL: llvm.func @read_function_ref_metadata
+define i32 @read_function_ref_metadata() {
+  ; CHECK: %[[MD:.*]] = llvm.mlir.metadata_as_value #llvm.md_func<@callee>
+  ; CHECK: %[[R:.*]] = llvm.call_intrinsic "llvm.read_register.i32"(%[[MD]]) : (!llvm.metadata) -> i32
+  %r = call i32 @llvm.read_register.i32(metadata !0)
+  ret i32 %r
+}
+
+!0 = !{ptr @callee}
+
+; // -----
+
+; Global variable references inside metadata operands should import as metadata
+; symbol-reference attributes.
+
+declare i32 @llvm.read_register.i32(metadata)
+@global = global i32 0
+
+; CHECK-LABEL: llvm.func @read_global_ref_metadata
+define i32 @read_global_ref_metadata() {
+  ; CHECK: %[[MD:.*]] = llvm.mlir.metadata_as_value #llvm.md_func<@global>
+  ; CHECK: %[[R:.*]] = llvm.call_intrinsic "llvm.read_register.i32"(%[[MD]]) : (!llvm.metadata) -> i32
+  %r = call i32 @llvm.read_register.i32(metadata !0)
+  ret i32 %r
+}
+
+!0 = !{ptr @global}
+
+; // -----
+
+; Global alias references inside metadata operands should import as metadata
+; symbol-reference attributes.
+
+declare i32 @llvm.read_register.i32(metadata)
+define void @alias_target() {
+  ret void
+}
+@alias = alias void (), ptr @alias_target
+
+; CHECK-LABEL: llvm.func @read_alias_ref_metadata
+define i32 @read_alias_ref_metadata() {
+  ; CHECK: %[[MD:.*]] = llvm.mlir.metadata_as_value #llvm.md_func<@alias>
+  ; CHECK: %[[R:.*]] = llvm.call_intrinsic "llvm.read_register.i32"(%[[MD]]) : (!llvm.metadata) -> i32
+  %r = call i32 @llvm.read_register.i32(metadata !0)
+  ret i32 %r
+}
+
+!0 = !{ptr @alias}
+
+; // -----
+
+; Nameless global references inside metadata operands should use the imported
+; synthetic symbol name.
+
+declare i32 @llvm.read_register.i32(metadata)
+@0 = global i32 0
+
+; CHECK: llvm.mlir.global external @[[$GLOBAL:mlir\.llvm\.nameless_global_[0-9]+]](0 : i32)
+; CHECK-LABEL: llvm.func @read_nameless_global_ref_metadata
+define i32 @read_nameless_global_ref_metadata() {
+  ; CHECK: %[[MD:.*]] = llvm.mlir.metadata_as_value #llvm.md_func<@[[$GLOBAL]]>
+  ; CHECK: %[[R:.*]] = llvm.call_intrinsic "llvm.read_register.i32"(%[[MD]]) : (!llvm.metadata) -> i32
+  %r = call i32 @llvm.read_register.i32(metadata !0)
+  ret i32 %r
+}
+
+!0 = !{ptr @0}
