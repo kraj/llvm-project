@@ -2138,6 +2138,22 @@ bool LowerTypeTestsModule::lower() {
       report_fatal_error(
           "unexpected call to llvm.icall.branch.funnel during import phase");
 
+    for (auto &A : llvm::make_early_inc_range(M.aliases())) {
+      if (A.hasLocalLinkage())
+        continue;
+      if (ImportSummary->cfiFunctionDefs().contains(A.getName()) ||
+          ImportSummary->cfiFunctionDecls().contains(A.getName())) {
+        if (auto *F = dyn_cast<Function>(A.getAliasee()->stripPointerCasts())) {
+          A.replaceAllUsesWith(F);
+          std::string Name = std::string(A.getName());
+          A.eraseFromParent();
+          F->setName(Name);
+          F->setLinkage(GlobalValue::ExternalLinkage);
+          F->setVisibility(GlobalValue::HiddenVisibility);
+        }
+      }
+    }
+
     SmallVector<Function *, 8> Defs;
     SmallVector<Function *, 8> Decls;
     for (auto &F : M) {
