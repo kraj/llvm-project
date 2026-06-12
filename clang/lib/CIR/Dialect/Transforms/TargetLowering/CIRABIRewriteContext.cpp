@@ -92,9 +92,8 @@ LogicalResult buildNewArgTypes(ArrayRef<Type> oldArgTypes,
       // per field of the coerced struct rather than the struct itself.
       // Single-field coerced structs fall through to the non-flatten path —
       // the struct is already scalar-sized and flattening adds no value.
-      if (auto flatTy = getFlattenedCoercedType(ac)) {
-        for (Type memberTy : flatTy.getMembers())
-          newArgTypes.push_back(memberTy);
+      if (cir::RecordType flatTy = getFlattenedCoercedType(ac)) {
+        llvm::append_range(newArgTypes, flatTy.getMembers());
       } else {
         // Direct with a coerced type: the wire signature uses the coerced
         // type; the body still expects origTy and insertArgCoercion recovers
@@ -197,10 +196,9 @@ ArrayAttr updateArgAttrs(MLIRContext *ctx, ArrayRef<Type> origArgTypes,
     DictionaryAttr existing = DictionaryAttr::get(ctx);
     if (existingArgAttrs && oldIdx < existingArgAttrs.size())
       existing = cast<DictionaryAttr>(existingArgAttrs[oldIdx]);
-    if (auto flatTy = getFlattenedCoercedType(ac)) {
+    if (cir::RecordType flatTy = getFlattenedCoercedType(ac)) {
       // Direct + canFlatten: one empty dict per flattened field.
-      for (unsigned i = 0; i < flatTy.getNumElements(); ++i)
-        newArgAttrs.push_back(DictionaryAttr::get(ctx));
+      newArgAttrs.append(flatTy.getNumElements(), DictionaryAttr::get(ctx));
     } else if (ac.kind == ArgKind::Expand) {
       // Pure Expand: one empty dict per struct field.
       auto recTy = cast<cir::RecordType>(origArgTypes[oldIdx]);
@@ -273,18 +271,22 @@ ArrayAttr updateResAttrs(MLIRContext *ctx, ArrayAttr existingResAttrs,
   return ArrayAttr::get(ctx, {DictionaryAttr::get(ctx, attrs)});
 }
 
-/// Coerce \p src to type \p dstTy at the current builder insertion point by
-/// going through memory: allocate a slot, store the source, then load the
-/// destination type back out.  Lowers uniformly for scalar, vector, and
-/// record types.
+/// Coerce \p src into a temporary memory slot typed for \p dstTy at the
+/// current builder insertion point, and return the destination-typed pointer
+/// to that slot without loading the value back out.  This is the shared
+/// memory half of emitCoercion: callers that want the whole coerced value use
+/// emitCoercion (below); callers that want to read individual members of a
+/// coerced struct (the call-site struct flattening) take the returned pointer
+/// and emit their own cir.get_member + cir.load per field.  Lowers uniformly
+/// for scalar, vector, and record types.
 ///
-/// The slot is sized to the larger of the two types so that neither the
-/// store nor the load ever runs past it: the coerced ABI type can be larger
-/// than the original (e.g. a 12-byte aggregate returned as `{i64, i64}`), so
-/// loading the destination out of a source-sized slot would over-read.
+/// The slot is sized to the larger of the two types so that neither the store
+/// nor a later load ever runs past it: the coerced ABI type can be larger
+/// than the original (e.g. a 12-byte aggregate passed as `{i64, i64}`), so
+/// accessing the destination through a source-sized slot would over-read.
 /// Alignment is max(srcAlign, dstAlign) to satisfy both accesses.  The slot
-/// is accessed through a source-typed view for the store and a
-/// destination-typed view for the load.
+/// is written through a source-typed view and returned as a destination-typed
+/// view.
 ///
 /// The temporary alloca is placed at the start of the enclosing function's
 /// entry block so that it composes correctly with the HoistAllocas pass
@@ -293,9 +295,10 @@ ArrayAttr updateResAttrs(MLIRContext *ctx, ArrayAttr existingResAttrs,
 /// Any operations the helper creates are appended to \p createdOps so the
 /// caller can pass them to replaceAllUsesExcept and avoid clobbering the
 /// store's value operand when later rewiring the source value.
-Value emitCoercion(OpBuilder &rewriter, Location loc, Type dstTy, Value src,
-                   FunctionOpInterface funcOp, const DataLayout &dl,
-                   SmallPtrSetImpl<Operation *> &createdOps) {
+Value emitCoercionToMemory(OpBuilder &builder, Location loc, Type dstTy,
+                           Value src, FunctionOpInterface funcOp,
+                           const DataLayout &dl,
+                           SmallPtrSetImpl<Operation *> &createdOps) {
   Type srcTy = src.getType();
   assert(srcTy != dstTy &&
          "emitCoercion callers must pre-check that the types differ");
@@ -311,45 +314,55 @@ Value emitCoercion(OpBuilder &rewriter, Location loc, Type dstTy, Value src,
 
   cir::AllocaOp alloca;
   {
-    OpBuilder::InsertionGuard guard(rewriter);
+    OpBuilder::InsertionGuard guard(builder);
     Block &entry = funcOp->getRegion(0).front();
-    rewriter.setInsertionPointToStart(&entry);
-    alloca = cir::AllocaOp::create(rewriter, loc, slotPtrTy, slotTy,
-                                   rewriter.getStringAttr("coerce"),
-                                   rewriter.getI64IntegerAttr(allocaAlign));
+    builder.setInsertionPointToStart(&entry);
+    alloca = cir::AllocaOp::create(builder, loc, slotPtrTy, slotTy,
+                                   builder.getStringAttr("coerce"),
+                                   builder.getI64IntegerAttr(allocaAlign));
   }
   createdOps.insert(alloca);
 
   // Store through a source-typed view of the slot.
   Value srcSlot = alloca;
   if (slotTy != srcTy) {
-    auto srcCast = cir::CastOp::create(rewriter, loc, srcPtrTy,
+    auto srcCast = cir::CastOp::create(builder, loc, srcPtrTy,
                                        cir::CastKind::bitcast, alloca);
     createdOps.insert(srcCast);
     srcSlot = srcCast;
   }
-  auto store = cir::StoreOp::create(rewriter, loc, src, srcSlot);
+  auto store = cir::StoreOp::create(builder, loc, src, srcSlot);
   createdOps.insert(store);
 
-  // Load through a destination-typed view of the slot.
-  Value dstSlot = alloca;
+  // Return a destination-typed view of the slot.
   if (slotTy != dstTy) {
-    auto dstCast = cir::CastOp::create(rewriter, loc, dstPtrTy,
+    auto dstCast = cir::CastOp::create(builder, loc, dstPtrTy,
                                        cir::CastKind::bitcast, alloca);
     createdOps.insert(dstCast);
-    dstSlot = dstCast;
+    return dstCast;
   }
-  auto load = cir::LoadOp::create(rewriter, loc, dstSlot);
+  return alloca;
+}
+
+/// Coerce \p src to type \p dstTy by going through memory and load the whole
+/// coerced value back out.  Builds on emitCoercionToMemory, adding the final
+/// load of the destination-typed view.
+Value emitCoercion(OpBuilder &builder, Location loc, Type dstTy, Value src,
+                   FunctionOpInterface funcOp, const DataLayout &dl,
+                   SmallPtrSetImpl<Operation *> &createdOps) {
+  Value dstSlot =
+      emitCoercionToMemory(builder, loc, dstTy, src, funcOp, dl, createdOps);
+  auto load = cir::LoadOp::create(builder, loc, dstSlot);
   createdOps.insert(load);
   return load;
 }
 
 /// Convenience overload for callers that don't need the createdOps set
 /// (e.g. call-site coercion where we don't replaceAllUsesExcept).
-Value emitCoercion(OpBuilder &rewriter, Location loc, Type dstTy, Value src,
+Value emitCoercion(OpBuilder &builder, Location loc, Type dstTy, Value src,
                    FunctionOpInterface funcOp, const DataLayout &dl) {
   SmallPtrSet<Operation *, 4> ignored;
-  return emitCoercion(rewriter, loc, dstTy, src, funcOp, dl, ignored);
+  return emitCoercion(builder, loc, dstTy, src, funcOp, dl, ignored);
 }
 
 /// Insert coercion before each cir.return so the returned value matches the
@@ -386,7 +399,7 @@ void insertReturnCoercion(FunctionOpInterface funcOp, Type origRetTy,
 /// block argument count, so a running index tracks the current block argument
 /// position rather than computing \p classIdx + \p sretOffset directly.
 void insertArgCoercion(FunctionOpInterface funcOp,
-                       const FunctionClassification &fc, OpBuilder &rewriter,
+                       const FunctionClassification &fc, OpBuilder &builder,
                        const DataLayout &dl, unsigned sretOffset) {
   Region &body = funcOp->getRegion(0);
   if (body.empty())
@@ -427,24 +440,24 @@ void insertArgCoercion(FunctionOpInterface funcOp,
       // the emission order relative to the classification order.  The SSA
       // subgraphs are fully independent — each alloca is written through
       // its own field block args — so the inverted ordering is safe.
-      rewriter.setInsertionPointToStart(&entry);
+      builder.setInsertionPointToStart(&entry);
       auto ptrTy = cir::PointerType::get(recTy);
       uint64_t align = dl.getTypeABIAlignment(recTy);
-      auto slot = cir::AllocaOp::create(rewriter, loc, ptrTy, recTy,
-                                        rewriter.getStringAttr("expand"),
-                                        rewriter.getI64IntegerAttr(align));
+      auto slot = cir::AllocaOp::create(builder, loc, ptrTy, recTy,
+                                        builder.getStringAttr("expand"),
+                                        builder.getI64IntegerAttr(align));
       SmallPtrSet<Operation *, 8> expandOps = {slot};
       for (unsigned f = 0; f < numFields; ++f) {
         Type fieldPtrTy = cir::PointerType::get(recTy.getElementType(f));
-        auto fieldPtr = cir::GetMemberOp::create(rewriter, loc, fieldPtrTy,
-                                                 slot, /*name=*/"",
+        auto fieldPtr = cir::GetMemberOp::create(builder, loc, fieldPtrTy, slot,
+                                                 /*name=*/"",
                                                  /*index=*/f);
         expandOps.insert(fieldPtr);
         auto storeOp = cir::StoreOp::create(
-            rewriter, loc, entry.getArgument(blockArgIdx + f), fieldPtr);
+            builder, loc, entry.getArgument(blockArgIdx + f), fieldPtr);
         expandOps.insert(storeOp);
       }
-      auto loaded = cir::LoadOp::create(rewriter, loc, recTy, slot.getResult());
+      auto loaded = cir::LoadOp::create(builder, loc, recTy, slot.getResult());
       expandOps.insert(loaded);
 
       // Replace all original body uses of the struct block arg with the
@@ -458,7 +471,7 @@ void insertArgCoercion(FunctionOpInterface funcOp,
 
     BlockArgument blockArg = entry.getArgument(blockArgIdx);
 
-    if (auto flatTy = getFlattenedCoercedType(ac)) {
+    if (cir::RecordType flatTy = getFlattenedCoercedType(ac)) {
       // Direct + canFlatten: the coerced type is a struct whose fields become
       // individual wire arguments.  The reconstruction mirrors the Expand path
       // — replace the single block arg with N scalar block args, store them
@@ -476,25 +489,25 @@ void insertArgCoercion(FunctionOpInterface funcOp,
         entry.insertArgument(blockArgIdx + f, flatTy.getElementType(f), loc);
 
       // setInsertionPointToStart: see comment in the Expand arm above.
-      rewriter.setInsertionPointToStart(&entry);
+      builder.setInsertionPointToStart(&entry);
       auto flatPtrTy = cir::PointerType::get(flatTy);
       uint64_t flatAlign = dl.getTypeABIAlignment(flatTy);
       auto flatSlot = cir::AllocaOp::create(
-          rewriter, loc, flatPtrTy, flatTy, rewriter.getStringAttr("coerce"),
-          rewriter.getI64IntegerAttr(flatAlign));
+          builder, loc, flatPtrTy, flatTy, builder.getStringAttr("coerce"),
+          builder.getI64IntegerAttr(flatAlign));
       SmallPtrSet<Operation *, 8> flattenOps = {flatSlot};
-      for (unsigned f = 0; f < numFields; ++f) {
-        Type fieldPtrTy = cir::PointerType::get(flatTy.getElementType(f));
-        auto fieldPtr = cir::GetMemberOp::create(rewriter, loc, fieldPtrTy,
+      for (auto [f, fieldTy] : llvm::enumerate(flatTy.getMembers())) {
+        Type fieldPtrTy = cir::PointerType::get(fieldTy);
+        auto fieldPtr = cir::GetMemberOp::create(builder, loc, fieldPtrTy,
                                                  flatSlot, /*name=*/"",
                                                  /*index=*/f);
         flattenOps.insert(fieldPtr);
         auto storeOp = cir::StoreOp::create(
-            rewriter, loc, entry.getArgument(blockArgIdx + f), fieldPtr);
+            builder, loc, entry.getArgument(blockArgIdx + f), fieldPtr);
         flattenOps.insert(storeOp);
       }
       auto flatLoaded =
-          cir::LoadOp::create(rewriter, loc, flatTy, flatSlot.getResult());
+          cir::LoadOp::create(builder, loc, flatTy, flatSlot.getResult());
       flattenOps.insert(flatLoaded);
 
       // If the coerced struct type differs from the original argument type,
@@ -502,7 +515,7 @@ void insertArgCoercion(FunctionOpInterface funcOp,
       Value finalVal = flatLoaded;
       if (origTy != flatTy) {
         SmallPtrSet<Operation *, 4> coercionOps;
-        finalVal = emitCoercion(rewriter, loc, origTy, flatLoaded, funcOp, dl,
+        finalVal = emitCoercion(builder, loc, origTy, flatLoaded, funcOp, dl,
                                 coercionOps);
         flattenOps.insert(coercionOps.begin(), coercionOps.end());
       }
@@ -524,10 +537,10 @@ void insertArgCoercion(FunctionOpInterface funcOp,
       }
       blockArg.setType(newArgTy);
 
-      rewriter.setInsertionPointToStart(&entry);
+      builder.setInsertionPointToStart(&entry);
       SmallPtrSet<Operation *, 4> coercionOps;
-      Value adapted = emitCoercion(rewriter, funcOp.getLoc(), oldArgTy,
-                                   blockArg, funcOp, dl, coercionOps);
+      Value adapted = emitCoercion(builder, funcOp.getLoc(), oldArgTy, blockArg,
+                                   funcOp, dl, coercionOps);
 
       // Replace blockArg uses with the adapted value, except inside the
       // helper ops we just created.  This is critical: the StoreOp's
@@ -545,9 +558,9 @@ void insertArgCoercion(FunctionOpInterface funcOp,
       auto ptrTy = cir::PointerType::get(origTy);
       blockArg.setType(ptrTy);
 
-      rewriter.setInsertionPointToStart(&entry);
+      builder.setInsertionPointToStart(&entry);
       auto loadOp =
-          cir::LoadOp::create(rewriter, funcOp.getLoc(), origTy, blockArg);
+          cir::LoadOp::create(builder, funcOp.getLoc(), origTy, blockArg);
       SmallPtrSet<Operation *, 1> loadOps = {loadOp};
       blockArg.replaceAllUsesExcept(loadOp.getResult(), loadOps);
     }
@@ -752,7 +765,8 @@ LogicalResult CIRABIRewriteContext::rewriteFunctionDefinition(
         unsigned runningIdx = sretOffset;
         for (unsigned i = 0; i < fc.argInfos.size(); ++i) {
           classToBlockArg[i] = runningIdx;
-          if (auto flatTy = getFlattenedCoercedType(fc.argInfos[i])) {
+          if (cir::RecordType flatTy =
+                  getFlattenedCoercedType(fc.argInfos[i])) {
             // Direct + canFlatten: N slots, one per coerced struct field.
             runningIdx += flatTy.getNumElements();
           } else if (fc.argInfos[i].kind == ArgKind::Expand) {
@@ -893,19 +907,31 @@ LogicalResult CIRABIRewriteContext::rewriteCallSite(
     if (ac.kind == ArgKind::Ignore)
       continue;
     Value arg = argOperands[idx];
-    if (auto flatTy = getFlattenedCoercedType(ac)) {
-      // Direct + canFlatten: coerce the struct to the ABI-coerced struct type
-      // and then extract each field as a separate call argument.  The coercion
-      // is a memory round-trip when the original and coerced types differ in
-      // layout; when they are the same CIR type the coercion is skipped.
-      Value coerced = arg;
-      if (arg.getType() != flatTy)
-        coerced = emitCoercion(builder, call.getLoc(), flatTy, arg,
-                               enclosingFunc, dl);
-      for (unsigned f = 0; f < flatTy.getNumElements(); ++f) {
-        Value field =
-            cir::ExtractMemberOp::create(builder, call.getLoc(), coerced, f);
-        newArgs.push_back(field);
+    if (cir::RecordType flatTy = getFlattenedCoercedType(ac)) {
+      // Direct + canFlatten: pass one scalar call argument per field of the
+      // ABI-coerced struct.  When the original and coerced types differ in
+      // layout, coerce through a memory slot and read each field with
+      // cir.get_member + cir.load from that slot, rather than loading the
+      // whole coerced struct and extracting members from the value.  When the
+      // types are already identical there is no backing slot (arg is a plain
+      // struct value), so extract each field directly from the value.
+      if (arg.getType() != flatTy) {
+        SmallPtrSet<Operation *, 4> coercionOps;
+        Value coercedPtr =
+            emitCoercionToMemory(builder, call.getLoc(), flatTy, arg,
+                                 enclosingFunc, dl, coercionOps);
+        for (auto [f, fieldTy] : llvm::enumerate(flatTy.getMembers())) {
+          Type fieldPtrTy = cir::PointerType::get(fieldTy);
+          auto fieldPtr =
+              cir::GetMemberOp::create(builder, call.getLoc(), fieldPtrTy,
+                                       coercedPtr, /*name=*/"", /*index=*/f);
+          newArgs.push_back(cir::LoadOp::create(builder, call.getLoc(), fieldTy,
+                                                fieldPtr.getResult()));
+        }
+      } else {
+        for (unsigned f = 0; f < flatTy.getNumElements(); ++f)
+          newArgs.push_back(
+              cir::ExtractMemberOp::create(builder, call.getLoc(), arg, f));
       }
     } else if (ac.kind == ArgKind::Expand) {
       // Decompose the struct value into its constituent scalar fields and
