@@ -165,6 +165,9 @@ bool matchUniformityAndLLT(Register Reg, UniformityLLTOpPredicateID UniID,
   case UniV32S32:
     return MRI.getType(Reg) == LLT::fixed_vector(32, 32) &&
            MUI.isUniformAtDef(Reg);
+  case UniV2S64:
+    return MRI.getType(Reg) == LLT::fixed_vector(2, 64) &&
+           MUI.isUniformAtDef(Reg);
   case UniB32:
     return MRI.getType(Reg).getSizeInBits() == 32 && MUI.isUniformAtDef(Reg);
   case UniB64:
@@ -1476,7 +1479,9 @@ RegBankLegalizeRules::RegBankLegalizeRules(const GCNSubtarget &_ST,
            hasSALUFloat)
       .Div(V2S16, {{VgprV2S16}, {VgprV2S16, VgprV2S16}})
       .Any({{UniV2S32}, {{UniInVgprV2S32}, {VgprV2S32, VgprV2S32}}})
-      .Any({{DivV2S32}, {{VgprV2S32}, {VgprV2S32, VgprV2S32}}});
+      .Any({{DivV2S32}, {{VgprV2S32}, {VgprV2S32, VgprV2S32}}})
+      .Any({{UniV2S64}, {{UniInVgprV2S64}, {VgprV2S64, VgprV2S64}}})
+      .Any({{DivV2S64}, {{VgprV2S64}, {VgprV2S64, VgprV2S64}}});
 
   addRulesForGOpcs({G_FSUB, G_STRICT_FSUB}, Standard)
       .Div(S16, {{Vgpr16}, {Vgpr16, Vgpr16}})
@@ -1516,7 +1521,9 @@ RegBankLegalizeRules::RegBankLegalizeRules(const GCNSubtarget &_ST,
            {{SgprV2S16}, {SgprV2S16, SgprV2S16, SgprV2S16}, ScalarizeToS16},
            hasSALUFloat)
       .Uni(V2S16, {{UniInVgprV2S16}, {VgprV2S16, VgprV2S16, VgprV2S16}},
-           !hasSALUFloat);
+           !hasSALUFloat)
+      .Any({{UniV2S64}, {{UniInVgprV2S64}, {VgprV2S64, VgprV2S64, VgprV2S64}}})
+      .Any({{DivV2S64}, {{VgprV2S64}, {VgprV2S64, VgprV2S64, VgprV2S64}}});
 
   addRulesForGOpcs({G_AMDGPU_FMED3}, Standard)
       .Uni(S16, {{UniInVgprS16}, {Vgpr16, Vgpr16, Vgpr16}})
