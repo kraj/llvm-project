@@ -298,7 +298,8 @@ ArrayAttr updateResAttrs(MLIRContext *ctx, ArrayAttr existingResAttrs,
 Value emitCoercionToMemory(OpBuilder &builder, Location loc, Type dstTy,
                            Value src, FunctionOpInterface funcOp,
                            const DataLayout &dl,
-                           SmallPtrSetImpl<Operation *> &createdOps) {
+                           SmallPtrSetImpl<Operation *> &createdOps,
+                           unsigned offset = 0) {
   Type srcTy = src.getType();
   assert(srcTy != dstTy &&
          "emitCoercion callers must pre-check that the types differ");
@@ -307,6 +308,15 @@ Value emitCoercionToMemory(OpBuilder &builder, Location loc, Type dstTy,
   uint64_t dstAlign = dl.getTypeABIAlignment(dstTy);
   uint64_t allocaAlign = std::max(srcAlign, dstAlign);
   Type slotTy = dl.getTypeSize(srcTy) >= dl.getTypeSize(dstTy) ? srcTy : dstTy;
+
+  // The offset applies to the coerced/scalar side -- the operand whose type
+  // is not the slot type.  The aggregate side sits at slot offset 0.  The
+  // slot (the larger of the two types) must be large enough to hold the
+  // coerced value at the offset.
+  [[maybe_unused]] Type scalarTy = slotTy == srcTy ? dstTy : srcTy;
+  assert((offset == 0 ||
+          offset + dl.getTypeSize(scalarTy) <= dl.getTypeSize(slotTy)) &&
+         "coerce slot too small for offset access");
 
   auto slotPtrTy = cir::PointerType::get(slotTy);
   auto srcPtrTy = cir::PointerType::get(srcTy);
@@ -323,25 +333,45 @@ Value emitCoercionToMemory(OpBuilder &builder, Location loc, Type dstTy,
   }
   createdOps.insert(alloca);
 
+  // Retype the slot to \p wantPtrTy.  When \p applyOffset (the scalar side)
+  // and the offset is non-zero, point at byte \p offset via a u8 ptr_stride
+  // before the bitcast; otherwise a plain bitcast (byte-identical to the
+  // offset-0 path).
+  auto slotView = [&](Type wantTy, cir::PointerType wantPtrTy) -> Value {
+    bool applyOffset = wantTy != slotTy;
+    Value base = alloca;
+    if (applyOffset && offset != 0) {
+      auto u8Ty =
+          cir::IntType::get(builder.getContext(), 8, /*isSigned=*/false);
+      auto u8PtrTy = cir::PointerType::get(u8Ty);
+      auto u8Base = cir::CastOp::create(builder, loc, u8PtrTy,
+                                        cir::CastKind::bitcast, alloca);
+      createdOps.insert(u8Base);
+      auto strideTy =
+          cir::IntType::get(builder.getContext(), 64, /*isSigned=*/true);
+      auto strideVal = cir::ConstantOp::create(
+          builder, loc, cir::IntAttr::get(strideTy, offset));
+      createdOps.insert(strideVal);
+      auto gep =
+          cir::PtrStrideOp::create(builder, loc, u8PtrTy, u8Base, strideVal);
+      createdOps.insert(gep);
+      base = gep;
+    } else if (wantTy == slotTy) {
+      return alloca;
+    }
+    auto cast = cir::CastOp::create(builder, loc, wantPtrTy,
+                                    cir::CastKind::bitcast, base);
+    createdOps.insert(cast);
+    return cast;
+  };
+
   // Store through a source-typed view of the slot.
-  Value srcSlot = alloca;
-  if (slotTy != srcTy) {
-    auto srcCast = cir::CastOp::create(builder, loc, srcPtrTy,
-                                       cir::CastKind::bitcast, alloca);
-    createdOps.insert(srcCast);
-    srcSlot = srcCast;
-  }
+  Value srcSlot = slotView(srcTy, srcPtrTy);
   auto store = cir::StoreOp::create(builder, loc, src, srcSlot);
   createdOps.insert(store);
 
   // Return a destination-typed view of the slot.
-  if (slotTy != dstTy) {
-    auto dstCast = cir::CastOp::create(builder, loc, dstPtrTy,
-                                       cir::CastKind::bitcast, alloca);
-    createdOps.insert(dstCast);
-    return dstCast;
-  }
-  return alloca;
+  return slotView(dstTy, dstPtrTy);
 }
 
 /// Coerce \p src to type \p dstTy by going through memory and load the whole
@@ -349,9 +379,10 @@ Value emitCoercionToMemory(OpBuilder &builder, Location loc, Type dstTy,
 /// load of the destination-typed view.
 Value emitCoercion(OpBuilder &builder, Location loc, Type dstTy, Value src,
                    FunctionOpInterface funcOp, const DataLayout &dl,
-                   SmallPtrSetImpl<Operation *> &createdOps) {
-  Value dstSlot =
-      emitCoercionToMemory(builder, loc, dstTy, src, funcOp, dl, createdOps);
+                   SmallPtrSetImpl<Operation *> &createdOps,
+                   unsigned offset = 0) {
+  Value dstSlot = emitCoercionToMemory(builder, loc, dstTy, src, funcOp, dl,
+                                       createdOps, offset);
   auto load = cir::LoadOp::create(builder, loc, dstSlot);
   createdOps.insert(load);
   return load;
@@ -360,16 +391,17 @@ Value emitCoercion(OpBuilder &builder, Location loc, Type dstTy, Value src,
 /// Convenience overload for callers that don't need the createdOps set
 /// (e.g. call-site coercion where we don't replaceAllUsesExcept).
 Value emitCoercion(OpBuilder &builder, Location loc, Type dstTy, Value src,
-                   FunctionOpInterface funcOp, const DataLayout &dl) {
+                   FunctionOpInterface funcOp, const DataLayout &dl,
+                   unsigned offset = 0) {
   SmallPtrSet<Operation *, 4> ignored;
-  return emitCoercion(builder, loc, dstTy, src, funcOp, dl, ignored);
+  return emitCoercion(builder, loc, dstTy, src, funcOp, dl, ignored, offset);
 }
 
 /// Insert coercion before each cir.return so the returned value matches the
 /// new (coerced) return type.
 void insertReturnCoercion(FunctionOpInterface funcOp, Type origRetTy,
                           Type coercedRetTy, OpBuilder &rewriter,
-                          const DataLayout &dl) {
+                          const DataLayout &dl, unsigned offset) {
   SmallVector<cir::ReturnOp> returns;
   funcOp.walk([&](cir::ReturnOp r) { returns.push_back(r); });
   for (cir::ReturnOp r : returns) {
@@ -379,8 +411,8 @@ void insertReturnCoercion(FunctionOpInterface funcOp, Type origRetTy,
     if (origVal.getType() == coercedRetTy)
       continue;
     rewriter.setInsertionPoint(r);
-    Value coerced =
-        emitCoercion(rewriter, r.getLoc(), coercedRetTy, origVal, funcOp, dl);
+    Value coerced = emitCoercion(rewriter, r.getLoc(), coercedRetTy, origVal,
+                                 funcOp, dl, offset);
     r->setOperand(0, coerced);
   }
 }
@@ -540,7 +572,7 @@ void insertArgCoercion(FunctionOpInterface funcOp,
       builder.setInsertionPointToStart(&entry);
       SmallPtrSet<Operation *, 4> coercionOps;
       Value adapted = emitCoercion(builder, funcOp.getLoc(), oldArgTy, blockArg,
-                                   funcOp, dl, coercionOps);
+                                   funcOp, dl, coercionOps, ac.directOffset);
 
       // Replace blockArg uses with the adapted value, except inside the
       // helper ops we just created.  This is critical: the StoreOp's
@@ -750,7 +782,7 @@ LogicalResult CIRABIRewriteContext::rewriteFunctionDefinition(
       if (fc.returnInfo.kind == ArgKind::Direct && fc.returnInfo.coercedType &&
           !oldResultTypes.empty() && fc.returnInfo.coercedType != origRetTy)
         insertReturnCoercion(funcOp, origRetTy, fc.returnInfo.coercedType,
-                             builder, dl);
+                             builder, dl, fc.returnInfo.directOffset);
 
       Block &entry = body.front();
 
@@ -948,7 +980,7 @@ LogicalResult CIRABIRewriteContext::rewriteCallSite(
     } else if (ac.kind == ArgKind::Direct && ac.coercedType &&
                arg.getType() != ac.coercedType) {
       arg = emitCoercion(builder, call.getLoc(), ac.coercedType, arg,
-                         enclosingFunc, dl);
+                         enclosingFunc, dl, ac.directOffset);
       newArgs.push_back(arg);
     } else if (ac.kind == ArgKind::Indirect) {
       // byval and byref: allocate a stack slot, copy the value in, and pass
@@ -1081,8 +1113,9 @@ LogicalResult CIRABIRewriteContext::rewriteCallSite(
   // emit a coercion back to the original type for the call's existing uses.
   if (returnNeedsCoercion) {
     builder.setInsertionPointAfter(newCall);
-    Value coercedBack = emitCoercion(builder, call.getLoc(), origRetTy,
-                                     newCall.getResult(), enclosingFunc, dl);
+    Value coercedBack =
+        emitCoercion(builder, call.getLoc(), origRetTy, newCall.getResult(),
+                     enclosingFunc, dl, fc.returnInfo.directOffset);
     call.getResult().replaceAllUsesWith(coercedBack);
   }
 
