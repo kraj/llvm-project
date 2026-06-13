@@ -41,6 +41,15 @@ public:
     return *this;
   }
 
+  void subtractRegion(bool WasCovered) {
+    assert(NumRegions > 0 && "Cannot subtract from zero regions");
+    --NumRegions;
+    if (WasCovered) {
+      assert(Covered > 0 && "Cannot subtract covered from zero");
+      --Covered;
+    }
+  }
+
   void merge(const RegionCoverageInfo &RHS) {
     Covered = std::max(Covered, RHS.Covered);
     NumRegions = std::max(NumRegions, RHS.NumRegions);
@@ -80,6 +89,15 @@ public:
     Covered += RHS.Covered;
     NumLines += RHS.NumLines;
     return *this;
+  }
+
+  void subtractLine(bool WasCovered) {
+    assert(NumLines > 0 && "Cannot subtract from zero lines");
+    --NumLines;
+    if (WasCovered) {
+      assert(Covered > 0 && "Cannot subtract covered from zero");
+      --Covered;
+    }
   }
 
   void merge(const LineCoverageInfo &RHS) {
@@ -207,6 +225,15 @@ public:
     if (Covered)
       ++Executed;
     ++NumFunctions;
+  }
+
+  void subtractFunction(bool WasCovered) {
+    assert(NumFunctions > 0 && "Cannot subtract from zero functions");
+    --NumFunctions;
+    if (WasCovered) {
+      assert(Executed > 0 && "Cannot subtract executed from zero");
+      --Executed;
+    }
   }
 
   size_t getExecuted() const { return Executed; }

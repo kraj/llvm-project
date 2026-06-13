@@ -925,9 +925,16 @@ void SourceCoverageViewHTML::renderViewDivider(raw_ostream &, unsigned) {
 
 void SourceCoverageViewHTML::renderLine(raw_ostream &OS, LineRef L,
                                         const LineCoverageStats &LCS,
-                                        unsigned ExpansionCol, unsigned) {
+                                        unsigned ExpansionCol, unsigned,
+                                        bool Excluded) {
   StringRef Line = L.Line;
   unsigned LineNo = L.LineNo;
+
+  // Excluded lines are rendered as plain text without coverage highlighting.
+  if (Excluded) {
+    OS << tag("td", tag("pre", Line), "skipped-line");
+    return;
+  }
 
   // Steps for handling text-escaping, highlighting, and tooltip creation:
   //
@@ -1051,12 +1058,13 @@ void SourceCoverageViewHTML::renderLine(raw_ostream &OS, LineRef L,
 }
 
 void SourceCoverageViewHTML::renderLineCoverageColumn(
-    raw_ostream &OS, const LineCoverageStats &Line) {
+    raw_ostream &OS, const LineCoverageStats &Line, bool Excluded) {
   std::string Count;
-  if (Line.isMapped())
+  if (Line.isMapped() && !Excluded)
     Count = tag("pre", formatBinaryCount(Line.getExecutionCount()));
   std::string CoverageClass =
-      (Line.getExecutionCount() > 0)
+      Excluded ? "skipped-line"
+      : (Line.getExecutionCount() > 0)
           ? "covered-line"
           : (Line.isMapped() ? "uncovered-line" : "skipped-line");
   OS << tag("td", Count, CoverageClass);

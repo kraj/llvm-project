@@ -347,8 +347,10 @@ void renderFile(json::OStream &JOS, const coverage::CoverageMapping &Coverage,
           renderMCDCRecord(JOS, Record, Options);
       });
       JOS.attributeArray("segments", [&] {
+        const auto *Excluded = Options.getExcludedLinesForFile(Filename);
         for (const auto &Segment : FileCoverage)
-          renderSegment(JOS, Segment);
+          if (!Excluded || !Excluded->count(Segment.Line))
+            renderSegment(JOS, Segment);
       });
     }
     JOS.attributeBegin("summary");

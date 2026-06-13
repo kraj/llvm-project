@@ -212,11 +212,12 @@ protected:
   /// Render a source line with highlighting.
   virtual void renderLine(raw_ostream &OS, LineRef L,
                           const LineCoverageStats &LCS, unsigned ExpansionCol,
-                          unsigned ViewDepth) = 0;
+                          unsigned ViewDepth, bool Excluded = false) = 0;
 
   /// Render the line's execution count column.
   virtual void renderLineCoverageColumn(raw_ostream &OS,
-                                        const LineCoverageStats &Line) = 0;
+                                        const LineCoverageStats &Line,
+                                        bool Excluded = false) = 0;
 
   /// Render the line number column.
   virtual void renderLineNumberColumn(raw_ostream &OS, unsigned LineNo) = 0;

@@ -496,6 +496,38 @@ std::vector<FileCoverageSummary> CoverageReport::prepareFileReports(
   }
   Pool.wait();
 
+  // Subtract excluded lines, regions, and functions from each file's coverage
+  // totals. The ExcludedLines map is populated by the caller scanning source
+  // files before invoking this function.
+  for (unsigned I = 0; I < Files.size(); ++I) {
+    const auto *Excluded = Options.getExcludedLinesForFile(Files[I]);
+    if (!Excluded)
+      continue;
+    auto FileCoverage = Coverage.getCoverageForFile(Files[I]);
+    for (const auto &LCS : getLineCoverageStats(FileCoverage)) {
+      if (!LCS.isMapped())
+        continue;
+      if (Excluded->count(LCS.getLine()))
+        FileReports[I].LineCoverage.subtractLine(LCS.getExecutionCount() > 0);
+    }
+    // Subtract regions whose start line is excluded.
+    for (const auto &Group : Coverage.getInstantiationGroups(Files[I])) {
+      for (const auto *F : Group.getInstantiations()) {
+        for (const auto &CR : F->CountedRegions) {
+          if (Excluded->count(CR.LineStart)) {
+            FileReports[I].RegionCoverage.subtractRegion(CR.ExecutionCount > 0);
+          }
+        }
+        // If the function starts on an excluded line, subtract it.
+        if (!F->CountedRegions.empty() &&
+            Excluded->count(F->CountedRegions.front().LineStart)) {
+          FileReports[I].FunctionCoverage.subtractFunction(
+              F->ExecutionCount > 0);
+        }
+      }
+    }
+  }
+
   for (const auto &FileReport : FileReports)
     Totals += FileReport;
 

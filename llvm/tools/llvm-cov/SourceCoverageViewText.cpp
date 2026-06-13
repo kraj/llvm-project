@@ -161,9 +161,16 @@ void SourceCoverageViewText::renderViewDivider(raw_ostream &OS,
 void SourceCoverageViewText::renderLine(raw_ostream &OS, LineRef L,
                                         const LineCoverageStats &LCS,
                                         unsigned ExpansionCol,
-                                        unsigned ViewDepth) {
+                                        unsigned ViewDepth, bool Excluded) {
   StringRef Line = L.Line;
   unsigned LineNumber = L.LineNo;
+
+  // Excluded lines are rendered without any highlighting.
+  if (Excluded) {
+    OS << Line << '\n';
+    return;
+  }
+
   auto *WrappedSegment = LCS.getWrappedSegment();
   CoverageSegmentArray Segments = LCS.getLineSegments();
 
@@ -211,8 +218,8 @@ void SourceCoverageViewText::renderLine(raw_ostream &OS, LineRef L,
 }
 
 void SourceCoverageViewText::renderLineCoverageColumn(
-    raw_ostream &OS, const LineCoverageStats &Line) {
-  if (!Line.isMapped()) {
+    raw_ostream &OS, const LineCoverageStats &Line, bool Excluded) {
+  if (!Line.isMapped() || Excluded) {
     OS.indent(LineCoverageColumnWidth) << '|';
     return;
   }

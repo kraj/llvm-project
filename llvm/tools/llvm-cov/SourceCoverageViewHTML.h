@@ -78,7 +78,8 @@ class SourceCoverageViewHTML : public SourceCoverageView {
   void renderViewDivider(raw_ostream &OS, unsigned ViewDepth) override;
 
   void renderLine(raw_ostream &OS, LineRef L, const LineCoverageStats &LCS,
-                  unsigned ExpansionCol, unsigned ViewDepth) override;
+                  unsigned ExpansionCol, unsigned ViewDepth,
+                  bool Excluded = false) override;
 
   void renderExpansionSite(raw_ostream &OS, LineRef L,
                            const LineCoverageStats &LCS, unsigned ExpansionCol,
@@ -96,8 +97,8 @@ class SourceCoverageViewHTML : public SourceCoverageView {
   void renderInstantiationView(raw_ostream &OS, InstantiationView &ISV,
                                unsigned ViewDepth) override;
 
-  void renderLineCoverageColumn(raw_ostream &OS,
-                                const LineCoverageStats &Line) override;
+  void renderLineCoverageColumn(raw_ostream &OS, const LineCoverageStats &Line,
+                                bool Excluded = false) override;
 
   void renderLineNumberColumn(raw_ostream &OS, unsigned LineNo) override;
 

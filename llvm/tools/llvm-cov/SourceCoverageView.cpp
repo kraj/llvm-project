@@ -242,6 +242,8 @@ void SourceCoverageView::print(raw_ostream &OS, bool WholeFile,
   LineCoverageIterator LCIEnd = LCI.getEnd();
 
   unsigned FirstLine = StartSegment != EndSegment ? StartSegment->Line : 0;
+  const DenseSet<unsigned> *ExcludedLines =
+      getOptions().getExcludedLinesForFile(getSourceName());
   for (line_iterator LI(File, /*SkipBlanks=*/false); !LI.is_at_eof();
        ++LI, ++LCI) {
     // If we aren't rendering the whole file, we need to filter out the prologue
@@ -257,8 +259,11 @@ void SourceCoverageView::print(raw_ostream &OS, bool WholeFile,
     if (getOptions().ShowLineNumbers)
       renderLineNumberColumn(OS, LI.line_number());
 
+    bool IsExcluded =
+        ExcludedLines && ExcludedLines->count(LI.line_number());
+
     if (getOptions().ShowLineStats)
-      renderLineCoverageColumn(OS, *LCI);
+      renderLineCoverageColumn(OS, *LCI, IsExcluded);
 
     // If there are expansion subviews, we want to highlight the first one.
     unsigned ExpansionColumn = 0;
@@ -267,10 +272,11 @@ void SourceCoverageView::print(raw_ostream &OS, bool WholeFile,
       ExpansionColumn = NextESV->getStartCol();
 
     // Display the source code for the current line.
-    renderLine(OS, {*LI, LI.line_number()}, *LCI, ExpansionColumn, ViewDepth);
+    renderLine(OS, {*LI, LI.line_number()}, *LCI, ExpansionColumn, ViewDepth,
+               IsExcluded);
 
     // Show the region markers.
-    if (shouldRenderRegionMarkers(*LCI))
+    if (!IsExcluded && shouldRenderRegionMarkers(*LCI))
       renderRegionMarkers(OS, *LCI, ViewDepth);
 
     // Show the expansions, instantiations, and branches for this line.

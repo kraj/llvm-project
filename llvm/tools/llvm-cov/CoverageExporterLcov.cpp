@@ -74,22 +74,30 @@ void renderFunctionSummary(raw_ostream &OS,
 
 void renderFunctions(
     raw_ostream &OS,
-    const iterator_range<coverage::FunctionRecordIterator> &Functions) {
+    const iterator_range<coverage::FunctionRecordIterator> &Functions,
+    const DenseSet<unsigned> *Excluded) {
   for (const auto &F : Functions) {
     auto StartLine = F.CountedRegions.front().LineStart;
+    if (Excluded && Excluded->count(StartLine))
+      continue;
     OS << "FN:" << StartLine << ',' << F.Name << '\n';
   }
-  for (const auto &F : Functions)
+  for (const auto &F : Functions) {
+    auto StartLine = F.CountedRegions.front().LineStart;
+    if (Excluded && Excluded->count(StartLine))
+      continue;
     OS << "FNDA:" << F.ExecutionCount << ',' << F.Name << '\n';
+  }
 }
 
 void renderLineExecutionCounts(raw_ostream &OS,
-                               const coverage::CoverageData &FileCoverage) {
+                               const coverage::CoverageData &FileCoverage,
+                               const DenseSet<unsigned> *Excluded) {
   coverage::LineCoverageIterator LCI{FileCoverage, 1};
   coverage::LineCoverageIterator LCIEnd = LCI.getEnd();
   for (; LCI != LCIEnd; ++LCI) {
     const coverage::LineCoverageStats &LCS = *LCI;
-    if (LCS.isMapped()) {
+    if (LCS.isMapped() && (!Excluded || !Excluded->count(LCS.getLine()))) {
       OS << "DA:" << LCS.getLine() << ',' << LCS.getExecutionCount() << '\n';
     }
   }
@@ -181,7 +189,8 @@ void combineInstanceCounts(std::vector<NestedCountedRegion> &Branches) {
 void renderBranchExecutionCounts(raw_ostream &OS,
                                  const coverage::CoverageMapping &Coverage,
                                  const coverage::CoverageData &FileCoverage,
-                                 bool UnifyInstances) {
+                                 bool UnifyInstances,
+                                 const DenseSet<unsigned> *Excluded) {
 
   std::vector<NestedCountedRegion> Branches;
 
@@ -213,6 +222,14 @@ void renderBranchExecutionCounts(raw_ostream &OS,
     unsigned CurrentLine = NextBranch->getEffectiveLine();
     unsigned PairIndex = 0;
     unsigned BranchIndex = 0;
+
+    // Skip branches on excluded lines.
+    if (Excluded && Excluded->count(CurrentLine)) {
+      while (NextBranch != EndBranch &&
+             CurrentLine == NextBranch->getEffectiveLine())
+        ++NextBranch;
+      continue;
+    }
 
     while (NextBranch != EndBranch &&
            CurrentLine == NextBranch->getEffectiveLine()) {
@@ -249,21 +266,24 @@ void renderBranchSummary(raw_ostream &OS, const FileCoverageSummary &Summary) {
 
 void renderFile(raw_ostream &OS, const coverage::CoverageMapping &Coverage,
                 const std::string &Filename,
-                const FileCoverageSummary &FileReport, bool ExportSummaryOnly,
+                const FileCoverageSummary &FileReport,
+                const CoverageViewOptions &Options, bool ExportSummaryOnly,
                 bool SkipFunctions, bool SkipBranches, bool UnifyInstances) {
   OS << "SF:" << Filename << '\n';
+  const auto *Excluded = Options.getExcludedLinesForFile(Filename);
 
   if (!ExportSummaryOnly && !SkipFunctions) {
-    renderFunctions(OS, Coverage.getCoveredFunctions(Filename));
+    renderFunctions(OS, Coverage.getCoveredFunctions(Filename), Excluded);
   }
   renderFunctionSummary(OS, FileReport);
 
   if (!ExportSummaryOnly) {
     // Calculate and render detailed coverage information for given file.
     auto FileCoverage = Coverage.getCoverageForFile(Filename);
-    renderLineExecutionCounts(OS, FileCoverage);
+    renderLineExecutionCounts(OS, FileCoverage, Excluded);
     if (!SkipBranches)
-      renderBranchExecutionCounts(OS, Coverage, FileCoverage, UnifyInstances);
+      renderBranchExecutionCounts(OS, Coverage, FileCoverage, UnifyInstances,
+                                  Excluded);
   }
   if (!SkipBranches)
     renderBranchSummary(OS, FileReport);
@@ -275,11 +295,11 @@ void renderFile(raw_ostream &OS, const coverage::CoverageMapping &Coverage,
 void renderFiles(raw_ostream &OS, const coverage::CoverageMapping &Coverage,
                  ArrayRef<std::string> SourceFiles,
                  ArrayRef<FileCoverageSummary> FileReports,
-                 bool ExportSummaryOnly, bool SkipFunctions, bool SkipBranches,
-                 bool UnifyInstances) {
+                 const CoverageViewOptions &Options, bool ExportSummaryOnly,
+                 bool SkipFunctions, bool SkipBranches, bool UnifyInstances) {
   for (unsigned I = 0, E = SourceFiles.size(); I < E; ++I)
-    renderFile(OS, Coverage, SourceFiles[I], FileReports[I], ExportSummaryOnly,
-               SkipFunctions, SkipBranches, UnifyInstances);
+    renderFile(OS, Coverage, SourceFiles[I], FileReports[I], Options,
+               ExportSummaryOnly, SkipFunctions, SkipBranches, UnifyInstances);
 }
 
 } // end anonymous namespace
@@ -297,7 +317,8 @@ void CoverageExporterLcov::renderRoot(ArrayRef<std::string> SourceFiles) {
   FileCoverageSummary Totals = FileCoverageSummary("Totals");
   auto FileReports = CoverageReport::prepareFileReports(Coverage, Totals,
                                                         SourceFiles, Options);
-  renderFiles(OS, Coverage, SourceFiles, FileReports, Options.ExportSummaryOnly,
-              Options.SkipFunctions, Options.SkipBranches,
+  renderFiles(OS, Coverage, SourceFiles, FileReports, Options,
+              Options.ExportSummaryOnly, Options.SkipFunctions,
+              Options.SkipBranches,
               Options.UnifyFunctionInstantiations);
 }
