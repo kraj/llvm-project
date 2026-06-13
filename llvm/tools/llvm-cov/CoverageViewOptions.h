@@ -111,6 +111,12 @@ struct CoverageViewOptions {
         continue;
       }
 
+      if (ExcludeRegionStopRE && ExcludeRegionStopRE->match(Line)) {
+        errs() << "error: " << Filename << ":" << LineNo
+               << ": exclusion region stop marker without matching start\n";
+        exit(1);
+      }
+
       if (ExcludeLineRE && ExcludeLineRE->match(Line))
         Excluded.insert(LineNo);
     }
