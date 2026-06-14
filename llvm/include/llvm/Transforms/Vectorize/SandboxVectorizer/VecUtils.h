@@ -12,6 +12,8 @@
 #ifndef LLVM_TRANSFORMS_VECTORIZE_SANDBOXVECTORIZER_VECUTILS_H
 #define LLVM_TRANSFORMS_VECTORIZE_SANDBOXVECTORIZER_VECUTILS_H
 
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/SandboxIR/Type.h"
@@ -32,6 +34,10 @@ template <> struct DenseMapInfo<SmallVector<sandboxir::Value *>> {
 };
 
 namespace sandboxir {
+
+class ShuffleMask;
+class InstrMaps;
+class VecPassBase;
 
 class VecUtils {
 public:
@@ -379,7 +385,7 @@ public:
   }
 
 #ifndef NDEBUG
-  /// Helper dump function for debugging.
+  /// Print \p Bndl. Dump function for debugging.
   LLVM_DUMP_METHOD static void dump(ArrayRef<Value *> Bndl);
   LLVM_DUMP_METHOD static void dump(ArrayRef<Instruction *> Bndl);
 #endif // NDEBUG
