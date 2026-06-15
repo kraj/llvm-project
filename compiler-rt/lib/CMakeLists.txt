@@ -78,3 +78,6 @@ endif()
 # is true for fuzzers that exercise parts of the runtime. So we add the fuzzer
 # directories explicitly here.
 add_subdirectory(scudo/standalone/fuzz)
+
+# Instrumentor examples - educational examples demonstrating the Instrumentor pass
+add_subdirectory(instrumentor-examples)

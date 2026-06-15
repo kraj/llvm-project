@@ -909,6 +909,7 @@ struct StoreIO : public InstructionIO<Instruction::Store> {
     PassStoredValueSize,
     PassAlignment,
     PassValueTypeId,
+    PassValueSubTypeId,
     PassAtomicityOrdering,
     PassSyncScopeId,
     PassIsVolatile,
@@ -958,6 +959,9 @@ struct StoreIO : public InstructionIO<Instruction::Store> {
   LLVM_ABI static Value *getValueTypeId(Value &V, Type &Ty,
                                         InstrumentationConfig &IConf,
                                         InstrumentorIRBuilderTy &IIRB);
+  LLVM_ABI static Value *getValueSubTypeId(Value &V, Type &Ty,
+                                           InstrumentationConfig &IConf,
+                                           InstrumentorIRBuilderTy &IIRB);
   LLVM_ABI static Value *getAtomicityOrdering(Value &V, Type &Ty,
                                               InstrumentationConfig &IConf,
                                               InstrumentorIRBuilderTy &IIRB);
@@ -1002,6 +1006,7 @@ struct LoadIO : public InstructionIO<Instruction::Load> {
     PassValueSize,
     PassAlignment,
     PassValueTypeId,
+    PassValueSubTypeId,
     PassAtomicityOrdering,
     PassSyncScopeId,
     PassIsVolatile,
@@ -1051,6 +1056,9 @@ struct LoadIO : public InstructionIO<Instruction::Load> {
   LLVM_ABI static Value *getValueTypeId(Value &V, Type &Ty,
                                         InstrumentationConfig &IConf,
                                         InstrumentorIRBuilderTy &IIRB);
+  LLVM_ABI static Value *getValueSubTypeId(Value &V, Type &Ty,
+                                           InstrumentationConfig &IConf,
+                                           InstrumentorIRBuilderTy &IIRB);
   LLVM_ABI static Value *getAtomicityOrdering(Value &V, Type &Ty,
                                               InstrumentationConfig &IConf,
                                               InstrumentorIRBuilderTy &IIRB);
@@ -1089,10 +1097,12 @@ struct CastIO final
   enum ConfigKind {
     PassInput,
     PassInputTypeId,
+    PassInputSubTypeId,
     PassInputSize,
     PassResult,
     ReplaceResult,
     PassResultTypeId,
+    PassResultSubTypeId,
     PassResultSize,
     PassOpcode,
     PassId,
@@ -1114,12 +1124,18 @@ struct CastIO final
   LLVM_ABI static Value *getInputTypeId(Value &V, Type &Ty,
                                         InstrumentationConfig &IConf,
                                         InstrumentorIRBuilderTy &IIRB);
+  LLVM_ABI static Value *getInputSubTypeId(Value &V, Type &Ty,
+                                           InstrumentationConfig &IConf,
+                                           InstrumentorIRBuilderTy &IIRB);
   LLVM_ABI static Value *getInputSize(Value &V, Type &Ty,
                                       InstrumentationConfig &IConf,
                                       InstrumentorIRBuilderTy &IIRB);
   LLVM_ABI static Value *getResultTypeId(Value &V, Type &Ty,
                                          InstrumentationConfig &IConf,
                                          InstrumentorIRBuilderTy &IIRB);
+  LLVM_ABI static Value *getResultSubTypeId(Value &V, Type &Ty,
+                                            InstrumentationConfig &IConf,
+                                            InstrumentorIRBuilderTy &IIRB);
   LLVM_ABI static Value *getResultSize(Value &V, Type &Ty,
                                        InstrumentationConfig &IConf,
                                        InstrumentorIRBuilderTy &IIRB);
@@ -1151,6 +1167,7 @@ struct NumericIO final
 
   enum ConfigKind {
     PassTypeId,
+    PassSubTypeId,
     PassSize,
     PassOpcode,
     PassResult,
