@@ -2824,7 +2824,7 @@ static bool resolveAllocationOverload(
       //
       // For an aligned allocation, separately check the aligned and unaligned
       // candidates with their respective argument lists.
-      SmallVector<OverloadCandidate*, 32> PrefCands;
+      SmallVector<OverloadCandidate *, 32> PrefCands;
       SmallVector<OverloadCandidate *, 32> Cands;
       if (PrefCandidates) {
         assert(!isAlignedAllocation(PassAlignment) &&
