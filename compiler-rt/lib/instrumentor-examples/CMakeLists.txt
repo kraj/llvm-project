@@ -9,3 +9,4 @@ add_compiler_rt_component(instrumentor-examples)
 
 # Add subdirectories for specific examples
 add_subdirectory(flop-counter)
+add_subdirectory(precision-analysis)

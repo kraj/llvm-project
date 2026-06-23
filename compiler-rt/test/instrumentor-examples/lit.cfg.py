@@ -59,6 +59,12 @@ config.substitutions.append(("%flop_counter_lib_dir", config.compiler_rt_libdir)
 flop_counter_lib = make_lib_name("flop_counter")
 config.substitutions.append(("%flop_counter_lib", flop_counter_lib))
 
+# Add path to Precision Analysis runtime library
+config.substitutions.append(("%precision_analysis_lib_dir", config.compiler_rt_libdir))
+
+precision_analysis_lib = make_lib_name("precision_analysis")
+config.substitutions.append(("%precision_analysis_lib", precision_analysis_lib))
+
 # Add path to instrumentor config files
 instrumentor_config_dir = os.path.join(
     config.test_source_root, "..", "..", "lib", "instrumentor-examples", "flop-counter"

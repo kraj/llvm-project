@@ -37,6 +37,32 @@ clang -O2 -mllvm -enable-instrumentor -mllvm -instrumentor-read-config-files=con
 # At program exit, FLOP statistics will be printed
 ```
 
+### Precision Analysis (`precision-analysis/`)
+
+Analyzes the minimum floating-point precision needed for each operation while
+maintaining acceptable accuracy.
+
+**Features:**
+- Per-operation precision requirement analysis
+- Multi-level precision checking:
+  - **Double operations**: Checks Float first, then FP16 if Float works
+  - **Float operations**: Checks FP16
+- Tracks relative error with configurable threshold (default: 0.1%)
+- Distinguishes input special values from lowering-induced overflow/underflow
+- Reports which operations can use FP16, which need Float, and which need Double
+- IEEE 754 half-precision (fp16) software emulation
+- Provides detailed recommendations for precision optimization
+
+**Usage:**
+```bash
+# Compile your program with instrumentor
+clang -O2 -mllvm -enable-instrumentor -mllvm -instrumentor-read-config-files=precision_analysis_config.json -lclang_rt.precision_analysis -o your_program
+
+# Run it
+./your_program
+# At program exit, precision analysis results will be printed
+```
+
 ## Building
 
 The instrumentor examples are built as part of the compiler-rt build:
