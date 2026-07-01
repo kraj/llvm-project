@@ -250,6 +250,12 @@ def MIPS64 : HwMode<[IsPTR64bit]>;
 // Register File, Calling Conv, Instruction Descriptions
 //===----------------------------------------------------------------------===//
 
+// Keep in sync with MipsAsmVariants in MipsBaseInfo.h.
+def MipsAsmVariants {
+  string Mips = "mips";
+  int Mips_ID = 0;
+}
+
 include "MipsRegisterInfo.td"
 include "MipsInstrInfo.td"
 include "MipsCallingConv.td"
@@ -323,7 +329,8 @@ def MipsAsmParser : AsmParser {
 }
 
 def MipsAsmParserVariant : AsmParserVariant {
-  int Variant = 0;
+  let Variant = MipsAsmVariants.Mips_ID;
+  let Name = MipsAsmVariants.Mips;
 
   // Recognize hard coded registers.
   string RegisterPrefix = "$";
