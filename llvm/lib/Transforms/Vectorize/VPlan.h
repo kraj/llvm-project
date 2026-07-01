@@ -5174,6 +5174,8 @@ public:
            is_contained(ScalarPH->getPredecessors(), getMiddleBlock());
   }
 
+  bool isCompatibleWithTF(bool TF);
+
   /// The type of the canonical induction variable of the vector loop.
   Type *getIndexType() const { return VF.getType(); }
 };
