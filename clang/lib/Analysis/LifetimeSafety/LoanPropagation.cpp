@@ -58,6 +58,11 @@ static llvm::BitVector computePersistentOrigins(const FactManager &FactMgr,
         CheckOrigin(OF->getSrcOriginID());
         break;
       }
+      case Fact::Kind::Projection: {
+        const auto *PF = F->getAs<ProjectionFact>();
+        CheckOrigin(PF->getOriginID());
+        break;
+      }
       case Fact::Kind::Use:
         for (const OriginList *Cur = F->getAs<UseFact>()->getUsedOrigins(); Cur;
              Cur = Cur->peelOuterOrigin())
@@ -180,12 +185,26 @@ public:
     OriginID DestOID = F.getDestOriginID();
     OriginID SrcOID = F.getSrcOriginID();
 
+    LoanSet SrcLoans = getLoans(In, SrcOID);
     LoanSet DestLoans =
         F.getKillDest() ? LoanSetFactory.getEmptySet() : getLoans(In, DestOID);
-    LoanSet SrcLoans = getLoans(In, SrcOID);
     LoanSet MergedLoans = utils::join(DestLoans, SrcLoans, LoanSetFactory);
 
     return setLoans(In, DestOID, MergedLoans);
+  }
+
+  /// A projection projects the loans currently held by the origin in-place.
+  Lattice transfer(Lattice In, const ProjectionFact &F) {
+    OriginID OID = F.getOriginID();
+    LoanSet Loans = getLoans(In, OID);
+    LoanSet ProjectedLoans = LoanSetFactory.getEmptySet();
+    PathElement Element = F.getPathElement();
+    for (LoanID LID : Loans) {
+      Loan *ExtendedLoan =
+          FactMgr.getLoanMgr().getOrCreateExtendedLoan(LID, Element);
+      ProjectedLoans = LoanSetFactory.add(ProjectedLoans, ExtendedLoan->getID());
+    }
+    return setLoans(In, OID, ProjectedLoans);
   }
 
   Lattice transfer(Lattice In, const KillOriginFact &F) {
@@ -208,31 +227,68 @@ public:
     assert(getLoans(StartOID, StartPoint).contains(TargetLoan) &&
            "TargetLoan must be present in the StartOID at the StartPoint");
 
+    LoanID CurrLoanID = TargetLoan;
     OriginID CurrOID = StartOID;
     llvm::SmallVector<OriginID> OriginFlowChain;
     llvm::ArrayRef<const Fact *> Facts = FactMgr.getBlockContaining(StartPoint);
     const auto *StartIt = llvm::find(Facts, StartPoint);
     assert(StartIt != Facts.end());
 
+    const CFGBlock *B = nullptr;
+    for (const CFGBlock *Block : Cfg) {
+      if (FactMgr.getFacts(Block).data() == Facts.data()) {
+        B = Block;
+        break;
+      }
+    }
+    assert(B && "Could not find CFGBlock containing StartPoint");
+
+    auto GetStateBefore = [&](const Fact *F) -> Lattice {
+      auto It = llvm::find(Facts, F);
+      assert(It != Facts.end());
+      if (It == Facts.begin()) {
+        auto InState = getInState(B);
+        assert(InState);
+        return *InState;
+      }
+      return getState(*(It - 1));
+    };
+
     for (const Fact *F :
          llvm::reverse(llvm::make_range(Facts.begin(), StartIt))) {
-      if (const auto *IF = F->getAs<IssueFact>())
-        if (IF->getLoanID() == TargetLoan) {
+      if (const auto *IF = F->getAs<IssueFact>()) {
+        if (IF->getLoanID() == CurrLoanID) {
           assert(IF->getOriginID() == CurrOID);
           return OriginFlowChain;
         }
+      }
 
-      const auto *OFF = F->getAs<OriginFlowFact>();
-      if (!OFF)
-        continue;
-      if (OFF->getDestOriginID() != CurrOID)
-        continue;
-
-      const OriginID SrcOriginID = OFF->getSrcOriginID();
-      if (!getLoans(SrcOriginID, OFF).contains(TargetLoan))
-        continue;
-      OriginFlowChain.push_back(SrcOriginID);
-      CurrOID = SrcOriginID;
+      if (const auto *OFF = F->getAs<OriginFlowFact>()) {
+        if (OFF->getDestOriginID() == CurrOID) {
+          OriginID SrcOriginID = OFF->getSrcOriginID();
+          if (getLoans(SrcOriginID, OFF).contains(CurrLoanID)) {
+            CurrOID = SrcOriginID;
+            OriginFlowChain.push_back(SrcOriginID);
+          }
+        }
+      } else if (const auto *PF = F->getAs<ProjectionFact>()) {
+        if (PF->getOriginID() == CurrOID) {
+          PathElement Element = PF->getPathElement();
+          auto Candidates =
+              FactMgr.getLoanMgr().getBaseLoans(CurrLoanID, Element);
+          std::optional<LoanID> NextLoanID;
+          Lattice StateBefore = GetStateBefore(PF);
+          for (LoanID Candidate : Candidates) {
+            if (getLoans(StateBefore, CurrOID).contains(Candidate)) {
+              NextLoanID = Candidate;
+              break;
+            }
+          }
+          if (NextLoanID) {
+            CurrLoanID = *NextLoanID;
+          }
+        }
+      }
     }
 
     // FIXME: Ideally, this return is unreachable and should be an assert
