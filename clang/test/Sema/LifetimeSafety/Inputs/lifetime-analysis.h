@@ -28,11 +28,11 @@ template<typename T> struct remove_reference<T &>  { typedef T type; };
 template<typename T> struct remove_reference<T &&> { typedef T type; };
 
 template< class InputIt, class T >
-InputIt find( InputIt first, InputIt last, const T& value );
+InputIt find(InputIt first, InputIt last, const T& value);
 
 template< class ForwardIt1, class ForwardIt2 >
-ForwardIt1 search( ForwardIt1 first, ForwardIt1 last,
-                   ForwardIt2 s_first, ForwardIt2 s_last );
+ForwardIt1 search(ForwardIt1 first, ForwardIt1 last,
+                  ForwardIt2 s_first, ForwardIt2 s_last);
 
 template<typename T>
 typename remove_reference<T>::type &&move(T &&t) noexcept;
@@ -225,6 +225,9 @@ struct basic_string {
   ~basic_string();
   basic_string& operator=(const basic_string&);
   basic_string& operator+=(const basic_string&);
+  basic_string& append(const basic_string&);
+  basic_string& replace(unsigned pos, unsigned count,
+                        const basic_string& str);
   basic_string& operator+=(const T*);
   void push_back(T);
 
