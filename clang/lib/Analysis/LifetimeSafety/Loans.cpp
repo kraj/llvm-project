@@ -64,4 +64,36 @@ LoanManager::getOrCreatePlaceholderBase(const CXXMethodDecl *MD) {
   PlaceholderBases.InsertNode(NewPB, InsertPos);
   return NewPB;
 }
+
+Loan *LoanManager::getOrCreateExtendedLoan(LoanID BaseLoanID,
+                                           PathElement Element) {
+
+  ExtensionCacheKey Key = {BaseLoanID, Element};
+  auto It = ExtensionCache.find(Key);
+  if (It != ExtensionCache.end())
+    return It->second;
+  const auto *BaseLoan = getLoan(BaseLoanID);
+  // TODO: Polish comment: Do not add interior access if the base loan path
+  // already contains that at the end.
+  if (Element.isInterior() &&
+      !BaseLoan->getAccessPath().getElements().empty() &&
+      BaseLoan->getAccessPath().getElements().back().isInterior())
+    return ExtensionCache[Key] = const_cast<Loan *>(BaseLoan);
+
+  AccessPath ExtendedPath(BaseLoan->getAccessPath(), Element);
+  return ExtensionCache[Key] =
+             createLoan(ExtendedPath, BaseLoan->getIssueExpr());
+}
+
+llvm::SmallVector<LoanID, 2>
+LoanManager::getBaseLoans(LoanID ExtendedLoanID, PathElement Element) const {
+  llvm::SmallVector<LoanID, 2> Result;
+  for (const auto &Entry : ExtensionCache) {
+    if (Entry.second->getID() == ExtendedLoanID &&
+        Entry.first.second == Element) {
+      Result.push_back(Entry.first.first);
+    }
+  }
+  return Result;
+}
 } // namespace clang::lifetimes::internal

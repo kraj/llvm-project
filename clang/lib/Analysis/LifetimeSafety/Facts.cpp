@@ -66,6 +66,30 @@ void OriginFlowFact::dump(llvm::raw_ostream &OS, const LoanManager &LM,
   OS << "\n";
 }
 
+void ProjectionFact::dump(llvm::raw_ostream &OS, const LoanManager &LM,
+                          const OriginManager &OM,
+                          const LoanPropagationAnalysis *LPA) const {
+  OS << "Projection: \n";
+  OS << "\tOrigin: ";
+  OM.dump(getOriginID(), OS);
+  if (LPA) {
+    LoanSet Loans = LPA->getLoans(getOriginID(), this);
+    if (Loans.isEmpty())
+      OS << " has no loans";
+    else {
+      OS << " has loans to { ";
+      for (LoanID LID : Loans) {
+        LM.getLoan(LID)->getAccessPath().dump(OS);
+        OS << " ";
+      }
+      OS << "}";
+    }
+  }
+  OS << "\n\tElement: ";
+  getPathElement().dump(OS);
+  OS << "\n";
+}
+
 void MovedOriginFact::dump(llvm::raw_ostream &OS, const LoanManager &,
                            const OriginManager &OM,
                            const LoanPropagationAnalysis *) const {
