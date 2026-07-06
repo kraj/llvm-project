@@ -13080,7 +13080,6 @@ struct AAAddressSpaceImpl : public AAAddressSpace {
   void initialize(Attributor &A) override {
     assert(getAssociatedType()->isPtrOrPtrVectorTy() &&
            "Associated value is not a pointer");
-
     if (!A.getInfoCache().getFlatAddressSpace().has_value()) {
       indicatePessimisticFixpoint();
       return;
@@ -13098,6 +13097,7 @@ struct AAAddressSpaceImpl : public AAAddressSpace {
   ChangeStatus updateImpl(Attributor &A) override {
     uint32_t OldAddressSpace = AssumedAddressSpace;
     unsigned FlatAS = A.getInfoCache().getFlatAddressSpace().value();
+    Value &AssociatedValue = getAssociatedValue();
 
     auto CheckAddressSpace = [&](Value &Obj) {
       // Ignore undef.
@@ -13105,9 +13105,15 @@ struct AAAddressSpaceImpl : public AAAddressSpace {
         return true;
 
       // If the object already has a non-flat address space, we simply take it.
-      unsigned ObjAS = Obj.getType()->getPointerAddressSpace();
-      if (ObjAS != FlatAS)
-        return takeAddressSpace(ObjAS);
+      if (&Obj != &AssociatedValue) {
+        auto *ObjAA = A.getAAFor<AAAddressSpace>(*this, IRPosition::value(Obj),
+                                                 DepClassTy::OPTIONAL);
+        unsigned ObjAS = Obj.getType()->getPointerAddressSpace();
+        if (ObjAA && ObjAA->isValidState())
+          ObjAS = ObjAA->getAddressSpace();
+        if (ObjAS != FlatAS)
+          return takeAddressSpace(ObjAS);
+      }
 
       // At this point, we know Obj is in the flat address space. For a final
       // attempt, we want to use getAssumedAddrSpace, but first we must get the
