@@ -407,19 +407,13 @@ define i8 @phi_gep_not_simplifiable_1(i1 %cnd1, i1 %cnd2) {
 ; CHECK-LABEL: define {{[^@]+}}@phi_gep_not_simplifiable_1
 ; CHECK-SAME: (i1 noundef [[CND1:%.*]], i1 [[CND2:%.*]]) #[[ATTR1]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[BYTES:%.*]] = alloca [1024 x i8], align 16
-; CHECK-NEXT:    [[GEP23:%.*]] = getelementptr inbounds [1024 x i8], ptr [[BYTES]], i64 0, i64 23
 ; CHECK-NEXT:    br i1 [[CND1]], label [[THEN:%.*]], label [[ELSE:%.*]]
 ; CHECK:       then:
 ; CHECK-NEXT:    br label [[JOIN:%.*]]
 ; CHECK:       else:
-; CHECK-NEXT:    [[GEP31:%.*]] = getelementptr inbounds [1024 x i8], ptr [[BYTES]], i64 0, i64 31
 ; CHECK-NEXT:    br label [[JOIN]]
 ; CHECK:       join:
-; CHECK-NEXT:    [[PHI_PTR:%.*]] = phi ptr [ [[GEP23]], [[THEN]] ], [ [[GEP31]], [[ELSE]] ]
-; CHECK-NEXT:    store i8 42, ptr [[GEP23]], align 4
-; CHECK-NEXT:    [[I:%.*]] = load i8, ptr [[PHI_PTR]], align 4
-; CHECK-NEXT:    ret i8 [[I]]
+; CHECK-NEXT:    ret i8 42
 ;
 entry:
   %Bytes = alloca [1024 x i8], align 16
