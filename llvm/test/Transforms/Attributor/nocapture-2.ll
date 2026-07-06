@@ -802,6 +802,125 @@ define void @b64613_positive(ptr noundef %p, i32 %i) {
   %q = call ptr @b64613_b(ptr %r, i32 %i)
   ret void
 }
+define ptr @b64613_c(ptr noundef %p, i32 %i) {
+; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; TUNIT-LABEL: define ptr @b64613_c
+; TUNIT-SAME: (ptr nofree noundef readnone returned "no-capture-maybe-returned" [[P:%.*]], i32 [[I:%.*]]) #[[ATTR11]] {
+; TUNIT-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; TUNIT-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; TUNIT-NEXT:    store ptr [[P]], ptr [[G]], align 8
+; TUNIT-NEXT:    ret ptr [[P]]
+;
+; CGSCC: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; CGSCC-LABEL: define ptr @b64613_c
+; CGSCC-SAME: (ptr nofree noundef readnone returned "no-capture-maybe-returned" [[P:%.*]], i32 [[I:%.*]]) #[[ATTR12]] {
+; CGSCC-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; CGSCC-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; CGSCC-NEXT:    store ptr [[P]], ptr [[G]], align 8
+; CGSCC-NEXT:    ret ptr [[P]]
+;
+  %p.addr = alloca <2 x ptr>, align 8
+  %g = getelementptr i8, ptr %p.addr, i32 %i
+  store ptr %p, ptr %g, align 8
+  %r = load ptr, ptr %p.addr, align 8
+  ret ptr %r
+}
+define ptr @b64613_d(ptr noundef %p, i32 %i) {
+; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; TUNIT-LABEL: define ptr @b64613_d
+; TUNIT-SAME: (ptr nofree noundef [[P:%.*]], i32 [[I:%.*]]) #[[ATTR11]] {
+; TUNIT-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; TUNIT-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; TUNIT-NEXT:    store ptr [[P]], ptr [[G]], align 4
+; TUNIT-NEXT:    [[R:%.*]] = load ptr, ptr [[P_ADDR]], align 8
+; TUNIT-NEXT:    ret ptr [[R]]
+;
+; CGSCC: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; CGSCC-LABEL: define ptr @b64613_d
+; CGSCC-SAME: (ptr nofree noundef [[P:%.*]], i32 [[I:%.*]]) #[[ATTR12]] {
+; CGSCC-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; CGSCC-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; CGSCC-NEXT:    store ptr [[P]], ptr [[G]], align 4
+; CGSCC-NEXT:    [[R:%.*]] = load ptr, ptr [[P_ADDR]], align 8
+; CGSCC-NEXT:    ret ptr [[R]]
+;
+  %p.addr = alloca <2 x ptr>, align 8
+  %g = getelementptr i8, ptr %p.addr, i32 %i
+  store ptr %p, ptr %g, align 4
+  %r = load ptr, ptr %p.addr, align 8
+  ret ptr %r
+}
+define ptr @b64613_e(ptr noundef %p, i32 %i) {
+; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; TUNIT-LABEL: define ptr @b64613_e
+; TUNIT-SAME: (ptr nofree noundef [[P:%.*]], i32 [[I:%.*]]) #[[ATTR11]] {
+; TUNIT-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; TUNIT-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; TUNIT-NEXT:    store ptr [[P]], ptr [[G]], align 8
+; TUNIT-NEXT:    [[R:%.*]] = load ptr, ptr [[P_ADDR]], align 8
+; TUNIT-NEXT:    ret ptr [[R]]
+;
+; CGSCC: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; CGSCC-LABEL: define ptr @b64613_e
+; CGSCC-SAME: (ptr nofree noundef [[P:%.*]], i32 [[I:%.*]]) #[[ATTR12]] {
+; CGSCC-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; CGSCC-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; CGSCC-NEXT:    store ptr [[P]], ptr [[G]], align 8
+; CGSCC-NEXT:    [[R:%.*]] = load ptr, ptr [[P_ADDR]], align 8
+; CGSCC-NEXT:    ret ptr [[R]]
+;
+  %p.addr = alloca <2 x ptr>, align 8
+  %g = getelementptr i8, ptr %p.addr, i32 %i
+  store ptr %p, ptr %g, align 8
+  %r = load ptr, ptr %p.addr, align 4
+  ret ptr %r
+}
+define ptr @b64613_f(ptr noundef %p, i32 %i) {
+; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; TUNIT-LABEL: define ptr @b64613_f
+; TUNIT-SAME: (ptr nofree noundef readnone returned "no-capture-maybe-returned" [[P:%.*]], i32 [[I:%.*]]) #[[ATTR11]] {
+; TUNIT-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; TUNIT-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; TUNIT-NEXT:    store ptr [[P]], ptr [[G]], align 8
+; TUNIT-NEXT:    ret ptr [[P]]
+;
+; CGSCC: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; CGSCC-LABEL: define ptr @b64613_f
+; CGSCC-SAME: (ptr nofree noundef readnone returned "no-capture-maybe-returned" [[P:%.*]], i32 [[I:%.*]]) #[[ATTR12]] {
+; CGSCC-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; CGSCC-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; CGSCC-NEXT:    store ptr [[P]], ptr [[G]], align 8
+; CGSCC-NEXT:    ret ptr [[P]]
+;
+  %p.addr = alloca <2 x ptr>, align 8
+  %g = getelementptr i8, ptr %p.addr, i32 %i
+  store ptr %p, ptr %g, align 8
+  %r = load ptr, ptr %p.addr, align 16
+  ret ptr %r
+}
+define ptr @b64613_g(ptr noundef %p, i32 %i) {
+; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; TUNIT-LABEL: define ptr @b64613_g
+; TUNIT-SAME: (ptr nofree noundef readnone returned "no-capture-maybe-returned" [[P:%.*]], i32 [[I:%.*]]) #[[ATTR11]] {
+; TUNIT-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; TUNIT-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; TUNIT-NEXT:    store ptr [[P]], ptr [[G]], align 16
+; TUNIT-NEXT:    ret ptr [[P]]
+;
+; CGSCC: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
+; CGSCC-LABEL: define ptr @b64613_g
+; CGSCC-SAME: (ptr nofree noundef readnone returned "no-capture-maybe-returned" [[P:%.*]], i32 [[I:%.*]]) #[[ATTR12]] {
+; CGSCC-NEXT:    [[P_ADDR:%.*]] = alloca <2 x ptr>, align 8
+; CGSCC-NEXT:    [[G:%.*]] = getelementptr i8, ptr [[P_ADDR]], i32 [[I]]
+; CGSCC-NEXT:    store ptr [[P]], ptr [[G]], align 16
+; CGSCC-NEXT:    ret ptr [[P]]
+;
+  %p.addr = alloca <2 x ptr>, align 8
+  %g = getelementptr i8, ptr %p.addr, i32 %i
+  store ptr %p, ptr %g, align 16
+  %r = load ptr, ptr %p.addr, align 8
+  ret ptr %r
+}
 
 attributes #0 = { noinline nounwind uwtable }
 ;.
