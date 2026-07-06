@@ -1922,36 +1922,167 @@ bool DependenceInfo::gcdMIVtest(const SCEV *Src, const SCEV *Dst,
 }
 
 //===----------------------------------------------------------------------===//
+
+namespace {
+struct BanerjeeInterval {
+  std::optional<APInt> Lower;
+  std::optional<APInt> Upper;
+
+  BanerjeeInterval(std::optional<APInt> Lower, std::optional<APInt> Upper)
+      : Lower(std::move(Lower)), Upper(std::move(Upper)) {}
+};
+} // namespace
+
+static APInt signedMin(const APInt &A, const APInt &B) {
+  return A.slt(B) ? A : B;
+}
+
+static APInt signedMax(const APInt &A, const APInt &B) {
+  return A.sgt(B) ? A : B;
+}
+
+static BanerjeeInterval addIntervals(const BanerjeeInterval &A,
+                                     const BanerjeeInterval &B) {
+  std::optional<APInt> Lower;
+  std::optional<APInt> Upper;
+  if (A.Lower && B.Lower)
+    Lower = *A.Lower + *B.Lower;
+  if (A.Upper && B.Upper)
+    Upper = *A.Upper + *B.Upper;
+  return BanerjeeInterval(std::move(Lower), std::move(Upper));
+}
+
+static BanerjeeInterval constantInterval(const APInt &C) {
+  return BanerjeeInterval(C, C);
+}
+
+static BanerjeeInterval emptyInterval(unsigned Bits) {
+  return BanerjeeInterval(APInt(Bits, 1, true), APInt(Bits, 0, true));
+}
+
+static bool isEmptyInterval(const BanerjeeInterval &Interval) {
+  return Interval.Lower && Interval.Upper &&
+         Interval.Lower->sgt(*Interval.Upper);
+}
+
+static BanerjeeInterval signedRangeInterval(const APInt &Coeff,
+                                            const APInt &Lower,
+                                            const APInt &Upper) {
+  APInt LowerValue = Coeff * Lower;
+  APInt UpperValue = Coeff * Upper;
+  return BanerjeeInterval(signedMin(LowerValue, UpperValue),
+                          signedMax(LowerValue, UpperValue));
+}
+
+static BanerjeeInterval variableInterval(const APInt &Coeff,
+                                         const std::optional<APInt> &Upper) {
+  APInt Zero(Coeff.getBitWidth(), 0, true);
+  if (Coeff.isZero())
+    return constantInterval(Zero);
+  if (!Upper) {
+    if (Coeff.isNegative())
+      return BanerjeeInterval(std::nullopt, Zero);
+    return BanerjeeInterval(Zero, std::nullopt);
+  }
+  return signedRangeInterval(Coeff, Zero, *Upper);
+}
+
+static BanerjeeInterval
+unboundedStrictDirectionInterval(const APInt &ACoeff, const APInt &BCoeff,
+                                 unsigned char Direction) {
+  APInt DeltaCoeff = ACoeff - BCoeff;
+
+  switch (Direction) {
+  case Dependence::DVEntry::LT: {
+    APInt Boundary = -BCoeff;
+    std::optional<APInt> Lower;
+    std::optional<APInt> Upper;
+    if (DeltaCoeff.isNonNegative() && BCoeff.isNonPositive())
+      Lower = Boundary;
+    if (DeltaCoeff.isNonPositive() && BCoeff.isNonNegative())
+      Upper = Boundary;
+    return BanerjeeInterval(std::move(Lower), std::move(Upper));
+  }
+  case Dependence::DVEntry::GT: {
+    std::optional<APInt> Lower;
+    std::optional<APInt> Upper;
+    if (ACoeff.isNonNegative() && DeltaCoeff.isNonNegative())
+      Lower = ACoeff;
+    if (ACoeff.isNonPositive() && DeltaCoeff.isNonPositive())
+      Upper = ACoeff;
+    return BanerjeeInterval(std::move(Lower), std::move(Upper));
+  }
+  default:
+    llvm_unreachable("unexpected direction");
+  }
+}
+
+static BanerjeeInterval intervalFromValues(ArrayRef<APInt> Values) {
+  assert(!Values.empty() && "expected at least one value");
+  APInt Lower = Values.front();
+  APInt Upper = Values.front();
+  for (const APInt &Value : Values.drop_front()) {
+    Lower = signedMin(Lower, Value);
+    Upper = signedMax(Upper, Value);
+  }
+  return BanerjeeInterval(std::move(Lower), std::move(Upper));
+}
+
+static APInt evaluateBanerjeeTerm(const APInt &A, const APInt &SrcIndex,
+                                  const APInt &B, const APInt &DstIndex) {
+  return A * SrcIndex - B * DstIndex;
+}
+
+static APInt extendOrTruncateKnownNonNegative(const APInt &Value,
+                                              unsigned Width) {
+  if (Value.getBitWidth() < Width)
+    return Value.zext(Width);
+  return Value.trunc(Width);
+}
+
+static APInt extendOrTruncateKnownSigned(const APInt &Value, unsigned Width) {
+  if (Value.getBitWidth() < Width)
+    return Value.sext(Width);
+  return Value.trunc(Width);
+}
+
+static std::optional<APInt> getConstantMaxIterationIndex(const Loop *L,
+                                                         unsigned BaseBits,
+                                                         unsigned WideBits,
+                                                         ScalarEvolution &SE) {
+  if (!SE.hasLoopInvariantBackedgeTakenCount(L))
+    return std::nullopt;
+
+  const SCEV *BackedgeTakenCount = SE.getBackedgeTakenCount(L);
+  if (isa<SCEVCouldNotCompute>(BackedgeTakenCount))
+    return std::nullopt;
+
+  auto *Constant = dyn_cast<SCEVConstant>(BackedgeTakenCount);
+  if (!Constant)
+    return std::nullopt;
+
+  APInt MaxIndex = Constant->getAPInt();
+  if (MaxIndex.isNegative() || MaxIndex.getActiveBits() > BaseBits)
+    return std::nullopt;
+  return extendOrTruncateKnownNonNegative(MaxIndex, WideBits);
+}
+
 // banerjeeMIVtest -
 // Use Banerjee's Inequalities to test an MIV subscript pair.
-// (Wolfe, in the race-car book, calls this the Extreme Value Test.)
-// Generally follows the discussion in Section 2.5.2 of
+// (Wolfe calls this the Extreme Value Test; see Section 2.5.2 of
+// Optimizing Supercompilers for Supercomputers, Michael Wolfe.)
 //
-//    Optimizing Supercompilers for Supercomputers
-//    Michael Wolfe
+// This implementation handles only constant affine expressions and constant
+// loop bounds. The original Wolfe formulae are algebraically simplified for
+// normalized loops (L_k=0, N_k=1); we instead evaluate the subscript
+// difference directly at the vertices of the constraint polytope for each
+// direction (e.g., (0,1), (0,U), (U-1,U) for <). This eliminates the
+// intermediate SCEV arithmetic whose overflow behaviour makes the legacy
+// symbolic bound formulae unsound for LLVM IR.
 //
-// The inequalities given on page 25 are simplified in that loops are
-// normalized so that the lower bound is always 0 and the stride is always 1.
-// For example, Wolfe gives
-//
-//     LB^<_k = (A^-_k - B_k)^- (U_k - L_k - N_k) + (A_k - B_k)L_k - B_k N_k
-//
-// where A_k is the coefficient of the kth index in the source subscript,
-// B_k is the coefficient of the kth index in the destination subscript,
-// U_k is the upper bound of the kth index, L_k is the lower bound of the Kth
-// index, and N_k is the stride of the kth index. Since all loops are normalized
-// by the SCEV package, N_k = 1 and L_k = 0, allowing us to simplify the
-// equation to
-//
-//     LB^<_k = (A^-_k - B_k)^- (U_k - 0 - 1) + (A_k - B_k)0 - B_k 1
-//            = (A^-_k - B_k)^- (U_k - 1)  - B_k
-//
-// Similar simplifications are possible for the other equations.
-//
-// When we can't determine the number of iterations for a loop,
-// we use NULL as an indicator for the worst case, infinity.
-// When computing the upper bound, NULL denotes +inf;
-// for the lower bound, NULL denotes -inf.
+// Loop bounds are backedge-taken counts (maximum normalized iteration
+// index). A single-iteration loop has bound 0, making < and > impossible.
+// Symbolic cases bail out conservatively.
 //
 // Return true if dependence disproved.
 bool DependenceInfo::banerjeeMIVtest(const SCEV *Src, const SCEV *Dst,
@@ -1962,464 +2093,251 @@ bool DependenceInfo::banerjeeMIVtest(const SCEV *Src, const SCEV *Dst,
 
   LLVM_DEBUG(dbgs() << "starting Banerjee\n");
   ++BanerjeeApplications;
-  LLVM_DEBUG(dbgs() << "    Src = " << *Src << '\n');
-  const SCEV *A0;
-  SmallVector<CoefficientInfo, 4> A;
-  collectCoeffInfo(Src, true, A0, A);
-  LLVM_DEBUG(dbgs() << "    Dst = " << *Dst << '\n');
-  const SCEV *B0;
-  SmallVector<CoefficientInfo, 4> B;
-  collectCoeffInfo(Dst, false, B0, B);
-  SmallVector<BoundInfo, 4> Bound(MaxLevels + 1);
-  const SCEV *Delta = minusSCEVNoSignedOverflow(B0, A0, *SE);
-  if (!Delta)
-    return false;
-  LLVM_DEBUG(dbgs() << "\tDelta = " << *Delta << '\n');
 
-  // Compute bounds for all the * directions.
-  LLVM_DEBUG(dbgs() << "\tBounds[*]\n");
-  for (unsigned K = 1; K <= MaxLevels; ++K) {
-    Bound[K].Iterations = A[K].Iterations ? A[K].Iterations : B[K].Iterations;
-    Bound[K].Direction = Dependence::DVEntry::ALL;
-    Bound[K].DirSet = Dependence::DVEntry::NONE;
-    findBoundsALL(A, B, Bound, K);
-#ifndef NDEBUG
-    LLVM_DEBUG(dbgs() << "\t    " << K << '\t');
-    if (Bound[K].Lower[Dependence::DVEntry::ALL])
-      LLVM_DEBUG(dbgs() << *Bound[K].Lower[Dependence::DVEntry::ALL] << '\t');
-    else
-      LLVM_DEBUG(dbgs() << "-inf\t");
-    if (Bound[K].Upper[Dependence::DVEntry::ALL])
-      LLVM_DEBUG(dbgs() << *Bound[K].Upper[Dependence::DVEntry::ALL] << '\n');
-    else
-      LLVM_DEBUG(dbgs() << "+inf\n");
-#endif
-  }
+  unsigned SrcBits = SE->getTypeSizeInBits(Src->getType());
+  unsigned DstBits = SE->getTypeSizeInBits(Dst->getType());
+  unsigned BaseBits = std::max(SrcBits, DstBits);
+  // Accepted coefficients and constants fit in signed BaseBits, and loop
+  // bounds fit in unsigned BaseBits. WideBits is large enough for products of
+  // those values and for summing one interval term per loop level.
+  unsigned WideBits = std::max(8u, 2 * BaseBits + MaxLevels + 8);
+  APInt Zero(WideBits, 0, true);
 
-  // Test the *, *, *, ... case.
-  bool Disproved = false;
-  if (testBounds(Dependence::DVEntry::ALL, 0, Bound, Delta)) {
-    // Explore the direction vector hierarchy.
-    unsigned DepthExpanded = 0;
-    unsigned NewDeps =
-        exploreDirections(1, A, B, Bound, Loops, DepthExpanded, Delta);
-    if (NewDeps > 0) {
-      bool Improved = false;
-      for (unsigned K = 1; K <= CommonLevels; ++K) {
-        if (Loops[K]) {
-          unsigned Old = Result.DV[K - 1].Direction;
-          Result.DV[K - 1].Direction = Old & Bound[K].DirSet;
-          Improved |= Old != Result.DV[K - 1].Direction;
-          if (!Result.DV[K - 1].Direction) {
-            Improved = false;
-            Disproved = true;
-            break;
-          }
-        }
-      }
-      if (Improved)
-        ++BanerjeeSuccesses;
-    } else {
-      ++BanerjeeIndependence;
-      Disproved = true;
+  SmallVector<APInt, 4> SrcCoeffs(MaxLevels + 1, Zero);
+  SmallVector<APInt, 4> DstCoeffs(MaxLevels + 1, Zero);
+  SmallVector<std::optional<APInt>, 4> SrcMaxIterIndices(MaxLevels + 1);
+  SmallVector<std::optional<APInt>, 4> DstMaxIterIndices(MaxLevels + 1);
+  assert(Loops.size() > MaxLevels && "loop bit vector is too small");
+  assert(Result.Levels >= CommonLevels &&
+         "direction vector is too small for common levels");
+
+  auto GetConstant = [BaseBits,
+                      WideBits](const SCEV *Expr) -> std::optional<APInt> {
+    const SCEVConstant *C = dyn_cast<SCEVConstant>(Expr);
+    if (!C)
+      return std::nullopt;
+    APInt Value = C->getAPInt();
+    if (!Value.isSignedIntN(BaseBits))
+      return std::nullopt;
+    return extendOrTruncateKnownSigned(Value, WideBits);
+  };
+
+  auto CollectConstantAffine =
+      [&](const SCEV *Subscript, bool SrcFlag, MutableArrayRef<APInt> Coeffs,
+          MutableArrayRef<std::optional<APInt>> MaxIterIndices)
+      -> const SCEV * {
+    SmallBitVector SeenLevels(MaxLevels + 1);
+    while (const SCEVAddRecExpr *AddRec = dyn_cast<SCEVAddRecExpr>(Subscript)) {
+      if (!AddRec->hasNoSignedWrap())
+        return nullptr;
+
+      unsigned K = SrcFlag ? mapSrcLoop(AddRec->getLoop())
+                           : mapDstLoop(AddRec->getLoop());
+      if (K == 0 || K > MaxLevels)
+        return nullptr;
+      if (SeenLevels[K])
+        return nullptr;
+      SeenLevels.set(K);
+
+      std::optional<APInt> Step = GetConstant(AddRec->getStepRecurrence(*SE));
+      if (!Step)
+        return nullptr;
+      Coeffs[K] = *Step;
+
+      if (std::optional<APInt> MaxIndex = getConstantMaxIterationIndex(
+              AddRec->getLoop(), BaseBits, WideBits, *SE))
+        MaxIterIndices[K] = *MaxIndex;
+
+      Subscript = AddRec->getStart();
     }
-  } else {
-    ++BanerjeeIndependence;
-    Disproved = true;
-  }
-  return Disproved;
-}
 
-// Hierarchically expands the direction vector
-// search space, combining the directions of discovered dependences
-// in the DirSet field of Bound. Returns the number of distinct
-// dependences discovered. If the dependence is disproved,
-// it will return 0.
-unsigned DependenceInfo::exploreDirections(
-    unsigned Level, ArrayRef<CoefficientInfo> A, ArrayRef<CoefficientInfo> B,
-    MutableArrayRef<BoundInfo> Bound, const SmallBitVector &Loops,
-    unsigned &DepthExpanded, const SCEV *Delta) const {
-  // This algorithm has worst case complexity of O(3^n), where 'n' is the number
-  // of common loop levels. To avoid excessive compile-time, pessimize all the
-  // results and immediately return when the number of common levels is beyond
-  // the given threshold.
+    return Subscript;
+  };
+
+  const SCEV *A0 =
+      CollectConstantAffine(Src, true, SrcCoeffs, SrcMaxIterIndices);
+  if (!A0)
+    return false;
+  const SCEV *B0 =
+      CollectConstantAffine(Dst, false, DstCoeffs, DstMaxIterIndices);
+  if (!B0)
+    return false;
+
+  std::optional<APInt> DeltaValue;
+  if (A0 == B0) {
+    DeltaValue = Zero;
+  } else {
+    std::optional<APInt> A0Constant = GetConstant(A0);
+    std::optional<APInt> B0Constant = GetConstant(B0);
+    if (A0Constant && B0Constant)
+      DeltaValue = *B0Constant - *A0Constant;
+    if (!DeltaValue && A0->getType() == B0->getType()) {
+      if (const SCEV *DeltaSCEV = minusSCEVNoSignedOverflow(B0, A0, *SE))
+        DeltaValue = GetConstant(DeltaSCEV);
+    }
+  }
+  if (!DeltaValue)
+    return false;
+
+  APInt Delta = *DeltaValue;
+  LLVM_DEBUG(dbgs() << "\tDelta = " << Delta << '\n');
+
+  auto EqualDirectionMaxIndex = [&](unsigned K) -> std::optional<APInt> {
+    if (SrcMaxIterIndices[K] && DstMaxIterIndices[K])
+      return signedMin(*SrcMaxIterIndices[K], *DstMaxIterIndices[K]);
+    return SrcMaxIterIndices[K] ? SrcMaxIterIndices[K] : DstMaxIterIndices[K];
+  };
+
+  auto StrictDirectionMaxIndex = [&](unsigned K) -> std::optional<APInt> {
+    if (SrcMaxIterIndices[K] && DstMaxIterIndices[K]) {
+      if (*SrcMaxIterIndices[K] != *DstMaxIterIndices[K])
+        return std::nullopt;
+      return SrcMaxIterIndices[K];
+    }
+    return SrcMaxIterIndices[K] ? SrcMaxIterIndices[K] : DstMaxIterIndices[K];
+  };
+
+  auto TermInterval =
+      [&](unsigned K,
+          unsigned char Direction) -> std::optional<BanerjeeInterval> {
+    const APInt &ACoeff = SrcCoeffs[K];
+    const APInt &BCoeff = DstCoeffs[K];
+
+    switch (Direction) {
+    case Dependence::DVEntry::ALL: {
+      BanerjeeInterval SrcInterval =
+          variableInterval(ACoeff, SrcMaxIterIndices[K]);
+      BanerjeeInterval DstInterval =
+          variableInterval(-BCoeff, DstMaxIterIndices[K]);
+      return addIntervals(SrcInterval, DstInterval);
+    }
+    case Dependence::DVEntry::EQ: {
+      return variableInterval(ACoeff - BCoeff, EqualDirectionMaxIndex(K));
+    }
+    case Dependence::DVEntry::LT: {
+      std::optional<APInt> Upper = StrictDirectionMaxIndex(K);
+      if (!Upper)
+        return unboundedStrictDirectionInterval(ACoeff, BCoeff, Direction);
+      if (Upper->isZero())
+        return emptyInterval(WideBits);
+      APInt One(WideBits, 1, true);
+      APInt UpperMinusOne = *Upper - One;
+      SmallVector<APInt, 3> Values;
+      Values.push_back(evaluateBanerjeeTerm(ACoeff, Zero, BCoeff, One));
+      Values.push_back(evaluateBanerjeeTerm(ACoeff, Zero, BCoeff, *Upper));
+      Values.push_back(
+          evaluateBanerjeeTerm(ACoeff, UpperMinusOne, BCoeff, *Upper));
+      return intervalFromValues(Values);
+    }
+    case Dependence::DVEntry::GT: {
+      std::optional<APInt> Upper = StrictDirectionMaxIndex(K);
+      if (!Upper)
+        return unboundedStrictDirectionInterval(ACoeff, BCoeff, Direction);
+      if (Upper->isZero())
+        return emptyInterval(WideBits);
+      APInt One(WideBits, 1, true);
+      APInt UpperMinusOne = *Upper - One;
+      SmallVector<APInt, 3> Values;
+      Values.push_back(evaluateBanerjeeTerm(ACoeff, One, BCoeff, Zero));
+      Values.push_back(evaluateBanerjeeTerm(ACoeff, *Upper, BCoeff, Zero));
+      Values.push_back(
+          evaluateBanerjeeTerm(ACoeff, *Upper, BCoeff, UpperMinusOne));
+      return intervalFromValues(Values);
+    }
+    default:
+      llvm_unreachable("unexpected direction");
+    }
+  };
+
+  SmallVector<unsigned char, 4> Direction(MaxLevels + 1,
+                                          Dependence::DVEntry::ALL);
+  auto TotalInterval = [&]() -> std::optional<BanerjeeInterval> {
+    BanerjeeInterval Total(Zero, Zero);
+    for (unsigned K = 1; K <= MaxLevels; ++K) {
+      std::optional<BanerjeeInterval> Term = TermInterval(K, Direction[K]);
+      if (!Term)
+        return std::nullopt;
+      if (isEmptyInterval(*Term))
+        return Term;
+      Total = addIntervals(Total, *Term);
+    }
+    return Total;
+  };
+
+  auto BoundsArePlausible = [&]() {
+    std::optional<BanerjeeInterval> Interval = TotalInterval();
+    if (!Interval)
+      return true;
+    if (isEmptyInterval(*Interval))
+      return false;
+    if (Interval->Lower && Interval->Lower->sgt(Delta))
+      return false;
+    if (Interval->Upper && Delta.sgt(*Interval->Upper))
+      return false;
+    return true;
+  };
+
+  if (!BoundsArePlausible()) {
+    ++BanerjeeIndependence;
+    return true;
+  }
+
   if (CommonLevels > MIVMaxLevelThreshold) {
     LLVM_DEBUG(dbgs() << "Number of common levels exceeded the threshold. MIV "
                          "direction exploration is terminated.\n");
-    for (unsigned K = 1; K <= CommonLevels; ++K)
-      if (Loops[K])
-        Bound[K].DirSet = Dependence::DVEntry::ALL;
-    return 1;
+    return false;
   }
 
-  if (Level > CommonLevels) {
-    // record result
-    LLVM_DEBUG(dbgs() << "\t[");
-    for (unsigned K = 1; K <= CommonLevels; ++K) {
-      if (Loops[K]) {
-        Bound[K].DirSet |= Bound[K].Direction;
-#ifndef NDEBUG
-        switch (Bound[K].Direction) {
-        case Dependence::DVEntry::LT:
-          LLVM_DEBUG(dbgs() << " <");
-          break;
-        case Dependence::DVEntry::EQ:
-          LLVM_DEBUG(dbgs() << " =");
-          break;
-        case Dependence::DVEntry::GT:
-          LLVM_DEBUG(dbgs() << " >");
-          break;
-        case Dependence::DVEntry::ALL:
-          LLVM_DEBUG(dbgs() << " *");
-          break;
-        default:
-          llvm_unreachable("unexpected Bound[K].Direction");
-        }
-#endif
-      }
+  SmallVector<unsigned char, 4> DirSet(MaxLevels + 1,
+                                       Dependence::DVEntry::NONE);
+  auto ExploreDirections = [&](auto &ExploreDirections,
+                               unsigned Level) -> unsigned {
+    if (Level > CommonLevels) {
+      for (unsigned K = 1; K <= CommonLevels; ++K)
+        if (Loops[K])
+          DirSet[K] |= Direction[K];
+      return 1;
     }
-    LLVM_DEBUG(dbgs() << " ]\n");
-    return 1;
-  }
-  if (Loops[Level]) {
-    if (Level > DepthExpanded) {
-      DepthExpanded = Level;
-      // compute bounds for <, =, > at current level
-      findBoundsLT(A, B, Bound, Level);
-      findBoundsGT(A, B, Bound, Level);
-      findBoundsEQ(A, B, Bound, Level);
-#ifndef NDEBUG
-      LLVM_DEBUG(dbgs() << "\tBound for level = " << Level << '\n');
-      LLVM_DEBUG(dbgs() << "\t    <\t");
-      if (Bound[Level].Lower[Dependence::DVEntry::LT])
-        LLVM_DEBUG(dbgs() << *Bound[Level].Lower[Dependence::DVEntry::LT]
-                          << '\t');
-      else
-        LLVM_DEBUG(dbgs() << "-inf\t");
-      if (Bound[Level].Upper[Dependence::DVEntry::LT])
-        LLVM_DEBUG(dbgs() << *Bound[Level].Upper[Dependence::DVEntry::LT]
-                          << '\n');
-      else
-        LLVM_DEBUG(dbgs() << "+inf\n");
-      LLVM_DEBUG(dbgs() << "\t    =\t");
-      if (Bound[Level].Lower[Dependence::DVEntry::EQ])
-        LLVM_DEBUG(dbgs() << *Bound[Level].Lower[Dependence::DVEntry::EQ]
-                          << '\t');
-      else
-        LLVM_DEBUG(dbgs() << "-inf\t");
-      if (Bound[Level].Upper[Dependence::DVEntry::EQ])
-        LLVM_DEBUG(dbgs() << *Bound[Level].Upper[Dependence::DVEntry::EQ]
-                          << '\n');
-      else
-        LLVM_DEBUG(dbgs() << "+inf\n");
-      LLVM_DEBUG(dbgs() << "\t    >\t");
-      if (Bound[Level].Lower[Dependence::DVEntry::GT])
-        LLVM_DEBUG(dbgs() << *Bound[Level].Lower[Dependence::DVEntry::GT]
-                          << '\t');
-      else
-        LLVM_DEBUG(dbgs() << "-inf\t");
-      if (Bound[Level].Upper[Dependence::DVEntry::GT])
-        LLVM_DEBUG(dbgs() << *Bound[Level].Upper[Dependence::DVEntry::GT]
-                          << '\n');
-      else
-        LLVM_DEBUG(dbgs() << "+inf\n");
-#endif
-    }
+
+    if (!Loops[Level])
+      return ExploreDirections(ExploreDirections, Level + 1);
 
     unsigned NewDeps = 0;
-
-    // test bounds for <, *, *, ...
-    if (testBounds(Dependence::DVEntry::LT, Level, Bound, Delta))
-      NewDeps += exploreDirections(Level + 1, A, B, Bound, Loops, DepthExpanded,
-                                   Delta);
-
-    // Test bounds for =, *, *, ...
-    if (testBounds(Dependence::DVEntry::EQ, Level, Bound, Delta))
-      NewDeps += exploreDirections(Level + 1, A, B, Bound, Loops, DepthExpanded,
-                                   Delta);
-
-    // test bounds for >, *, *, ...
-    if (testBounds(Dependence::DVEntry::GT, Level, Bound, Delta))
-      NewDeps += exploreDirections(Level + 1, A, B, Bound, Loops, DepthExpanded,
-                                   Delta);
-
-    Bound[Level].Direction = Dependence::DVEntry::ALL;
+    unsigned OldDirections = Result.DV[Level - 1].Direction;
+    for (unsigned char Dir : {Dependence::DVEntry::LT, Dependence::DVEntry::EQ,
+                              Dependence::DVEntry::GT}) {
+      if (!(OldDirections & Dir))
+        continue;
+      Direction[Level] = Dir;
+      if (BoundsArePlausible())
+        NewDeps += ExploreDirections(ExploreDirections, Level + 1);
+    }
+    Direction[Level] = Dependence::DVEntry::ALL;
     return NewDeps;
-  } else
-    return exploreDirections(Level + 1, A, B, Bound, Loops, DepthExpanded,
-                             Delta);
-}
+  };
 
-// Returns true iff the current bounds are plausible.
-bool DependenceInfo::testBounds(unsigned char DirKind, unsigned Level,
-                                MutableArrayRef<BoundInfo> Bound,
-                                const SCEV *Delta) const {
-  Bound[Level].Direction = DirKind;
-  if (const SCEV *LowerBound = getLowerBound(Bound))
-    if (SE->isKnownPredicate(CmpInst::ICMP_SGT, LowerBound, Delta))
-      return false;
-  if (const SCEV *UpperBound = getUpperBound(Bound))
-    if (SE->isKnownPredicate(CmpInst::ICMP_SGT, Delta, UpperBound))
-      return false;
-  return true;
-}
-
-// Computes the upper and lower bounds for level K
-// using the * direction. Records them in Bound.
-// Wolfe gives the equations
-//
-//    LB^*_k = (A^-_k - B^+_k)(U_k - L_k) + (A_k - B_k)L_k
-//    UB^*_k = (A^+_k - B^-_k)(U_k - L_k) + (A_k - B_k)L_k
-//
-// Since we normalize loops, we can simplify these equations to
-//
-//    LB^*_k = (A^-_k - B^+_k)U_k
-//    UB^*_k = (A^+_k - B^-_k)U_k
-//
-// We must be careful to handle the case where the upper bound is unknown.
-// Note that the lower bound is always <= 0
-// and the upper bound is always >= 0.
-void DependenceInfo::findBoundsALL(ArrayRef<CoefficientInfo> A,
-                                   ArrayRef<CoefficientInfo> B,
-                                   MutableArrayRef<BoundInfo> Bound,
-                                   unsigned K) const {
-  Bound[K].Lower[Dependence::DVEntry::ALL] =
-      nullptr; // Default value = -infinity.
-  Bound[K].Upper[Dependence::DVEntry::ALL] =
-      nullptr; // Default value = +infinity.
-  if (Bound[K].Iterations) {
-    Bound[K].Lower[Dependence::DVEntry::ALL] = SE->getMulExpr(
-        SE->getMinusSCEV(A[K].NegPart, B[K].PosPart), Bound[K].Iterations);
-    Bound[K].Upper[Dependence::DVEntry::ALL] = SE->getMulExpr(
-        SE->getMinusSCEV(A[K].PosPart, B[K].NegPart), Bound[K].Iterations);
-  } else {
-    // If the difference is 0, we won't need to know the number of iterations.
-    if (SE->isKnownPredicate(CmpInst::ICMP_EQ, A[K].NegPart, B[K].PosPart))
-      Bound[K].Lower[Dependence::DVEntry::ALL] =
-          SE->getZero(A[K].Coeff->getType());
-    if (SE->isKnownPredicate(CmpInst::ICMP_EQ, A[K].PosPart, B[K].NegPart))
-      Bound[K].Upper[Dependence::DVEntry::ALL] =
-          SE->getZero(A[K].Coeff->getType());
+  unsigned NewDeps = ExploreDirections(ExploreDirections, 1);
+  if (NewDeps == 0) {
+    ++BanerjeeIndependence;
+    return true;
   }
-}
 
-// Computes the upper and lower bounds for level K
-// using the = direction. Records them in Bound.
-// Wolfe gives the equations
-//
-//    LB^=_k = (A_k - B_k)^- (U_k - L_k) + (A_k - B_k)L_k
-//    UB^=_k = (A_k - B_k)^+ (U_k - L_k) + (A_k - B_k)L_k
-//
-// Since we normalize loops, we can simplify these equations to
-//
-//    LB^=_k = (A_k - B_k)^- U_k
-//    UB^=_k = (A_k - B_k)^+ U_k
-//
-// We must be careful to handle the case where the upper bound is unknown.
-// Note that the lower bound is always <= 0
-// and the upper bound is always >= 0.
-void DependenceInfo::findBoundsEQ(ArrayRef<CoefficientInfo> A,
-                                  ArrayRef<CoefficientInfo> B,
-                                  MutableArrayRef<BoundInfo> Bound,
-                                  unsigned K) const {
-  Bound[K].Lower[Dependence::DVEntry::EQ] =
-      nullptr; // Default value = -infinity.
-  Bound[K].Upper[Dependence::DVEntry::EQ] =
-      nullptr; // Default value = +infinity.
-  if (Bound[K].Iterations) {
-    const SCEV *Delta = SE->getMinusSCEV(A[K].Coeff, B[K].Coeff);
-    const SCEV *NegativePart = getNegativePart(Delta);
-    Bound[K].Lower[Dependence::DVEntry::EQ] =
-        SE->getMulExpr(NegativePart, Bound[K].Iterations);
-    const SCEV *PositivePart = getPositivePart(Delta);
-    Bound[K].Upper[Dependence::DVEntry::EQ] =
-        SE->getMulExpr(PositivePart, Bound[K].Iterations);
-  } else {
-    // If the positive/negative part of the difference is 0,
-    // we won't need to know the number of iterations.
-    const SCEV *Delta = SE->getMinusSCEV(A[K].Coeff, B[K].Coeff);
-    const SCEV *NegativePart = getNegativePart(Delta);
-    if (NegativePart->isZero())
-      Bound[K].Lower[Dependence::DVEntry::EQ] = NegativePart; // Zero
-    const SCEV *PositivePart = getPositivePart(Delta);
-    if (PositivePart->isZero())
-      Bound[K].Upper[Dependence::DVEntry::EQ] = PositivePart; // Zero
+  bool Improved = false;
+  for (unsigned K = 1; K <= CommonLevels; ++K) {
+    if (!Loops[K])
+      continue;
+    unsigned Old = Result.DV[K - 1].Direction;
+    Result.DV[K - 1].Direction = Old & DirSet[K];
+    Improved |= Old != Result.DV[K - 1].Direction;
+    if (!Result.DV[K - 1].Direction) {
+      ++BanerjeeIndependence;
+      return true;
+    }
   }
-}
 
-// Computes the upper and lower bounds for level K
-// using the < direction. Records them in Bound.
-// Wolfe gives the equations
-//
-//    LB^<_k = (A^-_k - B_k)^- (U_k - L_k - N_k) + (A_k - B_k)L_k - B_k N_k
-//    UB^<_k = (A^+_k - B_k)^+ (U_k - L_k - N_k) + (A_k - B_k)L_k - B_k N_k
-//
-// Since we normalize loops, we can simplify these equations to
-//
-//    LB^<_k = (A^-_k - B_k)^- (U_k - 1) - B_k
-//    UB^<_k = (A^+_k - B_k)^+ (U_k - 1) - B_k
-//
-// We must be careful to handle the case where the upper bound is unknown.
-void DependenceInfo::findBoundsLT(ArrayRef<CoefficientInfo> A,
-                                  ArrayRef<CoefficientInfo> B,
-                                  MutableArrayRef<BoundInfo> Bound,
-                                  unsigned K) const {
-  Bound[K].Lower[Dependence::DVEntry::LT] =
-      nullptr; // Default value = -infinity.
-  Bound[K].Upper[Dependence::DVEntry::LT] =
-      nullptr; // Default value = +infinity.
-  if (Bound[K].Iterations) {
-    const SCEV *Iter_1 = SE->getMinusSCEV(
-        Bound[K].Iterations, SE->getOne(Bound[K].Iterations->getType()));
-    const SCEV *NegPart =
-        getNegativePart(SE->getMinusSCEV(A[K].NegPart, B[K].Coeff));
-    Bound[K].Lower[Dependence::DVEntry::LT] =
-        SE->getMinusSCEV(SE->getMulExpr(NegPart, Iter_1), B[K].Coeff);
-    const SCEV *PosPart =
-        getPositivePart(SE->getMinusSCEV(A[K].PosPart, B[K].Coeff));
-    Bound[K].Upper[Dependence::DVEntry::LT] =
-        SE->getMinusSCEV(SE->getMulExpr(PosPart, Iter_1), B[K].Coeff);
-  } else {
-    // If the positive/negative part of the difference is 0,
-    // we won't need to know the number of iterations.
-    const SCEV *NegPart =
-        getNegativePart(SE->getMinusSCEV(A[K].NegPart, B[K].Coeff));
-    if (NegPart->isZero())
-      Bound[K].Lower[Dependence::DVEntry::LT] = SE->getNegativeSCEV(B[K].Coeff);
-    const SCEV *PosPart =
-        getPositivePart(SE->getMinusSCEV(A[K].PosPart, B[K].Coeff));
-    if (PosPart->isZero())
-      Bound[K].Upper[Dependence::DVEntry::LT] = SE->getNegativeSCEV(B[K].Coeff);
-  }
-}
-
-// Computes the upper and lower bounds for level K
-// using the > direction. Records them in Bound.
-// Wolfe gives the equations
-//
-//    LB^>_k = (A_k - B^+_k)^- (U_k - L_k - N_k) + (A_k - B_k)L_k + A_k N_k
-//    UB^>_k = (A_k - B^-_k)^+ (U_k - L_k - N_k) + (A_k - B_k)L_k + A_k N_k
-//
-// Since we normalize loops, we can simplify these equations to
-//
-//    LB^>_k = (A_k - B^+_k)^- (U_k - 1) + A_k
-//    UB^>_k = (A_k - B^-_k)^+ (U_k - 1) + A_k
-//
-// We must be careful to handle the case where the upper bound is unknown.
-void DependenceInfo::findBoundsGT(ArrayRef<CoefficientInfo> A,
-                                  ArrayRef<CoefficientInfo> B,
-                                  MutableArrayRef<BoundInfo> Bound,
-                                  unsigned K) const {
-  Bound[K].Lower[Dependence::DVEntry::GT] =
-      nullptr; // Default value = -infinity.
-  Bound[K].Upper[Dependence::DVEntry::GT] =
-      nullptr; // Default value = +infinity.
-  if (Bound[K].Iterations) {
-    const SCEV *Iter_1 = SE->getMinusSCEV(
-        Bound[K].Iterations, SE->getOne(Bound[K].Iterations->getType()));
-    const SCEV *NegPart =
-        getNegativePart(SE->getMinusSCEV(A[K].Coeff, B[K].PosPart));
-    Bound[K].Lower[Dependence::DVEntry::GT] =
-        SE->getAddExpr(SE->getMulExpr(NegPart, Iter_1), A[K].Coeff);
-    const SCEV *PosPart =
-        getPositivePart(SE->getMinusSCEV(A[K].Coeff, B[K].NegPart));
-    Bound[K].Upper[Dependence::DVEntry::GT] =
-        SE->getAddExpr(SE->getMulExpr(PosPart, Iter_1), A[K].Coeff);
-  } else {
-    // If the positive/negative part of the difference is 0,
-    // we won't need to know the number of iterations.
-    const SCEV *NegPart =
-        getNegativePart(SE->getMinusSCEV(A[K].Coeff, B[K].PosPart));
-    if (NegPart->isZero())
-      Bound[K].Lower[Dependence::DVEntry::GT] = A[K].Coeff;
-    const SCEV *PosPart =
-        getPositivePart(SE->getMinusSCEV(A[K].Coeff, B[K].NegPart));
-    if (PosPart->isZero())
-      Bound[K].Upper[Dependence::DVEntry::GT] = A[K].Coeff;
-  }
-}
-
-// X^+ = max(X, 0)
-const SCEV *DependenceInfo::getPositivePart(const SCEV *X) const {
-  return SE->getSMaxExpr(X, SE->getZero(X->getType()));
-}
-
-// X^- = min(X, 0)
-const SCEV *DependenceInfo::getNegativePart(const SCEV *X) const {
-  return SE->getSMinExpr(X, SE->getZero(X->getType()));
-}
-
-// Walks through the subscript,
-// collecting each coefficient, the associated loop bounds,
-// and recording its positive and negative parts for later use.
-void DependenceInfo::collectCoeffInfo(
-    const SCEV *Subscript, bool SrcFlag, const SCEV *&Constant,
-    SmallVectorImpl<CoefficientInfo> &CI) const {
-  const SCEV *Zero = SE->getZero(Subscript->getType());
-  CI.resize(MaxLevels + 1);
-  for (unsigned K = 1; K <= MaxLevels; ++K) {
-    CI[K].Coeff = Zero;
-    CI[K].PosPart = Zero;
-    CI[K].NegPart = Zero;
-    CI[K].Iterations = nullptr;
-  }
-  while (const SCEVAddRecExpr *AddRec = dyn_cast<SCEVAddRecExpr>(Subscript)) {
-    const Loop *L = AddRec->getLoop();
-    unsigned K = SrcFlag ? mapSrcLoop(L) : mapDstLoop(L);
-    CI[K].Coeff = AddRec->getStepRecurrence(*SE);
-    CI[K].PosPart = getPositivePart(CI[K].Coeff);
-    CI[K].NegPart = getNegativePart(CI[K].Coeff);
-    CI[K].Iterations = collectUpperBound(L, Subscript->getType());
-    Subscript = AddRec->getStart();
-  }
-  Constant = Subscript;
-#ifndef NDEBUG
-  LLVM_DEBUG(dbgs() << "\tCoefficient Info\n");
-  for (unsigned K = 1; K <= MaxLevels; ++K) {
-    LLVM_DEBUG(dbgs() << "\t    " << K << "\t" << *CI[K].Coeff);
-    LLVM_DEBUG(dbgs() << "\tPos Part = ");
-    LLVM_DEBUG(dbgs() << *CI[K].PosPart);
-    LLVM_DEBUG(dbgs() << "\tNeg Part = ");
-    LLVM_DEBUG(dbgs() << *CI[K].NegPart);
-    LLVM_DEBUG(dbgs() << "\tUpper Bound = ");
-    if (CI[K].Iterations)
-      LLVM_DEBUG(dbgs() << *CI[K].Iterations);
-    else
-      LLVM_DEBUG(dbgs() << "+inf");
-    LLVM_DEBUG(dbgs() << '\n');
-  }
-  LLVM_DEBUG(dbgs() << "\t    Constant = " << *Subscript << '\n');
-#endif
-}
-
-// Looks through all the bounds info and
-// computes the lower bound given the current direction settings
-// at each level. If the lower bound for any level is -inf,
-// the result is -inf.
-const SCEV *DependenceInfo::getLowerBound(ArrayRef<BoundInfo> Bound) const {
-  const SCEV *Sum = Bound[1].Lower[Bound[1].Direction];
-  for (unsigned K = 2; Sum && K <= MaxLevels; ++K) {
-    if (Bound[K].Lower[Bound[K].Direction])
-      Sum = SE->getAddExpr(Sum, Bound[K].Lower[Bound[K].Direction]);
-    else
-      Sum = nullptr;
-  }
-  return Sum;
-}
-
-// Looks through all the bounds info and
-// computes the upper bound given the current direction settings
-// at each level. If the upper bound at any level is +inf,
-// the result is +inf.
-const SCEV *DependenceInfo::getUpperBound(ArrayRef<BoundInfo> Bound) const {
-  const SCEV *Sum = Bound[1].Upper[Bound[1].Direction];
-  for (unsigned K = 2; Sum && K <= MaxLevels; ++K) {
-    if (Bound[K].Upper[Bound[K].Direction])
-      Sum = SE->getAddExpr(Sum, Bound[K].Upper[Bound[K].Direction]);
-    else
-      Sum = nullptr;
-  }
-  return Sum;
+  if (Improved)
+    ++BanerjeeSuccesses;
+  return false;
 }
 
 /// Check if we can delinearize the subscripts. If the SCEVs representing the
