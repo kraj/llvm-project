@@ -69,7 +69,7 @@ enum class LangAS : unsigned {
   wasm_funcref,
 
   // HIP-specific address spaces
-  hip_barrier,
+  amdgpu_barrier,
 
   // This denotes the count of language-specific address spaces and also
   // the offset added to the target-specific address spaces, which are usually

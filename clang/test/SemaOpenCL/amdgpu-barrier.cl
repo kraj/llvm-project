@@ -4,8 +4,9 @@
 
 void foo() {
     struct {
-        __amdgpu_named_workgroup_barrier_t x; // expected-error {{the '__amdgpu_named_workgroup_barrier_t' type cannot be used to declare a structure or union field}}
-        __amdgpu_named_workgroup_barrier_t y[2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2]' type cannot be used to declare a structure or union field}}
+    __amdgpu_named_workgroup_barrier_t x; // expected-error {{the '__amdgpu_named_workgroup_barrier_t' type cannot be used to declare a structure or union field}}
+    __amdgpu_named_workgroup_barrier_t y[2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2]' type cannot be used to declare a structure or union field}}
+    __amdgpu_named_workgroup_barrier_t z[2][2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2][2]' type cannot be used to declare a structure or union field}}
     } str;
 
     int n = 100;

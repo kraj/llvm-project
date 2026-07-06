@@ -6171,11 +6171,8 @@ LangAS CodeGenModule::GetGlobalVarAddressSpace(const VarDecl *D) {
 
   if (LangOpts.CUDA && LangOpts.CUDAIsDevice) {
     if (D) {
-      // TOOD: Forbid type on struct fields
-      // llvm::dbgs() << D->getNameAsString() << ": " <<
-      // D->getType()->isAMDGPUNamedBarrierType() << "\n";
       if (D->getType()->isAMDGPUNamedBarrierType())
-        return LangAS::hip_barrier;
+        return LangAS::amdgpu_barrier;
 
       if (D->hasAttr<CUDAConstantAttr>())
         return LangAS::cuda_constant;
