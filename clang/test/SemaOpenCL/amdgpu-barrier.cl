@@ -3,6 +3,11 @@
 // RUN: %clang_cc1 -verify -cl-std=CL2.0 -triple amdgcn-amd-amdhsa -Wno-unused-value %s
 
 void foo() {
+    struct {
+        __amdgpu_named_workgroup_barrier_t x; // expected-error {{the '__amdgpu_named_workgroup_barrier_t' type cannot be used to declare a structure or union field}}
+        __amdgpu_named_workgroup_barrier_t y[2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2]' type cannot be used to declare a structure or union field}}
+    } str;
+
     int n = 100;
     __amdgpu_named_workgroup_barrier_t v = 0; // expected-error {{initializing '__private __amdgpu_named_workgroup_barrier_t' with an expression of incompatible type 'int'}}
     int c = v; // expected-error {{initializing '__private int' with an expression of incompatible type '__private __amdgpu_named_workgroup_barrier_t'}}

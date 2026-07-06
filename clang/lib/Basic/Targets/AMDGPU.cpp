@@ -56,6 +56,8 @@ const LangASMap AMDGPUTargetInfo::AMDGPUAddrSpaceMap = {
     llvm::AMDGPUAS::PRIVATE_ADDRESS, // hlsl_input
     llvm::AMDGPUAS::PRIVATE_ADDRESS, // hlsl_output
     llvm::AMDGPUAS::GLOBAL_ADDRESS,  // hlsl_push_constant
+    llvm::AMDGPUAS::FLAT_ADDRESS,    // wasm_funcref
+    llvm::AMDGPUAS::LOCAL_ADDRESS,   // hip_barrier
 };
 
 } // namespace targets

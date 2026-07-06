@@ -19435,7 +19435,7 @@ FieldDecl *Sema::CheckFieldDecl(DeclarationName Name, QualType T,
     // used as structure or union field: image, sampler, event or block types.
     if (T->isEventT() || T->isImageType() || T->isSamplerT() ||
         T->isBlockPointerType()) {
-      Diag(Loc, diag::err_opencl_type_struct_or_union_field) << T;
+      Diag(Loc, diag::err_invalid_type_for_struct_or_union_field) << T;
       Record->setInvalidDecl();
       InvalidDecl = true;
     }
@@ -19446,6 +19446,14 @@ FieldDecl *Sema::CheckFieldDecl(DeclarationName Name, QualType T,
       Diag(Loc, diag::err_opencl_bitfields);
       InvalidDecl = true;
     }
+  }
+
+  // AMDGPU does not allows the following types to be used for structure or
+  // union fields: named barriers
+  if (T->isAMDGPUNamedBarrierType()) {
+    Diag(Loc, diag::err_invalid_type_for_struct_or_union_field) << T;
+    Record->setInvalidDecl();
+    InvalidDecl = true;
   }
 
   // Anonymous bit-fields cannot be cv-qualified (CWG 2229).

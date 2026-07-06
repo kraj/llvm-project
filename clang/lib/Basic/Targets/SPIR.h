@@ -59,6 +59,7 @@ static const unsigned SPIRDefIsPrivMap[] = {
     // Wasm address space values for this target are dummy values,
     // as it is only enabled for Wasm targets.
     20, // wasm_funcref
+    0,  // hip_barrier
 };
 
 // Used by both the SPIR and SPIR-V targets.
@@ -97,6 +98,7 @@ static const unsigned SPIRDefIsGenMap[] = {
     // Wasm address space values for this target are dummy values,
     // as it is only enabled for Wasm targets.
     20, // wasm_funcref
+    0,  // hip_barrier
 };
 
 // Base class for SPIR and SPIR-V target info.

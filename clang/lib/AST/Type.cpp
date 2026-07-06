@@ -93,7 +93,7 @@ bool Qualifiers::isTargetAddressSpaceSupersetOf(LangAS A, LangAS B,
          // to implicitly cast into the default address space.
          (A == LangAS::Default &&
           (B == LangAS::cuda_constant || B == LangAS::cuda_device ||
-           B == LangAS::cuda_shared)) ||
+           B == LangAS::cuda_shared || B == LangAS::hip_barrier)) ||
          // In HLSL, the this pointer for member functions points to the default
          // address space. This causes a problem if the structure is in
          // a different address space. We want to allow casting from these
@@ -5489,6 +5489,18 @@ bool Type::isCUDADeviceBuiltinTextureType() const {
     return RT->getDecl()
         ->getMostRecentDecl()
         ->hasAttr<CUDADeviceBuiltinTextureTypeAttr>();
+  return false;
+}
+
+bool Type::isAMDGPUNamedBarrierType() const {
+  const Type *Ty = getUnqualifiedDesugaredType();
+
+  // unwrap arrays
+  while (isa<ArrayType>(Ty))
+    Ty = Ty->getArrayElementTypeNoTypeQual();
+
+  if (const auto *BT = dyn_cast<BuiltinType>(Ty->getUnqualifiedDesugaredType()))
+    return BT->getKind() == BuiltinType::AMDGPUNamedWorkgroupBarrier;
   return false;
 }
 
