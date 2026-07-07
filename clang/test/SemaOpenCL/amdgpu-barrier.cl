@@ -3,11 +3,29 @@
 // RUN: %clang_cc1 -verify -cl-std=CL2.0 -triple amdgcn-amd-amdhsa -Wno-unused-value %s
 
 void foo() {
-    struct {
-    __amdgpu_named_workgroup_barrier_t x; // expected-error {{the '__amdgpu_named_workgroup_barrier_t' type cannot be used to declare a structure or union field}}
-    __amdgpu_named_workgroup_barrier_t y[2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2]' type cannot be used to declare a structure or union field}}
-    __amdgpu_named_workgroup_barrier_t z[2][2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2][2]' type cannot be used to declare a structure or union field}}
-    } str;
+    typedef __amdgpu_named_workgroup_barrier_t SugaredArray[2];
+
+    struct TestSimple {
+        __amdgpu_named_workgroup_barrier_t x;
+    };
+
+    struct TestArray {
+        __amdgpu_named_workgroup_barrier_t y[2];
+    };
+
+    struct TestSugared {
+        SugaredArray z[2];
+    };
+
+    struct GoodWrapper {
+        __amdgpu_named_workgroup_barrier_t x;
+    };
+
+    // Wrappers cannot have >1 field.
+    struct WrapperHasTooManyFields { // expected-note {{WrapperHasTooManyFields is not a trivial wrapper because it has more than one field}}
+        __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
+        int other;
+    };
 
     int n = 100;
     __amdgpu_named_workgroup_barrier_t v = 0; // expected-error {{initializing '__private __amdgpu_named_workgroup_barrier_t' with an expression of incompatible type 'int'}}

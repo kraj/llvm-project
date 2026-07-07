@@ -14263,6 +14263,17 @@ def note_acc_reduction_combiner_forming
     : Note<"while forming %select{|binary operator '%1'|conditional "
            "operator|final assignment operator}0">;
 
+// AMDGCN type diagnostics
+def err_amdgcn_invalid_field_not_a_wrapper : Error<
+  "%0 is only allowed as a field if the %select{struct|interface|union|class|enum}1"
+  " is a trivial wrapper around it">;
+def note_amdgcn_not_a_wrapper_derived_class : Note<
+  "%0 is not a trivial wrapper because it inherits from %1">;
+def note_amdgcn_not_a_wrapper_too_many_fields : Note<
+  "%0 is not a trivial wrapper because it has more than one field">;
+def note_amdgcn_wrapper_not_final : Note<
+  "%0 is not a trivial wrapper because it is not marked 'final'">;
+
 // AMDGCN builtins diagnostics
 def err_amdgcn_load_lds_size_invalid_value : Error<"invalid size value">;
 def note_amdgcn_load_lds_size_valid_value : Note<"size must be %select{1, 2, or 4|1, 2, 4, 12 or 16}0">;

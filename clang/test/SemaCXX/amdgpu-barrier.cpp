@@ -15,11 +15,36 @@ void foo() {
 
 using SugaredArray = __amdgpu_named_workgroup_barrier_t[2];
 
-struct {
-  __amdgpu_named_workgroup_barrier_t x; // expected-error {{the '__amdgpu_named_workgroup_barrier_t' type cannot be used to declare a structure or union field}}
-  __amdgpu_named_workgroup_barrier_t y[2]; // expected-error {{the '__amdgpu_named_workgroup_barrier_t[2]' type cannot be used to declare a structure or union field}}
-  SugaredArray z[2]; // expected-error {{the 'SugaredArray[2]' (aka '__amdgpu_named_workgroup_barrier_t[2][2]') type cannot be used to declare a structure or union field}}
-} str;
+struct TestSimple final {
+  __amdgpu_named_workgroup_barrier_t x;
+};
+
+struct TestArray final{
+  __amdgpu_named_workgroup_barrier_t y[2];
+};
+
+struct TestSugared final {
+  SugaredArray z[2];
+};
+
+// Wrappers cannot have >1 field.
+struct WrapperHasTooManyFields final { // expected-note {{WrapperHasTooManyFields is not a trivial wrapper because it has more than one field}}
+  __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
+  int other;
+};
+
+struct WrapperIsNotFinal { // expected-note {{WrapperIsNotFinal is not a trivial wrapper because it is not marked 'final'}}
+  __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
+};
+
+// Wrappers cannot have base class
+struct WrapperBase {
+};
+
+struct WrapperWithBase final : public WrapperBase { // expected-note {{WrapperWithBase is not a trivial wrapper because it inherits from 'WrapperBase'}}
+  __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
+};
+
 
 static_assert(sizeof(__amdgpu_named_workgroup_barrier_t) == 16, "wrong size");
 static_assert(alignof(__amdgpu_named_workgroup_barrier_t) == 4, "wrong alignment");

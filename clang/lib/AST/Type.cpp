@@ -5492,17 +5492,29 @@ bool Type::isCUDADeviceBuiltinTextureType() const {
   return false;
 }
 
-bool Type::isAMDGPUNamedBarrierType() const {
+static bool isAMDGPUNamedBarrierTypeImpl(const Type *Ty, bool AllowWrappers) {
   // This query does not care about qualifiers at all.
-  const Type *Ty = getCanonicalTypeInternal().getTypePtr();
+  Ty = Ty->getUnqualifiedDesugaredType();
 
   // Unwrap arrays.
   while (isa<ArrayType>(Ty))
-    Ty = Ty->getArrayElementTypeNoTypeQual();
+    Ty = Ty->getArrayElementTypeNoTypeQual()->getUnqualifiedDesugaredType();
 
-  if (const auto *BT = dyn_cast<BuiltinType>(Ty->getUnqualifiedDesugaredType()))
+  if (const auto *BT = dyn_cast<BuiltinType>(Ty))
     return BT->getKind() == BuiltinType::AMDGPUNamedWorkgroupBarrier;
+  if (AllowWrappers) {
+    if (const auto *RT = dyn_cast<RecordType>(Ty))
+      return RT->getDecl()->hasAttr<AMDGPUNamedBarrierWrapperAttr>();
+  }
   return false;
+}
+
+bool Type::isAMDGPUNamedBarrierType() const {
+  return isAMDGPUNamedBarrierTypeImpl(this, /*AllowWrappers=*/false);
+}
+
+bool Type::isAMDGPUNamedBarrierTypeOrWrapper() const {
+  return isAMDGPUNamedBarrierTypeImpl(this, /*AllowWrappers=*/true);
 }
 
 bool Type::hasSizedVLAType() const {

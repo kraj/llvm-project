@@ -1062,4 +1062,63 @@ bool DiagnoseUnguardedBuiltins::VisitCallExpr(CallExpr *CE) {
 void SemaAMDGPU::DiagnoseUnguardedBuiltinUsage(FunctionDecl *FD) {
   DiagnoseUnguardedBuiltins(SemaRef).IssueDiagnostics(FD->getBody());
 }
+
+void SemaAMDGPU::checkNamedBarrierWrapper(RecordDecl *R) {
+  if (R->isInvalidDecl())
+    return;
+
+  // Check if this record has any fields that interest us.
+  FieldDecl *NamedBarrField = nullptr;
+  for (FieldDecl *FD : R->fields()) {
+    QualType FDTy = FD->getType();
+    if (FDTy->isAMDGPUNamedBarrierType()) {
+      NamedBarrField = FD;
+      break;
+    }
+  }
+
+  if (!NamedBarrField)
+    return;
+
+  bool IsInvalid = false;
+  const auto OnError = [&]() {
+    if (!IsInvalid) {
+      SemaRef.Diag(NamedBarrField->getLocation(),
+                   diag::err_amdgcn_invalid_field_not_a_wrapper)
+          << NamedBarrField->getType() << R->getTagKind();
+      IsInvalid = true;
+    }
+  };
+
+  if (R->getNumFields() > 1) {
+    OnError();
+    SemaRef.Diag(R->getLocation(),
+                 diag::note_amdgcn_not_a_wrapper_too_many_fields)
+        << R->getName();
+  }
+
+  if (const auto *CxxR = dyn_cast<CXXRecordDecl>(R)) {
+    if (CxxR->getNumBases() != 0) {
+      OnError();
+      for (CXXBaseSpecifier CxxBase : CxxR->bases()) {
+        SemaRef.Diag(CxxBase.getBaseTypeLoc(),
+                     diag::note_amdgcn_not_a_wrapper_derived_class)
+            << R->getName() << CxxBase.getType();
+      }
+    }
+
+    if (!CxxR->hasAttr<FinalAttr>()) {
+      OnError();
+      SemaRef.Diag(R->getLocation(), diag::note_amdgcn_wrapper_not_final)
+          << R->getName();
+    }
+  }
+
+  if (IsInvalid)
+    return;
+
+  ASTContext &Context = getASTContext();
+  R->addAttr(AMDGPUNamedBarrierWrapperAttr::CreateImplicit(
+      Context, NamedBarrField->getSourceRange()));
+}
 } // namespace clang
