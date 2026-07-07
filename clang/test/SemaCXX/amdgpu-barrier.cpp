@@ -27,6 +27,11 @@ struct TestSugared final {
   SugaredArray z[2];
 };
 
+struct TestSimpleWithStaticField final {
+  __amdgpu_named_workgroup_barrier_t x;
+  static unsigned Harmless;
+};
+
 // Wrappers cannot have >1 field.
 struct WrapperHasTooManyFields final { // expected-note {{WrapperHasTooManyFields is not a trivial wrapper because it has more than one field}}
   __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
