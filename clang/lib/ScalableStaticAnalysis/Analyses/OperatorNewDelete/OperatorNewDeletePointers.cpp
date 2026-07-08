@@ -152,16 +152,15 @@ llvm::json::Object serializeImpl(const std::set<EntityId> &Set,
   DataArray.reserve(Set.size());
   for (const auto &Ent : Set)
     DataArray.push_back(Fn(Ent));
-  Result[OperatorNewDeletePointersAnalysisResult::Name] =
-      std::move(DataArray);
+  Result[OperatorNewDeletePointersAnalysisResult::Name] = std::move(DataArray);
   return Result;
 }
 
 llvm::Expected<std::set<EntityId>>
 deserializeImpl(const llvm::json::Object &Data,
                 JSONFormat::EntityIdFromJSONFn Fn) {
-  const auto *DataArray = Data.getArray(
-      OperatorNewDeletePointersAnalysisResult::Name);
+  const auto *DataArray =
+      Data.getArray(OperatorNewDeletePointersAnalysisResult::Name);
   std::set<EntityId> EntitySet;
 
   if (!DataArray) {
