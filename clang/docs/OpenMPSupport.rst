@@ -681,8 +681,9 @@ implementation.
 |                                                             |                           |                           | https://github.com/llvm/llvm-project/pull/173931)                        |
 |                                                             |                           |                           | RT: @abhinavgaba (https://github.com/llvm/llvm-project/pull/169603)      |
 +-------------------------------------------------------------+---------------------------+---------------------------+--------------------------------------------------------------------------+
-| dims clause with strict behavior (multidimensional teams    | :part:`In Progress`       | :part:`In Progress`       | C/C++: kevinsala                                                         |
-| and leagues)                                                |                           |                           | Fortran: skc7, kparzysz, mjklemm                                         |
+| dims modifier for num_teams, thread_limit and num_threads   | :part:`partial`           | :part:`In Progress`       | C/C++: kevinsala                                                         |
+| (multidimensional teams and leagues)                        |                           |                           | Clang Parsing/Sema: https://github.com/llvm/llvm-project/pull/206412     |
+|                                                             |                           |                           | Fortran: skc7, kparzysz, mjklemm                                         |
 +-------------------------------------------------------------+---------------------------+---------------------------+--------------------------------------------------------------------------+
 
 OpenMP Extensions
