@@ -682,7 +682,8 @@ implementation.
 |                                                             |                           |                           | RT: @abhinavgaba (https://github.com/llvm/llvm-project/pull/169603)      |
 +-------------------------------------------------------------+---------------------------+---------------------------+--------------------------------------------------------------------------+
 | dims modifier for num_teams, thread_limit and num_threads   | :part:`partial`           | :part:`In Progress`       | C/C++: kevinsala                                                         |
-| (multidimensional teams and leagues)                        |                           |                           | Clang Parsing/Sema: https://github.com/llvm/llvm-project/pull/206412     |
+| (multidimensional teams and leagues)                        |                           |                           | Clang Parsing/Sema: https://github.com/llvm/llvm-project/pull/206412,    |
+|                                                             |                           |                           | https://github.com/llvm/llvm-project/pull/208353                         |
 |                                                             |                           |                           | Fortran: skc7, kparzysz, mjklemm                                         |
 +-------------------------------------------------------------+---------------------------+---------------------------+--------------------------------------------------------------------------+
 
