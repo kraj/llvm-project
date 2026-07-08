@@ -6,16 +6,22 @@
 
 __shared__ __amdgpu_named_workgroup_barrier_t bar;
 __shared__ __amdgpu_named_workgroup_barrier_t arr[2];
+
 //.
 // CHECK: @bar = addrspace(3) global target("amdgcn.named.barrier", 0) undef, align 4
 // CHECK: @arr = addrspace(3) global [2 x target("amdgcn.named.barrier", 0)] undef, align 4
 // CHECK: @wrapper_str = addrspace(3) global %struct.WrapperStruct undef, align 4
+// CHECK: @wrapperwrapper_str = addrspace(3) global %struct.WrapperWrapperStruct undef, align 4
 // CHECK: @__hip_cuid_ = addrspace(1) global i8 0
 // CHECK: @llvm.compiler.used = appending addrspace(1) global [1 x ptr] [ptr addrspacecast (ptr addrspace(1) @__hip_cuid_ to ptr)], section "llvm.metadata"
 //.
-__shared__ struct WrapperStruct final {
+__shared__ struct WrapperStruct {
   __amdgpu_named_workgroup_barrier_t x;
 } wrapper_str;
+
+__shared__ struct WrapperWrapperStruct {
+  WrapperStruct x;
+} wrapperwrapper_str;
 
 __attribute__((device)) __amdgpu_named_workgroup_barrier_t *getBar();
 __attribute__((device)) void useBar(__amdgpu_named_workgroup_barrier_t *);
@@ -30,6 +36,7 @@ __attribute__((device)) void useBar(__amdgpu_named_workgroup_barrier_t *);
 // CHECK-NEXT:    call void @_Z6useBarPu34__amdgpu_named_workgroup_barrier_t(ptr noundef [[TMP0]]) #[[ATTR2:[0-9]+]]
 // CHECK-NEXT:    call void @_Z6useBarPu34__amdgpu_named_workgroup_barrier_t(ptr noundef addrspacecast (ptr addrspace(3) @bar to ptr)) #[[ATTR2]]
 // CHECK-NEXT:    call void @_Z6useBarPu34__amdgpu_named_workgroup_barrier_t(ptr noundef addrspacecast (ptr addrspace(3) @wrapper_str to ptr)) #[[ATTR2]]
+// CHECK-NEXT:    call void @_Z6useBarPu34__amdgpu_named_workgroup_barrier_t(ptr noundef addrspacecast (ptr addrspace(3) @wrapperwrapper_str to ptr)) #[[ATTR2]]
 // CHECK-NEXT:    call void @_Z6useBarPu34__amdgpu_named_workgroup_barrier_t(ptr noundef getelementptr inbounds nuw (i8, ptr addrspacecast (ptr addrspace(3) @arr to ptr), i64 16)) #[[ATTR2]]
 // CHECK-NEXT:    [[CALL:%.*]] = call noundef ptr @_Z6getBarv() #[[ATTR2]]
 // CHECK-NEXT:    call void @_Z6useBarPu34__amdgpu_named_workgroup_barrier_t(ptr noundef [[CALL]]) #[[ATTR2]]
@@ -40,6 +47,7 @@ __attribute__((device)) __amdgpu_named_workgroup_barrier_t *testSem(__amdgpu_nam
   useBar(p);
   useBar(&bar);
   useBar(&wrapper_str.x);
+  useBar(&wrapperwrapper_str.x.x);
   useBar(&arr[1]);
   useBar(getBar());
   return getBar();

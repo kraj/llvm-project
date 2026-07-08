@@ -18,41 +18,47 @@ __device__ void foo() {
 
 using SugaredArray = __amdgpu_named_workgroup_barrier_t[2];
 
-struct TestSimple final {
-  __amdgpu_named_workgroup_barrier_t x;
+// expected-note@+2 {{'TestSimple' is a named barrier wrapper around 'x', which implies 'final'}}
+// expected-note@+1 {{'TestSimple' declared here}}
+struct TestSimple {
+  __amdgpu_named_workgroup_barrier_t x; // expected-note {{'x' declared here}}
 };
 
-struct TestArray final {
+struct TestArray{
   __amdgpu_named_workgroup_barrier_t y[2];
 };
 
-struct TestSugared final {
+struct TestSugared {
   SugaredArray z[2];
 };
 
-struct TestSimpleWithStaticField final {
+struct TestSimpleWithStaticField {
   __amdgpu_named_workgroup_barrier_t x;
   static unsigned Harmless;
 };
 
 // Wrappers cannot have >1 field.
-struct WrapperHasTooManyFields final { // expected-note {{WrapperHasTooManyFields is not a trivial wrapper because it has more than one field}}
-  __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
+struct WrapperHasTooManyFields { // expected-note {{WrapperHasTooManyFields is not a named barrier wrapper because it has more than one field}}
+  __amdgpu_named_workgroup_barrier_t x; // expected-error {{fields of type '__amdgpu_named_workgroup_barrier_t' are only allowed in named barrier wrappers}}
   int other;
-};
-
-struct WrapperIsNotFinal { // expected-note {{WrapperIsNotFinal is not a trivial wrapper because it is not marked 'final'}}
-  __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
 };
 
 // Wrappers cannot have base class
 struct WrapperBase {
 };
 
-struct WrapperWithBase final : public WrapperBase { // expected-note {{WrapperWithBase is not a trivial wrapper because it inherits from 'WrapperBase'}}
-  __amdgpu_named_workgroup_barrier_t x; // expected-error {{'__amdgpu_named_workgroup_barrier_t' is only allowed as a field if the struct is a trivial wrapper around it}}
+struct WrapperWithBase : public WrapperBase { // expected-note {{WrapperWithBase is not a named barrier wrapper because it inherits from 'WrapperBase'; named barrier wrappers may not have any bases}}
+  __amdgpu_named_workgroup_barrier_t x; // expected-error {{fields of type '__amdgpu_named_workgroup_barrier_t' are only allowed in named barrier wrappers}}
 };
 
+// Wrappers imply final
+struct NoWrapperInheritance : public TestSimple { }; // expected-error {{base 'TestSimple' is marked 'final'}}
+
+// Wrappers of Wrappers have the same restrictions.
+struct WrapperOfWrapperWithTooManyFields final { // expected-note {{WrapperOfWrapperWithTooManyFields is not a named barrier wrapper because it has more than one field}}
+  TestSimple x; // expected-error {{fields of type 'TestSimple' are only allowed in named barrier wrappers}}
+  int other;
+};
 
 static_assert(sizeof(__amdgpu_named_workgroup_barrier_t) == 16, "wrong size");
 static_assert(alignof(__amdgpu_named_workgroup_barrier_t) == 4, "wrong alignment");

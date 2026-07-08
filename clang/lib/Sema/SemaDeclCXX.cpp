@@ -2851,6 +2851,19 @@ CXXBaseSpecifier *Sema::CheckBaseSpecifier(CXXRecordDecl *Class,
           << BaseDecl->getDeclName() << FA->isSpelledAsSealed();
       Diag(BaseDecl->getLocation(), diag::note_entity_declared_at)
           << BaseDecl->getDeclName() << FA->getRange();
+
+      // AMDGPU Named Barrier Wrappers are final. If the FinalAttr may have come
+      // from there, diagnose it.
+      if (FA->isImplicit()) {
+        if (auto *NBW = BaseDecl->getAttr<AMDGPUNamedBarrierWrapperAttr>()) {
+          FieldDecl *WrappedField = NBW->getWrappedField();
+          Diag(BaseDecl->getLocation(),
+               diag::note_amdgcn_named_barrier_wrapper_implies_final)
+              << BaseDecl->getDeclName() << WrappedField->getDeclName();
+          Diag(WrappedField->getLocation(), diag::note_entity_declared_at)
+              << WrappedField->getDeclName();
+        }
+      }
       return nullptr;
     }
 

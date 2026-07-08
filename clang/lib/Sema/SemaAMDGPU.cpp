@@ -1068,10 +1068,12 @@ void SemaAMDGPU::checkNamedBarrierWrapper(RecordDecl *R) {
     return;
 
   // Check if this record has any fields that interest us.
+  // We cannot codegen any kind of heterogenous struct where we named barrier
+  // fields mixed with other fields.
   FieldDecl *NamedBarrField = nullptr;
   for (FieldDecl *FD : R->fields()) {
     QualType FDTy = FD->getType();
-    if (FDTy->isAMDGPUNamedBarrierType()) {
+    if (FDTy->isAMDGPUNamedBarrierTypeOrWrapper()) {
       NamedBarrField = FD;
       break;
     }
@@ -1085,7 +1087,7 @@ void SemaAMDGPU::checkNamedBarrierWrapper(RecordDecl *R) {
     if (!IsInvalid) {
       SemaRef.Diag(NamedBarrField->getLocation(),
                    diag::err_amdgcn_invalid_field_not_a_wrapper)
-          << NamedBarrField->getType() << R->getTagKind();
+          << NamedBarrField->getType();
       IsInvalid = true;
     }
   };
@@ -1093,7 +1095,7 @@ void SemaAMDGPU::checkNamedBarrierWrapper(RecordDecl *R) {
   if (R->getNumFields() > 1) {
     OnError();
     SemaRef.Diag(R->getLocation(),
-                 diag::note_amdgcn_not_a_wrapper_too_many_fields)
+                 diag::note_amdgcn_not_a_named_barrier_wrapper_too_many_fields)
         << R->getName();
   }
 
@@ -1101,16 +1103,11 @@ void SemaAMDGPU::checkNamedBarrierWrapper(RecordDecl *R) {
     if (CxxR->getNumBases() != 0) {
       OnError();
       for (CXXBaseSpecifier CxxBase : CxxR->bases()) {
-        SemaRef.Diag(CxxBase.getBaseTypeLoc(),
-                     diag::note_amdgcn_not_a_wrapper_derived_class)
+        SemaRef.Diag(
+            CxxBase.getBaseTypeLoc(),
+            diag::note_amdgcn_not_a_named_barrier_wrapper_derived_class)
             << R->getName() << CxxBase.getType();
       }
-    }
-
-    if (!CxxR->hasAttr<FinalAttr>()) {
-      OnError();
-      SemaRef.Diag(R->getLocation(), diag::note_amdgcn_wrapper_not_final)
-          << R->getName();
     }
   }
 
@@ -1118,7 +1115,9 @@ void SemaAMDGPU::checkNamedBarrierWrapper(RecordDecl *R) {
     return;
 
   ASTContext &Context = getASTContext();
-  R->addAttr(AMDGPUNamedBarrierWrapperAttr::CreateImplicit(
-      Context, NamedBarrField->getSourceRange()));
+  SourceRange SR = NamedBarrField->getSourceRange();
+  R->addAttr(FinalAttr::CreateImplicit(Context, SR));
+  R->addAttr(AMDGPUNamedBarrierWrapperAttr::CreateImplicit(Context,
+                                                           NamedBarrField, SR));
 }
 } // namespace clang
