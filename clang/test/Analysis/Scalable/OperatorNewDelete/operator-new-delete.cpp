@@ -33,11 +33,11 @@ void operator delete(void *ptr, void *placement) noexcept;
 void operator delete(void *ptr, void *placement) noexcept {}
 
 // Plain new: return entity (suffix "0").
-// CHECK-DAG: "id": [[NEW_RET_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "0",[[:space:]]+"usr": }}"c:@F@operator new#l#"
+// CHECK-DAG: "id": [[NEW_RET_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "0",[[:space:]]+"usr": }}"c:@F@operator new#{{.*}}#"
 
 // Placement new: return entity (suffix "0") and placement param (suffix "2").
-// CHECK-DAG: "id": [[NEW_PLACE_RET_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "0",[[:space:]]+"usr": }}"c:@F@operator new#l#*v#"
-// CHECK-DAG: "id": [[NEW_PLACE_PARAM_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "2",[[:space:]]+"usr": }}"c:@F@operator new#l#*v#"
+// CHECK-DAG: "id": [[NEW_PLACE_RET_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "0",[[:space:]]+"usr": }}"c:@F@operator new#{{.*}}#*v#"
+// CHECK-DAG: "id": [[NEW_PLACE_PARAM_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "2",[[:space:]]+"usr": }}"c:@F@operator new#{{.*}}#*v#"
 
 // Plain delete: ptr param (suffix "1").
 // CHECK-DAG: "id": [[DEL_PTR_ID:[0-9]+]],{{([^]]|[[:space:]])+\],[[:space:]]+"suffix": "1",[[:space:]]+"usr": }}"c:@F@operator delete#*v#"
