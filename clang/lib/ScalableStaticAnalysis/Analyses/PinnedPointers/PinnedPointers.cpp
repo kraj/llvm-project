@@ -106,6 +106,14 @@ PinnedPointersExtractor::extractEntitySummary(
         Summary->Entities.insert(*Id);
       break;
     default:
+      // Extract case 5: pointer-typed parameters of main.
+      if (FD->isMain())
+        for (unsigned I = 0; I < FD->getNumParams(); ++I) {
+          if (!hasPtrOrArrType(FD->getParamDecl(I)))
+            continue;
+          if (auto Id = addEntity(FD->getParamDecl(I)))
+            Summary->Entities.insert(*Id);
+        }
       return;
     };
     // Extract case 2 & 4: only `operator new(size_t, void*)` and
