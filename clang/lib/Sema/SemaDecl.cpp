@@ -19435,7 +19435,7 @@ FieldDecl *Sema::CheckFieldDecl(DeclarationName Name, QualType T,
     // used as structure or union field: image, sampler, event or block types.
     if (T->isEventT() || T->isImageType() || T->isSamplerT() ||
         T->isBlockPointerType()) {
-      Diag(Loc, diag::err_invalid_type_for_struct_or_union_field) << T;
+      Diag(Loc, diag::err_opencl_type_struct_or_union_field) << T;
       Record->setInvalidDecl();
       InvalidDecl = true;
     }
