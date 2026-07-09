@@ -18,10 +18,8 @@ __device__ void foo() {
 
 using SugaredArray = __amdgpu_named_workgroup_barrier_t[2];
 
-// expected-note@+2 {{'TestSimple' is a named barrier wrapper around 'x', which implies 'final'}}
-// expected-note@+1 {{'TestSimple' declared here}}
 struct TestSimple {
-  __amdgpu_named_workgroup_barrier_t x; // expected-note {{'x' declared here}}
+  __amdgpu_named_workgroup_barrier_t x;
 };
 
 struct TestArray{
@@ -38,27 +36,57 @@ struct TestSimpleWithStaticField {
 };
 
 // Wrappers cannot have >1 field.
-struct WrapperHasTooManyFields { // expected-note {{WrapperHasTooManyFields is not a named barrier wrapper because it has more than one field}}
+struct WrapperHasTooManyFields {  // expected-note {{'WrapperHasTooManyFields' is not a named barrier wrapper because it has more than one field}}
   __amdgpu_named_workgroup_barrier_t x; // expected-error {{fields of type '__amdgpu_named_workgroup_barrier_t' are only allowed in named barrier wrappers}}
   int other;
 };
 
-// Wrappers cannot have base class
+// Wrappers must have standard layout
 struct WrapperBase {
+__amdgpu_named_workgroup_barrier_t x;
 };
 
-struct WrapperWithBase : public WrapperBase { // expected-note {{WrapperWithBase is not a named barrier wrapper because it inherits from 'WrapperBase'; named barrier wrappers may not have any bases}}
-  __amdgpu_named_workgroup_barrier_t x; // expected-error {{fields of type '__amdgpu_named_workgroup_barrier_t' are only allowed in named barrier wrappers}}
+struct WrapperWithBase : public WrapperBase {
 };
 
-// Wrappers imply final
-struct NoWrapperInheritance : public TestSimple { }; // expected-error {{base 'TestSimple' is marked 'final'}}
+// expected-error@+2 {{named barrier wrapper 'WrapperWithBaseNoStandardLayout' must have a C++11 standard layou}}
+// expected-note@+1 {{'WrapperWithBaseNoStandardLayout' is a named barrier wrapper because it inherits from named barrier wrapper 'WrapperBase'}}
+struct WrapperWithBaseNoStandardLayout : public WrapperBase {
+  unsigned K = 0;
+};
 
 // Wrappers of Wrappers have the same restrictions.
-struct WrapperOfWrapperWithTooManyFields final { // expected-note {{WrapperOfWrapperWithTooManyFields is not a named barrier wrapper because it has more than one field}}
+struct WrapperOfWrapperWithTooManyFields { // expected-note {{'WrapperOfWrapperWithTooManyFields' is not a named barrier wrapper because it has more than one field}}
   TestSimple x; // expected-error {{fields of type 'TestSimple' are only allowed in named barrier wrappers}}
   int other;
 };
+
+struct WrapperOfWrapper {
+  WrapperWithBase y;
+};
+
+// Check templated cases with a bit of complexity thrown in.
+template<typename Derived>
+class CRTPWrapperBase {
+  CRTPWrapperBase() {
+    static_cast<Derived*>(this)->sayHello();
+  }
+
+  WrapperOfWrapper wow;
+};
+
+class TemplatedWrapperImpl : public CRTPWrapperBase<TemplatedWrapperImpl> {
+  void sayHello() {}
+};
+
+// expected-error@+2 {{named barrier wrapper 'TemplatedWrapperImplNoStandardLayout' must have a C++11 standard layou}}
+// expected-note@+1 {{'TemplatedWrapperImplNoStandardLayout' is a named barrier wrapper because it inherits from named barrier wrapper 'CRTPWrapperBase<TemplatedWrapperImpl>'}}
+class TemplatedWrapperImplNoStandardLayout : public CRTPWrapperBase<TemplatedWrapperImpl> {
+  void sayHello() {}
+
+  int k = 0;
+};
+
 
 static_assert(sizeof(__amdgpu_named_workgroup_barrier_t) == 16, "wrong size");
 static_assert(alignof(__amdgpu_named_workgroup_barrier_t) == 4, "wrong alignment");

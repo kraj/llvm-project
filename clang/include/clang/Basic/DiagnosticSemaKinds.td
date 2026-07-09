@@ -14266,12 +14266,15 @@ def note_acc_reduction_combiner_forming
 // AMDGCN type diagnostics
 def err_amdgcn_invalid_field_not_a_wrapper : Error<
   "fields of type %0 are only allowed in named barrier wrappers">;
-def note_amdgcn_not_a_named_barrier_wrapper_derived_class : Note<
-  "%0 is not a named barrier wrapper because it inherits from %1; named barrier wrappers may not have any bases">;
 def note_amdgcn_not_a_named_barrier_wrapper_too_many_fields : Note<
   "%0 is not a named barrier wrapper because it has more than one field">;
-def note_amdgcn_named_barrier_wrapper_implies_final : Note<
-  "%0 is a named barrier wrapper around %1, which implies 'final'">;
+
+def err_amdgcn_named_barrier_wrapper_non_standard_layout : Error<
+  "named barrier wrapper %0 must have a C++11 standard layout">;
+def note_amdgcn_named_barrier_reason_field : Note<
+  "%0 is a named barrier wrapper because it has a named barrier or named barrier wrapper field %1 found here">;
+def note_amdgcn_named_barrier_reason_inherited : Note<
+  "%0 is a named barrier wrapper because it inherits from named barrier wrapper %1">;
 
 // AMDGCN builtins diagnostics
 def err_amdgcn_load_lds_size_invalid_value : Error<"invalid size value">;
