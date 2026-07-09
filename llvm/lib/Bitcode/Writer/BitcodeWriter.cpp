@@ -1224,6 +1224,9 @@ void ModuleBitcodeWriter::writeTypeTable() {
       Code = bitc::TYPE_CODE_METADATA;
       break;
     case Type::X86_AMXTyID:   Code = bitc::TYPE_CODE_X86_AMX;   break;
+    case Type::X86_BSRTyID:
+      Code = bitc::TYPE_CODE_X86_BSR;
+      break;
     case Type::TokenTyID:     Code = bitc::TYPE_CODE_TOKEN;     break;
     case Type::ByteTyID:
       // BYTE: [width]

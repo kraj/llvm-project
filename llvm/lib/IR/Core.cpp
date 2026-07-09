@@ -637,6 +637,8 @@ LLVMTypeKind LLVMGetTypeKind(LLVMTypeRef Ty) {
     return LLVMVectorTypeKind;
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
+  case Type::X86_BSRTyID:
+    return LLVMX86_BSRTypeKind;
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
   case Type::ScalableVectorTyID:
@@ -760,6 +762,9 @@ LLVMTypeRef LLVMPPCFP128TypeInContext(LLVMContextRef C) {
 LLVMTypeRef LLVMX86AMXTypeInContext(LLVMContextRef C) {
   return (LLVMTypeRef) Type::getX86_AMXTy(*unwrap(C));
 }
+LLVMTypeRef LLVMX86BSRTypeInContext(LLVMContextRef C) {
+  return (LLVMTypeRef)Type::getX86_BSRTy(*unwrap(C));
+}
 
 LLVMTypeRef LLVMHalfType(void) {
   return LLVMHalfTypeInContext(getGlobalContextForCAPI());
@@ -784,6 +789,9 @@ LLVMTypeRef LLVMPPCFP128Type(void) {
 }
 LLVMTypeRef LLVMX86AMXType(void) {
   return LLVMX86AMXTypeInContext(getGlobalContextForCAPI());
+}
+LLVMTypeRef LLVMX86BSRType(void) {
+  return LLVMX86BSRTypeInContext(getGlobalContextForCAPI());
 }
 
 /*--.. Operations on function types ........................................--*/
