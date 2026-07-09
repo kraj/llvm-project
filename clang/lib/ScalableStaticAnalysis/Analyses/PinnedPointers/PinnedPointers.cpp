@@ -1,4 +1,4 @@
-//===- OperatorNewDeletePointers.cpp --------------------------------------===//
+//===- PinnedPointers.cpp -------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,27 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Implementation of the OperatorNewDeletePointers analysis, including
+// Implementation of the Pinned Pointers analysis, including
 //
-// a) the Extractor implementation for extracting from user-provided operator
-//    new/delete overloadings:
-//    1 return entities of operator new overloads;
-//    2 the parameter (optionally the 2nd)  of operator new overloads
-//      representing the pointer to a memory area to initialize the object at;
-//    3 the first parameter of operator delete overloads representing the
-//      pointer to a memory block to deallocate or a null pointer;
-//    4 the parameter (optionally the 2nd)  of operator delete overloads
-//      representing the pointer used as the placement parameter in the matching
-//      placement new.
+// a) the Extractor implementation collecting pointer entities that shall retain
+//    their types
 //
 // b) the WPA implementation that simply groups extracted summaries into a
-//    OperatorNewDeletePointersAnalysisResult that other analysis can use.
+//    PinnedPointersAnalysisResult that other analysis can use.
 //
 // c) serialization implementations
 //
 //===----------------------------------------------------------------------===//
 
-#include "clang/ScalableStaticAnalysis/Analyses/OperatorNewDelete/OperatorNewDeletePointers.h"
+#include "clang/ScalableStaticAnalysis/Analyses/PinnedPointers/PinnedPointers.h"
 #include "../SSAFAnalysesCommon.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -53,31 +45,43 @@ using namespace ssaf;
 
 namespace {
 
-class OperatorNewDeletePointersExtractor final : public TUSummaryExtractor {
+// Extracts pointer entities that must retain their pointer type.
+//
+// From `operator new` / `operator delete` overloads:
+//    1 the return entity of `operator new` overloads;
+//    2 the second parameter of `operator new(size_t, void*)` representing the
+//      pointer to the memory area at which to initialize the object;
+//    3 the first parameter of `operator delete` overloads representing the
+//      pointer to the memory block to deallocate (or a null pointer);
+//    4 the second parameter of `operator delete(void*, void*)` representing
+//      the placement pointer matching the corresponding placement `new`.
+//
+// From the `main` function:
+//    5 pointer-typed parameters of `main`.
+class PinnedPointersExtractor final : public TUSummaryExtractor {
 public:
   using TUSummaryExtractor::TUSummaryExtractor;
 
 private:
   void HandleTranslationUnit(ASTContext &Ctx) override;
 
-  std::unique_ptr<OperatorNewDeletePointersEntitySummary>
+  std::unique_ptr<PinnedPointersEntitySummary>
   extractEntitySummary(const std::vector<const NamedDecl *> &Decls);
 };
 
-void OperatorNewDeletePointersExtractor::HandleTranslationUnit(
-    ASTContext &Ctx) {
+void PinnedPointersExtractor::HandleTranslationUnit(ASTContext &Ctx) {
   extractAndAddSummaries(
       *this, SummaryBuilder, Ctx,
       [&](const std::vector<const NamedDecl *> &Decls) {
         return extractEntitySummary(Decls);
       },
-      OperatorNewDeletePointersEntitySummary::Name);
+      PinnedPointersEntitySummary::Name);
 }
 
-std::unique_ptr<OperatorNewDeletePointersEntitySummary>
-OperatorNewDeletePointersExtractor::extractEntitySummary(
+std::unique_ptr<PinnedPointersEntitySummary>
+PinnedPointersExtractor::extractEntitySummary(
     const std::vector<const NamedDecl *> &ContributorDecls) {
-  auto Summary = std::make_unique<OperatorNewDeletePointersEntitySummary>();
+  auto Summary = std::make_unique<PinnedPointersEntitySummary>();
   auto Matcher = [&Summary, this](const DynTypedNode &Node) {
     const auto *FD = Node.get<FunctionDecl>();
 
@@ -122,23 +126,21 @@ OperatorNewDeletePointersExtractor::extractEntitySummary(
 //===----------------------------------------------------------------------===//
 //                        WPA implementation
 //===----------------------------------------------------------------------===//
-class OperatorNewDeletePointersAnalysis final
-    : public SummaryAnalysis<OperatorNewDeletePointersAnalysisResult,
-                             OperatorNewDeletePointersEntitySummary> {
+class PinnedPointersAnalysis final
+    : public SummaryAnalysis<PinnedPointersAnalysisResult,
+                             PinnedPointersEntitySummary> {
 public:
-  llvm::Error
-  add(EntityId,
-      const OperatorNewDeletePointersEntitySummary &Summary) override {
+  llvm::Error add(EntityId,
+                  const PinnedPointersEntitySummary &Summary) override {
     getResult().Entities.insert(Summary.Entities.begin(),
                                 Summary.Entities.end());
     return llvm::Error::success();
   }
 };
 
-AnalysisRegistry::Add<OperatorNewDeletePointersAnalysis>
-    RegisterOperatorNewDeletePointersAnalysis(
-        "Whole-program set of pointer entities in operator new/delete "
-        "overloads that must retain their 'void*' type");
+AnalysisRegistry::Add<PinnedPointersAnalysis>
+    RegisterPinnedPointersAnalysis("Whole-program set of pointer entities that "
+                                   "must retain their pointer type");
 
 //===----------------------------------------------------------------------===//
 //                        serialization implementation
@@ -152,21 +154,19 @@ llvm::json::Object serializeImpl(const std::set<EntityId> &Set,
   DataArray.reserve(Set.size());
   for (const auto &Ent : Set)
     DataArray.push_back(Fn(Ent));
-  Result[OperatorNewDeletePointersAnalysisResult::Name] = std::move(DataArray);
+  Result[PinnedPointersAnalysisResult::Name] = std::move(DataArray);
   return Result;
 }
 
 llvm::Expected<std::set<EntityId>>
 deserializeImpl(const llvm::json::Object &Data,
                 JSONFormat::EntityIdFromJSONFn Fn) {
-  const auto *DataArray =
-      Data.getArray(OperatorNewDeletePointersAnalysisResult::Name);
+  const auto *DataArray = Data.getArray(PinnedPointersAnalysisResult::Name);
   std::set<EntityId> EntitySet;
 
   if (!DataArray) {
-    return makeSawButExpectedError(
-        Data, "An object with a key %s",
-        OperatorNewDeletePointersAnalysisResult::Name.data());
+    return makeSawButExpectedError(Data, "An object with a key %s",
+                                   PinnedPointersAnalysisResult::Name.data());
   }
   for (const auto &Elt : *DataArray) {
     const auto *EltAsObj = Elt.getAsObject();
@@ -186,8 +186,7 @@ deserializeImpl(const llvm::json::Object &Data,
 
 llvm::json::Object serializeSummary(const EntitySummary &S,
                                     JSONFormat::EntityIdToJSONFn Fn) {
-  const auto &SS =
-      static_cast<const OperatorNewDeletePointersEntitySummary &>(S);
+  const auto &SS = static_cast<const PinnedPointersEntitySummary &>(S);
   return serializeImpl(SS.Entities, Fn);
 }
 
@@ -199,28 +198,26 @@ deserializeSummary(const llvm::json::Object &Data, EntityIdTable &,
   if (!EntityIDSet)
     return EntityIDSet.takeError();
 
-  std::unique_ptr<OperatorNewDeletePointersEntitySummary> Sum =
-      std::make_unique<OperatorNewDeletePointersEntitySummary>();
+  std::unique_ptr<PinnedPointersEntitySummary> Sum =
+      std::make_unique<PinnedPointersEntitySummary>();
 
   Sum->Entities = std::move(*EntityIDSet);
   return Sum;
 }
 
-struct OperatorNewDeletePointersJSONFormatInfo final : JSONFormat::FormatInfo {
-  OperatorNewDeletePointersJSONFormatInfo()
-      : JSONFormat::FormatInfo(
-            OperatorNewDeletePointersEntitySummary::summaryName(),
-            serializeSummary, deserializeSummary) {}
+struct PinnedPointersJSONFormatInfo final : JSONFormat::FormatInfo {
+  PinnedPointersJSONFormatInfo()
+      : JSONFormat::FormatInfo(PinnedPointersEntitySummary::summaryName(),
+                               serializeSummary, deserializeSummary) {}
 };
 
-static llvm::Registry<JSONFormat::FormatInfo>::Add<
-    OperatorNewDeletePointersJSONFormatInfo>
-    RegisterOperatorNewDeletePointersJSONFormatInfo(
-        OperatorNewDeletePointersEntitySummary::Name,
-        "JSON Format info for OperatorNewDeletePointersEntitySummary");
+static llvm::Registry<JSONFormat::FormatInfo>::Add<PinnedPointersJSONFormatInfo>
+    RegisterPinnedPointersJSONFormatInfo(
+        PinnedPointersEntitySummary::Name,
+        "JSON Format info for PinnedPointersEntitySummary");
 
 llvm::json::Object
-serializeAnalysisResult(const OperatorNewDeletePointersAnalysisResult &R,
+serializeAnalysisResult(const PinnedPointersAnalysisResult &R,
                         JSONFormat::EntityIdToJSONFn Fn) {
   return serializeImpl(R.Entities, Fn);
 }
@@ -233,26 +230,25 @@ deserializeAnalysisResult(const llvm::json::Object &Data,
   if (!EntityIDSet)
     return EntityIDSet.takeError();
 
-  std::unique_ptr<OperatorNewDeletePointersAnalysisResult> AR =
-      std::make_unique<OperatorNewDeletePointersAnalysisResult>();
+  std::unique_ptr<PinnedPointersAnalysisResult> AR =
+      std::make_unique<PinnedPointersAnalysisResult>();
 
   AR->Entities = std::move(*EntityIDSet);
   return AR;
 }
 
-JSONFormat::AnalysisResultRegistry::Add<OperatorNewDeletePointersAnalysisResult>
-    RegisterNewDeletePointersAnalysisResultForJSON(serializeAnalysisResult,
+JSONFormat::AnalysisResultRegistry::Add<PinnedPointersAnalysisResult>
+    RegisterPinnedPointersAnalysisResultForJSON(serializeAnalysisResult,
                                                    deserializeAnalysisResult);
 
 } // namespace
 
 namespace clang::ssaf {
 // NOLINTNEXTLINE(misc-use-internal-linkage)
-volatile int OperatorNewDeletePointersAnchorSource = 0;
+volatile int PinnedPointersAnchorSource = 0;
 } // namespace clang::ssaf
 
-static TUSummaryExtractorRegistry::Add<OperatorNewDeletePointersExtractor>
-    RegisterOperatorNewDeletePointersExtractor(
-        OperatorNewDeletePointersEntitySummary::Name,
-        "Extract pointer entities in operator new/delete overloads that must "
-        "have a 'void*' type");
+static TUSummaryExtractorRegistry::Add<PinnedPointersExtractor>
+    RegisterPinnedPointersExtractor(
+        PinnedPointersEntitySummary::Name,
+        "Extract pointer entities that must retain their pointer type");

@@ -5,11 +5,13 @@
         {
           "entity_id": 0,
           "entity_summary": {
-            "WrongKey": []
+            "PinnedPointersAnalysisResult": [
+              "not-an-object"
+            ]
           }
         }
       ],
-      "summary_name": "OperatorNewDeletePointers"
+      "summary_name": "PinnedPointers"
     }
   ],
   "id_table": [
