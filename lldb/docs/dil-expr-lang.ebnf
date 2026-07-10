@@ -10,7 +10,12 @@ assignment_expression = equality_expression
 
 assignment_operator = "="
                     | "+="
-                    | "-=" ;
+                    | "-="
+                    | "*="
+                    | "/="
+                    | "%="
+                    | "<<="
+                    | ">>=" ;
 
 equality_expression = relational_expression {"==" relational_expression}
                     | relational_expression {"!=" relational_expression} ;

@@ -134,20 +134,28 @@ ASTNodeUP DILParser::ParseExpression() { return ParseAssignmentExpression(); }
 // Parse an assignment_expression
 //
 //  assignment_expression
-//    shift_expression
-//    shift_expression assignment_operator assignment_expression
+//    equality_expression
+//    equality_expression assignment_operator equality_expression
 //
 //  assignment_operator:
 //    "="
 //    "+="
 //    "-="
+//    "*="
+//    "/="
+//    "%="
+//    "<<="
+//    ">>="
 //
 ASTNodeUP DILParser::ParseAssignmentExpression() {
   auto lhs = ParseEqualityExpression();
   assert(lhs && "ASTNodeUP must not contain a nullptr");
 
   // Check if it's an assignment expression.
-  if (CurToken().IsOneOf({Token::equal, Token::plusequal, Token::minusequal})) {
+  if (CurToken().IsOneOf({Token::equal, Token::plusequal, Token::minusequal,
+                          Token::starequal, Token::slashequal,
+                          Token::percentequal, Token::lesslessequal,
+                          Token::greatergreaterequal})) {
     // That's an assignment!
     Token token = CurToken();
     m_dil_lexer.Advance();
