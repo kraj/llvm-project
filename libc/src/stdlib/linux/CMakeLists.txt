@@ -26,14 +26,17 @@ add_entrypoint_object(
     libc.src.__support.CPP.optional
     libc.src.__support.CPP.string
     libc.src.__support.CPP.string_view
+    libc.src.__support.CPP.utility
     libc.src.__support.error_or
     libc.src.__support.libc_errno
     libc.src.__support.macros.config
     libc.src.__support.OSUtil.linux.stat.kernel_statx_types
+    libc.src.__support.OSUtil.linux.syscall_wrappers.readlink
     libc.src.__support.OSUtil.linux.syscall_wrappers.getcwd
     libc.src.__support.OSUtil.linux.syscall_wrappers.statx
     libc.src.__support.OSUtil.path
     libc.src.string.memory_utils.inline_memcpy
+    libc.src.string.memory_utils.inline_memmove
 )
 
 add_entrypoint_object(
