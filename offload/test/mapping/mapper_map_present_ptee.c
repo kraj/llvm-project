@@ -12,21 +12,16 @@ typedef struct {
 } S;
 
 #ifdef OUT_OF_BOUNDS
-// s.p[0:20] extends beyond the mapped region x[0:10]; present check should
-// fail.
-//
-// NOTE: While OpenMP 6.0:296 implies that the present "motion" modifier should
-// not be propagated to s.p[0:20], it is under discussion whether that was
-// intentional. Not propagating it would require treating the present modifier
-// differently for data-motion clauses (to/from) vs. map clauses.
-#pragma omp declare mapper(S s) map(s.y, s.p[0 : 20])
+// s.p[0:20] extends beyond the mapped region x[0:10]; present check should fail.
+#pragma omp declare mapper(S s) map(s.y) map(present, tofrom : s.p[0 : 20])
 #else
-#pragma omp declare mapper(S s) map(s.y, s.p[0 : 2])
+#pragma omp declare mapper(S s) map(s.y) map(present, tofrom : s.p[0 : 2])
 #endif
 S s;
 
 void f1() {
-#pragma omp target update to(present : s)
+  // The mapper runs here; for OUT_OF_BOUNDS the present check fails here.
+#pragma omp target update to(s)
 
 #pragma omp target data use_device_addr(s, x)
 #pragma omp target has_device_addr(s, x)
@@ -50,8 +45,6 @@ int main() {
   }
 
   printf("%d %d\n", x[0], s.y); // CHECK: 333 333
-  // clang-format off
   // CHECK-OOB: omptarget message: device mapping required by 'present' motion modifier does not exist for host address 0x{{0*}}[[#HOST_ADDR]] ([[#SIZE]] bytes)
   // CHECK-OOB: omptarget fatal error 1: failure of target construct while offloading is mandatory
-  // clang-format on
 }

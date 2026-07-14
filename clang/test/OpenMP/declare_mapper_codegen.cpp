@@ -168,7 +168,7 @@ public:
 // CK0-DAG: br label %[[TYEND]]
 // CK0-DAG: [[TYEND]]
 // CK0-DAG: [[TYPE1:%.+]] = phi i64 [ 0, %[[ALLOC]] ], [ 1, %[[TO]] ], [ 2, %[[FROM]] ], [ 3, %[[TOELSE]] ]
-// CK0-DAG: [[MODMASK1:%.+]] = and i64 [[TYPE]], 1036
+// CK0-DAG: [[MODMASK1:%.+]] = and i64 [[TYPE]], 5132
 // CK0-DAG: [[TYPE1_MOD:%.+]] = or i64 [[TYPE1]], [[MODMASK1]]
 // CK0: call void @__tgt_push_mapper_component(ptr [[HANDLE]], ptr [[BARRBASE]], ptr [[BARRBEGINGEP]], i64 16, i64 [[TYPE1_MOD]], {{.*}})
 //   &s.b,    &s.b[0],  sizeof(double*),   ATTACH
@@ -974,7 +974,7 @@ public:
 // CK4-DAG: br label %[[TYEND]]
 // CK4-DAG: [[TYEND]]
 // CK4-DAG: [[TYPE1:%.+]] = phi i64 [ 0, %[[ALLOC]] ], [ 1, %[[TO]] ], [ 2, %[[FROM]] ], [ 3, %[[TOELSE]] ]
-// CK4-DAG: [[MODMASK1:%.+]] = and i64 [[TYPE]], 1036
+// CK4-DAG: [[MODMASK1:%.+]] = and i64 [[TYPE]], 5132
 // CK4-DAG: [[TYPE1_MOD:%.+]] = or i64 [[TYPE1]], [[MODMASK1]]
 // CK4: call void @__tgt_push_mapper_component(ptr [[HANDLE]], ptr [[BARRBASE]], ptr [[BARRBEGINGEP]], i64 16, i64 [[TYPE1_MOD]], {{.*}})
 //   &s.b,    &s.b[0],  sizeof(double*),   ATTACH
@@ -1131,7 +1131,7 @@ void foo(){
 // CK5-DAG: br label %[[TYEND]]
 // CK5-DAG: [[TYEND]]
 // CK5-DAG: [[TYPE1:%.+]] = phi i64 [ 0, %[[ALLOC]] ], [ 1, %[[TO]] ], [ 2, %[[FROM]] ], [ 3, %[[TOELSE]] ]
-// CK5-DAG: [[MODMASK:%.+]] = and i64 [[TYPE]], 1036
+// CK5-DAG: [[MODMASK:%.+]] = and i64 [[TYPE]], 5132
 // CK5-DAG: [[TYPE1_MOD:%.+]] = or i64 [[TYPE1]], [[MODMASK]]
 // CK5: call void @__tgt_push_mapper_component(ptr [[HANDLE]], ptr [[BBASE]], ptr {{.*}}, i64 {{.*}}, i64 [[TYPE1_MOD]], {{.*}})
 //   &v.b,     &v.b[it], sizeof(double*), ATTACH

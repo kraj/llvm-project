@@ -10512,22 +10512,41 @@ Expected<Function *> OpenMPIRBuilder::emitUserDefinedMapper(
     // clause then the effect is as if that modifier appears in each map clause
     // specified in the declared mapper.
     //
-    // Map-type-modifying bits: ALWAYS, DELETE, CLOSE, PRESENT. PRESENT is not
-    // propagated here; it requires distinguishing pointee entries from the
-    // struct's own storage and is handled separately.
-    Value *ModifierBitMask = Builder.CreateAnd(
-        MapType,
-        Builder.getInt64(
-            static_cast<std::underlying_type_t<OpenMPOffloadMappingFlags>>(
-                OpenMPOffloadMappingFlags::OMP_MAP_ALWAYS |
-                OpenMPOffloadMappingFlags::OMP_MAP_DELETE |
-                OpenMPOffloadMappingFlags::OMP_MAP_CLOSE)));
+    // Map-type-modifying bits: ALWAYS, DELETE, CLOSE, PRESENT.
+    //
+    // ALWAYS/DELETE/CLOSE are propagated to every (non-ATTACH) entry.
+    //
+    // PRESENT is propagated only to entries that have an attach ptr
+    // (HasAttachPtr): the pointee data, which occupies a different storage
+    // block than the struct being mapped and so is not covered by the
+    // present-check on the struct's own storage. A present modifier on the
+    // outer clause must still require that pointee to be present on the device.
+    //
+    // TODO: PRESENT should also be propagated to the struct's own members
+    // (e.g. the s.x, s.y of map(present, mapper(id): s)) so that an absent
+    // member triggers the present-check. We cannot do that yet: while pointer
+    // members are mapped with PTR_AND_OBJ, a single combined entry allocates
+    // the whole struct (including the pointer's storage), so propagating
+    // PRESENT to it would wrongly require the pointer's pointee to be present.
+    // Enable member propagation once Clang stops emitting PTR_AND_OBJ and uses
+    // attach-style maps throughout.
+    uint64_t ModifierBits =
+        static_cast<std::underlying_type_t<OpenMPOffloadMappingFlags>>(
+            OpenMPOffloadMappingFlags::OMP_MAP_ALWAYS |
+            OpenMPOffloadMappingFlags::OMP_MAP_DELETE |
+            OpenMPOffloadMappingFlags::OMP_MAP_CLOSE);
+    if (Info->HasAttachPtr[I])
+      ModifierBits |= static_cast<
+          std::underlying_type_t<OpenMPOffloadMappingFlags>>(
+          OpenMPOffloadMappingFlags::OMP_MAP_PRESENT);
+    Value *ModifierBitMask =
+        Builder.CreateAnd(MapType, Builder.getInt64(ModifierBits));
     Value *CurMapTypeWithModifiers = Builder.CreateOr(
         CurMapType, ModifierBitMask, "omp.maptype.with.modifiers");
 
     // ATTACH entries must not receive map-type-modifying bits: ATTACH|ALWAYS is
     // reserved for the attach(always) map-type modifier, and other modifier
-    // bits (DELETE, CLOSE) have no meaning for an ATTACH entry.
+    // bits (DELETE, CLOSE, PRESENT) have no meaning for an ATTACH entry.
     Value *FinalMapType =
         (RawType & AttachBit) ? CurMapType : CurMapTypeWithModifiers;
 

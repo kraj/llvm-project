@@ -146,7 +146,7 @@ void foo(S2 *arr) {
 // CHECK:    br label [[OMP_TYPE_END9]]
 // CHECK:       omp.type.end9:
 // CHECK:    [[OMP_MAPTYPE10:%.*]] = phi i64 [ 0, [[OMP_TYPE_ALLOC4]] ], [ 0, [[OMP_TYPE_TO6]] ], [ 0, [[OMP_TYPE_FROM8]] ], [ 0, [[OMP_TYPE_TO_ELSE7]] ]
-// CHECK:    [[TMP38:%.*]] = and i64 [[TMP4]], 1036
+// CHECK:    [[TMP38:%.*]] = and i64 [[TMP4]], 5132
 // CHECK:    [[OMP_MAPTYPE_WITH_MODIFIERS11:%.*]] = or i64 [[OMP_MAPTYPE10]], [[TMP38]]
 // CHECK:    call void @__tgt_push_mapper_component(ptr [[TMP0]], ptr [[TMP15]], ptr [[X]], i64 [[TMP22]], i64 [[OMP_MAPTYPE_WITH_MODIFIERS11]], ptr null)
 // CHECK:    [[TMP39:%.*]] = add nuw i64 562949953421315, [[TMP24]]
@@ -170,7 +170,7 @@ void foo(S2 *arr) {
 // CHECK:    br label [[OMP_TYPE_END17]]
 // CHECK:       omp.type.end17:
 // CHECK:    [[OMP_MAPTYPE18:%.*]] = phi i64 [ [[TMP42]], [[OMP_TYPE_ALLOC12]] ], [ [[TMP44]], [[OMP_TYPE_TO14]] ], [ [[TMP46]], [[OMP_TYPE_FROM16]] ], [ [[TMP39]], [[OMP_TYPE_TO_ELSE15]] ]
-// CHECK:    [[TMP47:%.*]] = and i64 [[TMP4]], 1036
+// CHECK:    [[TMP47:%.*]] = and i64 [[TMP4]], 5132
 // CHECK:    [[OMP_MAPTYPE_WITH_MODIFIERS19:%.*]] = or i64 [[OMP_MAPTYPE18]], [[TMP47]]
 // CHECK:    call void @__tgt_push_mapper_component(ptr [[TMP0]], ptr [[TMP15]], ptr [[X]], i64 4, i64 [[OMP_MAPTYPE_WITH_MODIFIERS19]], ptr null)
 // CHECK:    [[TMP48:%.*]] = add nuw i64 562949953421315, [[TMP24]]
@@ -194,7 +194,7 @@ void foo(S2 *arr) {
 // CHECK:    br label [[OMP_TYPE_END25]]
 // CHECK:       omp.type.end25:
 // CHECK:    [[OMP_MAPTYPE26:%.*]] = phi i64 [ [[TMP51]], [[OMP_TYPE_ALLOC20]] ], [ [[TMP53]], [[OMP_TYPE_TO22]] ], [ [[TMP55]], [[OMP_TYPE_FROM24]] ], [ [[TMP48]], [[OMP_TYPE_TO_ELSE23]] ]
-// CHECK:    [[TMP56:%.*]] = and i64 [[TMP4]], 1036
+// CHECK:    [[TMP56:%.*]] = and i64 [[TMP4]], 5132
 // CHECK:    [[OMP_MAPTYPE_WITH_MODIFIERS27:%.*]] = or i64 [[OMP_MAPTYPE26]], [[TMP56]]
 // CHECK:    call void @__tgt_push_mapper_component(ptr [[TMP0]], ptr [[TMP17]], ptr [[Y]], i64 4, i64 [[OMP_MAPTYPE_WITH_MODIFIERS27]], ptr null)
 // CHECK:    [[TMP57:%.*]] = and i64 [[TMP4]], 3

@@ -10594,9 +10594,11 @@ getNestedDistributeDirective(ASTContext &Ctx, const OMPExecutableDirective &D) {
 ///       // Map-type-modifying bits (ALWAYS, DELETE, CLOSE) from the outer map
 ///       // clause are propagated to each component, except ATTACH entries
 ///       // (ATTACH|ALWAYS is reserved for attach(always), and other modifier
-///       // bits have no meaning for ATTACH). PRESENT is handled separately.
+///       // bits have no meaning for ATTACH). PRESENT is propagated only to
+///       // pointee (attach-ptr) components, whose storage differs from the
+///       // struct's own.
 ///       effective_type = c.isAttach() ? member_type
-///                                     : member_type | modifierBits(type);
+///                                     : member_type | modifierBits(type, c);
 ///       if (c.hasMapper())
 ///         (*c.Mapper())(rt_mapper_handle, c.arg_base, c.arg_begin, c.arg_size,
 ///                       effective_type, c.arg_name);
