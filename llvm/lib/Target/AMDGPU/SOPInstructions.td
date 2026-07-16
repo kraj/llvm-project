@@ -2073,14 +2073,20 @@ let AddedComplexity = 20 in {
   >;
 }
 
-// Uniform saturating unsigned subtraction: usubsat(a, b) = max(a, b) - b
-// If a >= b, result is a - b; otherwise max(a, b) = b, so b - b = 0.
 // Higher complexity to prefer scalar over VALU patterns for uniform values.
 let AddedComplexity = 20 in {
+  def : GCNPat<
+    (i16 (UniformBinFrag<uaddsat> i16:$src0, i16:$src1)),
+    (S_MIN_U32 (S_ADD_U32 (S_AND_B32 $src0, (i32 0xffff)),
+                          (S_AND_B32 $src1, (i32 0xffff))),
+               (i32 0xffff))
+  >;
+  
   def : GCNPat<
     (i32 (UniformBinFrag<uaddsat> i32:$src0, i32:$src1)),
     (S_ADD_U32 (S_MIN_U32 $src0, (S_NOT_B32 $src1)), $src1)
   >;
+
   def : GCNPat<
     (i32 (UniformBinFrag<usubsat> i32:$src0, i32:$src1)),
     (S_SUB_I32 (S_MAX_U32 $src0, $src1), $src1)
