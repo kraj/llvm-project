@@ -31,7 +31,9 @@ class raw_ostream;
 /// EmitLeaf, which emits the leaf test and returns true on error.
 ///
 /// If \p ParenIfBinOp is true, a surrounding pair of parentheses is emitted
-/// when \p Val lowers to a binary (`&&` / `||`) expression.
+/// when \p Val lowers to a binary (`&&` / `||`) expression.  when \p Val lowers
+/// to a binary (`&&` / `||`) expression. \p EmitLeaf is expected to
+/// parenthesize its emitted leaf.
 bool emitPredicateDag(const Record *Owner, const Init &Val, bool ParenIfBinOp,
                       raw_ostream &OS,
                       function_ref<bool(const Init &, raw_ostream &)> EmitLeaf);
