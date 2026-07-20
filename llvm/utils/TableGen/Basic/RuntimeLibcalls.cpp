@@ -23,7 +23,7 @@ std::string AvailabilityPredicate::lowerCondDag(const Record *Owner,
     if (!DI || !DI->getDef()->isSubClassOf("LibcallPredicate"))
       PrintFatalError(Owner, "predicate dag leaf '" + Leaf.getAsString() +
                                  "' is not a LibcallPredicate");
-    OS << '(' << DI->getDef()->getValueAsString("Cond") << ')';
+    OS << DI->getDef()->getValueAsString("Cond");
     return false;
   };
 

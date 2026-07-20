@@ -58,13 +58,13 @@ def TheSystemLibrary : SystemRuntimeLibrary<isTargetArch,
 
 // Predicate groups emit sorted by predicate def name
 
-// CHECK: if ((TT.isAArch64()) && ((TT.isOSDarwin()) || (TT.isGNUEnvironment())) && !(TT.isWindowsArm64EC())) {
+// CHECK: if (TT.isAArch64() && (TT.isOSDarwin() || TT.isGNUEnvironment()) && !(TT.isWindowsArm64EC())) {
 // CHECK: RTLIB::impl_impl3
-// CHECK: if ((TT.isAArch64()) || !((TT.isOSDarwin()) || (TT.isGNUEnvironment()))) {
+// CHECK: if (TT.isAArch64() || !(TT.isOSDarwin() || TT.isGNUEnvironment())) {
 // CHECK: RTLIB::impl_impl4
-// CHECK: if ((TT.isAArch64()) && !(TT.isWindowsArm64EC())) {
+// CHECK: if (TT.isAArch64() && !(TT.isWindowsArm64EC())) {
 // CHECK: RTLIB::impl_impl0
-// CHECK: if ((TT.isOSDarwin()) || (TT.isGNUEnvironment())) {
+// CHECK: if (TT.isOSDarwin() || TT.isGNUEnvironment()) {
 // CHECK: RTLIB::impl_impl1
 // CHECK: if (!(TT.isOSDarwin())) {
 // CHECK: RTLIB::impl_impl2
