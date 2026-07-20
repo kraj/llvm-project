@@ -9361,6 +9361,9 @@ type, and must be one of:
 * - `"fp128"`
   - IEEE 754 quadruple precision (128-bit).
 
+* - `"x86_fp80"`
+  - x87 80-bit extended precision.
+
 * - `"ppc_fp128"`
   - IBM `double-double` (a pair of IEEE doubles).
 
