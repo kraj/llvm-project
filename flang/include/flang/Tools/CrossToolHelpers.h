@@ -46,6 +46,18 @@ public:
     FIROptLastEPCallbacks.push_back(C);
   }
 
+  void registerHLFIROptEarlyEPCallbacks(
+      const std::function<void(mlir::PassManager &, llvm::OptimizationLevel)>
+          &C) {
+    HLFIROptEarlyEPCallbacks.push_back(C);
+  }
+
+  void registerHLFIROptLastEPCallbacks(
+      const std::function<void(mlir::PassManager &, llvm::OptimizationLevel)>
+          &C) {
+    HLFIROptLastEPCallbacks.push_back(C);
+  }
+
   void invokeFIROptEarlyEPCallbacks(
       mlir::PassManager &pm, llvm::OptimizationLevel optLevel) {
     for (auto &C : FIROptEarlyEPCallbacks)
@@ -64,6 +76,19 @@ public:
       C(pm, optLevel);
   };
 
+  // Const so they can be invoked on the const config the HLFIR pipeline takes.
+  void invokeHLFIROptEarlyEPCallbacks(
+      mlir::PassManager &pm, llvm::OptimizationLevel optLevel) const {
+    for (auto &C : HLFIROptEarlyEPCallbacks)
+      C(pm, optLevel);
+  };
+
+  void invokeHLFIROptLastEPCallbacks(
+      mlir::PassManager &pm, llvm::OptimizationLevel optLevel) const {
+    for (auto &C : HLFIROptLastEPCallbacks)
+      C(pm, optLevel);
+  };
+
 private:
   llvm::SmallVector<
       std::function<void(mlir::PassManager &, llvm::OptimizationLevel)>, 1>
@@ -76,6 +101,14 @@ private:
   llvm::SmallVector<
       std::function<void(mlir::PassManager &, llvm::OptimizationLevel)>, 1>
       FIROptLastEPCallbacks;
+
+  llvm::SmallVector<
+      std::function<void(mlir::PassManager &, llvm::OptimizationLevel)>, 1>
+      HLFIROptEarlyEPCallbacks;
+
+  llvm::SmallVector<
+      std::function<void(mlir::PassManager &, llvm::OptimizationLevel)>, 1>
+      HLFIROptLastEPCallbacks;
 };
 
 /// Configuriation for the MLIR to LLVM pass pipeline.

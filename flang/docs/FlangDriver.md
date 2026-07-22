@@ -525,6 +525,31 @@ passes at different points of the default pass pipeline. An example use of these
 extension point callbacks is shown in `registerDefaultInlinerPass` to invoke the
 default inliner pass in `flang`.
 
+The FIR optimizer extension points all run after HLFIR has been lowered to FIR,
+so the high-level HLFIR intrinsic operations (`hlfir.sum`, `hlfir.matmul`, ...)
+are no longer available at those points. For transformations that need to see
+those operations before they are lowered to FIR/runtime calls (for example
+automatic differentiation), the HLFIR-to-FIR pass pipeline
+`createHLFIRToFIRPassPipeline` provides two additional extension points:
+
+* `invokeHLFIROptEarlyEPCallbacks` runs at the very beginning of the pipeline,
+  before any HLFIR simplification or inlining, while the HLFIR intrinsic
+  operations are still in their original form.
+* `invokeHLFIROptLastEPCallbacks` runs just before `createLowerHLFIRIntrinsics`,
+  the final opportunity to process HLFIR intrinsic operations before they are
+  lowered.
+
+Drivers register passes into these using `registerHLFIROptEarlyEPCallbacks` and
+`registerHLFIROptLastEPCallbacks` on the `MLIRToLLVMPassPipelineConfig` (defined
+in `flang/include/flang/Tools/CrossToolHelpers.h`), for example:
+
+```c++
+config.registerHLFIROptEarlyEPCallbacks(
+    [](mlir::PassManager &pm, llvm::OptimizationLevel) {
+      pm.addPass(createMyHLFIRPass());
+    });
+```
+
 ## LLVM Pass Plugins
 
 Pass plugins are dynamic shared objects that consist of one or more LLVM IR

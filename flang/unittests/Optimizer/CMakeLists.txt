@@ -19,6 +19,7 @@ set(LIBS
   FIRTransforms
   HLFIRDialect
   MIFDialect
+  flangPasses
 )
 
 add_flang_unittest(FlangOptimizerTests
@@ -47,6 +48,7 @@ add_flang_unittest(FlangOptimizerTests
   FortranVariableTest.cpp
   InternalNamesTest.cpp
   KindMappingTest.cpp
+  PassPipelineTest.cpp
   RTBuilder.cpp
 DEPENDS
   CUFDialect
