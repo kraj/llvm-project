@@ -550,6 +550,40 @@ config.registerHLFIROptEarlyEPCallbacks(
     });
 ```
 
+### Reaching the Extension Points from a `-load`'ed Plugin
+
+The `MLIRToLLVMPassPipelineConfig` the frontend driver builds is a local of
+`CodeGenAction`, so a shared object loaded with `flang -fc1 -load` cannot get at
+it directly. `fir::registerPassPipelineConfigCallback`
+(`flang/include/flang/Optimizer/Passes/Pipelines.h`) provides a process-global
+registry of *config augmentors* for that purpose. Register one from a static
+initializer -- the same idiom `FrontendPluginRegistry` uses for `-load`'ed
+plugin actions -- and the frontend will invoke it once the config has been
+built, before the pipeline is constructed:
+
+```c++
+struct MyPluginRegistration {
+  MyPluginRegistration() {
+    fir::registerPassPipelineConfigCallback(
+        [](MLIRToLLVMPassPipelineConfig &config) {
+          config.registerHLFIROptEarlyEPCallbacks(
+              [](mlir::PassManager &pm, llvm::OptimizationLevel) {
+                pm.addPass(createMyHLFIRPass());
+              });
+        });
+  }
+};
+static MyPluginRegistration myPluginRegistration;
+```
+
+The augmentors are invoked for both `-emit-fir`
+(`CodeGenAction::lowerHLFIRToFIR`) and the `-emit-llvm`/`-emit-obj` path
+(`CodeGenAction::generateLLVMIR`), so a plugin only needs to register once. The
+registry is append-only and callbacks run in registration order; it is intended
+to be populated from static initializers, which run before any compilation
+begins. Tools that build the same pipelines without invoking the registry (for
+example `bbc` and `tco`) are unaffected.
+
 ## LLVM Pass Plugins
 
 Pass plugins are dynamic shared objects that consist of one or more LLVM IR
