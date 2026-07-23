@@ -519,6 +519,13 @@ Makes programs 10x faster by doing Special New Thing.
 
 ### Changes to BOLT
 
+*  BOLT can now process BTI-enabled AArch64 binaries and patch PLT entries or
+    indirect branch targets with BTI landing pads where possible.
+
+* BOLT adds compact-code-model support for Armv9.6-A FEAT_CMPBR
+  compare-and-branch instructions, including support for block reordering,
+  function splitting, branch inversion where legal.
+
 ### Changes to Sanitizers
 
 * Add a random delay into ThreadSanitizer to help find rare thread interleavings.
