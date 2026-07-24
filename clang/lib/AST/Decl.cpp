@@ -1566,7 +1566,10 @@ LinkageInfo LinkageComputer::computeLVForDecl(const NamedDecl *D,
   //   one such matching entity, the program is ill-formed. Otherwise,
   //   if no matching entity is found, the block scope entity receives
   //   external linkage.
-  if (D->getDeclContext()->isFunctionOrMethod())
+  // **REVIEWER***: peeking through expansion statements lalalala
+  if (D->getDeclContext()
+          ->getEnclosingNonExpansionStatementContext()
+          ->isFunctionOrMethod())
     return getLVForLocalDecl(D, computation);
 
   // C++ [basic.link]p6:
