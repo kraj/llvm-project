@@ -11,76 +11,83 @@
 ///
 //===----------------------------------------------------------------------===//
 
-let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class IndexedLoad<bits<3> type, bits<2> width, bit isUnsigned,
-                  string opcodestr>
-    : RVInstI<0b111, OPC_LOAD,
-              (outs GPR:$rd),
-              (ins GPRMemZeroOffset:$rs1, GPR:$rs2),
-              opcodestr, "$rd, $rs1, $rs2"> {
-  bits<5> rs2;
+//===----------------------------------------------------------------------===//
+// Instruction class templates
+//===----------------------------------------------------------------------===//
 
-  let Inst{31-30} = width;
-  let Inst{29} = isUnsigned;
-  let Inst{28} = 0b0;
-  let Inst{27-25} = type;
-  let Inst{24-20} = rs2;
-}
+// Zilx indexed loads reuse the AMO major opcode. The addressing mode is
+// selected by funct5 (inst[31:27]) and the access width/signedness reuses the
+// base integer load funct3. rs1 is the index operand, rs2 is the base operand,
+// and the aq and rl bits are always 0.
+let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+class ZilxLoad<bits<5> funct5, bits<3> funct3, string opcodestr>
+    : RVInstRAtomic<funct5, /*aq=*/0, /*rl=*/0, funct3, OPC_AMO,
+                    (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
+                    opcodestr, "$rd, $rs1, $rs2">;
+
+//===----------------------------------------------------------------------===//
+// Instructions
+//===----------------------------------------------------------------------===//
 
 let Predicates = [HasStdExtZilx] in {
-def LXB  : IndexedLoad<0b010, 0b00, 0, "lxb">,
-           Sched<[WriteLDB, ReadMemBase, ReadMemBase]>;
-def LXBU : IndexedLoad<0b010, 0b00, 1, "lxbu">,
-           Sched<[WriteLDB, ReadMemBase, ReadMemBase]>;
-def LXH  : IndexedLoad<0b010, 0b01, 0, "lxh">,
+// Unscaled indexed loads: address = base + index. Byte loads are not provided
+// in the unscaled mode.
+def LXH  : ZilxLoad<0b10010, 0b001, "lxh">,
            Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXHU : IndexedLoad<0b010, 0b01, 1, "lxhu">,
-           Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXW  : IndexedLoad<0b010, 0b10, 0, "lxw">,
+def LXW  : ZilxLoad<0b10010, 0b010, "lxw">,
            Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
+def LXHU : ZilxLoad<0b10010, 0b101, "lxhu">,
+           Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
 
-def LXH_S  : IndexedLoad<0b100, 0b01, 0,  "lxh.s">,
-             Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXHU_S : IndexedLoad<0b100, 0b01, 1,  "lxhu.s">,
-             Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXW_S  : IndexedLoad<0b100, 0b10, 0,  "lxw.s">,
-             Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
+// Scaled indexed loads: address = base + (index << log2(access-size)). Byte
+// loads are provided only in scaled form (the byte scale factor is 1).
+def LXSB  : ZilxLoad<0b11010, 0b000, "lxsb">,
+            Sched<[WriteLDB, ReadMemBase, ReadMemBase]>;
+def LXSH  : ZilxLoad<0b11010, 0b001, "lxsh">,
+            Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
+def LXSW  : ZilxLoad<0b11010, 0b010, "lxsw">,
+            Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
+def LXSBU : ZilxLoad<0b11010, 0b100, "lxsbu">,
+            Sched<[WriteLDB, ReadMemBase, ReadMemBase]>;
+def LXSHU : ZilxLoad<0b11010, 0b101, "lxshu">,
+            Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
 } // Predicates = [HasStdExtZilx]
 
 let Predicates = [HasStdExtZilx, IsRV64] in {
-def LXB_UW  : IndexedLoad<0b011, 0b00, 0, "lxb.uw">,
+// Unscaled indexed loads (RV64-only widths).
+def LXD  : ZilxLoad<0b10010, 0b011, "lxd">,
+           Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
+def LXWU : ZilxLoad<0b10010, 0b110, "lxwu">,
+           Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
+
+// Scaled indexed loads (RV64-only widths).
+def LXSD  : ZilxLoad<0b11010, 0b011, "lxsd">,
+            Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
+def LXSWU : ZilxLoad<0b11010, 0b110, "lxswu">,
+            Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
+
+// Scaled indexed loads with a zero-extended 32-bit index (RV64-only):
+// address = base + (zext32(index) << log2(access-size)).
+def LXSUWB  : ZilxLoad<0b11110, 0b000, "lxsuwb">,
               Sched<[WriteLDB, ReadMemBase, ReadMemBase]>;
-def LXBU_UW : IndexedLoad<0b011, 0b00, 1, "lxbu.uw">,
+def LXSUWH  : ZilxLoad<0b11110, 0b001, "lxsuwh">,
+              Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
+def LXSUWW  : ZilxLoad<0b11110, 0b010, "lxsuww">,
+              Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
+def LXSUWD  : ZilxLoad<0b11110, 0b011, "lxsuwd">,
+              Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
+def LXSUWBU : ZilxLoad<0b11110, 0b100, "lxsuwbu">,
               Sched<[WriteLDB, ReadMemBase, ReadMemBase]>;
-def LXH_UW  : IndexedLoad<0b011, 0b01, 0, "lxh.uw">,
+def LXSUWHU : ZilxLoad<0b11110, 0b101, "lxsuwhu">,
               Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXHU_UW : IndexedLoad<0b011, 0b01, 1, "lxhu.uw">,
-              Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXW_UW  : IndexedLoad<0b011, 0b10, 0, "lxw.uw">,
+def LXSUWWU : ZilxLoad<0b11110, 0b110, "lxsuwwu">,
               Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
-
-def LXWU    : IndexedLoad<0b010, 0b10, 1, "lxwu">,
-              Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
-def LXWU_UW : IndexedLoad<0b011, 0b10, 1, "lxwu.uw">,
-              Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
-def LXD     : IndexedLoad<0b010, 0b11, 0, "lxd">,
-              Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
-def LXD_UW  : IndexedLoad<0b011, 0b11, 0, "lxd.uw">,
-              Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
-
-def LXH_S_UW  : IndexedLoad<0b101, 0b01, 0,  "lxh.s.uw">,
-                Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXHU_S_UW : IndexedLoad<0b101, 0b01, 1,  "lxhu.s.uw">,
-                Sched<[WriteLDH, ReadMemBase, ReadMemBase]>;
-def LXW_S_UW  : IndexedLoad<0b101, 0b10, 0,  "lxw.s.uw">,
-                Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
-
-def LXWU_S    : IndexedLoad<0b100, 0b10, 1, "lxwu.s">,
-                Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
-def LXWU_S_UW : IndexedLoad<0b101, 0b10, 1, "lxwu.s.uw">,
-                Sched<[WriteLDW, ReadMemBase, ReadMemBase]>;
-def LXD_S     : IndexedLoad<0b100, 0b11, 0, "lxd.s">,
-                Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
-def LXD_S_UW  : IndexedLoad<0b101, 0b11, 0, "lxd.s.uw">,
-                Sched<[WriteLDD, ReadMemBase, ReadMemBase]>;
 } // Predicates = [HasStdExtZilx, IsRV64]
+
+// `lxb`/`lxbu` are assembler pseudoinstructions for the scaled byte loads.
+// They are parse-only aliases (EmitPriority 0) so the disassembler still prints
+// the underlying `lxsb`/`lxsbu`.
+let Predicates = [HasStdExtZilx] in {
+def : InstAlias<"lxb $rd, $rs1, $rs2",  (LXSB  GPR:$rd, GPR:$rs1, GPR:$rs2), 0>;
+def : InstAlias<"lxbu $rd, $rs1, $rs2", (LXSBU GPR:$rd, GPR:$rs1, GPR:$rs2), 0>;
+}
