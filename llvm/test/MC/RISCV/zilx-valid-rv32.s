@@ -6,42 +6,58 @@
 # RUN:        | llvm-objdump -d --mattr=+experimental-zilx --no-print-imm-hex  - \
 # RUN:        | FileCheck %s --check-prefix=CHECK-INST
 
-lxb a0, (a1), a2
-# CHECK-INST: lxb a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x04]
+# Unscaled indexed loads.
+
+lxh a0, a1, a2
+# CHECK-INST: lxh a0, a1, a2
+# CHECK-ENCODING: [0x2f,0x95,0xc5,0x90]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxbu a0, (a1), a2
-# CHECK-INST: lxbu a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x24]
+lxw a0, a1, a2
+# CHECK-INST: lxw a0, a1, a2
+# CHECK-ENCODING: [0x2f,0xa5,0xc5,0x90]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxh a0, (a1), a2
-# CHECK-INST: lxh a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x44]
+lxhu a0, a1, a2
+# CHECK-INST: lxhu a0, a1, a2
+# CHECK-ENCODING: [0x2f,0xd5,0xc5,0x90]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxhu a0, (a1), a2
-# CHECK-INST: lxhu a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x64]
+# Scaled indexed loads.
+
+lxsb a0, a1, a2
+# CHECK-INST: lxsb a0, a1, a2
+# CHECK-ENCODING: [0x2f,0x85,0xc5,0xd0]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxw a0, (a1), a2
-# CHECK-INST: lxw a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x84]
+lxsh a0, a1, a2
+# CHECK-INST: lxsh a0, a1, a2
+# CHECK-ENCODING: [0x2f,0x95,0xc5,0xd0]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxh.s a0, (a1), a2
-# CHECK-INST: lxh.s a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x48]
+lxsw a0, a1, a2
+# CHECK-INST: lxsw a0, a1, a2
+# CHECK-ENCODING: [0x2f,0xa5,0xc5,0xd0]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxhu.s a0, (a1), a2
-# CHECK-INST: lxhu.s a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x68]
+lxsbu a0, a1, a2
+# CHECK-INST: lxsbu a0, a1, a2
+# CHECK-ENCODING: [0x2f,0xc5,0xc5,0xd0]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
 
-lxw.s a0, (a1), a2
-# CHECK-INST: lxw.s a0, (a1), a2
-# CHECK-ENCODING: [0x03,0xf5,0xc5,0x88]
+lxshu a0, a1, a2
+# CHECK-INST: lxshu a0, a1, a2
+# CHECK-ENCODING: [0x2f,0xd5,0xc5,0xd0]
+# CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
+
+# `lxb` and `lxbu` are assembler pseudoinstructions for `lxsb` and `lxsbu`.
+
+lxb a0, a1, a2
+# CHECK-INST: lxsb a0, a1, a2
+# CHECK-ENCODING: [0x2f,0x85,0xc5,0xd0]
+# CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
+
+lxbu a0, a1, a2
+# CHECK-INST: lxsbu a0, a1, a2
+# CHECK-ENCODING: [0x2f,0xc5,0xc5,0xd0]
 # CHECK-ERROR: instruction requires the following: 'Zilx' (Indexed Integer Load Instructions){{$}}
