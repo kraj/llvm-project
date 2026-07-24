@@ -145,7 +145,7 @@ static void fixupLeb128(MCContext &Ctx, const MCFixup &Fixup, uint8_t *Data,
 void LoongArchAsmBackend::applyFixup(const MCFragment &F, const MCFixup &Fixup,
                                      const MCValue &Target, uint8_t *Data,
                                      uint64_t Value, bool IsResolved) {
-  IsResolved = addReloc(F, Fixup, Target, Value, IsResolved);
+  addReloc(F, Fixup, Target, Value, IsResolved);
   if (!Value)
     return; // Doesn't change encoding.
 
@@ -398,12 +398,12 @@ bool LoongArchAsmBackend::isPCRelFixupResolved(const MCSymbol *SymA,
   return !Res.getSubSym();
 }
 
-bool LoongArchAsmBackend::addReloc(const MCFragment &F, const MCFixup &Fixup,
+void LoongArchAsmBackend::addReloc(const MCFragment &F, const MCFixup &Fixup,
                                    const MCValue &Target, uint64_t &FixedValue,
                                    bool IsResolved) {
   auto Fallback = [&]() {
     MCAsmBackend::maybeAddReloc(F, Fixup, Target, FixedValue, IsResolved);
-    return true;
+    return;
   };
   uint64_t FixedValueA, FixedValueB;
   if (Target.getSubSym()) {
@@ -414,52 +414,49 @@ bool LoongArchAsmBackend::addReloc(const MCFragment &F, const MCFixup &Fixup,
 
     assert(Target.getSpecifier() == 0 &&
            "relocatable SymA-SymB cannot have relocation specifier");
-    std::pair<MCFixupKind, MCFixupKind> FK;
     const MCSymbol &SA = *Target.getAddSym();
     const MCSymbol &SB = *Target.getSubSym();
 
-    bool force = !SA.isInSection() || !SB.isInSection();
-    if (!force) {
+    // Check if SubSym (SB) is in the same section as the current fragment and
+    // the PC-relative offset can be resolved. In that case, we can generate a
+    // PCRel relocation (A - PC + PC - B) instead of ADD/SUB pairs.
+    auto CanResolveSubSymAsPCRel = [&]() {
+      return SB.isInSection() && &SB.getSection() == F.getParent() &&
+             isPCRelFixupResolved(&SB, F);
+    };
+
+    if (SA.isInSection() && SB.isInSection()) {
       const MCSection &SecA = SA.getSection();
-      const MCSection &SecB = SB.getSection();
-      const MCSection &SecCur = *F.getParent();
-
-      // To handle the case of A - B which B is same section with the current,
-      // generate PCRel relocations is better than ADD/SUB relocation pair.
-      // We can resolve it as A - PC + PC - B. The A - PC will be resolved
-      // as a PCRel relocation, while PC - B will serve as the addend.
-      // If the linker relaxation is disabled, it can be done directly since
-      // PC - B is constant. Otherwise, we should evaluate whether PC - B
-      // is constant. If it can be resolved as PCRel, use Fallback which
-      // generates R_LARCH_{32,64}_PCREL relocation later.
-      if (&SecA != &SecB && &SecB == &SecCur &&
-          isPCRelFixupResolved(Target.getSubSym(), F))
-        return Fallback();
-
-      if (&SecA == &SecB) {
+      if (&SecA == &SB.getSection()) {
         // If the section is not linker-relaxable, or if the fixup is in a .dwo
         // section (where relocations are forbidden), we must resolve the
         // difference directly. The computed Value in evaluateFixup is correct
         // based on the current layout.
-        if (!SecA.isLinkerRelaxable() || SecCur.getName().ends_with(".dwo"))
-          return true;
+        if (!SecA.isLinkerRelaxable() ||
+            F.getParent()->getName().ends_with(".dwo"))
+          return;
       }
     }
 
+    std::pair<MCFixupKind, MCFixupKind> FK;
     switch (Fixup.getKind()) {
-    case llvm::FK_Data_1:
+    case FK_Data_1:
       FK = getRelocPairForSize(8);
       break;
-    case llvm::FK_Data_2:
+    case FK_Data_2:
       FK = getRelocPairForSize(16);
       break;
-    case llvm::FK_Data_4:
+    case FK_Data_4:
+      if (CanResolveSubSymAsPCRel())
+        return Fallback();
       FK = getRelocPairForSize(32);
       break;
-    case llvm::FK_Data_8:
+    case FK_Data_8:
+      if (CanResolveSubSymAsPCRel())
+        return Fallback();
       FK = getRelocPairForSize(64);
       break;
-    case llvm::FK_Data_leb128:
+    case FK_Data_leb128:
       FK = getRelocPairForSize(128);
       break;
     default:
@@ -472,26 +469,26 @@ bool LoongArchAsmBackend::addReloc(const MCFragment &F, const MCFixup &Fixup,
     Asm->getWriter().recordRelocation(F, FA, A, FixedValueA);
     Asm->getWriter().recordRelocation(F, FB, B, FixedValueB);
     FixedValue = FixedValueA - FixedValueB;
-    return false;
+    return;
   }
 
   // If linker relaxation is enabled and supported by the current relocation,
   // generate a relocation and then append a RELAX.
-  if (Fixup.isLinkerRelaxable())
-    IsResolved = false;
-  if (IsResolved && Fixup.isPCRel())
-    IsResolved = isPCRelFixupResolved(Target.getAddSym(), F);
-
-  if (!IsResolved)
-    Asm->getWriter().recordRelocation(F, Fixup, Target, FixedValue);
-
   if (Fixup.isLinkerRelaxable()) {
+    Asm->getWriter().recordRelocation(F, Fixup, Target, FixedValue);
     auto FA = MCFixup::create(Fixup.getOffset(), nullptr, ELF::R_LARCH_RELAX);
     Asm->getWriter().recordRelocation(F, FA, MCValue::get(nullptr),
                                       FixedValueA);
+    return;
   }
 
-  return true;
+  if (!IsResolved) {
+    Asm->getWriter().recordRelocation(F, Fixup, Target, FixedValue);
+    return;
+  }
+
+  if (Fixup.isPCRel() && !isPCRelFixupResolved(Target.getAddSym(), F))
+    Asm->getWriter().recordRelocation(F, Fixup, Target, FixedValue);
 }
 
 std::unique_ptr<MCObjectTargetWriter>
