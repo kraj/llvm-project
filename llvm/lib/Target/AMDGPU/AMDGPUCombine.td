@@ -165,6 +165,23 @@ def zext_of_shift_amount_combines : GICombineGroup<[
   canonicalize_zext_lshr, canonicalize_zext_ashr, canonicalize_zext_shl
 ]>;
 
+// A scalar shift only consumes the low log2(bitwidth) bits of its amount, so an
+// explicit (and amt, mask) is redundant when mask covers those low bits.
+// (shift x, (and amt, mask)) -> (shift x, amt)
+class redundant_shift_amount_mask_opcode<Instruction shiftOpc> : GICombineRule<
+  (defs root:$shift, register_matchinfo:$matchinfo),
+  (match (shiftOpc $dst, $src, $amt):$shift,
+         [{ return matchRedundantShiftAmountMask(*${shift}, ${matchinfo}); }]),
+  (apply [{ applyReplaceShiftAmount(*${shift}, ${matchinfo}); }])>;
+
+def redundant_shl_amount_mask : redundant_shift_amount_mask_opcode<G_SHL>;
+def redundant_lshr_amount_mask : redundant_shift_amount_mask_opcode<G_LSHR>;
+def redundant_ashr_amount_mask : redundant_shift_amount_mask_opcode<G_ASHR>;
+
+def redundant_shift_amount_mask : GICombineGroup<[
+  redundant_shl_amount_mask, redundant_lshr_amount_mask, redundant_ashr_amount_mask
+]>;
+
 def minmax3_matchdata : GIDefMatchData<"MinMaxToMinMax3MatchInfo">;
 
 class minmax_to_minmax3_opcodes<Instruction minmaxOpcode> : GICombineRule<
@@ -268,6 +285,7 @@ def AMDGPURegBankCombiner : GICombiner<
    fp_minmax_to_clamp, fp_minmax_to_med3, fmed3_intrinsic_to_clamp,
    identity_combines, redundant_and, constant_fold_cast_op,
    cast_of_cast_combines, sext_trunc, zext_of_shift_amount_combines,
+   redundant_shift_amount_mask,
    d16_load, smax_to_minmax3, smin_to_minmax3, umax_to_minmax3,
    umin_to_minmax3, fmax_to_minmax3, fmin_to_minmax3, fmaximum_to_minmax3,
    fminimum_to_minmax3, fmax_ieee_to_minmax3, fmin_ieee_to_minmax3]> {

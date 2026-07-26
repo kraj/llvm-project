@@ -94,6 +94,10 @@ public:
 
   void applyCanonicalizeZextShiftAmt(MachineInstr &MI, MachineInstr &Ext) const;
 
+  bool matchRedundantShiftAmountMask(MachineInstr &MI,
+                                     Register &MatchInfo) const;
+  void applyReplaceShiftAmount(MachineInstr &MI, Register &MatchInfo) const;
+
   bool combineD16Load(MachineInstr &MI) const;
   bool applyD16Load(unsigned D16Opc, MachineInstr &DstMI,
                     MachineInstr *SmallLoad, Register ToOverwriteD16) const;
@@ -416,6 +420,48 @@ void AMDGPURegBankCombinerImpl::applyCanonicalizeZextShiftAmt(
   MRI.setRegBank(Mask.getReg(0), RB);
   MRI.setRegBank(And.getReg(0), RB);
   MI.eraseFromParent();
+}
+
+// A scalar shift only reads the low log2(bitwidth) bits of its amount. An
+// explicit (and amt, mask) feeding the amount is therefore redundant whenever
+// mask has all of those low bits set. This mirrors what SelectionDAG achieves
+// via SimplifyDemandedBits on the shift-amount operand.
+bool AMDGPURegBankCombinerImpl::matchRedundantShiftAmountMask(
+    MachineInstr &MI, Register &MatchInfo) const {
+  assert(MI.getOpcode() == AMDGPU::G_SHL || MI.getOpcode() == AMDGPU::G_LSHR ||
+         MI.getOpcode() == AMDGPU::G_ASHR);
+
+  LLT DstTy = MRI.getType(MI.getOperand(0).getReg());
+  // Per-element masking for vectors is not handled here.
+  if (DstTy.isVector())
+    return false;
+
+  unsigned Size = DstTy.getScalarSizeInBits();
+  if (!isPowerOf2_32(Size))
+    return false;
+
+  MachineInstr *And = getDefIgnoringCopies(MI.getOperand(2).getReg(), MRI);
+  if (!And || And->getOpcode() != AMDGPU::G_AND)
+    return false;
+
+  auto MaybeMask =
+      getIConstantVRegValWithLookThrough(And->getOperand(2).getReg(), MRI);
+  if (!MaybeMask)
+    return false;
+
+  uint64_t ModuloMask = Size - 1;
+  if ((MaybeMask->Value.getZExtValue() & ModuloMask) != ModuloMask)
+    return false;
+
+  MatchInfo = And->getOperand(1).getReg();
+  return true;
+}
+
+void AMDGPURegBankCombinerImpl::applyReplaceShiftAmount(
+    MachineInstr &MI, Register &MatchInfo) const {
+  Observer.changingInstr(MI);
+  MI.getOperand(2).setReg(MatchInfo);
+  Observer.changedInstr(MI);
 }
 
 bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {

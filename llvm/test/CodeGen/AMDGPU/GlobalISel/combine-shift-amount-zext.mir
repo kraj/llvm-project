@@ -13,9 +13,7 @@ body:             |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: %src:sgpr(s32) = COPY $sgpr0
     ; CHECK-NEXT: %regamt:sgpr(s32) = COPY $sgpr1
-    ; CHECK-NEXT: [[C:%[0-9]+]]:sgpr(s32) = G_CONSTANT i32 65535
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:sgpr(s32) = G_AND %regamt, [[C]]
-    ; CHECK-NEXT: %res:sgpr(s32) = G_LSHR %src, [[AND]](s32)
+    ; CHECK-NEXT: %res:sgpr(s32) = G_LSHR %src, %regamt(s32)
     ; CHECK-NEXT: $sgpr0 = COPY %res(s32)
     %src:sgpr(s32) = COPY $sgpr0
     %regamt:sgpr(s32) = COPY $sgpr1
@@ -37,9 +35,7 @@ body:             |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: %src:sgpr(s32) = COPY $sgpr0
     ; CHECK-NEXT: %regamt:sgpr(s32) = COPY $sgpr1
-    ; CHECK-NEXT: [[C:%[0-9]+]]:sgpr(s32) = G_CONSTANT i32 65535
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:sgpr(s32) = G_AND %regamt, [[C]]
-    ; CHECK-NEXT: %res:sgpr(s32) = G_ASHR %src, [[AND]](s32)
+    ; CHECK-NEXT: %res:sgpr(s32) = G_ASHR %src, %regamt(s32)
     ; CHECK-NEXT: $sgpr0 = COPY %res(s32)
     %src:sgpr(s32) = COPY $sgpr0
     %regamt:sgpr(s32) = COPY $sgpr1
@@ -61,9 +57,7 @@ body:             |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: %src:sgpr(s32) = COPY $sgpr0
     ; CHECK-NEXT: %regamt:sgpr(s32) = COPY $sgpr1
-    ; CHECK-NEXT: [[C:%[0-9]+]]:sgpr(s32) = G_CONSTANT i32 65535
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:sgpr(s32) = G_AND %regamt, [[C]]
-    ; CHECK-NEXT: %res:sgpr(s32) = G_SHL %src, [[AND]](s32)
+    ; CHECK-NEXT: %res:sgpr(s32) = G_SHL %src, %regamt(s32)
     ; CHECK-NEXT: $sgpr0 = COPY %res(s32)
     %src:sgpr(s32) = COPY $sgpr0
     %regamt:sgpr(s32) = COPY $sgpr1
@@ -85,9 +79,7 @@ body:             |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: %src:sgpr(s32) = COPY $sgpr0
     ; CHECK-NEXT: %regamt:sgpr(s32) = COPY $sgpr1
-    ; CHECK-NEXT: [[C:%[0-9]+]]:sgpr(s32) = G_CONSTANT i32 255
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:sgpr(s32) = G_AND %regamt, [[C]]
-    ; CHECK-NEXT: %res:sgpr(s32) = G_LSHR %src, [[AND]](s32)
+    ; CHECK-NEXT: %res:sgpr(s32) = G_LSHR %src, %regamt(s32)
     ; CHECK-NEXT: $sgpr0 = COPY %res(s32)
     %src:sgpr(s32) = COPY $sgpr0
     %regamt:sgpr(s32) = COPY $sgpr1
@@ -109,9 +101,7 @@ body:             |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: %src:sgpr(s32) = COPY $sgpr0
     ; CHECK-NEXT: %regamt:sgpr(s32) = COPY $sgpr1
-    ; CHECK-NEXT: [[C:%[0-9]+]]:sgpr(s32) = G_CONSTANT i32 255
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:sgpr(s32) = G_AND %regamt, [[C]]
-    ; CHECK-NEXT: %res:sgpr(s32) = G_ASHR %src, [[AND]](s32)
+    ; CHECK-NEXT: %res:sgpr(s32) = G_ASHR %src, %regamt(s32)
     ; CHECK-NEXT: $sgpr0 = COPY %res(s32)
     %src:sgpr(s32) = COPY $sgpr0
     %regamt:sgpr(s32) = COPY $sgpr1
@@ -133,9 +123,7 @@ body:             |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: %src:sgpr(s32) = COPY $sgpr0
     ; CHECK-NEXT: %regamt:sgpr(s32) = COPY $sgpr1
-    ; CHECK-NEXT: [[C:%[0-9]+]]:sgpr(s32) = G_CONSTANT i32 255
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:sgpr(s32) = G_AND %regamt, [[C]]
-    ; CHECK-NEXT: %res:sgpr(s32) = G_SHL %src, [[AND]](s32)
+    ; CHECK-NEXT: %res:sgpr(s32) = G_SHL %src, %regamt(s32)
     ; CHECK-NEXT: $sgpr0 = COPY %res(s32)
     %src:sgpr(s32) = COPY $sgpr0
     %regamt:sgpr(s32) = COPY $sgpr1
