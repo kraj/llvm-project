@@ -584,6 +584,23 @@ to be populated from static initializers, which run before any compilation
 begins. Tools that build the same pipelines without invoking the registry (for
 example `bbc` and `tco`) are unaffected.
 
+`flang/examples/HLFIRPipelinePlugin` is a complete working example, exercised by
+`flang/test/Examples/hlfir-pipeline-plugin.f90`.
+
+### Loading MLIR Pass Plugins into `fir-opt`
+
+`fir-opt` is built on `MlirOptMain` and therefore accepts MLIR's
+`--load-pass-plugin` and `--load-dialect-plugin` options. As with `mlir-opt`,
+this requires the tool to export its symbols so that the plugin can resolve the
+MLIR, FIR and HLFIR symbols it uses against the host
+(`export_executable_symbols_for_plugins` in
+`flang/tools/fir-opt/CMakeLists.txt`):
+
+```bash
+fir-opt --load-pass-plugin=./MyPasses.so \
+        --pass-pipeline='builtin.module(my-hlfir-pass)' input.fir
+```
+
 ## LLVM Pass Plugins
 
 Pass plugins are dynamic shared objects that consist of one or more LLVM IR
