@@ -5048,6 +5048,7 @@ recurse:
   case Expr::PredefinedExprClass:
   case Expr::ShuffleVectorExprClass:
   case Expr::ConvertVectorExprClass:
+  case Expr::ConvertFromArbitraryFPExprClass:
   case Expr::StmtExprClass:
   case Expr::ArrayTypeTraitExprClass:
   case Expr::ExpressionTraitExprClass:

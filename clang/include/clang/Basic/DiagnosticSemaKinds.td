@@ -11491,6 +11491,20 @@ def err_builtin_non_vector_type : Error<
 def err_convertvector_incompatible_vector : Error<
   "first two arguments to __builtin_convertvector must have the same number of elements">;
 
+def err_arbitrary_fp_invalid_format : Error<
+  "'%0' is not a supported arbitrary floating-point format">;
+def err_arbitrary_fp_int_width : Error<
+  "argument type %0 must be an integer type %1 bits wide to match format "
+  "'%2'">;
+def err_arbitrary_fp_non_fp_type : Error<
+  "%0 argument to %1 must be a floating-point type or a vector of "
+  "floating-point types">;
+def err_arbitrary_fp_non_int_type : Error<
+  "%0 argument to %1 must be an integer type or a vector of integer types">;
+def err_arbitrary_fp_incompatible_vector : Error<
+  "floating-point and integer arguments to %0 must have the same number of "
+  "elements">;
+
 def err_first_argument_to_cwsc_not_call : Error<
   "first argument to __builtin_call_with_static_chain must be a non-member call expression">;
 def err_first_argument_to_cwsc_block_call : Error<

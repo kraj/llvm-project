@@ -3362,3 +3362,9 @@ void TextNodeDumper::VisitConvertVectorExpr(const ConvertVectorExpr *S) {
   if (S->hasStoredFPFeatures())
     printFPOptions(S->getStoredFPFeatures());
 }
+
+void TextNodeDumper::VisitConvertFromArbitraryFPExpr(
+    const ConvertFromArbitraryFPExpr *S) {
+  VisitStmt(S);
+  OS << " " << S->getFormat();
+}
