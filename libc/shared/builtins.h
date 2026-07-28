@@ -23,11 +23,14 @@
 #include "builtins/divdf3.h"
 #include "builtins/divsf3.h"
 #include "builtins/divtf3.h"
+#include "builtins/gesf2.h"
+#include "builtins/lesf2.h"
 #include "builtins/muldf3.h"
 #include "builtins/mulsf3.h"
 #include "builtins/multf3.h"
 #include "builtins/subdf3.h"
 #include "builtins/subsf3.h"
 #include "builtins/subtf3.h"
+#include "builtins/unordsf2.h"
 
 #endif // LLVM_LIBC_SHARED_BUILTINS_H

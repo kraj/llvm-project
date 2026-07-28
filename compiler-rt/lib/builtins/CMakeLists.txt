@@ -265,6 +265,7 @@ if(COMPILER_RT_USE_LIBC_MATH)
   add_definitions(-DCOMPILER_RT_USE_LIBC_MATH)
 
   use_libc_builtin(GENERIC_TF_SOURCES addtf3)
+  use_libc_builtin(GENERIC_SOURCES    comparesf2)
 endif()
 
 option(COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN

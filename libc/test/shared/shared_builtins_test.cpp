@@ -10,6 +10,8 @@
 #include "test/UnitTest/FPMatcher.h"
 #include "test/UnitTest/Test.h"
 
+namespace shared = LIBC_NAMESPACE::shared;
+
 TEST(LlvmLibcSharedBuiltinsTest, AllFloat) {
   EXPECT_FP_EQ(3.0f, LIBC_NAMESPACE::shared::addsf3(1.0f, 2.0f));
   EXPECT_FP_EQ(3.0f, LIBC_NAMESPACE::shared::divsf3(6.0f, 2.0f));
@@ -38,3 +40,18 @@ TEST(LlvmLibcSharedBuiltinsTest, AllFloat128) {
 }
 
 #endif // LIBC_TYPES_HAS_FLOAT128
+
+TEST(LlvmLibcSharedBuiltinsTest, SingleCompare) {
+  const float aNaN =
+      LIBC_NAMESPACE::fputil::FPBits<float>::quiet_nan().get_val();
+  EXPECT_EQ(-1, shared::gesf2(1.0f, 2.0f));
+  EXPECT_EQ(0, shared::gesf2(1.0f, 1.0f));
+  EXPECT_EQ(1, shared::gesf2(2.0f, 1.0f));
+  EXPECT_EQ(-1, shared::gesf2(aNaN, 1.0f));
+  EXPECT_EQ(-1, shared::lesf2(1.0f, 2.0f));
+  EXPECT_EQ(0, shared::lesf2(1.0f, 1.0f));
+  EXPECT_EQ(1, shared::lesf2(2.0f, 1.0f));
+  EXPECT_EQ(1, shared::lesf2(aNaN, 1.0f));
+  EXPECT_EQ(0, shared::unordsf2(1.0f, 2.0f));
+  EXPECT_EQ(1, shared::unordsf2(aNaN, 1.0f));
+}
