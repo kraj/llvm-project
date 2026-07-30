@@ -1119,16 +1119,7 @@ static VPValue *simplifyLogicalRecipe(VPSingleDefRecipe *Def,
                                       VPBuilder &Builder,
                                       bool CanCreateNewRecipe) {
   VPlan *Plan = Def->getParent()->getPlan();
-
-  // Simplify (X && Y) | (X && !Y) -> X.
-  // TODO: Split up into simpler, modular combines: (X && Y) | (X && Z) into X
-  // && (Y | Z) and (X | !X) into true. This requires queuing newly created
-  // recipes to be visited during simplification.
   VPValue *X, *Y, *Z;
-  if (match(Def,
-            m_c_BinaryOr(m_LogicalAnd(m_VPValue(X), m_VPValue(Y)),
-                         m_LogicalAnd(m_Deferred(X), m_Not(m_Deferred(Y))))))
-    return X;
 
   // x | AllOnes -> AllOnes
   if (match(Def, m_c_BinaryOr(m_VPValue(X), m_AllOnes())))
@@ -1608,21 +1599,29 @@ static VPValue *simplifyRecipe(VPSingleDefRecipe *Def) {
 }
 
 void VPlanTransforms::simplifyRecipes(VPlan &Plan) {
-  ReversePostOrderTraversal<VPBlockDeepTraversalWrapper<VPBlockBase *>> RPOT(
+  SmallVector<VPRecipeBase *> Worklist;
+  PostOrderTraversal<VPBlockDeepTraversalWrapper<VPBlockBase *>> POT(
       Plan.getEntry());
-  for (VPBasicBlock *VPBB : VPBlockUtils::blocksOnly<VPBasicBlock>(RPOT)) {
-    for (VPRecipeBase &R : make_early_inc_range(*VPBB))
-      if (auto *Def = dyn_cast<VPSingleDefRecipe>(&R))
-        if (VPValue *New = simplifyRecipe(Def)) {
-          if (New != Def) {
-            // Replace the recipe with a new one.
-            Def->replaceAllUsesWith(New);
-            Def->eraseFromParent();
-          } else if (vputils::isDeadRecipe(R)) {
-            // Recipe was modified - it may be dead now.
-            Def->eraseFromParent();
-          }
-        }
+  for (VPBasicBlock *VPBB : VPBlockUtils::blocksOnly<VPBasicBlock>(POT))
+    for (VPRecipeBase &R : reverse(*VPBB))
+      Worklist.push_back(&R);
+
+  while (!Worklist.empty()) {
+    auto *Def = dyn_cast<VPSingleDefRecipe>(Worklist.pop_back_val());
+    if (!Def)
+      continue;
+    if (VPValue *New = simplifyRecipe(Def)) {
+      if (New != Def) {
+        // Replace the recipe with a new one.
+        Def->replaceAllUsesWith(New);
+        Def->eraseFromParent();
+        if (VPRecipeBase *NewR = New->getDefiningRecipe())
+          Worklist.push_back(NewR);
+      } else if (vputils::isDeadRecipe(*Def)) {
+        // Recipe was modified - it may be dead now.
+        Def->eraseFromParent();
+      }
+    }
   }
 }
 
