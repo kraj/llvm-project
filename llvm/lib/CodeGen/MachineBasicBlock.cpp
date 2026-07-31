@@ -1836,10 +1836,12 @@ MachineBasicBlock::liveout_iterator MachineBasicBlock::liveout_begin() const {
   MCRegister ExceptionPointer, ExceptionSelector;
   if (MF.getFunction().hasPersonalityFn()) {
     auto PersonalityFn = MF.getFunction().getPersonalityFn();
-    ExceptionPointer = TLI.getExceptionPointerRegister(
-        TLI.getTargetMachine().getExceptionModel(), PersonalityFn);
-    ExceptionSelector = TLI.getExceptionSelectorRegister(
-        TLI.getTargetMachine().getExceptionModel(), PersonalityFn);
+    // Prefer the "exception-model" module flag, else the TargetOptions default.
+    ExceptionHandling EH = MF.getFunction().getParent()->getExceptionModel();
+    if (EH == ExceptionHandling::Default)
+      EH = TLI.getTargetMachine().getExceptionModel();
+    ExceptionPointer = TLI.getExceptionPointerRegister(EH, PersonalityFn);
+    ExceptionSelector = TLI.getExceptionSelectorRegister(EH, PersonalityFn);
   }
 
   return liveout_iterator(*this, ExceptionPointer, ExceptionSelector, false);
