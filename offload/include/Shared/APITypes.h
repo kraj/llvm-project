@@ -85,6 +85,12 @@ struct __tgt_async_info {
   /// ensure it is a valid location while the transfer to the device is
   /// happening.
   KernelLaunchEnvironmentTy KernelLaunchEnvironment;
+
+  /// Pinned host copies of the launch environment, one per kernel issued on
+  /// this async info; empty if the plugin does not stage. The device reads
+  /// them asynchronously, so each launch needs its own. The device that handed
+  /// them out reclaims them once this async info's operations have completed.
+  llvm::SmallVector<void *, 2> PinnedKernelLaunchEnvironments;
 };
 
 /// This struct contains all of the arguments to a target kernel region launch.

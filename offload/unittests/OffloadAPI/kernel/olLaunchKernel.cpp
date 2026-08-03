@@ -226,6 +226,80 @@ TEST_P(olLaunchKernelLocalMemTest, Success) {
   ASSERT_SUCCESS(olMemFree(Mem));
 }
 
+// A kernel requesting dynamic shared memory needs a launch environment, which
+// the plugin may transfer from a host buffer it reads asynchronously. Issuing
+// several such kernels on one queue without synchronizing must not let one
+// clobber a preceding launch's environment. Two rounds, so that the second
+// reuses the buffers the first released.
+TEST_P(olLaunchKernelLocalMemTest, MultipleLaunchesWithoutSync) {
+  SKIP_KNOWN_FAILURE(LevelZero{"unsupported DynSharedMemory"});
+
+  constexpr uint32_t NumLaunches = 8;
+  constexpr uint32_t NumRounds = 2;
+
+  LaunchArgs.NumGroups.x = 4;
+  LaunchArgs.DynSharedMemory = 64 * sizeof(uint32_t);
+
+  const uint32_t NumElements = LaunchArgs.GroupSize.x * LaunchArgs.NumGroups.x;
+
+  for (uint32_t Round = 0; Round < NumRounds; Round++) {
+    // Each launch writes its own buffer, so a clobbered environment cannot be
+    // masked by another launch producing the expected values.
+    std::vector<void *> Mems(NumLaunches);
+    for (auto &Mem : Mems) {
+      ASSERT_SUCCESS(olMemAlloc(Device, OL_ALLOC_TYPE_MANAGED,
+                                NumElements * sizeof(uint32_t), &Mem));
+
+      void *ArgPtrs[] = {&Mem};
+      size_t ArgSizes[] = {sizeof(Mem)};
+      ASSERT_SUCCESS(olLaunchKernel(Queue, Device, Kernel, &LaunchArgs, nullptr,
+                                    std::size(ArgPtrs), ArgPtrs, ArgSizes));
+    }
+
+    ASSERT_SUCCESS(olSyncQueue(Queue));
+
+    for (auto *Mem : Mems) {
+      uint32_t *Data = (uint32_t *)Mem;
+      for (uint32_t I = 0; I < NumElements; I++)
+        ASSERT_EQ(Data[I], (I % 64) * 2);
+      ASSERT_SUCCESS(olMemFree(Mem));
+    }
+  }
+}
+
+// Same, but with the launches and synchronizations of one queue spread over
+// several threads: a synchronization must not reclaim a launch environment
+// that another thread's launch is still using.
+TEST_P(olLaunchKernelLocalMemTest, MultipleLaunchesThreaded) {
+  SKIP_KNOWN_FAILURE(LevelZero{"unsupported DynSharedMemory"});
+
+  LaunchArgs.NumGroups.x = 4;
+  LaunchArgs.DynSharedMemory = 64 * sizeof(uint32_t);
+
+  const uint32_t NumElements = LaunchArgs.GroupSize.x * LaunchArgs.NumGroups.x;
+
+  threadify([&](size_t) {
+    for (uint32_t Round = 0; Round < 8; Round++) {
+      void *Mem;
+      ASSERT_SUCCESS(olMemAlloc(Device, OL_ALLOC_TYPE_MANAGED,
+                                NumElements * sizeof(uint32_t), &Mem));
+
+      void *ArgPtrs[] = {&Mem};
+      size_t ArgSizes[] = {sizeof(Mem)};
+      ASSERT_SUCCESS(olLaunchKernel(Queue, Device, Kernel, &LaunchArgs, nullptr,
+                                    std::size(ArgPtrs), ArgPtrs, ArgSizes));
+
+      ASSERT_SUCCESS(olSyncQueue(Queue));
+
+      uint32_t *Data = (uint32_t *)Mem;
+      for (uint32_t I = 0; I < NumElements; I++)
+        ASSERT_EQ(Data[I], (I % 64) * 2);
+
+      ASSERT_SUCCESS(olMemFree(Mem));
+    }
+  });
+}
+
 TEST_P(olLaunchKernelLocalMemReductionTest, Success) {
   SKIP_KNOWN_FAILURE(LevelZero{"unsupported DynSharedMemory"});
 
