@@ -1215,7 +1215,7 @@ static VPValue *simplifyLogicalRecipe(VPSingleDefRecipe *Def,
 /// Try to simplify VPSingleDefRecipe \p Def. Returns a new recipe if it should
 /// be replaced, or the existing recipe if it was modified. Returns nullptr if
 /// nothing was simplified.
-static VPValue *simplifyRecipe(VPSingleDefRecipe *Def) {
+static VPValue *simplifyRecipe(VPSingleDefRecipe *Def, VPBuilder &Builder) {
   VPlan *Plan = Def->getParent()->getPlan();
 
   // Simplification of live-in IR values for SingleDef recipes using
@@ -1243,11 +1243,9 @@ static VPValue *simplifyRecipe(VPSingleDefRecipe *Def) {
         RepR->getUnderlyingInstr(), RepR->operandsWithoutMask(),
         RepR->isSingleScalar(), /*Mask=*/nullptr, *RepR, *RepR,
         RepR->getDebugLoc());
-    Unmasked->insertBefore(RepR);
+    Builder.insert(Unmasked);
     return Unmasked;
   }
-
-  VPBuilder Builder(Def);
 
   // Avoid replacing VPInstructions with underlying values with new
   // VPInstructions, as we would fail to create widen/replicate recpes from the
@@ -1598,25 +1596,45 @@ static VPValue *simplifyRecipe(VPSingleDefRecipe *Def) {
   return nullptr;
 }
 
+namespace {
+/// Variant of VPBuilder that inserts newly created recipes to a worklist.
+class VPSimplifyBuilder : public VPBuilder {
+  SetVector<VPRecipeBase *> &Worklist;
+
+public:
+  VPSimplifyBuilder(SetVector<VPRecipeBase *> &Worklist)
+      : VPBuilder(), Worklist(Worklist) {}
+  virtual ~VPSimplifyBuilder() = default;
+
+  virtual void insert(VPRecipeBase *R, VPBasicBlock *VPBB,
+                      VPBasicBlock::iterator It) const override {
+    VPBuilder::insert(R, VPBB, It);
+    Worklist.insert(R);
+  }
+};
+} // namespace
+
 void VPlanTransforms::simplifyRecipes(VPlan &Plan) {
-  SmallVector<VPRecipeBase *> Worklist;
+  SetVector<VPRecipeBase *> Worklist;
   PostOrderTraversal<VPBlockDeepTraversalWrapper<VPBlockBase *>> POT(
       Plan.getEntry());
   for (VPBasicBlock *VPBB : VPBlockUtils::blocksOnly<VPBasicBlock>(POT))
     for (VPRecipeBase &R : reverse(*VPBB))
-      Worklist.push_back(&R);
+      Worklist.insert(&R);
 
+  VPSimplifyBuilder Builder(Worklist);
   while (!Worklist.empty()) {
     auto *Def = dyn_cast<VPSingleDefRecipe>(Worklist.pop_back_val());
     if (!Def)
       continue;
-    if (VPValue *New = simplifyRecipe(Def)) {
+    Builder.setInsertPoint(Def);
+    if (VPValue *New = simplifyRecipe(Def, Builder)) {
       if (New != Def) {
         // Replace the recipe with a new one.
         Def->replaceAllUsesWith(New);
         Def->eraseFromParent();
         if (VPRecipeBase *NewR = New->getDefiningRecipe())
-          Worklist.push_back(NewR);
+          Worklist.insert(NewR);
       } else if (vputils::isDeadRecipe(*Def)) {
         // Recipe was modified - it may be dead now.
         Def->eraseFromParent();
