@@ -29,6 +29,7 @@
 ; GCN-O0-NEXT: amdgpu-lower-module-lds
 ; GCN-O0-NEXT: function
 ; GCN-O0-NEXT:   atomic-expand
+; GCN-O0-NEXT:   amdgpu-vgpr-allocate
 ; GCN-O0-NEXT:   verify
 ; GCN-O0-NEXT:   unreachableblockelim
 ; GCN-O0-NEXT:   ee-instrument<post-inline>
@@ -72,6 +73,7 @@
 ; GCN-O0-NEXT:       amdgpu-lower-idx-ops
 ; GCN-O0-NEXT:       phi-node-elimination
 ; GCN-O0-NEXT:       si-lower-control-flow
+; GCN-O0-NEXT:       amdgpu-private-object-vgprs
 ; GCN-O0-NEXT:       two-address-instruction
 ; GCN-O0-NEXT:       si-wqm
 ; GCN-O0-NEXT:       amdgpu-pre-ra-long-branch-reg
@@ -230,6 +232,7 @@
 ; GCN-O2-NEXT:       require<machine-loops>
 ; GCN-O2-NEXT:       phi-node-elimination
 ; GCN-O2-NEXT:       si-lower-control-flow
+; GCN-O2-NEXT:       amdgpu-private-object-vgprs
 ; GCN-O2-NEXT:       two-address-instruction
 ; GCN-O2-NEXT:       register-coalescer
 ; GCN-O2-NEXT:       rename-independent-subregs
@@ -419,6 +422,7 @@
 ; GCN-O3-NEXT:       require<machine-loops>
 ; GCN-O3-NEXT:       phi-node-elimination
 ; GCN-O3-NEXT:       si-lower-control-flow
+; GCN-O3-NEXT:       amdgpu-private-object-vgprs
 ; GCN-O3-NEXT:       two-address-instruction
 ; GCN-O3-NEXT:       register-coalescer
 ; GCN-O3-NEXT:       rename-independent-subregs
