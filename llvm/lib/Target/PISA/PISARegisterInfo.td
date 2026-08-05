@@ -1,4 +1,4 @@
-//===----------------------------------------------------------------------===//
+//===-- PISARegisterInfo.td - PISA Register defs ----------*- tablegen -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -13,9 +13,9 @@ let Namespace = "PISA" in {
   }
 
   class PISARegisterClass<list<ValueType> regTypes, int alignment, dag regList>
-    : RegisterClass<"PISA", regTypes, alignment, regList> {}
+      : RegisterClass<"PISA", regTypes, alignment, regList> {}
 
-  // .reg style registers
+  // .reg style registers.
   class GeneralRegisterClass<list<ValueType> regTypes, int alignment, dag regList> :
     PISARegisterClass<regTypes, alignment, regList> {
     // Keep flags in sync with RegType in RegEncoder

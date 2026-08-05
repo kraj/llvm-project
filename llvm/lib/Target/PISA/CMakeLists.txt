@@ -1,6 +1,7 @@
 add_llvm_component_group(PISA)
 
 set(LLVM_TARGET_DEFINITIONS PISA.td)
+
 tablegen(LLVM PISAGenAsmWriter.inc -gen-asm-writer)
 tablegen(LLVM PISAGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM PISAGenMCCodeEmitter.inc -gen-emitter)

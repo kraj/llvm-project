@@ -18,4 +18,3 @@ add_llvm_component_library(LLVMPISADesc
   ADD_TO_COMPONENT
   PISA
   )
-

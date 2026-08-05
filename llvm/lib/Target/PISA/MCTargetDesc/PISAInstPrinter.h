@@ -15,8 +15,8 @@
 #include "llvm/MC/MCInstPrinter.h"
 
 namespace llvm {
-class PISAInstPrinter : public MCInstPrinter {
 
+class PISAInstPrinter : public MCInstPrinter {
 public:
   using MCInstPrinter::MCInstPrinter;
   typedef std::function<void(const MCInst *, unsigned, raw_ostream &)>
