@@ -1751,6 +1751,7 @@ bool MonotonicDescriptor::isMonotonicPHI(PHINode *PN, const Loop *L,
         NextPHIChain = IncomingPHI;
         continue;
       }
+      // Only one update/step is allowed. The unmodified value must be PN.
       if (Inc || NextPHIChain)
         return false;
       Inc = std::make_pair(Edge{Block, PHIChain->getParent()}, Incoming.get());
@@ -1801,7 +1802,7 @@ bool MonotonicDescriptor::isMonotonicVal(Value *Val, const Loop *L,
     return false;
   auto *CurInst = cast<Instruction>(Val);
 
-  auto LoopVariantVal = [&](Value *V, bool AllowRepeats) {
+  auto LoopVariantVal = [&](Value *V, bool /*AllowRepeats*/) {
     return L->isLoopInvariant(V) ? nullptr : cast<Instruction>(V);
   };
 

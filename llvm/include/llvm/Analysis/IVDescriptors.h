@@ -517,8 +517,8 @@ public:
                              MonotonicDescriptor &Desc, ScalarEvolution &SE);
 
   /// Returns true if \p Val is a monotonic variable in the loop \p L (in this
-  /// case, the value should transitively contain monotonic PHI as part of its
-  /// calculation).
+  /// case, the value should transitively contain monotonic PHI as the only
+  /// loop-variant part/operand of its calculation).
   static bool isMonotonicVal(Value *Val, const Loop *L,
                              MonotonicDescriptor &Desc, ScalarEvolution &SE);
 
@@ -539,8 +539,9 @@ private:
   /// represented as an (unconditional) SCEVAddRec.
   const SCEVAddRecExpr *Expr = nullptr;
 
-  /// Set the SCEV expression for this descriptor. \p NewExpr must be an affine
-  /// SCEVAddRec.
+  /// Set the SCEV expression for this descriptor. Returns true if the
+  /// expression was successfully updated, this requires \p NewExpr must be an
+  /// affine SCEVAddRec.
   bool setSCEV(const SCEV *NewExpr);
 };
 
