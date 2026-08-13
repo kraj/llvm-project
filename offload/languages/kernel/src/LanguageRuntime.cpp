@@ -101,11 +101,25 @@ Error_t Memcpy(void *Dst, const void *Src, size_t Size, MemcpyKind Kind) {
 }
 
 Error_t DeviceSynchronize() {
-  // TODO: This is not correct. We likely want to pipe this through to the
-  // plugins.
-  ol_queue_handle_t Queue = ThreadState::getDefaultQueue();
-  ol_result_t Result = olSyncQueue(Queue);
-  return convertAndSetLastError(Result);
+  ol_device_handle_t Device = ThreadState::getDefaultDevice();
+  llvm::offload::StreamTy *DefaultStream = ThreadState::getDefaultStream();
+  if (!DefaultStream)
+    return setLastError(ErrorInvalidDevice);
+
+  ol_result_t Result = olSyncQueue(DefaultStream->Queue);
+  if (Result != OL_SUCCESS)
+    return convertAndSetLastError(Result);
+
+  llvm::SmallVector<llvm::offload::StreamTy *, 8> DeviceStreams =
+      RuntimeState::getDeviceStreams(Device);
+  for (llvm::offload::StreamTy *Stream : DeviceStreams) {
+    if (Stream == DefaultStream)
+      continue;
+    Result = olSyncQueue(Stream->Queue);
+    if (Result != OL_SUCCESS)
+      return convertAndSetLastError(Result);
+  }
+  return setLastError(Success);
 }
 
 Error_t GetDevice(int *DeviceNo) {
