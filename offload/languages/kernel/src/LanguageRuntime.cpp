@@ -23,6 +23,7 @@
 #include "Types.h"
 
 #include "OffloadAPI.h"
+#include "llvm/ADT/SmallVector.h"
 
 #include <cassert>
 #include <cstdio>
@@ -45,7 +46,22 @@ Error_t Free(void *DevPtr) {
 }
 
 Error_t Memcpy(void *Dst, const void *Src, size_t Size, MemcpyKind Kind) {
-  ol_queue_handle_t Queue = ThreadState::getDefaultQueue();
+  ol_device_handle_t Device = nullptr;
+  StreamTy *DefaultStream = nullptr;
+  ol_queue_handle_t Queue = nullptr;
+
+  if (Kind != MemcpyHostToHost) {
+    Device = ThreadState::getDefaultDevice();
+    DefaultStream = ThreadState::getDefaultStream();
+    if (!Device || !DefaultStream)
+      return setLastError(ErrorInvalidDevice);
+
+    ol_result_t Result = waitOnBlockingStreams(DefaultStream, Device);
+    if (Result != OL_SUCCESS)
+      return convertAndSetLastError(Result);
+
+    Queue = DefaultStream->Queue;
+  }
 
   ol_result_t Result;
   switch (Kind) {
@@ -55,21 +71,17 @@ Error_t Memcpy(void *Dst, const void *Src, size_t Size, MemcpyKind Kind) {
     break;
   }
   case MemcpyHostToDevice: {
-    ol_device_handle_t Device = ThreadState::getDefaultDevice();
     ol_device_handle_t Host = RuntimeState::getHostDevice();
     Result = olMemcpy(Queue, Dst, Device, const_cast<void *>(Src), Host, Size);
     break;
   }
   case MemcpyDeviceToHost: {
-    ol_device_handle_t Device = ThreadState::getDefaultDevice();
     ol_device_handle_t Host = RuntimeState::getHostDevice();
 
     Result = olMemcpy(Queue, Dst, Host, const_cast<void *>(Src), Device, Size);
     break;
   }
   case MemcpyDeviceToDevice: {
-    ol_device_handle_t Device = ThreadState::getDefaultDevice();
-
     Result =
         olMemcpy(Queue, Dst, Device, const_cast<void *>(Src), Device, Size);
     break;
@@ -79,6 +91,9 @@ Error_t Memcpy(void *Dst, const void *Src, size_t Size, MemcpyKind Kind) {
   };
 
   if (Result != OL_SUCCESS)
+    return convertAndSetLastError(Result);
+
+  if (!Queue)
     return convertAndSetLastError(Result);
 
   Result = olSyncQueue(Queue);
