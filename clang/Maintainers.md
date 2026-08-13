@@ -29,8 +29,8 @@ aaron@aaronballman.com (email), aaron.ballman (Phabricator), [AaronBallman](http
 
 ### AST Visitors
 
-Sirraide \
-aeternalmail@gmail.com (email), [Sirraide](https://github.com/Sirraide) (GitHub), Ætérnal (Discord), Sirraide (Discourse)
+Ambrose Leeb \
+aleeb@nvidia.com (email), [aleeb-nvidia](https://github.com/aleeb-nvidia) (GitHub), Ætérnal (Discord), Sirraide (Discourse)
 
 ### Clang LLVM IR generation
 
@@ -58,11 +58,11 @@ yitzhakm@google.com (email), ymandel (Phabricator), [ymand](https://github.com/y
 
 ### Sema
 
-Sirraide \
-aeternalmail@gmail.com (email), [Sirraide](https://github.com/Sirraide) (GitHub), Ætérnal (Discord), Sirraide (Discourse)
+Ambrose Leeb \
+aleeb@nvidia.com (email), [aleeb-nvidia](https://github.com/aleeb-nvidia) (GitHub), Ætérnal (Discord), Sirraide (Discourse)
 
 Mariya Podchishchaeva \
-fznamznon23@gmail.com (email), [Fznamznon](https://github.com/Fznamznon) (GitHub), fznamznon (Discord), Fznamznon (Discourse)
+Mariya.Podchishchaeva@amd.com (email), [Fznamznon](https://github.com/Fznamznon) (GitHub), fznamznon (Discord), Fznamznon (Discourse)
 
 ### Recovery AST
 
@@ -164,7 +164,7 @@ i@maskray.me (email), MaskRay (Phabricator), [MaskRay](https://github.com/MaskRa
 ### Constant Expressions
 
 Mariya Podchishchaeva \
-fznamznon23@gmail.com (email), [Fznamznon](https://github.com/Fznamznon) (GitHub), fznamznon (Discord), Fznamznon (Discourse)
+Mariya.Podchishchaeva@amd.com (email), [Fznamznon](https://github.com/Fznamznon) (GitHub), fznamznon (Discord), Fznamznon (Discourse)
 
 ### Thread Safety Analysis
 
@@ -176,8 +176,8 @@ aaron.puchert@sap.com (email), [aaronpuchert](https://github.com/aaronpuchert) (
 Doug Wyatt \
 dwyatt@apple.com (email), [dougsonos](https://github.com/dougsonos) (GitHub), dougsonos (Discourse)
 
-Sirraide \
-aeternalmail@gmail.com (email), [Sirraide](https://github.com/Sirraide) (GitHub), Ætérnal (Discord), Sirraide (Discourse)
+Ambrose Leeb \
+aleeb@nvidia.com (email), [aleeb-nvidia](https://github.com/aleeb-nvidia) (GitHub), Ætérnal (Discord), Sirraide (Discourse)
 
 ### Code Coverage
 
