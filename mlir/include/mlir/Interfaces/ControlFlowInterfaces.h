@@ -330,11 +330,26 @@ Region *getEnclosingRepetitiveRegion(Operation *op);
 /// exists.
 Region *getEnclosingRepetitiveRegion(Value value);
 
+/// Callback that reports pairs of successor-input values (e.g. a region
+/// iter_arg and its corresponding op result) that are structurally coupled and
+/// must be added or removed together, even if they are not linked through a
+/// shared successor operand in `getSuccessorOperandInputMapping`. This is
+/// needed when `getSuccessorRegions` refines the control-flow graph and drops
+/// an edge that would otherwise tie them (e.g. a statically-single-trip
+/// `scf.for` drops its region->region back edge, so its iter_args and results
+/// are no longer tied through the yield operand). Each reported pair is unioned
+/// into the set of tied successor inputs. Loop-like ops can implement this
+/// using `getRegionIterArgs()` / `getLoopResults()`.
+using RegionBranchStructuralTieFn = std::function<void(
+    Operation *, SmallVectorImpl<std::pair<Value, Value>> &)>;
+
 /// Populate canonicalization patterns that simplify successor operands/inputs
 /// of region branch operations. Only operations with the given name are
-/// matched.
+/// matched. `structuralTieFn` is optional; see `RegionBranchStructuralTieFn`.
 void populateRegionBranchOpInterfaceCanonicalizationPatterns(
-    RewritePatternSet &patterns, StringRef opName, PatternBenefit benefit = 1);
+    RewritePatternSet &patterns, StringRef opName,
+    RegionBranchStructuralTieFn structuralTieFn = nullptr,
+    PatternBenefit benefit = 1);
 
 /// Helper function for the region branch op inlining pattern that builds
 /// replacement values for non-successor-input values.
