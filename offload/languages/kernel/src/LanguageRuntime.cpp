@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/SmallPtrSet.h"
+#include <cstddef>
 #ifndef LANGUAGE
 #error This file should be included, or used, with a LANGUAGE macro set.
 #endif
@@ -97,6 +98,24 @@ Error_t Memcpy(void *Dst, const void *Src, size_t Size, MemcpyKind Kind) {
     return convertAndSetLastError(Result);
 
   Result = olSyncQueue(Queue);
+  return convertAndSetLastError(Result);
+}
+
+Error_t Memset(void *DevPtr, int Value, size_t Count) {
+  ol_device_handle_t Device = ThreadState::getDefaultDevice();
+  StreamTy *DefaultStream = ThreadState::getDefaultStream();
+  if (!Device || !DefaultStream)
+    return setLastError(ErrorInvalidDevice);
+
+  ol_result_t Result = waitOnBlockingStreams(DefaultStream, Device);
+  if (Result != OL_SUCCESS)
+    return convertAndSetLastError(Result);
+
+  ol_queue_handle_t Queue = DefaultStream->Queue;
+  unsigned char Byte = static_cast<unsigned char>(Value);
+  Result = olMemFill(Queue, DevPtr, 1, &Byte, Count);
+  if (Result == OL_SUCCESS)
+    Result = olSyncQueue(Queue);
   return convertAndSetLastError(Result);
 }
 
