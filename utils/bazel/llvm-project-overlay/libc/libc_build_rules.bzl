@@ -20,6 +20,7 @@ def libc_common_copts():
         "-DLIBC_NAMESPACE=" + LIBC_NAMESPACE,
     ] + select({
         "//libc:full_build": [
+            "-DLIBC_COPT_PUBLIC_PACKAGING",
             "-DLIBC_FULL_BUILD",
             "-ffreestanding",
             "-fno-asynchronous-unwind-tables",
