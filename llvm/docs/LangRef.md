@@ -931,6 +931,7 @@ alignments are not larger than that of a TOC entry. Optimizations should not
 increase their alignments to mitigate TOC overflow.
 
 Syntax:
+
 ```
 @<GlobalVarName> = [Linkage] [PreemptionSpecifier] [Visibility]
                    [DLLStorageClass] [ThreadLocal]
@@ -996,6 +997,7 @@ an optional list of attached {ref}`metadata <metadata>`,
 an opening curly brace, a list of basic blocks, and a closing curly brace.
 
 Syntax:
+
 ```
 define [linkage] [PreemptionSpecifier] [visibility] [DLLStorageClass]
        [cconv] [ret attrs]
@@ -1175,6 +1177,7 @@ A global object may be a member of at most one comdat. Aliases are placed in the
 same COMDAT that their aliasee computes to, if any.
 
 Syntax:
+
 ```
 $<Name> = comdat SelectionKind
 ```
@@ -1277,6 +1280,7 @@ operands for a named metadata.
    are still valid, which allows any character to be part of a name.
 
 Syntax:
+
 ```
 ; Some unnamed metadata nodes, which are referenced by the named metadata.
 !0 = !{!"zero"}
@@ -3094,6 +3098,7 @@ associated with certain LLVM instructions (currently only `call` s and
 incorrect and will change program semantics.
 
 Syntax:
+
 ```
 operand bundle set ::= '[' operand bundle (, operand bundle )* ']'
 operand bundle ::= tag '(' [ bundle operand ] (, bundle operand )* ')'
@@ -7789,6 +7794,7 @@ identifies the callback function as the second argument of the broker (`i64
 broker function (`i64 3`).
 
 % FIXME why does the llvm-sphinx-docs builder give a highlighting error if the below is set to highlight as 'llvm', despite that we have misc.highlighting_failure set?
+
 ```text
 declare !callback !1 dso_local i32 @pthread_create(ptr, ptr, ptr, ptr)
 
@@ -7804,6 +7810,7 @@ variadic arguments that are passed to the `__kmpc_fork_call` call (due to the
 final `i1 true`).
 
 % FIXME why does the llvm-sphinx-docs builder give a highlighting error if the below is set to highlight as 'llvm', despite that we have misc.highlighting_failure set?
+
 ```text
 declare !callback !0 dso_local void @__kmpc_fork_call(ptr, i32, ptr, ...)
 
@@ -8695,6 +8702,34 @@ to the SSA value of the pointer operand.
 Note that this is an experimental feature, which means that its semantics might
 change in the future.
 
+(md_atomic.ignore.denormal.mode)=
+
+#### '`atomic.ignore.denormal.mode`' Metadata
+
+The `atomic.ignore.denormal.mode` metadata may be attached to floating-point
+{ref}`atomicrmw <i_atomicrmw>` instructions. It indicates that the handling of
+denormal inputs and results is insignificant, and may be inconsistent with the
+denormal mode the function otherwise operates in, as described by
+{ref}`denormal_fpenv <denormal_fpenv>`.
+
+This is necessary to emit a native atomic instruction on targets and address
+spaces where the atomic unit has a fixed denormal behavior which need not match
+the denormal mode of the containing function. For example, AMDGPU global memory
+atomics unconditionally flush float denormals, as does the NVPTX `atom.add`
+instruction.
+
+The metadata must reference a single metadata node with no entries; the contents
+of the node are ignored.
+
+```llvm
+%res = atomicrmw fadd ptr %ptr, float %value seq_cst, align 4, !atomic.ignore.denormal.mode !0
+
+!0 = !{}
+```
+
+This metadata was previously spelled `amdgpu.ignore.denormal.mode`. The old name
+is automatically upgraded when reading old IR.
+
 #### '`type`' Metadata
 
 See {doc}`TypeMetadata`.
@@ -9403,6 +9438,7 @@ flags metadata, using the following key-value pairs:
 For example, the following metadata section specifies that the module was
 compiled with a `wchar_t` width of 4 bytes, and the underlying type of an
 enum is the smallest type which can represent all of its values:
+
 ```
 !llvm.module.flags = !{!0, !1}
 !0 = !{i32 1, !"short_wchar", i32 1}
@@ -9437,6 +9473,7 @@ value is an `MDString` and must be one of:
 When the flag is absent, the target's default floating-point ABI is used. The
 flag must use the `error` merge behavior, so that linking modules with
 conflicting floating-point ABIs is rejected. For example:
+
 ```
 !llvm.module.flags = !{!0}
 !0 = !{i32 1, !"float-abi", !"hard"}
@@ -9491,6 +9528,7 @@ type, and must be one of:
 
 The flag must use the `error` merge behavior, so that linking modules with
 conflicting long double types is rejected. For example:
+
 ```
 !llvm.module.flags = !{!0}
 !0 = !{i32 1, !"long-double-type", !"fp128"}
@@ -9565,6 +9603,7 @@ embedded in the module. The primary use for this is to make referencing these
 globals more efficient in the IR. The metadata references nodes containing
 pointers to the global to be embedded followed by the section name it will be
 stored at:
+
 ```
 !llvm.embedded.objects = !{!0}
 !0 = !{ptr @object, !".section"}
@@ -9585,6 +9624,7 @@ list of metadata strings defining linker options.
 For example, the following metadata section specifies two separate sets of
 linker options, presumably to link against `libz` and the `Cocoa`
 framework:
+
 ```
 !0 = !{ !"-lz" }
 !1 = !{ !"-framework", !"Cocoa" }
@@ -9614,6 +9654,7 @@ The list is encoded in the IR using named metadata with the name
 which should contain a single string operand.
 
 For example, the following metadata section contains two library specifiers:
+
 ```
 !0 = !{!"a library specifier"}
 !1 = !{!"another library specifier"}
@@ -9634,6 +9675,7 @@ across such routines.
 
 For example, the following is a valid metadata specifying the TBAA information
 for an integer access:
+
 ```
 !llvm.errno.tbaa = !{!0}
 !0 = !{!1, !1, i64 0}
@@ -29778,6 +29820,7 @@ to facilitate alias analysis and underlying-object detection.
 
 The result of `ptrmask(%ptr, %mask)` is equivalent to the following expansion,
 where `iPtrIdx` is the index type size of the pointer:
+
 ```
 %intptr = ptrtoint ptr %ptr to iPtrIdx ; this may truncate
 %masked = and iPtrIdx %intptr, %mask
@@ -30125,6 +30168,7 @@ knowledge. You can read more about the details of Objective-C ARC [here](https:/
 #### '`llvm.objc.autorelease`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.autorelease(ptr)
 ```
@@ -30136,6 +30180,7 @@ Lowers to a call to [objc_autorelease](https://clang.llvm.org/docs/AutomaticRefe
 #### '`llvm.objc.autoreleasePoolPop`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare void @llvm.objc.autoreleasePoolPop(ptr)
 ```
@@ -30147,6 +30192,7 @@ Lowers to a call to [objc_autoreleasePoolPop](https://clang.llvm.org/docs/Automa
 #### '`llvm.objc.autoreleasePoolPush`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.autoreleasePoolPush()
 ```
@@ -30158,6 +30204,7 @@ Lowers to a call to [objc_autoreleasePoolPush](https://clang.llvm.org/docs/Autom
 #### '`llvm.objc.autoreleaseReturnValue`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.autoreleaseReturnValue(ptr)
 ```
@@ -30169,6 +30216,7 @@ Lowers to a call to [objc_autoreleaseReturnValue](https://clang.llvm.org/docs/Au
 #### '`llvm.objc.copyWeak`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare void @llvm.objc.copyWeak(ptr, ptr)
 ```
@@ -30180,6 +30228,7 @@ Lowers to a call to [objc_copyWeak](https://clang.llvm.org/docs/AutomaticReferen
 #### '`llvm.objc.destroyWeak`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare void @llvm.objc.destroyWeak(ptr)
 ```
@@ -30191,6 +30240,7 @@ Lowers to a call to [objc_destroyWeak](https://clang.llvm.org/docs/AutomaticRefe
 #### '`llvm.objc.initWeak`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.initWeak(ptr, ptr)
 ```
@@ -30202,6 +30252,7 @@ Lowers to a call to [objc_initWeak](https://clang.llvm.org/docs/AutomaticReferen
 #### '`llvm.objc.loadWeak`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.loadWeak(ptr)
 ```
@@ -30213,6 +30264,7 @@ Lowers to a call to [objc_loadWeak](https://clang.llvm.org/docs/AutomaticReferen
 #### '`llvm.objc.loadWeakRetained`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.loadWeakRetained(ptr)
 ```
@@ -30224,6 +30276,7 @@ Lowers to a call to [objc_loadWeakRetained](https://clang.llvm.org/docs/Automati
 #### '`llvm.objc.moveWeak`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare void @llvm.objc.moveWeak(ptr, ptr)
 ```
@@ -30235,6 +30288,7 @@ Lowers to a call to [objc_moveWeak](https://clang.llvm.org/docs/AutomaticReferen
 #### '`llvm.objc.release`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare void @llvm.objc.release(ptr)
 ```
@@ -30246,6 +30300,7 @@ Lowers to a call to [objc_release](https://clang.llvm.org/docs/AutomaticReferenc
 #### '`llvm.objc.retain`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.retain(ptr)
 ```
@@ -30257,6 +30312,7 @@ Lowers to a call to [objc_retain](https://clang.llvm.org/docs/AutomaticReference
 #### '`llvm.objc.retainAutorelease`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.retainAutorelease(ptr)
 ```
@@ -30268,6 +30324,7 @@ Lowers to a call to [objc_retainAutorelease](https://clang.llvm.org/docs/Automat
 #### '`llvm.objc.retainAutoreleaseReturnValue`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.retainAutoreleaseReturnValue(ptr)
 ```
@@ -30279,6 +30336,7 @@ Lowers to a call to [objc_retainAutoreleaseReturnValue](https://clang.llvm.org/d
 #### '`llvm.objc.retainAutoreleasedReturnValue`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.retainAutoreleasedReturnValue(ptr)
 ```
@@ -30290,6 +30348,7 @@ Lowers to a call to [objc_retainAutoreleasedReturnValue](https://clang.llvm.org/
 #### '`llvm.objc.retainBlock`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.retainBlock(ptr)
 ```
@@ -30301,6 +30360,7 @@ Lowers to a call to [objc_retainBlock](https://clang.llvm.org/docs/AutomaticRefe
 #### '`llvm.objc.storeStrong`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare void @llvm.objc.storeStrong(ptr, ptr)
 ```
@@ -30312,6 +30372,7 @@ Lowers to a call to [objc_storeStrong](https://clang.llvm.org/docs/AutomaticRefe
 #### '`llvm.objc.storeWeak`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare ptr @llvm.objc.storeWeak(ptr, ptr)
 ```
@@ -30332,6 +30393,7 @@ are converted to structs in IR.
 #### '`llvm.preserve.array.access.index`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare <ret_type>
 @llvm.preserve.array.access.index.p0s_union.anons.p0a10s_union.anons(<type> base,
@@ -30368,6 +30430,7 @@ as a getelementptr with base `base` and access operands `{dim's 0's, index}`.
 #### '`llvm.preserve.union.access.index`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare <type>
 @llvm.preserve.union.access.index.p0s_union.anons.p0s_union.anons(<type> base,
@@ -30394,6 +30457,7 @@ The '`llvm.preserve.union.access.index`' intrinsic returns the `base` address.
 #### '`llvm.preserve.struct.access.index`' Intrinsic
 
 ##### Syntax:
+
 ```
 declare <ret_type>
 @llvm.preserve.struct.access.index.p0i8.p0s_struct.anon.0s(<type> base,
