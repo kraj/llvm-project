@@ -183,14 +183,15 @@ Error BinarySectionWriter::visit(const GroupSection &Sec) {
                            "cannot write '" + Sec.Name + "' out to binary");
 }
 
-void SectionWriter::writeSectionContents(ArrayRef<uint8_t> Data,
-                                         uint64_t Offset) {
+Error SectionWriter::writeSectionContents(ArrayRef<uint8_t> Data,
+                                          uint64_t Offset) {
   llvm::copy(Data, Out.getBufferStart() + Offset);
+  return Error::success();
 }
 
 Error SectionWriter::visit(const Section &Sec) {
   if (Sec.Type != SHT_NOBITS)
-    writeSectionContents(Sec.Contents, Sec.Offset);
+    return writeSectionContents(Sec.Contents, Sec.Offset);
 
   return Error::success();
 }
@@ -458,8 +459,7 @@ void Section::restoreSymTabLink(SymbolTableSection &SymTab) {
 }
 
 Error SectionWriter::visit(const OwnedDataSection &Sec) {
-  writeSectionContents(Sec.Data, Sec.Offset);
-  return Error::success();
+  return writeSectionContents(Sec.Data, Sec.Offset);
 }
 
 template <class ELFT>
@@ -492,8 +492,7 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
                              "failed to decompress section '" + Sec.Name +
                                  "': " + toString(std::move(E)));
 
-  writeSectionContents(Decompressed, Sec.Offset);
-  return Error::success();
+  return writeSectionContents(Decompressed, Sec.Offset);
 }
 
 Error BinarySectionWriter::visit(const DecompressedSection &Sec) {
@@ -538,8 +537,7 @@ Error ELFSectionWriter<ELFT>::visit(const CompressedSection &Sec) {
   Elf_Chdr_Impl<ELFT> Chdr = {};
   switch (Sec.CompressionType) {
   case DebugCompressionType::None:
-    writeSectionContents(Sec.OriginalData, Sec.Offset);
-    return Error::success();
+    return writeSectionContents(Sec.OriginalData, Sec.Offset);
   case DebugCompressionType::Zlib:
     Chdr.ch_type = ELF::ELFCOMPRESS_ZLIB;
     break;
@@ -549,11 +547,11 @@ Error ELFSectionWriter<ELFT>::visit(const CompressedSection &Sec) {
   }
   Chdr.ch_size = Sec.DecompressedSize;
   Chdr.ch_addralign = Sec.DecompressedAlign;
-  writeSectionContents(
-      ArrayRef(reinterpret_cast<const uint8_t *>(&Chdr), sizeof(Chdr)),
-      Sec.Offset);
-  writeSectionContents(Sec.CompressedData, Sec.Offset + sizeof(Chdr));
-  return Error::success();
+  if (Error E = writeSectionContents(
+          ArrayRef(reinterpret_cast<const uint8_t *>(&Chdr), sizeof(Chdr)),
+          Sec.Offset))
+    return E;
+  return writeSectionContents(Sec.CompressedData, Sec.Offset + sizeof(Chdr));
 }
 
 CompressedSection::CompressedSection(const SectionBase &Sec,
@@ -619,11 +617,10 @@ Error ELFSectionWriter<ELFT>::visit(const SectionIndexSection &Sec) {
   Indexes.reserve(Sec.Indexes.size());
   for (uint32_t Index : Sec.Indexes)
     Indexes.emplace_back(Index);
-  writeSectionContents(
+  return writeSectionContents(
       ArrayRef(reinterpret_cast<const uint8_t *>(Indexes.data()),
                Indexes.size() * sizeof(Elf_Word)),
       Sec.Offset);
-  return Error::success();
 }
 
 Error SectionIndexSection::initialize(SectionTableRef SecTable) {
@@ -1037,8 +1034,7 @@ void RelocationSection::replaceSectionReferences(
 }
 
 Error SectionWriter::visit(const DynamicRelocationSection &Sec) {
-  writeSectionContents(Sec.Contents, Sec.Offset);
-  return Error::success();
+  return writeSectionContents(Sec.Contents, Sec.Offset);
 }
 
 Error DynamicRelocationSection::accept(SectionVisitor &Visitor) const {
@@ -1190,11 +1186,10 @@ Error ELFSectionWriter<ELFT>::visit(const GnuDebugLinkSection &Sec) {
   Elf_Word *CRC =
       reinterpret_cast<Elf_Word *>(Buf + Sec.Size - sizeof(Elf_Word));
   *CRC = Sec.CRC32;
-  writeSectionContents(
+  return writeSectionContents(
       ArrayRef(reinterpret_cast<const uint8_t *>(Sec.FileName.data()),
                Sec.FileName.size()),
       Sec.Offset);
-  return Error::success();
 }
 
 Error GnuDebugLinkSection::accept(SectionVisitor &Visitor) const {
