@@ -4,6 +4,8 @@ RUN: %python %p/../Inputs/ungzip.py %p/Inputs/many-sections.o.gz > %t
 RUN: llvm-objcopy %t %t2
 RUN: llvm-readobj --file-headers --sections --symbols %t2 | FileCheck %s
 RUN: llvm-readelf --symbols %t2 | FileCheck --check-prefix=SYMS %s
+RUN: llvm-objcopy --output-target=elf64-s390 %t %t.be
+RUN: llvm-readobj --file-headers --sections --symbols %t.be | FileCheck %s
 
 ## The ELF header should have e_shnum == 0 and e_shstrndx == SHN_XINDEX.
 # CHECK:        SectionHeaderCount: 0
