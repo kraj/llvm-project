@@ -46,7 +46,6 @@ Error ELFWriterOutput::write(ArrayRef<uint8_t> Data, uint64_t Offset) {
                  StartOffset + Offset);
   if (Error E = Stream->takeError())
     return E;
-  WrittenRanges.insert({Offset, Offset + Data.size()});
   return Error::success();
 }
 
@@ -81,28 +80,12 @@ Error ELFWriterOutput::writeZeros(uint64_t Offset, uint64_t Size) {
     return Error::success();
   }
 
-  if (Error E = writeZerosImpl(Offset, Size))
-    return E;
-  if (Size)
-    WrittenRanges.insert({Offset, Offset + Size});
-  return Error::success();
+  return writeZerosImpl(Offset, Size);
 }
 
 Error ELFWriterOutput::finalize(uint64_t Size) {
   if (Buffer)
     return Error::success();
-
-  uint64_t End = 0;
-  for (const AddressRange &Range : WrittenRanges) {
-    assert(Range.end() <= Size && "write exceeds output size");
-    if (Range.start() > End)
-      if (Error E = writeZerosImpl(End, Range.start() - End))
-        return E;
-    End = Range.end();
-  }
-  if (End < Size)
-    if (Error E = writeZerosImpl(End, Size - End))
-      return E;
 
   std::optional<uint64_t> EndOffset = checkedAddUnsigned(StartOffset, Size);
   if (!EndOffset)
@@ -2817,15 +2800,19 @@ template <class ELFT> Error ELFWriter<ELFT>::finalize() {
     if (!EndOffset)
       return createStringError(errc::file_too_large,
                                "output exceeds the addressable file range");
+    // Discard existing contents after the current position, then extend the
+    // file so unwritten output ranges read as zero without materializing them.
+    if (Error E = Stream->resize(StartOffset))
+      return E;
     if (TotalSize) {
-      // raw_pwrite_stream only supports overwriting existing data. Extend the
-      // file and advance the stream position before writing data out of order.
       if (Error E = Stream->resize(*EndOffset))
         return E;
-      Stream->seek(*EndOffset);
-      if (Error E = Stream->takeError())
-        return E;
     }
+    // raw_pwrite_stream only supports overwriting existing data, so advance
+    // the stream position before writing data out of order.
+    Stream->seek(*EndOffset);
+    if (Error E = Stream->takeError())
+      return E;
     Output.emplace(*Stream, StartOffset);
   } else {
     Buf = WritableMemoryBuffer::getNewMemBuffer(TotalSize);

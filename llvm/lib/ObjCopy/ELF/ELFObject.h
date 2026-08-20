@@ -9,7 +9,6 @@
 #ifndef LLVM_LIB_OBJCOPY_ELF_ELFOBJECT_H
 #define LLVM_LIB_OBJCOPY_ELF_ELFOBJECT_H
 
-#include "llvm/ADT/AddressRanges.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
@@ -53,7 +52,6 @@ class ELFWriterOutput {
   WritableMemoryBuffer *Buffer = nullptr;
   raw_fd_stream *Stream = nullptr;
   uint64_t StartOffset = 0;
-  AddressRanges WrittenRanges;
 
   Error writeZerosImpl(uint64_t Offset, uint64_t Size);
 
