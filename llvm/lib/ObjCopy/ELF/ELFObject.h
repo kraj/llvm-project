@@ -9,6 +9,7 @@
 #ifndef LLVM_LIB_OBJCOPY_ELF_ELFOBJECT_H
 #define LLVM_LIB_OBJCOPY_ELF_ELFOBJECT_H
 
+#include "llvm/ADT/AddressRanges.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
@@ -28,6 +29,7 @@
 
 namespace llvm {
 enum class DebugCompressionType;
+class raw_fd_stream;
 namespace objcopy {
 namespace elf {
 
@@ -46,6 +48,24 @@ class DecompressedSection;
 class Segment;
 class Object;
 struct Symbol;
+
+class ELFWriterOutput {
+  WritableMemoryBuffer *Buffer = nullptr;
+  raw_fd_stream *Stream = nullptr;
+  uint64_t StartOffset = 0;
+  AddressRanges WrittenRanges;
+
+  Error writeZerosImpl(uint64_t Offset, uint64_t Size);
+
+public:
+  explicit ELFWriterOutput(WritableMemoryBuffer &Buffer) : Buffer(&Buffer) {}
+  ELFWriterOutput(raw_fd_stream &Stream, uint64_t StartOffset)
+      : Stream(&Stream), StartOffset(StartOffset) {}
+
+  Error write(ArrayRef<uint8_t> Data, uint64_t Offset);
+  Error writeZeros(uint64_t Offset, uint64_t Size);
+  Error finalize(uint64_t Size);
+};
 
 class SectionTableRef {
   ArrayRef<std::unique_ptr<SectionBase>> Sections;
@@ -106,8 +126,8 @@ public:
 
 class SectionWriter : public SectionVisitor {
 protected:
-  WritableMemoryBuffer &Out;
-  virtual Error writeSectionContents(ArrayRef<uint8_t> Data, uint64_t Offset);
+  virtual Error writeSectionContents(ArrayRef<uint8_t> Data,
+                                     uint64_t Offset) = 0;
 
 public:
   ~SectionWriter() override = default;
@@ -123,8 +143,6 @@ public:
   Error visit(const SectionIndexSection &Sec) override = 0;
   Error visit(const CompressedSection &Sec) override = 0;
   Error visit(const DecompressedSection &Sec) override = 0;
-
-  explicit SectionWriter(WritableMemoryBuffer &Buf) : Out(Buf) {}
 };
 
 template <class ELFT> class ELFSectionWriter : public SectionWriter {
@@ -133,6 +151,9 @@ private:
   using Elf_Rel = typename ELFT::Rel;
   using Elf_Rela = typename ELFT::Rela;
   using Elf_Sym = typename ELFT::Sym;
+
+  ELFWriterOutput &Out;
+  Error writeSectionContents(ArrayRef<uint8_t> Data, uint64_t Offset) override;
 
 public:
   ~ELFSectionWriter() override = default;
@@ -144,7 +165,7 @@ public:
   Error visit(const CompressedSection &Sec) override;
   Error visit(const DecompressedSection &Sec) override;
 
-  explicit ELFSectionWriter(WritableMemoryBuffer &Buf) : SectionWriter(Buf) {}
+  explicit ELFSectionWriter(ELFWriterOutput &Out) : Out(Out) {}
 };
 
 template <class ELFT> class ELFSectionSizer : public MutableSectionVisitor {
@@ -180,6 +201,10 @@ public:
   template <class ELFT> friend class ELFSectionSizer;
 
 class BinarySectionWriter : public SectionWriter {
+protected:
+  WritableMemoryBuffer &Out;
+  Error writeSectionContents(ArrayRef<uint8_t> Data, uint64_t Offset) override;
+
 public:
   ~BinarySectionWriter() override = default;
 
@@ -191,8 +216,7 @@ public:
   Error visit(const CompressedSection &Sec) override;
   Error visit(const DecompressedSection &Sec) override;
 
-  explicit BinarySectionWriter(WritableMemoryBuffer &Buf)
-      : SectionWriter(Buf) {}
+  explicit BinarySectionWriter(WritableMemoryBuffer &Buf) : Out(Buf) {}
 };
 
 using IHexLineData = SmallVector<char, 64>;
@@ -331,17 +355,18 @@ private:
 
   void initEhdrSegment();
 
-  void writeEhdr();
-  void writePhdr(const Segment &Seg);
-  void writeShdr(const SectionBase &Sec);
+  Error writeEhdr();
+  Error writePhdr(const Segment &Seg);
+  Error writeShdr(const SectionBase &Sec);
 
-  void writePhdrs();
-  void writeShdrs();
+  Error writePhdrs();
+  Error writeShdrs();
   Error writeSectionData();
-  void writeSegmentData();
+  Error writeSegmentData();
 
   void assignOffsets();
 
+  std::optional<ELFWriterOutput> Output;
   std::unique_ptr<ELFSectionWriter<ELFT>> SecWriter;
 
   size_t totalSize() const;
