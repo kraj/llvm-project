@@ -208,7 +208,7 @@ llvm.func @caller(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -223,10 +223,8 @@ llvm.func @foo(%arg0: !llvm.ptr {llvm.noalias}, %arg1: !llvm.ptr {llvm.noalias})
 // CHECK-LABEL: llvm.func @bar
 // CHECK: llvm.load
 // CHECK-SAME: alias_scopes = [#[[$ARG1_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG0_SCOPE]]]
 // CHECK: llvm.store
 // CHECK-SAME: alias_scopes = [#[[$ARG0_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG1_SCOPE]]]
 llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
   llvm.call @foo(%arg0, %arg2) : (!llvm.ptr, !llvm.ptr) -> ()
   llvm.return
@@ -234,7 +232,7 @@ llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
 llvm.func @foo(%arg0: !llvm.ptr {llvm.noalias}, %arg1: !llvm.ptr) {
@@ -257,7 +255,7 @@ llvm.func @missing_noalias_on_one_ptr(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2:
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -284,7 +282,7 @@ llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -313,7 +311,7 @@ llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -338,7 +336,6 @@ llvm.func @region_branch(%arg0: !llvm.ptr {llvm.noalias}, %arg1: !llvm.ptr {llvm
 // CHECK-LABEL: llvm.func @region_branch_inlining
 // CHECK: llvm.store
 // CHECK-SAME: alias_scopes = [#[[$ARG0_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG1_SCOPE]]]
 llvm.func @region_branch_inlining(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
   llvm.call @region_branch(%arg0, %arg2) : (!llvm.ptr, !llvm.ptr) -> ()
   llvm.return
@@ -367,7 +364,7 @@ llvm.func @missing_region_branch_inlining(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %a
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -399,7 +396,7 @@ llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -434,7 +431,7 @@ llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG0_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 // CHECK-DAG: #[[$ARG1_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
@@ -455,10 +452,8 @@ llvm.func @supported_operations(%arg0: !llvm.ptr {llvm.noalias}, %arg1: !llvm.pt
 // CHECK-LABEL: llvm.func @bar
 // CHECK: llvm.store
 // CHECK-SAME: alias_scopes = [#[[$ARG1_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG0_SCOPE]]]
 // CHECK: llvm.load
 // CHECK-SAME: alias_scopes = [#[[$ARG1_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG0_SCOPE]]]
 // CHECK: "llvm.intr.memcpy"
 // CHECK-SAME: alias_scopes = [#[[$ARG0_SCOPE]], #[[$ARG1_SCOPE]]]
 // CHECK-NOT: noalias_scopes
@@ -470,13 +465,10 @@ llvm.func @supported_operations(%arg0: !llvm.ptr {llvm.noalias}, %arg1: !llvm.pt
 // CHECK-NOT: noalias_scopes
 // CHECK: "llvm.intr.memset"
 // CHECK-SAME: alias_scopes = [#[[$ARG0_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG1_SCOPE]]]
 // CHECK: llvm.cmpxchg
 // CHECK-SAME: alias_scopes = [#[[$ARG0_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG1_SCOPE]]]
 // CHECK: llvm.atomicrmw
 // CHECK-SAME: alias_scopes = [#[[$ARG0_SCOPE]]]
-// CHECK-SAME: noalias_scopes = [#[[$ARG1_SCOPE]]]
 llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
   llvm.call @supported_operations(%arg0, %arg2) : (!llvm.ptr, !llvm.ptr) -> ()
   llvm.return
@@ -484,7 +476,7 @@ llvm.func @bar(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
 llvm.func @foo(%arg: i32)
@@ -511,7 +503,7 @@ llvm.func @noalias_with_region(%arg0: !llvm.ptr) {
 
 // -----
 
-// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}>
+// CHECK-DAG: #[[DOMAIN:.*]] = #llvm.alias_scope_domain<{{.*}}disjointScopes = true{{.*}}>
 // CHECK-DAG: #[[$ARG_SCOPE:.*]] = #llvm.alias_scope<id = {{.*}}, domain = #[[DOMAIN]]{{(,.*)?}}>
 
 llvm.func @foo(%arg: i32)
