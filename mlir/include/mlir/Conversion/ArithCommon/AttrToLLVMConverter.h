@@ -51,7 +51,8 @@ getLLVMDefaultFPExceptionBehavior(MLIRContext &context);
 template <typename SourceOp, typename TargetOp>
 class AttrConvertFastMathToLLVM {
 public:
-  AttrConvertFastMathToLLVM(SourceOp srcOp) {
+  AttrConvertFastMathToLLVM(SourceOp srcOp)
+      : context(srcOp.getOperation()->getContext()) {
     // Copy the source attributes.
     convertedAttr = NamedAttrList{srcOp->getAttrs()};
     // Get the name of the arith fastmath attribute.
@@ -61,15 +62,33 @@ public:
         convertedAttr.erase(arithFMFAttrName));
     if (arithFMFAttr) {
       StringRef targetAttrName = TargetOp::getFastmathAttrName();
-      convertedAttr.set(targetAttrName,
-                        convertArithFastMathAttrToLLVM(arithFMFAttr));
+      Builder builder(context);
+      propertiesAttr = builder.getDictionaryAttr(builder.getNamedAttr(
+          targetAttrName, convertArithFastMathAttrToLLVM(arithFMFAttr)));
     }
   }
   ArrayRef<NamedAttribute> getAttrs() const { return convertedAttr.getAttrs(); }
-  Attribute getPropAttr() const { return {}; }
+  Attribute getPropAttr() const { return propertiesAttr; }
+
+  typename TargetOp::Properties getProperties() const {
+    typename TargetOp::Properties properties{};
+    TargetOp::populateDefaultProperties(
+        OperationName(TargetOp::getOperationName(), context), properties);
+    if (propertiesAttr) {
+      LogicalResult result =
+          TargetOp::setPropertiesFromAttr(properties, propertiesAttr, [&]() {
+            return emitError(UnknownLoc::get(context));
+          });
+      assert(succeeded(result) && "failed to convert target properties");
+      (void)result;
+    }
+    return properties;
+  }
 
 private:
+  MLIRContext *context;
   NamedAttrList convertedAttr;
+  DictionaryAttr propertiesAttr;
 };
 
 // Attribute converter that populates a NamedAttrList by removing the overflow

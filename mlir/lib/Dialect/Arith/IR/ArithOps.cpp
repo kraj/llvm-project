@@ -1461,9 +1461,10 @@ struct NarrowExtremum final : OpRewritePattern<TruncOp> {
         return failure();
     }
 
-    rewriter.replaceOpWithNewOp<ExtremumOp>(truncOp, TypeRange{narrowType},
-                                            ValueRange{lhs, rhs},
-                                            extremumOp->getAttrs());
+    rewriter.replaceOpWithNewOp<ExtremumOp>(
+        truncOp, TypeRange{narrowType}, ValueRange{lhs, rhs},
+        extremumOp.getProperties(),
+        extremumOp->getDiscardableAttrDictionary().getValue());
     return success();
   }
 };
