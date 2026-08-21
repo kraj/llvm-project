@@ -68,6 +68,61 @@ class VPPredicator {
     BlockMaskCache[VPBB] = Mask;
   }
 
+  bool shouldPreserveTerminator(VPBasicBlock *VPBB) {
+    LLVM_DEBUG(dbgs() << "Checking if can preserve the branch at the end of "
+                      << VPBB->getName() << "\n");
+    auto False = []([[maybe_unused]] StringRef Reason = "") {
+      LLVM_DEBUG(dbgs() << "  can't be preserved"
+                        << (Reason.empty() ? Twine() : (": " + Reason))
+                        << "\n");
+      return false;
+    };
+    if (VPBB->getNumSuccessors() != 2)
+      return False("#Successors != 2");
+    auto *Term = dyn_cast<VPInstruction>(VPBB->getTerminator());
+    if (!Term || Term->getOpcode() != VPInstruction::BranchOnCond)
+      return False("Not a branch");
+
+    bool IsUniformAndAvailable = [&](VPValue *V) {
+      auto *IRV = dyn_cast<VPIRValue>(V);
+      return IRV && isa<Argument, Constant>(IRV->getValue());
+    }(Term->getOperand(0));
+
+    if (!IsUniformAndAvailable)
+      return False("non-uniform");
+
+    // Should not happen in the end-to-end pass pipeline (simplifycfg would
+    // have handled it), but possible when running `loop-vectorize` pass
+    // alone. Just don't preserve so that we won't have to handle that when
+    // executing VPlan.
+    if (all_equal(VPBB->successors()))
+      return False("All successors are the same");
+
+    auto *IPostDomNode = VPPDT.getNode(VPBB)->getIDom();
+    if (!IPostDomNode)
+      return False("no post-dom");
+    auto *IPostDom = dyn_cast<VPBasicBlock>(IPostDomNode->getBlock());
+    if (!IPostDom || !VPDT.properlyDominates(VPBB, IPostDom))
+      return False("doesn't dominate its post-dom");
+
+    LLVM_DEBUG(dbgs() << "IPostDom: " << IPostDom->getName() << "\n";);
+
+    for (VPBlockBase *Pred : IPostDom->getPredecessors()) {
+      if (Pred == VPBB)
+        continue;
+      if (count_if(VPBB->successors(),
+                   [&](auto *Succ) { return VPDT.dominates(Succ, Pred); }) != 1)
+        return False("Bailing out due to successors not being independent");
+    }
+
+      if (any_of(*IPostDom, IsaPred<VPBlendRecipe>))
+        return False("Blends at reconvergence");
+
+      LLVM_DEBUG(dbgs() << "...yes, can be preserved.\n");
+      return true;
+
+  }
+
   /// Record \p Mask as the mask of the edge from \p Src to \p Dst. The edge is
   /// expected to not have a mask already.
   VPValue *setEdgeMask(const VPBasicBlock *Src, const VPBasicBlock *Dst,
@@ -496,62 +551,7 @@ void VPPredicator::run() {
     LLVM_DEBUG(dbgs() << "Setting successors for " << VPBB->getName() << "\n");
     auto Successors = to_vector(VPBB->getSuccessors());
 
-    auto PreserveUniform = [&]() -> bool {
-      LLVM_DEBUG(dbgs() << "Checking if can preserve the branch at the end of "
-                        << VPBB->getName() << "\n");
-      auto False = []([[maybe_unused]] StringRef Reason = "") {
-        LLVM_DEBUG(dbgs() << "  can't be preserved"
-                          << (Reason.empty() ? Twine() : (": " + Reason))
-                          << "\n");
-        return false;
-      };
-      if (VPBB->getNumSuccessors() != 2)
-        return False("#Successors != 2");
-      auto *Term = dyn_cast<VPInstruction>(VPBB->getTerminator());
-      if (!Term || Term->getOpcode() != VPInstruction::BranchOnCond)
-        return False("Not a branch");
-
-      bool IsUniformAndAvailable = [&](VPValue *V) {
-        auto *IRV = dyn_cast<VPIRValue>(V);
-        return IRV && isa<Argument, Constant>(IRV->getValue());
-      }(Term->getOperand(0));
-
-      if (!IsUniformAndAvailable)
-        return False("non-uniform");
-
-      // Should not happen in the end-to-end pass pipeline (simplifycfg would
-      // have handled it), but possible when running `loop-vectorize` pass
-      // alone. Just don't preserve so that we won't have to handle that when
-      // executing VPlan.
-      if (all_equal(VPBB->successors()))
-        return False("All successors are the same");
-
-      auto *IPostDomNode = VPPDT.getNode(VPBB)->getIDom();
-      if (!IPostDomNode)
-        return False("no post-dom");
-      auto *IPostDom = dyn_cast<VPBasicBlock>(IPostDomNode->getBlock());
-      if (!IPostDom || !VPDT.properlyDominates(VPBB, IPostDom))
-        return False("doesn't dominate its post-dom");
-
-      LLVM_DEBUG(dbgs() << "IPostDom: " << IPostDom->getName() << "\n";);
-
-      for (VPBlockBase *Pred : IPostDom->getPredecessors()) {
-        if (Pred == VPBB)
-          continue;
-        if (count_if(VPBB->successors(), [&](auto *Succ) {
-              return VPDT.dominates(Succ, Pred);
-            }) != 1)
-          return False("Bailing out due to successors not being independent");
-      }
-
-      if (any_of(*IPostDom, IsaPred<VPBlendRecipe>))
-        return False("Blends at reconvergence");
-
-      LLVM_DEBUG(dbgs() << "...yes, can be preserved.\n");
-      return true;
-    }();
-
-    if (PreserveUniform) {
+    if (shouldPreserveTerminator(VPBB)) {
       for (auto *Succ : Successors)
         VPBlockUtils::disconnectBlocks(VPBB, Succ);
 
