@@ -81,10 +81,7 @@ define void @always_taken(ptr noalias %p0, ptr noalias %p1, i1 %c0, i1 %c1, i1 %
 ; CHECK-NEXT:    [[BROADCAST_SPLATINSERT2:%.*]] = insertelement <vscale x 2 x i1> poison, i1 [[C2]], i64 0
 ; CHECK-NEXT:    [[BROADCAST_SPLAT1:%.*]] = shufflevector <vscale x 2 x i1> [[BROADCAST_SPLATINSERT2]], <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer
 ; CHECK-NEXT:    [[BROADCAST_SPLATINSERT:%.*]] = insertelement <vscale x 2 x i1> poison, i1 [[C1]], i64 0
-; CHECK-NEXT:    [[BROADCAST_SPLAT:%.*]] = shufflevector <vscale x 2 x i1> [[BROADCAST_SPLATINSERT]], <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer
-; CHECK-NEXT:    [[BROADCAST_SPLATINSERT1:%.*]] = insertelement <vscale x 2 x i1> poison, i1 [[C0]], i64 0
-; CHECK-NEXT:    [[BROADCAST_SPLAT2:%.*]] = shufflevector <vscale x 2 x i1> [[BROADCAST_SPLATINSERT1]], <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer
-; CHECK-NEXT:    [[TMP6:%.*]] = select <vscale x 2 x i1> [[BROADCAST_SPLAT2]], <vscale x 2 x i1> [[BROADCAST_SPLAT]], <vscale x 2 x i1> zeroinitializer
+; CHECK-NEXT:    [[TMP6:%.*]] = shufflevector <vscale x 2 x i1> [[BROADCAST_SPLATINSERT]], <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer
 ; CHECK-NEXT:    [[TMP8:%.*]] = select <vscale x 2 x i1> [[TMP6]], <vscale x 2 x i1> [[BROADCAST_SPLAT1]], <vscale x 2 x i1> zeroinitializer
 ; CHECK-NEXT:    br label %[[VECTOR_BODY:.*]]
 ; CHECK:       [[VECTOR_BODY]]:

@@ -5480,7 +5480,7 @@ void VPlanTransforms::makeMemOpWideningDecisions(VPlan &Plan, VFRange &Range,
         // A predicated access can only be widened (rather than scalarized) if
         // the target supports a masked load/store for it.
         // TODO: Determine if a load/store needs predication directly in VPlan.
-        bool IsPredicated = RecipeBuilder.isPredicatedInst(I);
+        bool IsPredicated = RecipeBuilder.isPredicatedInst(I) && VPI->isMasked();
         if (IsPredicated && !CostCtx.Config.isLegalMaskedLoadOrStore(
                                 IsLoad, ScalarTy, getLoadStoreAlignment(I),
                                 getLoadStoreAddressSpace(I)))
