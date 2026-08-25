@@ -2,7 +2,8 @@
 // noalias, allowing their loads to be hoisted out of the loop across an
 // unrelated opaque call.
 //
-// RUN: %clang_cc1 -O2 -ffast-math -fopenmp -x c++ -emit-llvm -o - %s \
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -O2 -ffast-math -fopenmp \
+// RUN:   -x c++ -emit-llvm -o - %s \
 // RUN:   | FileCheck %s
 
 extern "C" int omp_get_num_threads();

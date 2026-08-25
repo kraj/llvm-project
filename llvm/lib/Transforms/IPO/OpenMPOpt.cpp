@@ -5639,8 +5639,7 @@ void OpenMPOpt::registerAAs(bool IsModulePass) {
         if (!ACS || !ACS.isCallbackCall())
           continue;
         for (Argument &Arg : F->args())
-          if (Arg.getType()->isPointerTy() &&
-              ACS.getCallArgOperandNo(Arg) >= 0)
+          if (Arg.getType()->isPointerTy() && ACS.getCallArgOperandNo(Arg) >= 0)
             A.getOrCreateAAFor<AANoAlias>(IRPosition::argument(Arg));
       }
     }
