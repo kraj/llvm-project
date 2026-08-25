@@ -653,43 +653,55 @@ Every processor supports every OS ABI (see :ref:`amdgpu-os`) with the following 
 
      **GCN GFX12 (RDNA 4)** [AMD-GCN-GFX12-RDNA4]_
      --------------------------------------------------------------------------------------------------------------------------
-     ``gfx1200``                 ``amdgpu12.00``  dGPU - cumode          - Architected                   - Radeon RX 9060
-                                                       - wavefrontsize64   flat                          - Radeon RX 9060 XT
-                                                                           scratch
-                                                                         - Packed
-                                                                           work-item
-                                                                           IDs
+     ``gfx1200``                 ``amdgpu12.00``   dGPU - cumode           - Architected                 - Radeon RX 9060
+                                                        - wavefrontsize64    flat                        - Radeon RX 9060 XT
+                                                                             scratch
+                                                                           - Packed
+                                                                             work-item
+                                                                             IDs
 
-     ``gfx1201``                 ``amdgpu12.01``  dGPU - cumode          - Architected                   - Radeon RX 9070
-                                                       - wavefrontsize64   flat                          - Radeon RX 9070 XT
-                                                                           scratch                       - Radeon RX 9070 GRE
-                                                                         - Packed
-                                                                           work-item
-                                                                           IDs
+     ``gfx1201``                 ``amdgpu12.01``   dGPU - cumode           - Architected                 - Radeon RX 9070
+                                                        - wavefrontsize64    flat                        - Radeon RX 9070 XT
+                                                                             scratch                     - Radeon RX 9070 GRE
+                                                                           - Packed
+                                                                             work-item
+                                                                             IDs
 
-     ``gfx1250``                 ``amdgpu12.50``  APU   - sramecc        - Architected                   *TBA*
-                                                                           flat
-                                                                           scratch                         .. TODO::
-                                                                         - Packed
-                                                                           work-item                         Add product
-                                                                           IDs                               names.
-                                                                         - Globally
-                                                                           Accessible
-                                                                           Scratch
-                                                                         - Workgroup
-                                                                           Clusters
+     ``gfx1250-strict``          ``amdgpu12.50s``  APU   - sramecc         - Architected                 *TBA*
+                                                                             flat
+                                                                             scratch                       .. TODO::
+                                                                           - Packed
+                                                                             work-item                       Add product
+                                                                             IDs                             names.
+                                                                           - Globally
+                                                                             Accessible
+                                                                             Scratch
+                                                                           - Workgroup
+                                                                             Clusters
 
-     ``gfx1251``                 ``amdgpu12.51``  APU   - sramecc        - Architected                   *TBA*
-                                                                           flat
-                                                                           scratch                       .. TODO::
-                                                                         - Packed
-                                                                           work-item                       Add product
-                                                                           IDs                             names.
-                                                                         - Globally
-                                                                           Accessible
-                                                                           Scratch
-                                                                         - Workgroup
-                                                                           Clusters
+     ``gfx1250``                 ``amdgpu12.50``   APU   - sramecc         - Architected                 *TBA*
+                                                                             flat
+                                                                             scratch                       .. TODO::
+                                                                           - Packed
+                                                                             work-item                       Add product
+                                                                             IDs                             names.
+                                                                           - Globally
+                                                                             Accessible
+                                                                             Scratch
+                                                                           - Workgroup
+                                                                             Clusters
+
+     ``gfx1251``                 ``amdgpu12.51``   APU   - sramecc         - Architected                 *TBA*
+                                                                             flat
+                                                                             scratch                     .. TODO::
+                                                                           - Packed
+                                                                             work-item                     Add product
+                                                                             IDs                           names.
+                                                                           - Globally
+                                                                             Accessible
+                                                                             Scratch
+                                                                           - Workgroup
+                                                                             Clusters
 
      **GCN GFX13 (RDNA 5)**
      --------------------------------------------------------------------------------------------------------------------------
