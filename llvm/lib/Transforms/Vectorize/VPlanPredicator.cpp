@@ -395,11 +395,49 @@ void VPPredicator::convertPhisToBlends(VPBasicBlock *VPBB) {
       continue;
     }
 
+    SmallVector<VPBasicBlock *> MaskBlocks;
     SmallVector<VPValue *, 2> OperandsWithMask;
-    for (auto [V, MaskBlock] : computeBlendTerms(PhiR)) {
+    for (auto [V, ConstMaskBlock] : computeBlendTerms(PhiR)) {
+      auto *MaskBlock = const_cast<VPBasicBlock *>(ConstMaskBlock);
+      MaskBlocks.push_back(MaskBlock);
       VPValue *Mask = getBlockInMask(MaskBlock);
       OperandsWithMask.append({V, Mask ? Mask : Plan.getTrue()});
     }
+
+    // Remove a common dominator mask from all blend masks. Doing this here
+    // avoids constructing masks that will be removed later by simplifyBlends.
+    VPBasicBlock *CommonDom =
+        cast<VPBasicBlock>(VPDT.findNearestCommonDominator(
+            make_range(MaskBlocks.begin(), MaskBlocks.end())));
+    VPValue *CommonMask = getBlockInMask(CommonDom);
+    if (CommonMask) {
+      SmallVector<VPValue *, 2> SimplifiedOperands;
+      bool RemovedMask = false;
+      for (unsigned I = 0; I < OperandsWithMask.size(); I += 2) {
+        VPValue *Incoming = OperandsWithMask[I];
+        VPValue *Mask = OperandsWithMask[I + 1];
+        VPValue *RemainingMask = nullptr;
+
+        // foldTailByMasking() uses poison instead of the correct recurrence
+        // phi value in the vector latch.
+        if (auto *Def = Incoming->getDefiningRecipe();
+            Def && Def->getParent() ==
+                       Plan.getVectorLoopRegion()->getEntryBasicBlock()) {
+          SimplifiedOperands.clear();
+          break;
+        }
+        if (!match(Mask, m_RemoveMask(CommonMask, RemainingMask))) {
+          SimplifiedOperands.clear();
+          break;
+        }
+        SimplifiedOperands.append(
+            {Incoming, RemainingMask ? RemainingMask : Plan.getTrue()});
+        RemovedMask |= RemainingMask != nullptr;
+      }
+      if (RemovedMask && !SimplifiedOperands.empty())
+        OperandsWithMask = std::move(SimplifiedOperands);
+    }
+
     PHINode *IRPhi = cast_or_null<PHINode>(PhiR->getUnderlyingValue());
     auto *Blend =
         new VPBlendRecipe(IRPhi, OperandsWithMask, *PhiR, PhiR->getDebugLoc());
