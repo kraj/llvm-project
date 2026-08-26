@@ -194,12 +194,12 @@ define void @optimized_mask(ptr %a) {
 ; CHECK-NEXT:      EMIT vp<[[VP12:%[0-9]+]]> = not ir<%c3>
 ; CHECK-NEXT:      EMIT vp<[[VP13:%[0-9]+]]> = logical-and vp<[[VP6]]>, vp<[[VP12]]>
 ; CHECK-NEXT:      EMIT vp<[[VP14:%[0-9]+]]> = or vp<[[VP11]]>, vp<[[VP13]]>
-; CHECK-NEXT:      BLEND ir<%phi5> = ir<%add6>/vp<[[VP4]]> ir<%add3>/vp<[[VP6]]> ir<%add4>/vp<[[VP7]]> ir<%add4>/vp<[[VP9]]>
+; CHECK-NEXT:      BLEND ir<%phi5> = ir<%add6>/vp<[[VP4]]> ir<%add3>/vp<[[VP6]]> ir<%add4>/vp<[[VP9]]>
 ; CHECK-NEXT:      EMIT ir<%add5> = add ir<%phi5>, ir<5>, vp<[[VP14]]>
 ; CHECK-NEXT:    Successor(s): bb7
 ; CHECK-EMPTY:
 ; CHECK-NEXT:    bb7:
-; CHECK-NEXT:      BLEND ir<%phi7> = ir<%add6>/vp<[[VP4]]> ir<%add5>/ir<%c0> ir<%add5>/vp<[[VP14]]>
+; CHECK-NEXT:      BLEND ir<%phi7> = ir<%add6>/vp<[[VP4]]> ir<%add5>/vp<[[VP14]]>
 ; CHECK-NEXT:      EMIT store ir<%phi7>, ir<%gep>
 ; CHECK-NEXT:      EMIT ir<%iv.next> = add nuw nsw ir<%iv>, ir<1>
 ; CHECK-NEXT:      EMIT ir<%ec> = icmp eq ir<%iv.next>, ir<128>
