@@ -3571,6 +3571,9 @@ void Verifier::visitSelectInst(SelectInst &SI) {
                                         SI.getOperand(2)),
         "Invalid operands for select instruction!", &SI);
 
+  Check(!SI.getType()->isTokenLikeTy(),
+        "Select values cannot have token type!", &SI);
+
   Check(SI.getTrueValue()->getType() == SI.getType(),
         "Select values must have same type as select instruction!", &SI);
   visitInstruction(SI);

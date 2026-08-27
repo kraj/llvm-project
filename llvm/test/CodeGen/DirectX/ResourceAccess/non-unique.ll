@@ -1,4 +1,5 @@
-; RUN: not opt -S -dxil-resource-access -mtriple=dxil--shadermodel6.3-library %s 2>&1 | FileCheck %s
+; RUN: not opt -S -dxil-resource-access -disable-verify \
+; RUN:   -mtriple=dxil--shadermodel6.3-library %s 2>&1 | FileCheck %s
 
 ; Test that a error message is generated for illegal resource accesses that do
 ; not access a unique global resource.
