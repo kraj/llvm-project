@@ -2695,7 +2695,7 @@ auto ExpressionAnalyzer::AnalyzeProcedureComponentRef(
                 }
                 return true;
               }};
-          auto result{ResolveGeneric(
+          auto result{CheckAndResolveGenericReference(
               generic, arguments, adjustment, isSubroutine, SymbolVector{})};
           sym = result.specific;
           if (!sym) {
@@ -2735,7 +2735,11 @@ auto ExpressionAnalyzer::AnalyzeProcedureComponentRef(
               sym = latest;
             }
           }
-          sc.Component().symbol = const_cast<Symbol *>(sym);
+          // Leave the binding generic when C1545 was reported, for the reason
+          // given at the matching guard in GetCalleeAndArguments().
+          if (!result.isBadConditionalArg) {
+            sc.Component().symbol = const_cast<Symbol *>(sym);
+          }
         }
         std::optional<DataRef> dataRef{ExtractDataRef(std::move(*dtExpr))};
         if (dataRef && !CheckDataRef(*dataRef)) {
@@ -3314,6 +3318,27 @@ auto ExpressionAnalyzer::ResolveGeneric(const Symbol &symbol,
   return {nullptr, false, std::move(tried)};
 }
 
+auto ExpressionAnalyzer::CheckAndResolveGenericReference(const Symbol &symbol,
+    const ActualArguments &actuals, const AdjustActuals &adjustActuals,
+    bool isSubroutine, SymbolVector &&tried, bool mightBeStructureConstructor)
+    -> GenericResolution {
+  const Symbol &ultimate{symbol.GetUltimate()};
+  // Attr::INTRINSIC is set for specific intrinsic names such as DSIN as well,
+  // and a reference to one of those is not a reference to a generic procedure.
+  bool isBadConditionalArg{false};
+  if (ultimate.has<semantics::GenericDetails>() ||
+      (ultimate.attrs().test(semantics::Attr::INTRINSIC) &&
+          context_.intrinsics().IsGenericIntrinsic(
+              ultimate.name().ToString()))) {
+    isBadConditionalArg = semantics::CheckConditionalArgsInGenericReference(
+        actuals, GetContextualMessages());
+  }
+  auto result{ResolveGeneric(symbol, actuals, adjustActuals, isSubroutine,
+      std::move(tried), mightBeStructureConstructor)};
+  result.isBadConditionalArg = isBadConditionalArg;
+  return result;
+}
+
 const Symbol &ExpressionAnalyzer::AccessSpecific(
     const Symbol &originalGeneric, const Symbol &specific) {
   if (const auto *hosted{
@@ -3429,12 +3454,15 @@ auto ExpressionAnalyzer::GetCalleeAndArguments(const parser::Name &name,
   bool isExplicitIntrinsic{ultimate.attrs().test(semantics::Attr::INTRINSIC)};
   const Symbol *resolution{nullptr};
   SymbolVector tried;
+  bool isBadConditionalArg{false};
   if (isGenericInterface || isExplicitIntrinsic) {
     ExpressionAnalyzer::AdjustActuals noAdjustment;
-    auto result{ResolveGeneric(*symbol, arguments, noAdjustment, isSubroutine,
-        SymbolVector{}, mightBeStructureConstructor)};
+    auto result{
+        CheckAndResolveGenericReference(*symbol, arguments, noAdjustment,
+            isSubroutine, SymbolVector{}, mightBeStructureConstructor)};
     resolution = result.specific;
     dueToAmbiguity = result.failedDueToAmbiguity;
+    isBadConditionalArg = result.isBadConditionalArg;
     tried = std::move(result.tried);
     if (IsCudaDeviceIntrinsicShadowedByHostProcedure(
             name.source, context_, resolution, isSubroutine)) {
@@ -3454,8 +3482,16 @@ auto ExpressionAnalyzer::GetCalleeAndArguments(const parser::Name &name,
         semantics::CheckPPCIntrinsic(
             *symbol, *resolution, arguments, GetFoldingContext());
       }
-      // re-resolve name to the specific procedure
-      name.symbol = const_cast<Symbol *>(resolution);
+      // Re-resolve the name to the specific procedure, unless C1545 was
+      // reported for this reference: an expression can be analyzed more than
+      // once (ArrayConstructorContext::UnrollConstantImpliedDo re-walks the
+      // parse tree when an implied-DO has constant bounds), and the second
+      // pass repeats the C1545 diagnostic only while the reference still
+      // resolves to the generic symbol.  Leaving it generic is safe because
+      // the reference is already in error and so is never lowered.
+      if (!isBadConditionalArg) {
+        name.symbol = const_cast<Symbol *>(resolution);
+      }
     }
   } else if (IsProcedure(ultimate) &&
       ultimate.attrs().test(semantics::Attr::ABSTRACT)) {
