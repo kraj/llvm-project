@@ -3102,6 +3102,25 @@ TEST(TargetParserTest, testAMDGPUgetMaxHWAddressableLocalMemorySize) {
             327680u);
 }
 
+TEST(TargetParserTest, testAMDGPUgetLDSAllocGranule) {
+  // The granule in bytes tracks the addressable LDS size.
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch600), 256u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch700), 512u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch900), 512u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch950), 1280u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch1030), 512u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch1310), 1024u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(Triple::AMDGPUSubArch1250), 2048u);
+
+  // The GPUKind overload resolves to the same values.
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(AMDGPU::GK_GFX900), 512u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(AMDGPU::GK_GFX950), 1280u);
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(AMDGPU::GK_GFX1250), 2048u);
+
+  // An unknown GPU falls back to the 32 KiB granule.
+  EXPECT_EQ(AMDGPU::getLDSAllocGranule(AMDGPU::GK_NONE), 256u);
+}
+
 TEST(TargetParserTest, testAMDGPUgetNumWorkGroupSIMDs) {
   EXPECT_EQ(AMDGPU::getNumWorkGroupSIMDs(true), 4u);
   EXPECT_EQ(AMDGPU::getNumWorkGroupSIMDs(false), 2u);

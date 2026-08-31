@@ -440,6 +440,25 @@ AMDGPU::getMaxHWAddressableLocalMemorySize(Triple::SubArchType SubArch) {
   return getMaxHWAddressableLocalMemorySize(getGPUKindFromSubArch(SubArch));
 }
 
+unsigned AMDGPU::getLDSAllocGranule(GPUKind AK) {
+  switch (getMaxHWAddressableLocalMemorySize(AK)) {
+  case 65536:
+    return 512;
+  case 196608:
+    return 1024;
+  case 163840:
+    return 1280;
+  case 327680:
+    return 2048;
+  default:
+    return 256; // 32768
+  }
+}
+
+unsigned AMDGPU::getLDSAllocGranule(Triple::SubArchType SubArch) {
+  return getLDSAllocGranule(getGPUKindFromSubArch(SubArch));
+}
+
 unsigned AMDGPU::getMaxWavesPerEU(GPUKind AK) {
   const GPUInfo *Info = getAMDGPUInfo(AK);
   return Info ? Info->MaxWavesPerEU : 10;

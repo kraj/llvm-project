@@ -238,6 +238,12 @@ public:
     return AddressableLocalMemorySize;
   }
 
+  /// Return the granularity, in bytes, in which LDS is allocated to a
+  /// work-group.
+  unsigned getLDSAllocationGranularity() const {
+    return LDSAllocationGranularity;
+  }
+
   /// \returns Number of SIMDs a work-group's waves run on: all of the block's
   /// SIMDs in full-SIMD mode, half of them otherwise.
   unsigned getNumWorkGroupSIMDs() const { return NumWorkGroupSIMDs; }
