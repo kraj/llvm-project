@@ -8,6 +8,10 @@
 //
 /// \file
 /// Insert s_delay_alu instructions to avoid stalls on GFX11+.
+///
+/// On GFX11, a VOPD consumer whose X/Y sources share a gather class (srcA or
+/// srcB) and the same VGPR parity can lose the destination-buffer interlock
+/// for one of those sources. Encode a full va_vdst(0) wait in that case.
 //
 //===----------------------------------------------------------------------===//
 
@@ -16,6 +20,7 @@
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "SIInstrInfo.h"
 #include "SIMachineFunctionInfo.h"
+#include "SIRegisterInfo.h"
 #include "llvm/ADT/SetVector.h"
 
 using namespace llvm;
@@ -28,7 +33,7 @@ class AMDGPUInsertDelayAlu {
 public:
   const GCNSubtarget *ST;
   const SIInstrInfo *SII;
-  const TargetRegisterInfo *TRI;
+  const SIRegisterInfo *SRI;
 
   const TargetSchedModel *SchedModel;
 
@@ -274,18 +279,55 @@ public:
   // The saved delay state at the end of each basic block.
   DenseMap<MachineBasicBlock *, DelayState> BlockState;
 
+  // GFX11 VOPD source gather combines OpX and OpY at the same source position.
+  // Same VGPR parity on that pair can drop the destination-buffer interlock
+  // for one source; a VALU_DEP_N slot wait does not recover it.
+  bool hasVOPDSameParitySrcHazard(const MachineInstr &MI) const {
+    if (!AMDGPU::isGFX11(*ST) || !AMDGPU::isVOPD(MI.getOpcode()))
+      return false;
+
+    const MachineRegisterInfo &MRI = MI.getMF()->getRegInfo();
+    auto HasSameParity = [&](AMDGPU::OpName XName, AMDGPU::OpName YName) {
+      int XIdx = AMDGPU::getNamedOperandIdx(MI.getOpcode(), XName);
+      int YIdx = AMDGPU::getNamedOperandIdx(MI.getOpcode(), YName);
+      if (XIdx == -1 || YIdx == -1)
+        return false;
+
+      const MachineOperand &X = MI.getOperand(XIdx);
+      const MachineOperand &Y = MI.getOperand(YIdx);
+      if (!X.isReg() || !Y.isReg() || !SRI->isVGPR(MRI, X.getReg()) ||
+          !SRI->isVGPR(MRI, Y.getReg()))
+        return false;
+
+      return (SRI->getHWRegIndex(X.getReg()) & 1) ==
+             (SRI->getHWRegIndex(Y.getReg()) & 1);
+    };
+
+    return HasSameParity(AMDGPU::OpName::src0X, AMDGPU::OpName::src0Y) ||
+           HasSameParity(AMDGPU::OpName::vsrc1X, AMDGPU::OpName::vsrc1Y);
+  }
+
   // Emit an s_delay_alu instruction if necessary before MI.
   MachineInstr *emitDelayAlu(MachineInstr &MI, DelayInfo Delay,
                              MachineInstr *LastDelayAlu) {
     unsigned Imm = 0;
+    bool HasVALUWait = Delay.VALUNum < DelayInfo::VALU_MAX;
+    bool DrainVALU = HasVALUWait && hasVOPDSameParitySrcHazard(MI);
+
+    if (DrainVALU) {
+      BuildMI(*MI.getParent(), MI, DebugLoc(),
+              SII->get(AMDGPU::S_WAITCNT_DEPCTR))
+          .addImm(AMDGPU::DepCtr::encodeFieldVaVdst(0, *ST));
+    }
 
     // Wait for a TRANS instruction.
     if (Delay.TRANSNum < DelayInfo::TRANS_MAX)
       Imm |= 4 + Delay.TRANSNum;
 
     // Wait for a VALU instruction (if it's more recent than any TRANS
-    // instruction that we're also waiting for).
-    if (Delay.VALUNum < DelayInfo::VALU_MAX &&
+    // instruction that we're also waiting for). A same-parity VOPD source
+    // pair already drained every VALU, so skip the slot encoding.
+    if (!DrainVALU && Delay.VALUNum < DelayInfo::VALU_MAX &&
         Delay.VALUNum <= Delay.TRANSNumVALU) {
       if (Imm & 0xf)
         Imm |= Delay.VALUNum << 7;
@@ -353,7 +395,7 @@ public:
 
     LLVM_DEBUG(dbgs() << "  State at start of " << printMBBReference(MBB)
                       << "\n";
-               State.dump(TRI););
+               State.dump(SRI););
 
     bool Changed = false;
     MachineInstr *LastDelayAlu = nullptr;
@@ -410,7 +452,7 @@ public:
             // Skip the tied srcC of a C-reuse edge.
             if (IsWMMACReuse && Op.isTied() && Op.getReg() == PrevWMMAVDst)
               continue;
-            for (MCRegUnit Unit : TRI->regunits(Op.getReg())) {
+            for (MCRegUnit Unit : SRI->regunits(Op.getReg())) {
               auto It = State.find(Unit);
               if (It != State.end()) {
                 Delay.merge(It->second);
@@ -423,8 +465,8 @@ public:
         if (SII->isVALU(MI.getOpcode(), /*AllowLDSDMA=*/true)) {
           for (const auto &Op : MI.defs()) {
             Register Reg = Op.getReg();
-            if (AMDGPU::isSGPR(Reg, TRI)) {
-              LastSGPRFromVALU = *TRI->regunits(Reg).begin();
+            if (AMDGPU::isSGPR(Reg, SRI)) {
+              LastSGPRFromVALU = *SRI->regunits(Reg).begin();
               break;
             }
           }
@@ -442,7 +484,7 @@ public:
         for (const auto &Op : MI.defs()) {
           unsigned Latency = SchedModel->computeOperandLatency(
               &MI, Op.getOperandNo(), nullptr, 0);
-          for (MCRegUnit Unit : TRI->regunits(Op.getReg()))
+          for (MCRegUnit Unit : SRI->regunits(Op.getReg()))
             State[Unit] = DelayInfo(Type, Latency);
         }
       }
@@ -465,7 +507,7 @@ public:
         PrevWMMAVDst = Register();
       }
 
-      LLVM_DEBUG(dbgs() << "  State after " << MI; State.dump(TRI););
+      LLVM_DEBUG(dbgs() << "  State after " << MI; State.dump(SRI););
     }
 
     if (Emit) {
@@ -492,7 +534,7 @@ public:
       return false;
 
     SII = ST->getInstrInfo();
-    TRI = ST->getRegisterInfo();
+    SRI = ST->getRegisterInfo();
     SchedModel = &SII->getSchedModel();
 
     // Calculate the delay state for each basic block, iterating until we reach
