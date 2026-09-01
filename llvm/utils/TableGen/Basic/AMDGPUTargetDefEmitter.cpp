@@ -476,14 +476,49 @@ collectVisibleFeatures(const Record *GPU,
   return Visible;
 }
 
+// The value of the SubtargetFeature in \p GPU's closure that sets \p FieldName,
+// or \p Default if it has none. Two features setting the same field to
+// different values is an error: SubtargetFeature silently takes the larger.
+static int64_t getFeatureValue(const Record *GPU, StringRef FieldName,
+                               int64_t Default) {
+  SetVector<const Record *> Closure;
+  collectFeatureClosure(GPU, Closure);
+
+  const Record *Found = nullptr;
+  int64_t Value = Default;
+  for (const Record *F : Closure) {
+    if (F->getValueAsString("FieldName") != FieldName)
+      continue;
+
+    int64_t V;
+    if (!to_integer(F->getValueAsString("Value"), V)) {
+      PrintFatalError(F->getLoc(), "feature '" + F->getValueAsString("Name") +
+                                       "' must have an integer value");
+    }
+    if (Found && V != Value) {
+      PrintFatalError(GPU->getLoc(),
+                      "GPU '" + GPU->getValueAsString("Name") +
+                          "' gets conflicting '" + FieldName +
+                          "' values from '" + Found->getValueAsString("Name") +
+                          "' and '" + F->getValueAsString("Name") + "'");
+    }
+    Found = F;
+    Value = V;
+  }
+  return Value;
+}
+
 // Make sure a "gfxN-generic" processor doesn't expose a frontend-visible
 // feature missing from any covered processor.
 //
+// A feature setting a numeric field (e.g. addressablelocalmemorysize65536) is
+// exempt from the exact-match rule: a generic carries the worst case, so it
+// only has to be no larger than every member's value.
+//
 // FIXME: The check should cover all SubtargetFeatures, not just the
 // frontend-visible ones. It is limited to those because a generic legitimately
-// carries some features a covered GPU lacks (bug/hazard workarounds and
-// worst-case-valued features); those cases need to be marked to opt out of the
-// check, plus min-value handling for numeric features.
+// carries some boolean features a covered GPU lacks (bug and hazard
+// workarounds); those cases need to be marked to opt out of the check.
 static void
 validateGenericFeatures(const Record *GPU,
                         const DenseMap<const Record *, unsigned> &FeatureIdx) {
@@ -498,14 +533,28 @@ validateGenericFeatures(const Record *GPU,
     SetVector<const Record *> MemberFeatures =
         collectVisibleFeatures(Member, FeatureIdx);
     for (const Record *F : GenericFeatures) {
-      if (!MemberFeatures.contains(F)) {
+      if (MemberFeatures.contains(F))
+        continue;
+
+      StringRef Name = F->getValueAsString("Name");
+      StringRef Field = F->getValueAsString("FieldName");
+      int64_t Value;
+      if (to_integer(F->getValueAsString("Value"), Value)) {
+        if (Value <= getFeatureValue(Member, Field, Value))
+          continue;
+
         PrintFatalError(GPU->getLoc(),
                         "generic target '" + GPU->getValueAsString("Name") +
-                            "' exposes feature '" +
-                            F->getValueAsString("Name") +
-                            "' not supported by covered GPU '" +
+                            "' exposes feature '" + Name + "' exceeding the '" +
+                            Field + "' of covered GPU '" +
                             Member->getValueAsString("Name") + "'");
       }
+
+      PrintFatalError(GPU->getLoc(),
+                      "generic target '" + GPU->getValueAsString("Name") +
+                          "' exposes feature '" + Name +
+                          "' not supported by covered GPU '" +
+                          Member->getValueAsString("Name") + "'");
     }
   }
 }
@@ -544,38 +593,6 @@ emitFeatureBitset(raw_ostream &OS, const Record *GPU,
     emitFeatureEnum(OS, Name);
   }
   OS << "})";
-}
-
-// The value of the SubtargetFeature in \p GPU's closure that sets \p FieldName,
-// or \p Default if it has none. Two features setting the same field to
-// different values is an error: SubtargetFeature silently takes the larger.
-static int64_t getFeatureValue(const Record *GPU, StringRef FieldName,
-                               int64_t Default) {
-  SetVector<const Record *> Closure;
-  collectFeatureClosure(GPU, Closure);
-
-  const Record *Found = nullptr;
-  int64_t Value = Default;
-  for (const Record *F : Closure) {
-    if (F->getValueAsString("FieldName") != FieldName)
-      continue;
-
-    int64_t V;
-    if (!to_integer(F->getValueAsString("Value"), V)) {
-      PrintFatalError(F->getLoc(), "feature '" + F->getValueAsString("Name") +
-                                       "' must have an integer value");
-    }
-    if (Found && V != Value) {
-      PrintFatalError(GPU->getLoc(),
-                      "GPU '" + GPU->getValueAsString("Name") +
-                          "' gets conflicting '" + FieldName +
-                          "' values from '" + Found->getValueAsString("Name") +
-                          "' and '" + F->getValueAsString("Name") + "'");
-    }
-    Found = F;
-    Value = V;
-  }
-  return Value;
 }
 
 /// Emit a GPUInfo table indexed by (GPUKind - AMDGPUFirstGPUKind). Name and

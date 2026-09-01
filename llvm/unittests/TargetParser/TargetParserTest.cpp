@@ -2821,6 +2821,16 @@ TEST(TargetParserTest, testAMDGPUfillAMDGPUFeatureMap) {
 
   EXPECT_TRUE(HasFeature("gfx1250", "smem-prefetch-insts"));
   EXPECT_TRUE(HasFeature("gfx950", "bf16-cvt-insts"));
+
+  // Exactly one addressable LDS size is set per GPU. A generic target takes the
+  // smallest of the GPUs it covers, so gfx9-4-generic keeps 64k despite
+  // covering gfx950's 160k.
+  EXPECT_TRUE(HasFeature("gfx900", "addressablelocalmemorysize65536"));
+  EXPECT_FALSE(HasFeature("gfx900", "addressablelocalmemorysize32768"));
+  EXPECT_TRUE(HasFeature("gfx600", "addressablelocalmemorysize32768"));
+  EXPECT_TRUE(HasFeature("gfx950", "addressablelocalmemorysize163840"));
+  EXPECT_TRUE(HasFeature("gfx1250", "addressablelocalmemorysize327680"));
+  EXPECT_TRUE(HasFeature("gfx9-4-generic", "addressablelocalmemorysize65536"));
 }
 
 TEST(TargetParserTest, testAMDGPUgetFeatureBitset) {

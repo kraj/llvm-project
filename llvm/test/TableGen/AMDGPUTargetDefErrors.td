@@ -19,6 +19,8 @@
 // RUN:   | FileCheck %t/bad-stepping.td -DFILE=%t/bad-stepping.td --implicit-check-not="error:"
 // RUN: not llvm-tblgen -gen-amdgpu-target-def -I %p/../../include %t/generic-feature-superset.td 2>&1 \
 // RUN:   | FileCheck %t/generic-feature-superset.td -DFILE=%t/generic-feature-superset.td --implicit-check-not="error:"
+// RUN: not llvm-tblgen -gen-amdgpu-target-def -I %p/../../include %t/generic-numeric-feature.td 2>&1 \
+// RUN:   | FileCheck %t/generic-numeric-feature.td -DFILE=%t/generic-numeric-feature.td --implicit-check-not="error:"
 
 // Verify the validation performed by the -gen-amdgpu-target-def backend.
 
@@ -184,4 +186,38 @@ def GFX900 : ProcessorModel<"gfx900", NoSchedModel, []>, AMDGPUGPUInfo<[9, 0, 0]
 def : ProcessorModel<"gfx9-generic", NoSchedModel, [FeatureFoo]>,
       AMDGPUGPUInfo<[9, 0, 0]> {
   let CoveredGPUs = [GFX900];
+}
+
+//--- generic-numeric-feature.td
+include "llvm/Target/Target.td"
+def MyTarget : Target;
+class AMDGPUArchFeature<string spelling> { string Spelling = spelling; }
+class AMDGPUGPUInfo<list<int> isa = []> {
+  list<AMDGPUArchFeature> ArchFeatures = [];
+  list<int> IsaVersion = isa;
+  list<Processor> CoveredGPUs = [];
+  bit IsPseudoTarget = false;
+}
+
+class FeatureSize <int Value> :
+  SubtargetFeature<"size"#Value, "Size", !cast<string>(Value), "Size">;
+def FeatureSize1 : FeatureSize<1>;
+def FeatureSize2 : FeatureSize<2>;
+
+def AMDGPUFrontendVisibleFeatures {
+  list<SubtargetFeature> Features = [FeatureSize1, FeatureSize2];
+}
+
+def GFX900 : ProcessorModel<"gfx900", NoSchedModel, [FeatureSize1]>,
+             AMDGPUGPUInfo<[9, 0, 0]>;
+def GFX902 : ProcessorModel<"gfx902", NoSchedModel, [FeatureSize2]>,
+             AMDGPUGPUInfo<[9, 0, 2]>;
+
+// A numeric feature is a worst case, so the generic may take the smaller
+// 'size1' of gfx900 while covering the larger 'size2' of gfx902, but not the
+// other way round.
+// CHECK: [[FILE]]:[[#@LINE+1]]:1: error: generic target 'gfx9-generic' exposes feature 'size2' exceeding the 'Size' of covered GPU 'gfx900'
+def : ProcessorModel<"gfx9-generic", NoSchedModel, [FeatureSize2]>,
+      AMDGPUGPUInfo<[9, 0, 0]> {
+  let CoveredGPUs = [GFX902, GFX900];
 }
