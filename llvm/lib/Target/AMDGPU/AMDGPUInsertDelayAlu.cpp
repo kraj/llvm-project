@@ -17,11 +17,9 @@
 
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
-#include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "SIInstrInfo.h"
 #include "SIMachineFunctionInfo.h"
 #include "SIRegisterInfo.h"
-#include "llvm/ADT/SetVector.h"
 
 using namespace llvm;
 
