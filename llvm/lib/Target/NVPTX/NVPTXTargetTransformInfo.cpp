@@ -430,7 +430,38 @@ NVPTXTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
   if (Instruction *I = convertNvvmIntrinsicToLlvm(IC, &II))
     return I;
 
-  return std::nullopt;
+  Intrinsic::ID AbsIID;
+  switch (II.getIntrinsicID()) {
+  case Intrinsic::nvvm_redux_sync_fmin:
+  case Intrinsic::nvvm_redux_sync_fmin_abs:
+    AbsIID = Intrinsic::nvvm_redux_sync_fmin_abs;
+    break;
+  case Intrinsic::nvvm_redux_sync_fmax:
+  case Intrinsic::nvvm_redux_sync_fmax_abs:
+    AbsIID = Intrinsic::nvvm_redux_sync_fmax_abs;
+    break;
+  case Intrinsic::nvvm_redux_sync_fmin_NaN:
+  case Intrinsic::nvvm_redux_sync_fmin_abs_NaN:
+    AbsIID = Intrinsic::nvvm_redux_sync_fmin_abs_NaN;
+    break;
+  case Intrinsic::nvvm_redux_sync_fmax_NaN:
+  case Intrinsic::nvvm_redux_sync_fmax_abs_NaN:
+    AbsIID = Intrinsic::nvvm_redux_sync_fmax_abs_NaN;
+    break;
+  default:
+    return std::nullopt;
+  }
+
+  auto *Abs = dyn_cast<IntrinsicInst>(II.getArgOperand(0));
+  if (!Abs || Abs->getIntrinsicID() != Intrinsic::fabs)
+    return std::nullopt;
+
+  II.setCalledFunction(
+      Intrinsic::getOrInsertDeclaration(II.getModule(), AbsIID));
+  // These attributes described the absolute value, not its source.
+  II.removeParamAttr(0, Attribute::NoFPClass);
+  II.removeParamAttr(0, Attribute::Returned);
+  return IC.replaceOperand(II, 0, Abs->getArgOperand(0));
 }
 
 InstructionCost
