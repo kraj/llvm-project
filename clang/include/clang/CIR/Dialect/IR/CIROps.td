@@ -139,6 +139,29 @@ class CIR_RegionBranchOpBase<string mnemonic, list<Trait> traits = []>
   }];
 }
 
+// Base class for the region-branch ops that always enter the same regions from
+// the parent operation and return to it on every region exit, which makes
+// `getSuccessorRegions` derivable from `entryRegions`, the list of their region
+// accessors. Its lines are appended as raw text and have to keep the
+// indentation of the code block above, since TableGen dedents a definition by
+// its smallest indentation.
+class CIR_FixedRegionBranchOp<string mnemonic, list<string> entryRegions,
+                              list<Trait> traits = []>
+    : CIR_RegionBranchOpBase<mnemonic, traits> {
+  let append extraClassDefinition = [{
+    void $cppClass::getSuccessorRegions(
+        mlir::RegionBranchPoint point,
+        llvm::SmallVectorImpl<mlir::RegionSuccessor> &regions) {
+      // Every region branches back to the parent operation on exit.
+      if (!point.isParent()) {
+        regions.emplace_back(getOperation());
+        return;
+      }
+  }] # "\n" # !interleave(!foreach(regionName, entryRegions,
+        "      regions.emplace_back(&" # regionName # "());"), "\n")
+     # "\n    }\n";
+}
+
 //===----------------------------------------------------------------------===//
 // CIR Operation Traits
 //===----------------------------------------------------------------------===//
@@ -1292,7 +1315,7 @@ def CIR_ResumeFlatOp : CIR_Op<"resume.flat", [
 // ScopeOp
 //===----------------------------------------------------------------------===//
 
-def CIR_ScopeOp : CIR_RegionBranchOpBase<"scope", [
+def CIR_ScopeOp : CIR_FixedRegionBranchOp<"scope", ["getScopeRegion"], [
   RecursivelySpeculatable, AutomaticAllocationScope, NoRegionArguments,
   RecursiveMemoryEffects
 ]> {
@@ -1393,7 +1416,8 @@ def CIR_CleanupKindAttr : CIR_EnumAttr<CIR_CleanupKind, "cleanup_kind"> {
   }];
 }
 
-def CIR_CleanupScopeOp : CIR_RegionBranchOpBase<"cleanup.scope", [
+def CIR_CleanupScopeOp : CIR_FixedRegionBranchOp<"cleanup.scope",
+    ["getBodyRegion", "getCleanupRegion"], [
   RecursivelySpeculatable, AutomaticAllocationScope, NoRegionArguments,
   RecursiveMemoryEffects
 ]> {
@@ -1534,7 +1558,7 @@ def CIR_CaseOpKind : CIR_I32EnumAttr<"CaseOpKind", "case kind", [
   I32EnumAttrCase<"Range", 3, "range">
 ]>;
 
-def CIR_CaseOp : CIR_RegionBranchOpBase<"case", [
+def CIR_CaseOp : CIR_FixedRegionBranchOp<"case", ["getCaseRegion"], [
   RecursivelySpeculatable, AutomaticAllocationScope
 ]> {
   let summary = "Case operation";
@@ -1570,7 +1594,7 @@ def CIR_CaseOp : CIR_RegionBranchOpBase<"case", [
   let hasLLVMLowering = false;
 }
 
-def CIR_SwitchOp : CIR_RegionBranchOpBase<"switch", [
+def CIR_SwitchOp : CIR_FixedRegionBranchOp<"switch", ["getBody"], [
   SameVariadicOperandSize,
   RecursivelySpeculatable, AutomaticAllocationScope, NoRegionArguments,
   RecursiveMemoryEffects
@@ -3237,7 +3261,8 @@ def CIR_SelectOp : CIR_Op<"select", [
 // TernaryOp
 //===----------------------------------------------------------------------===//
 
-def CIR_TernaryOp : CIR_RegionBranchOpBase<"ternary", [
+def CIR_TernaryOp : CIR_FixedRegionBranchOp<"ternary",
+    ["getTrueRegion", "getFalseRegion"], [
   RecursivelySpeculatable, AutomaticAllocationScope, NoRegionArguments
 ]> {
   let summary = "The `cond ? a : b` C/C++ ternary operation";
@@ -4820,7 +4845,7 @@ def CIR_AwaitOp : CIR_RegionBranchOpBase<"await", [
 //===----------------------------------------------------------------------===//
 // CoroBody
 //===----------------------------------------------------------------------===//
-def CIR_CoroBodyOp : CIR_RegionBranchOpBase<"coro.body", [
+def CIR_CoroBodyOp : CIR_FixedRegionBranchOp<"coro.body", ["getBody"], [
   RecursivelySpeculatable, AutomaticAllocationScope, NoRegionArguments,
   RecursiveMemoryEffects
 ]> {
