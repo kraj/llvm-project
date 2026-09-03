@@ -55,11 +55,6 @@ class CIR_EnumAttr<EnumAttrInfo info, string name = "", list<Trait> traits = []>
   let assemblyFormat = "`<` $value `>`";
 }
 
-class CIR_DefaultValuedEnumParameter<EnumAttrInfo info, string value = "">
-    : EnumParameter<info> {
-  let defaultValue = value;
-}
-
 def CIR_LangAddressSpace : CIR_I32EnumAttr<
   "LangAddressSpace", "language address space kind", [
   I32EnumAttrCase<"Default", 0, "default">,
