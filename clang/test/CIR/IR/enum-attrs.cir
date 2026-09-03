@@ -1,0 +1,86 @@
+// RUN: cir-opt %s --verify-roundtrip | FileCheck %s
+
+// Enum attributes that operations print as a bare keyword must still have a
+// readable standalone spelling for when they show up in an attribute
+// dictionary. These used to be IntegerAttr subclasses, which printed as
+// `2 : i32`.
+
+!s32i = !cir.int<s, 32>
+
+module {
+
+cir.func @cast_attr() {
+  cir.return {cir.test = [#cir.cast<bitcast>, #cir.cast<integral>,
+                          #cir.cast<bool_to_float>]}
+}
+
+// CHECK: cir.func @cast_attr() {
+// CHECK:   cir.return {cir.test = [#cir.cast<bitcast>, #cir.cast<integral>, #cir.cast<bool_to_float>]}
+
+cir.func @dynamic_cast_attr() {
+  cir.return {cir.test = [#cir.dynamic_cast<ptr>,
+                          #cir.dynamic_cast<ref>]}
+}
+
+// CHECK: cir.func @dynamic_cast_attr() {
+// CHECK:   cir.return {cir.test = [#cir.dynamic_cast<ptr>, #cir.dynamic_cast<ref>]}
+
+cir.func @cmp_attr() {
+  cir.return {cir.test = [#cir.cmp<lt>, #cir.cmp<eq>,
+                          #cir.cmp<uno>]}
+}
+
+// CHECK: cir.func @cmp_attr() {
+// CHECK:   cir.return {cir.test = [#cir.cmp<lt>, #cir.cmp<eq>, #cir.cmp<uno>]}
+
+cir.func @complex_range_attr() {
+  cir.return {cir.test = [#cir.complex_range<full>,
+                          #cir.complex_range<basic>]}
+}
+
+// CHECK: cir.func @complex_range_attr() {
+// CHECK:   cir.return {cir.test = [#cir.complex_range<full>, #cir.complex_range<basic>]}
+
+cir.func @init_catch_attr() {
+  cir.return {cir.test = [#cir.init_catch<reference>,
+                          #cir.init_catch<non_trivial_copy>]}
+}
+
+// CHECK: cir.func @init_catch_attr() {
+// CHECK:   cir.return {cir.test = [#cir.init_catch<reference>, #cir.init_catch<non_trivial_copy>]}
+
+cir.func @case_attr() {
+  cir.return {cir.test = [#cir.case<default>, #cir.case<anyof>,
+                          #cir.case<range>]}
+}
+
+// CHECK: cir.func @case_attr() {
+// CHECK:   cir.return {cir.test = [#cir.case<default>, #cir.case<anyof>, #cir.case<range>]}
+
+cir.func @await_attr() {
+  cir.return {cir.test = [#cir.await<init>, #cir.await<final>]}
+}
+
+// CHECK: cir.func @await_attr() {
+// CHECK:   cir.return {cir.test = [#cir.await<init>, #cir.await<final>]}
+
+cir.func @tls_model_attr() {
+  cir.return {cir.test = [#cir.tls_model<tls_dyn>,
+                          #cir.tls_model<tls_local_exec>]}
+}
+
+// CHECK: cir.func @tls_model_attr() {
+// CHECK:   cir.return {cir.test = [#cir.tls_model<tls_dyn>, #cir.tls_model<tls_local_exec>]}
+
+// The operations themselves keep printing a bare keyword.
+cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i) {
+  %0 = cir.cast bitcast %arg0 : !s32i -> !s32i
+  %1 = cir.cmp lt %arg0, %arg1 : !s32i
+  cir.return
+}
+
+// CHECK: cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i) {
+// CHECK:   %0 = cir.cast bitcast %arg0 : !s32i -> !s32i
+// CHECK:   %1 = cir.cmp lt %arg0, %arg1 : !s32i
+
+}
