@@ -46,10 +46,6 @@ class CIR_I32BitEnumAttr<string name, string summary,
 // must therefore wrap the argument in the `enum` assembly format directive,
 // as in `enum($cleanupKind)`. Referring to the argument directly would print
 // the stripped attribute body, i.e. `<all>` including the delimiters.
-//
-// The def name is not free: `CIRLoweringEmitter` derives an `isa<cir::...>`
-// entry for `CXXABILowering.cpp` by dropping the prefix up to the first
-// underscore, so a def must be named `CIR_<CppClassName>`.
 class CIR_EnumAttr<EnumAttrInfo info, string name = "", list<Trait> traits = []>
     : EnumAttr<CIR_Dialect, info, name, traits> {
   let assemblyFormat = "`<` $value `>`";
