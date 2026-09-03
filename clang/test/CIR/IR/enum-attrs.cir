@@ -72,15 +72,37 @@ cir.func @tls_model_attr() {
 // CHECK: cir.func @tls_model_attr() {
 // CHECK:   cir.return {cir.test = [#cir.tls_model<tls_dyn>, #cir.tls_model<tls_local_exec>]}
 
+cir.func @mem_order_attr() {
+  cir.return {cir.test = [#cir.mem_order<relaxed>, #cir.mem_order<acq_rel>,
+                          #cir.mem_order<seq_cst>]}
+}
+
+// CHECK: cir.func @mem_order_attr() {
+// CHECK:   cir.return {cir.test = [#cir.mem_order<relaxed>, #cir.mem_order<acq_rel>, #cir.mem_order<seq_cst>]}
+
+cir.func @sync_scope_attr() {
+  cir.return {cir.test = [#cir.sync_scope<single_thread>,
+                          #cir.sync_scope<hip_workgroup>,
+                          #cir.sync_scope<opencl_all_svm_devices>]}
+}
+
+// CHECK: cir.func @sync_scope_attr() {
+// CHECK:   cir.return {cir.test = [#cir.sync_scope<single_thread>, #cir.sync_scope<hip_workgroup>, #cir.sync_scope<opencl_all_svm_devices>]}
+
 // The operations themselves keep printing a bare keyword.
-cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i) {
+cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i,
+                                         %arg2: !cir.ptr<!s32i>) {
   %0 = cir.cast bitcast %arg0 : !s32i -> !s32i
   %1 = cir.cmp lt %arg0, %arg1 : !s32i
+  %2 = cir.load syncscope(system) atomic(seq_cst) %arg2 : !cir.ptr<!s32i>, !s32i
+  cir.atomic.fence syncscope(system) seq_cst
   cir.return
 }
 
-// CHECK: cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i) {
+// CHECK: cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i, %arg2: !cir.ptr<!s32i>) {
 // CHECK:   %0 = cir.cast bitcast %arg0 : !s32i -> !s32i
 // CHECK:   %1 = cir.cmp lt %arg0, %arg1 : !s32i
+// CHECK:   %2 = cir.load syncscope(system) atomic(seq_cst) %arg2 : !cir.ptr<!s32i>, !s32i
+// CHECK:   cir.atomic.fence syncscope(system) seq_cst
 
 }
