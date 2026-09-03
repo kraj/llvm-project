@@ -142,21 +142,37 @@ cir.func @side_effect_attr() {
 // CHECK: cir.func @side_effect_attr() {
 // CHECK:   cir.return {cir.test = [#cir.side_effect<all>, #cir.side_effect<pure>, #cir.side_effect<const>]}
 
+// A bit enum, so a value can name several flags.
+cir.func @fp_class_attr() {
+  cir.return {cir.test = [#cir.fp_class<fcNone>,
+                          #cir.fp_class<fcSNan>,
+                          #cir.fp_class<fcInf>,
+                          #cir.fp_class<fcSNan|fcNegInf>]}
+}
+
+// CHECK: cir.func @fp_class_attr() {
+// CHECK:   cir.return {cir.test = [#cir.fp_class<fcNone>, #cir.fp_class<fcSNan>, #cir.fp_class<fcInf>, #cir.fp_class<fcSNan|fcNegInf>]}
+
 // The operations themselves keep printing a bare keyword.
 cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i,
-                                         %arg2: !cir.ptr<!s32i>) {
+                                         %arg2: !cir.ptr<!s32i>,
+                                         %arg3: !cir.float) {
   %0 = cir.cast bitcast %arg0 : !s32i -> !s32i
   %1 = cir.cmp lt %arg0, %arg1 : !s32i
   %2 = cir.load syncscope(system) atomic(seq_cst) %arg2 : !cir.ptr<!s32i>, !s32i
   cir.atomic.fence syncscope(system) seq_cst
+  %3 = cir.is_fp_class %arg3, fcInf : (!cir.float) -> !cir.bool
+  %4 = cir.is_fp_class %arg3, fcSNan|fcNegInf : (!cir.float) -> !cir.bool
   cir.return
 }
 
-// CHECK: cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i, %arg2: !cir.ptr<!s32i>) {
+// CHECK: cir.func @operations_print_bare_keywords(%arg0: !s32i, %arg1: !s32i, %arg2: !cir.ptr<!s32i>, %arg3: !cir.float) {
 // CHECK:   %0 = cir.cast bitcast %arg0 : !s32i -> !s32i
 // CHECK:   %1 = cir.cmp lt %arg0, %arg1 : !s32i
 // CHECK:   %2 = cir.load syncscope(system) atomic(seq_cst) %arg2 : !cir.ptr<!s32i>, !s32i
 // CHECK:   cir.atomic.fence syncscope(system) seq_cst
+// CHECK:   %3 = cir.is_fp_class %arg3, fcInf : (!cir.float) -> !cir.bool
+// CHECK:   %4 = cir.is_fp_class %arg3, fcSNan|fcNegInf : (!cir.float) -> !cir.bool
 
 // cir.global's linkage is the one bare keyword that cannot be checked from
 // inside a function.
