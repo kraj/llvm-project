@@ -16,20 +16,27 @@
 include "mlir/IR/EnumAttr.td"
 include "clang/CIR/Dialect/IR/CIRDialect.td"
 
+// A CIR enum is never backed by an `IntegerAttr`: it either gets a
+// `CIR_EnumAttr` wrapper below, or it is used as a raw parameter of some other
+// attribute. Clearing genSpecializedAttr here rather than per enum means a new
+// enum cannot forget to.
 class CIR_I32EnumAttr<string name, string summary, list<I32EnumAttrCase> cases>
     : I32EnumAttr<name, summary, cases> {
   let cppNamespace = "::cir";
+  let genSpecializedAttr = 0;
 }
 
 class CIR_I64EnumAttr<string name, string summary, list<I64EnumAttrCase> cases>
     : I64EnumAttr<name, summary, cases> {
   let cppNamespace = "::cir";
+  let genSpecializedAttr = 0;
 }
 
 class CIR_I32BitEnumAttr<string name, string summary,
                          list<BitEnumCaseBase> cases>
     : I32BitEnumAttr<name, summary, cases> {
   let cppNamespace = "::cir";
+  let genSpecializedAttr = 0;
 }
 
 // Unlike the upstream `EnumAttr`, which defaults to a bare `$value`, CIR enum
@@ -70,7 +77,6 @@ def CIR_LangAddressSpace : CIR_I32EnumAttr<
     OpenCL `__local`) before target lowering.
   }];
 
-  let genSpecializedAttr = 0;
 }
 
 #endif // CLANG_CIR_DIALECT_IR_CIRENUMATTR_TD

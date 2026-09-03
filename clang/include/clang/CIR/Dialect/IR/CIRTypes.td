@@ -689,8 +689,6 @@ def CIR_RecordMemberKind : CIR_I32EnumAttr<
     record whose trailing member is an unnamed bit-field unit keeps that unit in
     its data size.
   }];
-
-  let genSpecializedAttr = 0;
 }
 
 //===----------------------------------------------------------------------===//

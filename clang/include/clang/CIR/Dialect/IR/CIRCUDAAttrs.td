@@ -75,9 +75,7 @@ def CIR_CUDADeviceVarKind : CIR_I32EnumAttr<"CUDADeviceVarKind",
   I32EnumAttrCase<"Variable", 0>,
   I32EnumAttrCase<"Surface", 1>,   // Future
   I32EnumAttrCase<"Texture", 2>,   // Future
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 // Attribute carrying device variable registration flags
 def CIR_CUDAVarRegistrationInfoAttr : CIR_Attr<"CUDAVarRegistrationInfo", "cu.var_registration"> {

@@ -82,11 +82,7 @@ def CIR_SourceLanguage : CIR_I32EnumAttr<"SourceLanguage", "source language", [
   I32EnumAttrCase<"CXX", 2, "cxx">,
   I32EnumAttrCase<"OpenCLC", 3, "opencl_c">,
   I32EnumAttrCase<"OpenCLCXX", 4, "opencl_cxx">
-]> {
-  // The enum attr class is defined in `CIR_SourceLanguageAttr` below,
-  // so that it can define extra class methods.
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_SourceLanguageAttr : CIR_EnumAttr<CIR_SourceLanguage, "lang"> {
 
@@ -127,9 +123,7 @@ def CIR_ArgPassingKind : CIR_I32EnumAttr<
   I32EnumAttrCase<"CanPassInRegs", 0, "can_pass_in_regs">,
   I32EnumAttrCase<"CannotPassInRegs", 1, "cannot_pass_in_regs">,
   I32EnumAttrCase<"CanNeverPassInRegs", 2, "can_never_pass_in_regs">
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_RecordLayoutAttr : CIR_Attr<"RecordLayout", "record_layout", [
     // record_align is consumed as an llvm::Align, whose constructor asserts a
@@ -736,9 +730,7 @@ def CIR_CmpOrdering : CIR_I32EnumAttr<
     I32EnumAttrCase<"Strong", 0, "strong">,
     I32EnumAttrCase<"Weak", 1, "weak">,
     I32EnumAttrCase<"Partial", 2, "partial">
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_CmpThreeWayInfoAttr : CIR_Attr<"CmpThreeWayInfo", "cmp3way_info"> {
   let summary = "Holds information about a three-way comparison operation";
@@ -829,7 +821,6 @@ def CIR_FPDynamicRoundingMode : CIR_I32EnumAttr<
     If the actual dynamic rounding mode differs from this value, the behavior
     is undefined.
   }];
-  let genSpecializedAttr = 0;
 }
 
 def CIR_FPExceptionMode : CIR_I32EnumAttr<
@@ -843,7 +834,6 @@ def CIR_FPExceptionMode : CIR_I32EnumAttr<
     executed. If the actual exception mode differs from this value, the
     behavior is undefined.
   }];
-  let genSpecializedAttr = 0;
 }
 
 def CIR_FenvAttr : CIR_Attr<"Fenv", "fenv"> {
@@ -1296,9 +1286,7 @@ def CIR_VisibilityKind : CIR_I32EnumAttr<"VisibilityKind", "C/C++ visibility", [
   I32EnumAttrCase<"Default", 0, "default">,
   I32EnumAttrCase<"Hidden", 1, "hidden">,
   I32EnumAttrCase<"Protected", 2, "protected">
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 //===----------------------------------------------------------------------===//
 // GloblCtorAttr
@@ -1363,9 +1351,7 @@ def CIR_CtorKind : CIR_I32EnumAttr<"CtorKind", "CXX Constructor Kind", [
   I32EnumAttrCase<"Default", 1, "default">,
   I32EnumAttrCase<"Copy", 2, "copy">,
   I32EnumAttrCase<"Move", 3, "move">,
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_CXXCtorAttr : CIR_Attr<"CXXCtor", "cxx_ctor"> {
   let summary = "Marks a function as a C++ constructor";
@@ -1429,9 +1415,7 @@ def CIR_CXXDtorAttr : CIR_Attr<"CXXDtor", "cxx_dtor"> {
 def CIR_AssignKind : CIR_I32EnumAttr<"AssignKind", "CXX Assignment Operator Kind", [
   I32EnumAttrCase<"Copy", 0, "copy">,
   I32EnumAttrCase<"Move", 1, "move">,
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_CXXAssignAttr : CIR_Attr<"CXXAssign", "cxx_assign"> {
   let summary = "Marks a function as a CXX assignment operator";
@@ -1471,7 +1455,6 @@ def CIR_KnownFuncKind : CIR_I32EnumAttr<"KnownFuncKind",
     "known standard library entity", [
   I32EnumAttrCase<"StdFind", 1, "std::find">,
 ]> {
-  let genSpecializedAttr = 0;
   // A name like std::find is not a bare identifier, so print it as a quoted
   // string. The enum parser already reads a quoted string back.
   let parameterPrinter =
@@ -1701,9 +1684,7 @@ def CIR_InlineKind : CIR_I32EnumAttr<"InlineKind", "inlineKind", [
   I32EnumAttrCase<"NoInline", 1, "no_inline">,
   I32EnumAttrCase<"AlwaysInline", 2, "always_inline">,
   I32EnumAttrCase<"InlineHint", 3, "inline_hint">
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_InlineKindAttr: CIR_EnumAttr<CIR_InlineKind, "inline_kind"> {
   let summary = "Inline kind attribute";
@@ -1840,8 +1821,6 @@ def CIR_SideEffect : CIR_I32EnumAttr<
     %2 = cir.call @add(%0, %1) : (!s32i, !s32i) -> !s32i side_effect(const)
     ```
   }];
-
-  let genSpecializedAttr = 0;
 }
 
 def CIR_SideEffectAttr : CIR_EnumAttr<CIR_SideEffect, "side_effect">;
@@ -2003,9 +1982,7 @@ def CIR_TLSKind : CIR_I32EnumAttr<"TLSKind", "thread-local storage kind", [
   I32EnumAttrCase<"None", 0, "none">,          // clang::VarDecl::TLS_None
   I32EnumAttrCase<"Static", 1, "static">,      // clang::VarDecl::TLS_Static
   I32EnumAttrCase<"Dynamic", 2, "dynamic">     // clang::VarDecl::TLS_Dynamic
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 // CIR-native template-specialization kind. Cases mirror
 // clang::TemplateSpecializationKind.
@@ -2024,9 +2001,7 @@ def CIR_TemplateSpecializationKind
   // clang::TSK_ExplicitInstantiationDefinition
   I32EnumAttrCase<"ExplicitInstantiationDefinition", 4,
                   "explicit_instantiation_definition">
-]> {
-  let genSpecializedAttr = 0;
-}
+]>;
 
 def CIR_StaticLocalInfoAttr
     : CIR_Attr<"StaticLocalInfo", "static_local_info"> {
