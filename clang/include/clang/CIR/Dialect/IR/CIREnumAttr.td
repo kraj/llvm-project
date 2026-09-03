@@ -32,6 +32,17 @@ class CIR_I32BitEnumAttr<string name, string summary,
   let cppNamespace = "::cir";
 }
 
+// Unlike the upstream `EnumAttr`, which defaults to a bare `$value`, CIR enum
+// attributes keep the `<` `>` delimiters so that a standalone attribute spells
+// as `#cir.<mnemonic><value>` rather than falling back to the generic
+// `#cir<mnemonic value>` syntax. Operations that want the bare symbolic value
+// must therefore wrap the argument in the `enum` assembly format directive,
+// as in `enum($cleanupKind)`. Referring to the argument directly would print
+// the stripped attribute body, i.e. `<all>` including the delimiters.
+//
+// The def name is not free: `CIRLoweringEmitter` derives an `isa<cir::...>`
+// entry for `CXXABILowering.cpp` by dropping the prefix up to the first
+// underscore, so a def must be named `CIR_<CppClassName>`.
 class CIR_EnumAttr<EnumAttrInfo info, string name = "", list<Trait> traits = []>
     : EnumAttr<CIR_Dialect, info, name, traits> {
   let assemblyFormat = "`<` $value `>`";
