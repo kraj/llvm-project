@@ -11,6 +11,7 @@
 #include "TestTypes.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/CommonFolders.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/ControlFlow/Transforms/StructuralTypeConversions.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
@@ -468,6 +469,54 @@ public:
   }
 };
 
+/// Exercise reachability changes while a greedy rewrite is processing its
+/// worklist. A new block is either disconnected, connected within the same
+/// rewrite, or inserted before the old entry block; another mode redirects a
+/// branch in-place.
+class CreateBlockDuringGreedyRewrite : public RewritePattern {
+public:
+  CreateBlockDuringGreedyRewrite(MLIRContext *context)
+      : RewritePattern("test.greedy_create_block", /*benefit=*/1, context) {}
+
+  LogicalResult matchAndRewrite(Operation *op,
+                                PatternRewriter &rewriter) const override {
+    StringRef mode = cast<StringAttr>(op->getAttr("mode")).getValue();
+    Region *region = op->getParentRegion();
+    Location loc = op->getLoc();
+    if (mode == "entry") {
+      rewriter.createBlock(region, region->begin());
+      func::ReturnOp::create(rewriter, loc);
+    } else if (mode == "redirect") {
+      auto branch = cast<cf::BranchOp>(op->getBlock()->getTerminator());
+      rewriter.modifyOpInPlace(branch,
+                               [&] { branch.setDest(&region->back()); });
+    } else {
+      Block *newBlock = rewriter.createBlock(region);
+      if (mode == "unreachable") {
+        Value input = op->getOperand(0);
+        auto add = arith::AddIOp::create(rewriter, loc, input, input);
+        rewriter.modifyOpInPlace(add, [&] {
+          add->setOperand(0, add.getResult());
+          add->setOperand(1, add.getResult());
+        });
+        cf::BranchOp::create(rewriter, loc, newBlock);
+      } else {
+        assert(mode == "reachable");
+        rewriter.create(
+            loc, OperationName("test.keep", op->getContext()).getIdentifier(),
+            ValueRange(), TypeRange());
+        func::ReturnOp::create(rewriter, loc);
+        Operation *oldTerminator = op->getBlock()->getTerminator();
+        rewriter.setInsertionPoint(oldTerminator);
+        cf::BranchOp::create(rewriter, loc, newBlock);
+        rewriter.eraseOp(oldTerminator);
+      }
+    }
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 struct TestGreedyPatternDriver
     : public PassWrapper<TestGreedyPatternDriver, OperationPass<>> {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TestGreedyPatternDriver)
@@ -486,7 +535,7 @@ struct TestGreedyPatternDriver
     patterns.add<FoldingPattern, TestNamedPatternRule,
                  FolderInsertBeforePreviouslyFoldedConstantPattern,
                  FolderCommutativeOp2WithConstant, HoistEligibleOps,
-                 MakeOpEligible>(&getContext());
+                 MakeOpEligible, CreateBlockDuringGreedyRewrite>(&getContext());
 
     // Additional patterns for testing the GreedyPatternRewriteDriver.
     patterns.insert<IncrementIntAttribute<3>>(&getContext());

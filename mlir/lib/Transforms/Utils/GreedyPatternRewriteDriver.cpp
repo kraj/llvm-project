@@ -353,8 +353,11 @@ protected:
   void notifyOperationReplaced(Operation *op, ValueRange replacement) override;
 
   /// Process ops until the worklist is empty or `config.maxNumRewrites` is
-  /// reached. Return `true` if any IR was changed.
-  bool processWorklist();
+  /// reached. If `region` is non-null, recompute reachability after notified
+  /// CFG changes and skip operations in unreachable blocks, including nested
+  /// regions. A null `region` disables this check. Return `true` if any IR was
+  /// changed.
+  bool processWorklist(Region *region = nullptr);
 
   /// The pattern rewriter that is used for making IR modifications and is
   /// passed to rewrite patterns.
@@ -378,6 +381,10 @@ protected:
   llvm::SmallDenseSet<Operation *, 4> strictModeFilteredOps;
 
 private:
+  /// Whether a rewrite may have changed block reachability. Only the region
+  /// driver uses this flag to avoid processing unreachable operations.
+  bool cfgMayHaveChanged = false;
+
   /// Look over the provided operands for any defining operations that should
   /// be re-added to the worklist. This function should be called when an
   /// operation is modified or removed, as it may trigger further
@@ -440,7 +447,12 @@ GreedyPatternRewriteDriver::GreedyPatternRewriteDriver(
 #endif // MLIR_ENABLE_EXPENSIVE_PATTERN_API_CHECKS
 }
 
-bool GreedyPatternRewriteDriver::processWorklist() {
+bool GreedyPatternRewriteDriver::processWorklist(Region *region) {
+  // The region driver's initial unreachable-block sweep has already handled
+  // any CFG changes before this worklist pass.
+  if (region)
+    cfgMayHaveChanged = false;
+
 #ifndef NDEBUG
   const char *logLineComment =
       "//===-------------------------------------------===//\n";
@@ -461,10 +473,45 @@ bool GreedyPatternRewriteDriver::processWorklist() {
 
   bool changed = false;
   int64_t numRewrites = 0;
+  llvm::SmallDenseSet<Block *, 16> reachableBlocks;
+  // Once computed, keep checking reachability for the rest of this worklist
+  // pass. cfgMayHaveChanged requests a refresh of the cached set.
+  bool hasComputedReachability = false;
+  // Recompute reachability after a complete rewrite. An unreachable op is left
+  // for the next iteration's unreachable-block elimination instead of being
+  // rewritten while the current worklist is still active.
+  auto updateReachableBlocks = [&] {
+    if (!region || !cfgMayHaveChanged)
+      return;
+    cfgMayHaveChanged = false;
+    hasComputedReachability = true;
+    reachableBlocks.clear();
+    SmallVector<Region *> regions{region};
+    while (!regions.empty()) {
+      Region *currentRegion = regions.pop_back_val();
+      if (currentRegion->empty())
+        continue;
+      SmallVector<Block *> blocks{&currentRegion->front()};
+      while (!blocks.empty()) {
+        Block *block = blocks.pop_back_val();
+        if (!reachableBlocks.insert(block).second)
+          continue;
+        blocks.append(block->succ_begin(), block->succ_end());
+        for (Operation &nestedOp : *block)
+          for (Region &nestedRegion : nestedOp.getRegions())
+            regions.push_back(&nestedRegion);
+      }
+    }
+  };
   while (!worklist.empty() &&
          (numRewrites < config.getMaxNumRewrites() ||
           config.getMaxNumRewrites() == GreedyRewriteConfig::kNoLimit)) {
+    updateReachableBlocks();
     auto *op = worklist.pop();
+    if (hasComputedReachability && !reachableBlocks.contains(op->getBlock())) {
+      LLVM_DEBUG(logger.startLine() << "Skipping unreachable operation\n");
+      continue;
+    }
 
     LLVM_DEBUG({
       logger.getOStream() << "\n";
@@ -665,17 +712,22 @@ void GreedyPatternRewriteDriver::addSingleOpToWorklist(Operation *op) {
 
 void GreedyPatternRewriteDriver::notifyBlockInserted(
     Block *block, Region *previous, Region::iterator previousIt) {
+  cfgMayHaveChanged = true;
   if (RewriterBase::Listener *listener = config.getListener())
     listener->notifyBlockInserted(block, previous, previousIt);
 }
 
 void GreedyPatternRewriteDriver::notifyBlockErased(Block *block) {
+  cfgMayHaveChanged = true;
   if (RewriterBase::Listener *listener = config.getListener())
     listener->notifyBlockErased(block);
 }
 
 void GreedyPatternRewriteDriver::notifyOperationInserted(
     Operation *op, OpBuilder::InsertPoint previous) {
+  if (op->mightHaveTrait<OpTrait::IsTerminator>() || op->getNumSuccessors() ||
+      op->getNumRegions())
+    cfgMayHaveChanged = true;
   LLVM_DEBUG({
     logger.startLine() << "** Insert  : '" << op->getName() << "'(" << op
                        << ")\n";
@@ -688,6 +740,9 @@ void GreedyPatternRewriteDriver::notifyOperationInserted(
 }
 
 void GreedyPatternRewriteDriver::notifyOperationModified(Operation *op) {
+  if (op->mightHaveTrait<OpTrait::IsTerminator>() || op->getNumSuccessors() ||
+      op->getNumRegions())
+    cfgMayHaveChanged = true;
   LLVM_DEBUG({
     logger.startLine() << "** Modified: '" << op->getName() << "'(" << op
                        << ")\n";
@@ -731,6 +786,9 @@ void GreedyPatternRewriteDriver::addOperandsToWorklist(Operation *op) {
 }
 
 void GreedyPatternRewriteDriver::notifyOperationErased(Operation *op) {
+  if (op->mightHaveTrait<OpTrait::IsTerminator>() || op->getNumSuccessors() ||
+      op->getNumRegions())
+    cfgMayHaveChanged = true;
   LLVM_DEBUG({
     logger.startLine() << "** Erase   : '" << op->getName() << "'(" << op
                        << ")\n";
@@ -898,7 +956,7 @@ LogicalResult RegionPatternRewriteDriver::simplify(bool *changed) && {
           continueRewrites |=
               succeeded(eraseUnreachableBlocks(rewriter, region));
 
-          continueRewrites |= processWorklist();
+          continueRewrites |= processWorklist(&region);
 
           // After applying patterns, make sure that the CFG of each of the
           // regions is kept up to date.
