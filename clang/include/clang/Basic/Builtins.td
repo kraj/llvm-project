@@ -5559,7 +5559,10 @@ def HLSLInterlockedAnd : LangBuiltin<"HLSL_LANG"> {
 
 def HLSLInterlockedExchange : LangBuiltin<"HLSL_LANG"> {
   let Spellings = ["__builtin_hlsl_interlocked_exchange"];
-  let Attributes = [NoThrow];
+  // SemaHLSL checks these arguments itself. Custom type checking also stops
+  // the default variadic promotion, which would otherwise widen a float
+  // `value` to double when a ByteAddressBuffer method calls this builtin.
+  let Attributes = [NoThrow, CustomTypeChecking];
   let Prototype = "void (...)";
 }
 

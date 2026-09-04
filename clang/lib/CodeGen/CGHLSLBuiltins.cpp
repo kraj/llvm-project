@@ -317,8 +317,11 @@ static Value *handleInterlockedOp(CodeGenFunction &CGF, const CallExpr *E,
   LValue DestLV = CGF.EmitLValue(E->getArg(0));
   Address DestAddr = DestLV.getAddress();
   Value *Val = CGF.EmitScalarExpr(E->getArg(1));
-  assert(E->getArg(1)->getType()->isIntegerType() &&
-         "Intrinsic InterlockedOp value operand must be an integer");
+  assert((E->getArg(1)->getType()->isIntegerType() ||
+          (Op == llvm::AtomicRMWInst::Xchg &&
+           E->getArg(1)->getType()->isFloatingType())) &&
+         "Intrinsic InterlockedOp value operand must be an integer, or a "
+         "float for InterlockedExchange");
 
   // Scopeless atomics will default to CrossDevice, which is illegal in Vulkan.
   // Set the memory scope: Workgroup for groupshared, otherwise Device.
