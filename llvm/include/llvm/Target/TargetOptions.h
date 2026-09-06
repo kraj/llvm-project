@@ -119,8 +119,7 @@ enum CodeObjectVersionKind {
 class TargetOptions {
 public:
   TargetOptions()
-      : EnableAIXExtendedAltivecABI(false),
-        HonorSignDependentRoundingFPMathOption(false), NoZerosInBSS(false),
+      : HonorSignDependentRoundingFPMathOption(false), NoZerosInBSS(false),
         GuaranteedTailCallOpt(false), StackSymbolOrdering(true),
         EnableFastISel(false), EnableGlobalISel(false), UseInitArray(false),
         FunctionSections(false), DataSections(false),
@@ -139,12 +138,6 @@ public:
         PPCGenScalarMASSEntries(false), JMCInstrument(false),
         EnableCFIFixup(false), MisExpect(false), XCOFFReadOnlyPointers(false),
         VerifyArgABICompliance(true) {}
-
-  /// EnableAIXExtendedAltivecABI - This flag returns true when -vec-extabi is
-  /// specified. The code generator is then able to use both volatile and
-  /// nonvolitle vector registers. When false, the code generator only uses
-  /// volatile vector registers which is the default setting on AIX.
-  unsigned EnableAIXExtendedAltivecABI : 1;
 
   /// HonorSignDependentRoundingFPMath - This returns true when the
   /// -enable-sign-dependent-rounding-fp-math is specified.  If this returns
