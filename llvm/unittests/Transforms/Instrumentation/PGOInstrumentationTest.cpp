@@ -281,11 +281,26 @@ TEST_P(PGOInstrumentationUseTest, BlockUniformityMetadataUsesPresence) {
       for (BasicBlock &BB : *UseFunction)
         BB.getTerminator()->setMetadata(
             LLVMContext::MD_block_uniformity_profile, UniformMD);
+      UseFunction->getEntryBlock().getTerminator()->setMetadata(
+          LLVMContext::MD_branch_uniformity_profile, UniformMD);
     }
     ModulePassManager UseMPM;
     UseMPM.addPass(PGOInstrumentationUse("/profile.profdata", "", false, FS));
     UseMPM.run(*UseModule, MAM);
     EXPECT_FALSE(verifyModule(*UseModule, &errs()));
+
+    MDNode *FunctionMD =
+        UseFunction->getMetadata(LLVMContext::MD_block_uniformity_profile);
+    ASSERT_THAT(FunctionMD, NotNull());
+    EXPECT_EQ(FunctionMD->getNumOperands(), 0u);
+
+    auto *Branch =
+        cast<CondBrInst>(UseFunction->getEntryBlock().getTerminator());
+    MDNode *BranchMD =
+        Branch->getMetadata(LLVMContext::MD_branch_uniformity_profile);
+    EXPECT_EQ(BranchMD != nullptr, UniformityMask == 3);
+    if (BranchMD)
+      EXPECT_EQ(BranchMD->getNumOperands(), 0u);
 
     for (unsigned I = 0; I < NumCounters; ++I) {
       BasicBlock *BB = nullptr;
