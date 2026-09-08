@@ -124,9 +124,9 @@ define void @test2(ptr addrspace(1) %this, i32 %0, ptr addrspace(1) %p0, ptr add
   ; CHECK-LV-NEXT:   successors: %bb.6(0x04000000), %bb.1(0x7c000000)
   ; CHECK-LV-NEXT: {{  $}}
   ; CHECK-LV-NEXT:   [[COPY8:%[0-9]+]]:gr64 = COPY [[COPY6]]
-  ; CHECK-LV-NEXT:   [[COPY9:%[0-9]+]]:gr64 = COPY killed [[COPY6]]
+  ; CHECK-LV-NEXT:   [[COPY9:%[0-9]+]]:gr64 = COPY [[COPY6]]
   ; CHECK-LV-NEXT:   [[COPY9:%[0-9]+]]:gr64 = nuw ADD64ri32 [[COPY9]], 8, implicit-def dead $eflags
-  ; CHECK-LV-NEXT:   TEST64rr killed [[COPY4]], [[COPY4]], implicit-def $eflags
+  ; CHECK-LV-NEXT:   TEST64rr [[COPY4]], [[COPY4]], implicit-def $eflags
   ; CHECK-LV-NEXT:   [[COPY2:%[0-9]+]]:gr64 = COPY [[COPY9]]
   ; CHECK-LV-NEXT:   [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY8]]
   ; CHECK-LV-NEXT:   JCC_1 %bb.1, 5, implicit killed $eflags
@@ -190,9 +190,9 @@ define void @test2(ptr addrspace(1) %this, i32 %0, ptr addrspace(1) %p0, ptr add
   ; CHECK-LIS-NEXT:   successors: %bb.6(0x04000000), %bb.1(0x7c000000)
   ; CHECK-LIS-NEXT: {{  $}}
   ; CHECK-LIS-NEXT:   [[COPY8:%[0-9]+]]:gr64 = COPY [[COPY6]]
-  ; CHECK-LIS-NEXT:   [[COPY9:%[0-9]+]]:gr64 = COPY killed [[COPY6]]
+  ; CHECK-LIS-NEXT:   [[COPY9:%[0-9]+]]:gr64 = COPY [[COPY6]]
   ; CHECK-LIS-NEXT:   [[COPY9:%[0-9]+]]:gr64 = nuw ADD64ri32 [[COPY9]], 8, implicit-def dead $eflags
-  ; CHECK-LIS-NEXT:   TEST64rr killed [[COPY4]], [[COPY4]], implicit-def $eflags
+  ; CHECK-LIS-NEXT:   TEST64rr [[COPY4]], [[COPY4]], implicit-def $eflags
   ; CHECK-LIS-NEXT:   [[COPY2:%[0-9]+]]:gr64 = COPY [[COPY9]]
   ; CHECK-LIS-NEXT:   [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY8]]
   ; CHECK-LIS-NEXT:   JCC_1 %bb.1, 5, implicit killed $eflags
