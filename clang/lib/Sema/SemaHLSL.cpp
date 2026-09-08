@@ -4713,6 +4713,7 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
   case Builtin::BI__builtin_hlsl_interlocked_add:
   case Builtin::BI__builtin_hlsl_interlocked_and:
   case Builtin::BI__builtin_hlsl_interlocked_compare_exchange:
+  case Builtin::BI__builtin_hlsl_interlocked_compare_exchange_float_bitwise:
   case Builtin::BI__builtin_hlsl_interlocked_compare_store:
   case Builtin::BI__builtin_hlsl_interlocked_compare_store_float_bitwise:
   case Builtin::BI__builtin_hlsl_interlocked_exchange:
@@ -4737,9 +4738,15 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
         BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_store ||
         IsCompareStoreFloat;
     // InterlockedCompareExchange adds `compare_value` before `value` and
-    // always reports the previous value, so it takes four arguments.
+    // always reports the previous value, so it takes four arguments. The
+    // float-bitwise form has the same shape and compares the bit patterns
+    // instead of the values.
+    const bool IsCompareExchangeFloat =
+        BuiltinID ==
+        Builtin::BI__builtin_hlsl_interlocked_compare_exchange_float_bitwise;
     const bool IsCompareExchange =
-        BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_exchange;
+        BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_exchange ||
+        IsCompareExchangeFloat;
     // InterlockedExchange always reports the previous value, so it requires
     // `original_value` instead of accepting it as an optional argument.
     if (IsCompareExchange) {
@@ -4766,7 +4773,7 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
     // compare operations operate on float alone. DXIL lowers both as
     // operations on the value's bit pattern, and DXC accepts 32-bit float
     // only, so half and double are rejected.
-    const bool RequiresFloat = IsCompareStoreFloat;
+    const bool RequiresFloat = IsCompareStoreFloat || IsCompareExchangeFloat;
     const bool AllowsFloat =
         RequiresFloat ||
         BuiltinID == Builtin::BI__builtin_hlsl_interlocked_exchange;

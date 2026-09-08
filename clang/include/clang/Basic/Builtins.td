@@ -5566,6 +5566,15 @@ def HLSLInterlockedCompareExchange : LangBuiltin<"HLSL_LANG"> {
   let Prototype = "void (...)";
 }
 
+def HLSLInterlockedCompareExchangeFloatBitwise : LangBuiltin<"HLSL_LANG"> {
+  let Spellings = ["__builtin_hlsl_interlocked_compare_exchange_float_bitwise"];
+  // SemaHLSL checks these arguments itself. Custom type checking also stops
+  // the default variadic promotion, which would otherwise widen the float
+  // arguments to double.
+  let Attributes = [NoThrow, CustomTypeChecking];
+  let Prototype = "void (...)";
+}
+
 def HLSLInterlockedCompareStore : LangBuiltin<"HLSL_LANG"> {
   let Spellings = ["__builtin_hlsl_interlocked_compare_store"];
   // SemaHLSL checks these arguments itself. Custom type checking also stops

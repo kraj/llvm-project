@@ -1757,11 +1757,15 @@ BuiltinTypeDeclBuilder::addByteAddressBufferInterlockedMethods() {
       "InterlockedCompareExchange", AST.UnsignedIntTy,
       "__builtin_hlsl_interlocked_compare_exchange",
       /*WithOriginalValue=*/true);
+  // The float-bitwise compare operations reuse the 32-bit integer DXIL
+  // operation, so they need no capability bits and work from SM 6.0.
+  addByteAddressBufferInterlockedCompareMethod(
+      "InterlockedCompareExchangeFloatBitwise", AST.FloatTy,
+      "__builtin_hlsl_interlocked_compare_exchange_float_bitwise",
+      /*WithOriginalValue=*/true);
   addByteAddressBufferInterlockedCompareMethod(
       "InterlockedCompareStore", AST.UnsignedIntTy,
       "__builtin_hlsl_interlocked_compare_store");
-  // The float-bitwise compare reuses the 32-bit integer DXIL operation, so it
-  // needs no capability bits and works from SM 6.0.
   addByteAddressBufferInterlockedCompareMethod(
       "InterlockedCompareStoreFloatBitwise", AST.FloatTy,
       "__builtin_hlsl_interlocked_compare_store_float_bitwise");
