@@ -325,7 +325,8 @@ define amdgpu_kernel void @spill(ptr addrspace(1) %arg, i32 %cnd) #0 {
 ; CHECK-NEXT:    ;;#ASMEND
 ; CHECK-NEXT:    s_cbranch_scc0 .LBB0_1
 ; CHECK-NEXT:  ; %bb.3: ; %entry
-; CHECK-NEXT:    s_not_b64 exec, exec
+; CHECK-NEXT:    s_mov_b64 s[100:101], exec
+; CHECK-NEXT:    s_mov_b64 exec, 3
 ; CHECK-NEXT:    buffer_store_dword v0, off, s[96:99], 0
 ; CHECK-NEXT:    v_writelane_b32 v0, s0, 0
 ; CHECK-NEXT:    v_writelane_b32 v0, s1, 1
@@ -350,7 +351,7 @@ define amdgpu_kernel void @spill(ptr addrspace(1) %arg, i32 %cnd) #0 {
 ; CHECK-NEXT:    v_readlane_b32 s0, v0, 0
 ; CHECK-NEXT:    v_readlane_b32 s1, v0, 1
 ; CHECK-NEXT:    buffer_load_dword v0, off, s[96:99], 0
-; CHECK-NEXT:    s_not_b64 exec, exec
+; CHECK-NEXT:    s_mov_b64 exec, s[100:101]
 ; CHECK-NEXT:  .LBB0_2: ; %bb3
 ; CHECK-NEXT:    ;;#ASMSTART
 ; CHECK-NEXT:    ; reg use s0

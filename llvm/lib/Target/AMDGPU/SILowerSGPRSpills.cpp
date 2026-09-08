@@ -449,6 +449,7 @@ bool SILowerSGPRSpills::run(MachineFunction &MF) {
   const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
   TII = ST.getInstrInfo();
   TRI = &TII->getRegisterInfo();
+  const SIFrameLowering *TFI = ST.getFrameLowering();
 
   assert(SaveBlocks.empty() && RestoreBlocks.empty());
 
@@ -610,14 +611,17 @@ bool SILowerSGPRSpills::run(MachineFunction &MF) {
     MadeChange = true;
   }
 
-  if (SpilledToVirtVGPRLanes) {
+  // Frame index elimination may need the register to keep SCC alive across an
+  // SGPR spill to memory, and nothing can free one up after this point.
+  if (SpilledToVirtVGPRLanes || TFI->mayNeedExecCopyForScalarFrameIndex(MF)) {
     const TargetRegisterClass *RC = TRI->getWaveMaskRegClass();
     // Shift back the reserved SGPR for EXEC copy into the lowest range.
     // This SGPR is reserved to handle the whole-wave spill/copy operations
     // that might get inserted during vgpr regalloc.
+    Register ExecCopyReg = FuncInfo->getSGPRForEXECCopy();
     Register UnusedLowSGPR = TRI->findUnusedRegister(MRI, RC, MF);
-    if (UnusedLowSGPR && TRI->getHWRegIndex(UnusedLowSGPR) <
-                             TRI->getHWRegIndex(FuncInfo->getSGPRForEXECCopy()))
+    if (UnusedLowSGPR && (!ExecCopyReg || TRI->getHWRegIndex(UnusedLowSGPR) <
+                                              TRI->getHWRegIndex(ExecCopyReg)))
       FuncInfo->setSGPRForEXECCopy(UnusedLowSGPR);
   } else {
     // No SGPR spills to virtual VGPR lanes and hence there won't be any WWM

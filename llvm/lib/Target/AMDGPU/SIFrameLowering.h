@@ -48,6 +48,11 @@ public:
                             const DebugLoc &DL, LiveRegUnits &LiveUnits,
                             Register FrameReg,
                             Register FramePtrRegScratchCopy) const;
+
+  /// Return true if frame index elimination may have to spill an SGPR to
+  /// memory while SCC is live. Such a spill needs a register to hold EXEC.
+  bool mayNeedExecCopyForScalarFrameIndex(const MachineFunction &MF) const;
+
   bool
   assignCalleeSavedSpillSlots(MachineFunction &MF,
                               const TargetRegisterInfo *TRI,

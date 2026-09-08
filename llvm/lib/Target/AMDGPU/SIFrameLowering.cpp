@@ -1859,9 +1859,18 @@ void SIFrameLowering::determinePrologEpilogSGPRSaves(
   const TargetRegisterClass &RC = *TRI->getWaveMaskRegClass();
 
   Register ReservedRegForExecCopy = MFI->getSGPRForEXECCopy();
-  if (NeedExecCopyReservedReg ||
+  bool NeedExecCopy =
+      NeedExecCopyReservedReg ||
       (ReservedRegForExecCopy &&
-       MRI.isPhysRegUsed(ReservedRegForExecCopy, /*SkipRegMaskTest=*/true))) {
+       MRI.isPhysRegUsed(ReservedRegForExecCopy, /*SkipRegMaskTest=*/true));
+
+  // An SGPR spill during frame index elimination needs the register too. The
+  // code below still hands it back if a scratch SGPR turns out to be free.
+  if (!NeedExecCopy && ReservedRegForExecCopy &&
+      mayNeedExecCopyForScalarFrameIndex(MF))
+    NeedExecCopy = true;
+
+  if (NeedExecCopy) {
     MRI.reserveReg(ReservedRegForExecCopy, TRI);
     Register UnusedScratchReg = findUnusedRegister(MRI, LiveUnits, RC);
     if (UnusedScratchReg) {
@@ -1922,6 +1931,66 @@ void SIFrameLowering::determinePrologEpilogSGPRSaves(
            "Re-reserving spill slot for BP");
     getVGPRSpillLaneOrTempRegister(MF, LiveUnits, BasePtrReg);
   }
+}
+
+// Match an instruction whose frame index eliminateFrameIndex has to materialize
+// into a scavenged SGPR while SCC is live.
+static bool hasScalarFrameIndexWithLiveSCC(const SIInstrInfo &TII,
+                                           const SIRegisterInfo &TRI,
+                                           const MachineInstr &MI) {
+  if (TII.isMUBUF(MI))
+    return false;
+
+  // A move reuses its own destination instead of scavenging. Keep in sync with
+  // the IsCopy handling in SIRegisterInfo::eliminateFrameIndex.
+  unsigned Opcode = MI.getOpcode();
+  if (Opcode == AMDGPU::S_MOV_B32 || Opcode == AMDGPU::V_MOV_B32_e32 ||
+      Opcode == AMDGPU::V_MOV_B32_e64)
+    return false;
+
+  bool HasScalarFrameIndex = false;
+  for (unsigned OpNo = 0, E = MI.getNumExplicitOperands(); OpNo != E; ++OpNo) {
+    if (!MI.getOperand(OpNo).isFI())
+      continue;
+    const TargetRegisterClass *RC = TII.getRegClass(MI.getDesc(), OpNo);
+    if (RC && SIRegisterInfo::isSGPRClass(RC)) {
+      HasScalarFrameIndex = true;
+      break;
+    }
+  }
+
+  if (!HasScalarFrameIndex)
+    return false;
+
+  // The spill and the reload land on either side of MI. An indefinite answer is
+  // not worth a register: the spill still reports rather than miscompiles.
+  const MachineBasicBlock &MBB = *MI.getParent();
+  MachineBasicBlock::const_iterator I(MI);
+  return MBB.computeRegisterLiveness(&TRI, AMDGPU::SCC, I) ==
+             MachineBasicBlock::LQR_Live ||
+         MBB.computeRegisterLiveness(&TRI, AMDGPU::SCC, std::next(I)) ==
+             MachineBasicBlock::LQR_Live;
+}
+
+bool SIFrameLowering::mayNeedExecCopyForScalarFrameIndex(
+    const MachineFunction &MF) const {
+  const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
+  // Frame indices need no scalar temporary at the bottom of the stack, nor with
+  // flat scratch.
+  if (ST.hasFlatScratchEnabled() ||
+      MF.getInfo<SIMachineFunctionInfo>()->isBottomOfStack())
+    return false;
+
+  const SIInstrInfo &TII = *ST.getInstrInfo();
+  const SIRegisterInfo &TRI = *ST.getRegisterInfo();
+  for (const MachineBasicBlock &MBB : MF) {
+    for (const MachineInstr &MI : MBB) {
+      if (hasScalarFrameIndexWithLiveSCC(TII, TRI, MI))
+        return true;
+    }
+  }
+
+  return false;
 }
 
 // Only report VGPRs to generic code.

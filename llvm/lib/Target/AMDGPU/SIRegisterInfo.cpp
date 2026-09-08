@@ -222,6 +222,18 @@ struct SGPRSpillBuilder {
     RS->setRegUsed(SuperReg);
     SavedExecReg = RS->scavengeRegisterBackwards(RC, MI, false, 0, false);
 
+    // With no SGPR left to scavenge, fall back to the register reserved for
+    // EXEC copies; the S_NOT below would clobber SCC instead. Being reserved it
+    // is invisible to the scavenger, so ask the block whether it is free:
+    // inline asm can still name it.
+    if (!SavedExecReg) {
+      MCRegister ExecCopyReg = MFI.getSGPRForEXECCopy();
+      if (ExecCopyReg &&
+          MBB->computeRegisterLiveness(&TRI, ExecCopyReg, MI, UINT_MAX) ==
+              MachineBasicBlock::LQR_Dead)
+        SavedExecReg = ExecCopyReg;
+    }
+
     int64_t VGPRLanes = getPerVGPRData().VGPRLanes;
 
     if (SavedExecReg) {
@@ -236,8 +248,7 @@ struct SGPRSpillBuilder {
       TRI.buildVGPRSpillLoadStore(*this, TmpVGPRIndex, 0, /*IsLoad*/ false);
     } else {
       // The modify and restore of exec clobber SCC, which we would have to save
-      // and restore. FIXME: We probably would need to reserve a register for
-      // this.
+      // and restore.
       if (RS->isRegUsed(AMDGPU::SCC))
         emitUnsupportedError(MF.getFunction(), *MI,
                              "unhandled SGPR spill to memory");
@@ -312,8 +323,7 @@ struct SGPRSpillBuilder {
       TRI.buildVGPRSpillLoadStore(*this, Index, Offset, IsLoad);
     } else {
       // The modify and restore of exec clobber SCC, which we would have to save
-      // and restore. FIXME: We probably would need to reserve a register for
-      // this.
+      // and restore.
       if (RS->isRegUsed(AMDGPU::SCC))
         emitUnsupportedError(MF.getFunction(), *MI,
                              "unhandled SGPR spill to memory");
