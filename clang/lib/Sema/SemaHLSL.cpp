@@ -4714,6 +4714,7 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
   case Builtin::BI__builtin_hlsl_interlocked_and:
   case Builtin::BI__builtin_hlsl_interlocked_compare_exchange:
   case Builtin::BI__builtin_hlsl_interlocked_compare_store:
+  case Builtin::BI__builtin_hlsl_interlocked_compare_store_float_bitwise:
   case Builtin::BI__builtin_hlsl_interlocked_exchange:
   case Builtin::BI__builtin_hlsl_interlocked_max:
   case Builtin::BI__builtin_hlsl_interlocked_min:
@@ -4727,9 +4728,14 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
     // on `dest`. The checks below are a safety net for callers that invoke the
     // builtin by its mangled name and would otherwise reach CodeGen unchecked.
     // InterlockedCompareStore takes `compare_value` and `value`, so its third
-    // argument is an input rather than an output.
+    // argument is an input rather than an output. The float-bitwise form has
+    // the same shape and compares the bit patterns instead of the values.
+    const bool IsCompareStoreFloat =
+        BuiltinID ==
+        Builtin::BI__builtin_hlsl_interlocked_compare_store_float_bitwise;
     const bool IsCompareStore =
-        BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_store;
+        BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_store ||
+        IsCompareStoreFloat;
     // InterlockedCompareExchange adds `compare_value` before `value` and
     // always reports the previous value, so it takes four arguments.
     const bool IsCompareExchange =
@@ -4756,16 +4762,22 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
     }
 
     QualType DestTy = TheCall->getArg(0)->getType().getUnqualifiedType();
-    // InterlockedExchange also operates on float. DXIL lowers that as a
-    // bitwise exchange of the value's bit pattern, and DXC accepts 32-bit
-    // float only, so half and double are rejected.
+    // InterlockedExchange also operates on float, and the float-bitwise
+    // compare operations operate on float alone. DXIL lowers both as
+    // operations on the value's bit pattern, and DXC accepts 32-bit float
+    // only, so half and double are rejected.
+    const bool RequiresFloat = IsCompareStoreFloat;
     const bool AllowsFloat =
+        RequiresFloat ||
         BuiltinID == Builtin::BI__builtin_hlsl_interlocked_exchange;
-    if (!DestTy->isIntegerType() &&
-        !(AllowsFloat && DestTy->isSpecificBuiltinType(BuiltinType::Float))) {
+    const bool DestIsOK = DestTy->isSpecificBuiltinType(BuiltinType::Float)
+                              ? AllowsFloat
+                              : !RequiresFloat && DestTy->isIntegerType();
+    if (!DestIsOK) {
       SemaRef.Diag(TheCall->getArg(0)->getBeginLoc(),
                    diag::err_builtin_invalid_arg_type)
-          << /*ordinal=*/1 << /*scalar*/ 1 << /*integer*/ 1
+          << /*ordinal=*/1 << /*scalar*/ 1
+          << /*integer*/ (RequiresFloat ? 0 : 1)
           << /*32 bit floating-point*/ (AllowsFloat ? 3 : 0) << DestTy;
       return true;
     }

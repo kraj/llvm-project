@@ -925,15 +925,20 @@ static void defineHLSLInterlockedFunc(Sema &S, NamespaceDecl *NS,
 // Synthesize the compare-and-swap overload sets: {int, uint, int64_t,
 // uint64_t} x {groupshared, device}. Compare-store reports nothing and
 // compare-exchange always reports the previous value, so each has a single
-// arity. The float forms are separate intrinsics.
+// arity. The float-bitwise operations carry their own names and take float
+// alone, so they get a float-only overload set.
 static void defineHLSLInterlockedCompareFunc(Sema &S, NamespaceDecl *NS,
                                              StringRef FuncName,
                                              StringRef BuiltinName,
-                                             AtomicOverloadShape Shape) {
+                                             AtomicOverloadShape Shape,
+                                             bool FloatOnly = false) {
   ASTContext &AST = S.getASTContext();
   // HLSL: int64_t == long, uint64_t == unsigned long (see hlsl_basic_types.h).
-  QualType Elems[] = {AST.IntTy, AST.UnsignedIntTy, AST.LongTy,
-                      AST.UnsignedLongTy};
+  QualType IntElems[] = {AST.IntTy, AST.UnsignedIntTy, AST.LongTy,
+                         AST.UnsignedLongTy};
+  QualType FloatElems[] = {AST.FloatTy};
+  ArrayRef<QualType> Elems =
+      FloatOnly ? ArrayRef<QualType>(FloatElems) : ArrayRef<QualType>(IntElems);
 
   for (QualType ElemTy : Elems)
     for (LangAS AS : {LangAS::hlsl_groupshared, LangAS::hlsl_device})
@@ -953,6 +958,10 @@ void HLSLExternalSemaSource::defineHLSLAtomicIntrinsics() {
                                    "InterlockedCompareStore",
                                    "__builtin_hlsl_interlocked_compare_store",
                                    AtomicOverloadShape::CompareStore);
+  defineHLSLInterlockedCompareFunc(
+      *SemaPtr, HLSLNamespace, "InterlockedCompareStoreFloatBitwise",
+      "__builtin_hlsl_interlocked_compare_store_float_bitwise",
+      AtomicOverloadShape::CompareStore, /*FloatOnly=*/true);
   defineHLSLInterlockedFunc(*SemaPtr, HLSLNamespace, "InterlockedExchange",
                             "__builtin_hlsl_interlocked_exchange",
                             /*RequiresOriginalValue=*/true,
