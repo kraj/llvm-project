@@ -33,11 +33,15 @@ class TestCreateValueFromExpression(TestBase):
         self.assertEqual(v1.GetValue(), "1")
         v2 = i.CreateValueFromExpression("v2", "static_cast<double>(i) + 2.5")
         self.assertEqual(v2.GetValue(), "2.5")
+        v3 = i.CreateValueFromExpression("v3", "(int *) 0")
+        self.assertEqual(v3.GetTypeName(), "int *")
+        v4 = v3.CreateValueFromExpression("v4", "i + 4")
+        self.assertEqual(v4.GetValue(), "4")
         self.runCmd(
             "settings set target.experimental.use-DIL-for-creating-values false"
         )
-        v3 = i.CreateValueFromExpression("v3", "i + 3")
-        self.assertEqual(v3.GetValue(), "3")
+        v5 = i.CreateValueFromExpression("v5", "i + 5")
+        self.assertEqual(v5.GetValue(), "5")
 
         with open(log_file, "r") as f:
             log = f.read()
@@ -47,5 +51,8 @@ class TestCreateValueFromExpression(TestBase):
         # Check that if DIL cannot evaluate the expression, it falls back to
         # full expression evaluation
         self.assertGreater(log.find("v2 = 2.5 (evaluated by: UserExpression)"), 0)
+        # Check that values can be created from values created by DIL
+        self.assertGreater(log.find("0000 (evaluated by: DIL)"), 0)
+        self.assertGreater(log.find("v4 = 4 (evaluated by: DIL)"), 0)
         # Check that creating values using DIL was disabled for the 3rd expression
-        self.assertGreater(log.find("v3 = 3 (evaluated by: UserExpression)"), 0)
+        self.assertGreater(log.find("v5 = 5 (evaluated by: UserExpression)"), 0)
