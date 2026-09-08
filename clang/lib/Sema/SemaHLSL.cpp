@@ -4712,6 +4712,7 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
   }
   case Builtin::BI__builtin_hlsl_interlocked_add:
   case Builtin::BI__builtin_hlsl_interlocked_and:
+  case Builtin::BI__builtin_hlsl_interlocked_compare_exchange:
   case Builtin::BI__builtin_hlsl_interlocked_compare_store:
   case Builtin::BI__builtin_hlsl_interlocked_exchange:
   case Builtin::BI__builtin_hlsl_interlocked_max:
@@ -4729,10 +4730,17 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
     // argument is an input rather than an output.
     const bool IsCompareStore =
         BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_store;
+    // InterlockedCompareExchange adds `compare_value` before `value` and
+    // always reports the previous value, so it takes four arguments.
+    const bool IsCompareExchange =
+        BuiltinID == Builtin::BI__builtin_hlsl_interlocked_compare_exchange;
     // InterlockedExchange always reports the previous value, so it requires
     // `original_value` instead of accepting it as an optional argument.
-    if (IsCompareStore ||
-        BuiltinID == Builtin::BI__builtin_hlsl_interlocked_exchange) {
+    if (IsCompareExchange) {
+      if (SemaRef.checkArgCount(TheCall, 4))
+        return true;
+    } else if (IsCompareStore ||
+               BuiltinID == Builtin::BI__builtin_hlsl_interlocked_exchange) {
       if (SemaRef.checkArgCount(TheCall, 3))
         return true;
     } else {
@@ -4783,17 +4791,21 @@ bool SemaHLSL::CheckBuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
                                {LangAS::hlsl_groupshared, LangAS::hlsl_device}))
       return true;
 
-    if (CheckArgTypeMatches(&SemaRef, TheCall->getArg(1), DestTy))
-      return true;
+    // Every argument after `dest` has the destination's type.
+    for (unsigned I = 1, E = TheCall->getNumArgs(); I != E; ++I)
+      if (CheckArgTypeMatches(&SemaRef, TheCall->getArg(I), DestTy))
+        return true;
 
-    if (TheCall->getNumArgs() == 3) {
-      if (CheckArgTypeMatches(&SemaRef, TheCall->getArg(2), DestTy))
-        return true;
-      // Only the read-modify-write operations write the previous value back
-      // through the third argument. For compare-store it is the new value.
-      if (!IsCompareStore && CheckModifiableLValue(&SemaRef, TheCall, 2))
-        return true;
-    }
+    // Operations that report the previous value write it back through their
+    // last argument. Compare-store reports nothing, so its last argument is
+    // the new value, and the two-argument read-modify-write forms have no
+    // such argument at all.
+    const unsigned NumArgs = TheCall->getNumArgs();
+    const bool HasOriginalValue =
+        !IsCompareStore && NumArgs == (IsCompareExchange ? 4u : 3u);
+    if (HasOriginalValue &&
+        CheckModifiableLValue(&SemaRef, TheCall, NumArgs - 1))
+      return true;
 
     TheCall->setType(SemaRef.Context.VoidTy);
     break;
