@@ -35,9 +35,7 @@ add_mlir_dialect_library(MLIRLLVMDialect
   MLIRLLVMAllOpsIncGen
   MLIRLLVMOpsIncGen
   MLIRLLVMOpsShardGen
-  MLIRLLVMTranslationDialectInterfaceIncGen
   MLIRLLVMTypesIncGen
-  MLIROpenMPOpsIncGen
   intrinsics_gen
   MLIRLLVMConversionsIncGen
   MLIRLLVMIntrinsicConversionsIncGen
@@ -73,7 +71,6 @@ add_mlir_dialect_library(MLIRNVVMDialect
   ${MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/LLVMIR
 
   DEPENDS
-  MLIRGPUCompilationAttrInterfacesIncGen
   MLIRNVVMOpsIncGen
   MLIRNVVMConversionsIncGen
   MLIRBasicPtxBuilderInterfaceIncGen
