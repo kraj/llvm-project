@@ -70,6 +70,22 @@ private:
   /// Flushed whenever a diagnostic pragma changes severities.
   llvm::DenseMap<const void *, Policy> PolicyCache[4];
 
+  struct FunctionPolicy {
+    bool enableLifetimeSafetyAnalysis;
+    bool enableUninitializedAnalysis;
+    bool enableFallthroughFull;
+    bool enableFallthroughPerFunction;
+    bool enableInfiniteRecursion;
+    bool enableThrowInNoexcept;
+    bool enableLogicalErrors;
+  };
+
+  /// Caches warning-analysis gates by diagnostic state and system-header
+  /// classification.
+  llvm::DenseMap<const void *, FunctionPolicy> FunctionPolicyCache[4];
+
+  FunctionPolicy getFunctionPolicy(const Decl *D);
+
   /// \name Statistics
   /// @{
 
