@@ -1488,7 +1488,20 @@ DeclContext *DeclContext::getNonTransparentContext() {
   return DC;
 }
 
-DeclContext *DeclContext::getPrimaryContext() {
+ASTContext &DeclContext::getParentASTContextSlow() const {
+  const DeclContext *DC = this;
+  while (!DC->isTranslationUnit()) {
+    DC = DC->getParent();
+    assert(DC && "This decl context is not contained in a translation unit!");
+  }
+
+  ASTContext &Context = cast<TranslationUnitDecl>(DC)->getASTContext();
+  CachedASTContext.store(&Context, std::memory_order_relaxed);
+  return Context;
+}
+
+DeclContext *DeclContext::getPrimaryContextSlow() {
+  DeclContext *Primary;
   switch (getDeclKind()) {
   case Decl::ExternCContext:
   case Decl::LinkageSpec:
@@ -1502,7 +1515,8 @@ DeclContext *DeclContext::getPrimaryContext() {
   case Decl::RequiresExprBody:
   case Decl::CXXExpansionStmt:
     // There is only one DeclContext for these entities.
-    return this;
+    Primary = this;
+    break;
 
   case Decl::HLSLBuffer:
     // Each buffer, even with the same name, is a distinct construct.
@@ -1511,50 +1525,74 @@ DeclContext *DeclContext::getPrimaryContext() {
     // As long as buffers have unique resource bindings the names don't matter.
     // The names get exposed via the CPU-side reflection API which
     // supports querying bindings, so we cannot remove them.
-    return this;
+    Primary = this;
+    break;
 
   case Decl::TranslationUnit:
-    return static_cast<TranslationUnitDecl *>(this)->getFirstDecl();
+    Primary = static_cast<TranslationUnitDecl *>(this)->getFirstDecl();
+    break;
   case Decl::Namespace:
-    return static_cast<NamespaceDecl *>(this)->getFirstDecl();
+    Primary = static_cast<NamespaceDecl *>(this)->getFirstDecl();
+    break;
 
   case Decl::ObjCMethod:
-    return this;
+    Primary = this;
+    break;
 
   case Decl::ObjCInterface:
     if (auto *OID = dyn_cast<ObjCInterfaceDecl>(this))
-      if (auto *Def = OID->getDefinition())
-        return Def;
+      if (auto *Def = OID->getDefinition()) {
+        Primary = Def;
+        break;
+      }
     return this;
 
   case Decl::ObjCProtocol:
     if (auto *OPD = dyn_cast<ObjCProtocolDecl>(this))
-      if (auto *Def = OPD->getDefinition())
-        return Def;
+      if (auto *Def = OPD->getDefinition()) {
+        Primary = Def;
+        break;
+      }
     return this;
 
   case Decl::ObjCCategory:
-    return this;
+    Primary = this;
+    break;
 
   case Decl::ObjCImplementation:
   case Decl::ObjCCategoryImpl:
-    return this;
+    Primary = this;
+    break;
 
   // If this is a tag type that has a definition or is currently
   // being defined, that definition is our primary context.
   case Decl::ClassTemplatePartialSpecialization:
   case Decl::ClassTemplateSpecialization:
-  case Decl::CXXRecord:
-    return cast<CXXRecordDecl>(this)->getDefinitionOrSelf();
+  case Decl::CXXRecord: {
+    CXXRecordDecl *Definition = cast<CXXRecordDecl>(this)->getDefinition();
+    if (!Definition)
+      return this;
+    Primary = Definition;
+    break;
+  }
   case Decl::Record:
-  case Decl::Enum:
-    return cast<TagDecl>(this)->getDefinitionOrSelf();
+  case Decl::Enum: {
+    TagDecl *Definition = cast<TagDecl>(this)->getDefinition();
+    if (!Definition)
+      return this;
+    Primary = Definition;
+    break;
+  }
 
   default:
     assert(getDeclKind() >= Decl::firstFunction &&
            getDeclKind() <= Decl::lastFunction && "Unknown DeclContext kind");
-    return this;
+    Primary = this;
+    break;
   }
+
+  CachedPrimaryContext.store(Primary, std::memory_order_relaxed);
+  return Primary;
 }
 
 template <typename T>
