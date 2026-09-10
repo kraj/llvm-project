@@ -1914,6 +1914,17 @@ DeclContext::lookup(DeclarationName Name) const {
   if (getDeclKind() == Decl::LinkageSpec || getDeclKind() == Decl::Export)
     return getParent()->lookup(Name);
 
+  // Only a primary context can own a lookup map. Handle the common case of a
+  // complete local map directly, avoiding primary-context resolution and the
+  // external-storage checks in lookupImpl.
+  if (LookupPtr && !hasExternalVisibleStorage() &&
+      !hasLazyLocalLexicalLookups() && !hasLazyExternalLexicalLookups()) {
+    StoredDeclsMap::iterator I = LookupPtr->find(Name);
+    if (I == LookupPtr->end())
+      return {};
+    return I->second.getLookupResult();
+  }
+
   return getPrimaryContext()->lookupImpl(Name, this);
 }
 
