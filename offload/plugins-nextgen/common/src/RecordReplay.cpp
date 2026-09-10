@@ -277,12 +277,9 @@ Error NativeRecordReplayTy::recordDescImpl(
   JsonTeamsLimits.push_back(MinMaxBlocks);
   JsonKernelInfo["TeamsLimits"] = json::Value(std::move(JsonTeamsLimits));
 
-  // Export minimum and maximum for allowed number of threads. If zero, it means
-  // there was no restriction provided by the program.
-  uint32_t UserThreads = std::max(LaunchArgs.UserThreadLimit[0], uint32_t(0));
-  uint32_t MaxThreads = UserThreads
-                            ? std::min(UserThreads, Kernel.getMaxThreads())
-                            : Kernel.getMaxThreads();
+  // Instance.NumThreads already holds the final, effective thread count for
+  // this launch.
+  uint32_t MaxThreads = Instance.NumThreads;
   json::Array JsonThreadsLimits;
   JsonThreadsLimits.push_back(1);
   JsonThreadsLimits.push_back(MaxThreads);
