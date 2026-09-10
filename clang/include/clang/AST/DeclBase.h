@@ -33,6 +33,7 @@
 #include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/VersionTuple.h"
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <iterator>
@@ -1464,6 +1465,8 @@ enum class LinkageSpecLanguageIDs;
 ///   BlockDecl
 ///   CapturedDecl
 class DeclContext {
+  friend class Decl;
+
   /// For makeDeclVisibleInContextImpl
   friend class ASTDeclReader;
   /// For checking the new bits in the Serialization part.
@@ -2101,6 +2104,9 @@ protected:
   /// another pointer.
   mutable Decl *LastDecl = nullptr;
 
+  /// The corresponding declaration, cached after the first conversion.
+  mutable std::atomic<Decl *> CachedDecl = nullptr;
+
   /// Build up a chain of declarations.
   ///
   /// \returns the first/last pair of declarations.
@@ -2122,10 +2128,18 @@ public:
 
   const char *getDeclKindName() const;
 
-  /// getParent - Returns the containing DeclContext.
-  DeclContext *getParent() {
-    return cast<Decl>(this)->getDeclContext();
+  Decl *getAsDecl() {
+    if (Decl *Cached = CachedDecl.load(std::memory_order_relaxed))
+      return Cached;
+    return Decl::castFromDeclContext(this);
   }
+
+  const Decl *getAsDecl() const {
+    return const_cast<DeclContext *>(this)->getAsDecl();
+  }
+
+  /// getParent - Returns the containing DeclContext.
+  DeclContext *getParent() { return getAsDecl()->getDeclContext(); }
   const DeclContext *getParent() const {
     return const_cast<DeclContext*>(this)->getParent();
   }
@@ -2140,7 +2154,7 @@ public:
   ///                   // getLexicalParent() == translation unit
   ///
   DeclContext *getLexicalParent() {
-    return cast<Decl>(this)->getLexicalDeclContext();
+    return getAsDecl()->getLexicalDeclContext();
   }
   const DeclContext *getLexicalParent() const {
     return const_cast<DeclContext*>(this)->getLexicalParent();
@@ -2830,11 +2844,11 @@ template <class ToTy,
           bool IsKnownSubtype = ::std::is_base_of<DeclContext, ToTy>::value>
 struct cast_convert_decl_context {
   static const ToTy *doit(const DeclContext *Val) {
-    return static_cast<const ToTy*>(Decl::castFromDeclContext(Val));
+    return static_cast<const ToTy *>(Val->getAsDecl());
   }
 
   static ToTy *doit(DeclContext *Val) {
-    return static_cast<ToTy*>(Decl::castFromDeclContext(Val));
+    return static_cast<ToTy *>(Val->getAsDecl());
   }
 };
 
