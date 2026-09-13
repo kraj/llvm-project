@@ -11,16 +11,44 @@ load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("//libc:libc_build_rules.bzl", "libc_startup_library")
 
-def _get_compilation_outputs(deps):
-    outputs = []
+def _get_object_files(deps):
+    """Gets object files that are directly provided by a target in deps.
+
+    Args:
+        deps: Targets from which to extract object files.
+
+    Returns:
+        A tuple of (object files, PIC object files) from linker inputs of deps.
+    """
+    objects = []
+    pic_objects = []
     for dep in deps:
-        if OutputGroupInfo in dep and "compilation_outputs" in dep[OutputGroupInfo]:
-            outputs.extend(dep[OutputGroupInfo].compilation_outputs.to_list())
-    return outputs
+        if CcInfo not in dep:
+            fail("CcInfo not found in dep {}".format(dep.label))
+
+        for linker_input in dep[CcInfo].linking_context.linker_inputs.to_list():
+            if linker_input.owner != dep.label:
+                continue  # Only interested in directly owned linker inputs.
+
+            for lib in linker_input.libraries:
+                objects.extend(lib.objects or [])
+                pic_objects.extend(lib.pic_objects or [])
+
+    return objects, pic_objects
+
+def _get_object_files_preferring_pic(deps):
+    """Returns object files from deps, and whether or not they are PIC."""
+    objects, pic_objects = _get_object_files(deps)
+    if pic_objects:
+        return pic_objects, True
+    elif objects:
+        return objects, False
+    else:
+        fail("No object files found in deps")
 
 def _extract_object_file_impl(ctx):
     output = ctx.actions.declare_file(ctx.label.name + ".o")
-    input_objs = _get_compilation_outputs([ctx.attr.dep])
+    input_objs, _ = _get_object_files_preferring_pic([ctx.attr.dep])
     if len(input_objs) != 1:
         fail("Expected exactly one input object, got: {}".format(input_objs))
 
@@ -49,7 +77,7 @@ def libc_startup_object(name, src, **kwargs):
     Args:
         name: The name of the target.
         src: The C++ source file to compile.
-        **kwargs: Other arguments to
+        **kwargs: Other arguments to libc_startup_library.
     """
     library_name = name + "_lib"
     libc_startup_library(
@@ -96,11 +124,64 @@ def _filter_flags(
 
     return filtered_flags
 
+def _merged_relocatable_object_linking_context(
+        ctx,
+        merged_object,
+        is_pic,
+        feature_configuration,
+        cc_toolchain):
+    """Creates a linking context for a merged relocatable object.
+
+    This linking context consists of the merged object file
+    and all the linking contexts of its indirect deps.
+
+    Args:
+      ctx: The context of the rule.
+      merged_object: The merged relocatable object file.
+      is_pic: Whether the merged object is PIC.
+      feature_configuration: The feature configuration of the rule.
+      cc_toolchain: The cc toolchain of the rule.
+
+    Returns:
+      A linking context that may be used to depend on the merged relocatable object.
+    """
+
+    # Gather transitive inputs that only originate from indirect deps.
+    # Direct deps have already been merged into merged_object
+    # and so shouldn't be propagated.
+    direct_dep_labels = set([dep.label for dep in ctx.attr.deps])
+    indirect_dep_linker_inputs = [
+        linker_input
+        for dep in ctx.attr.deps
+        for linker_input in dep[CcInfo].linking_context.linker_inputs.to_list()
+        if linker_input.owner not in direct_dep_labels
+    ]
+    indirect_deps_linking_context = cc_common.create_linking_context(
+        linker_inputs = depset(indirect_dep_linker_inputs),
+    )
+
+    linking_context, _ = cc_common.create_linking_context_from_compilation_outputs(
+        actions = ctx.actions,
+        name = ctx.label.name,
+        feature_configuration = feature_configuration,
+        cc_toolchain = cc_toolchain,
+        compilation_outputs = cc_common.create_compilation_outputs(
+            # PIC objects are usable downstream even in non-PIC executables.
+            objects = depset([merged_object]),
+            pic_objects = depset([merged_object]) if is_pic else None,
+        ),
+        linking_contexts = [indirect_deps_linking_context],
+    )
+    return linking_context
+
 def _merge_relocatable_object_impl(ctx):
     cc_toolchain = find_cc_toolchain(ctx)
     output = ctx.actions.declare_file(ctx.label.name + ".o")
 
-    input_objs = _get_compilation_outputs(ctx.attr.deps)
+    # A more general approach would be to generate both PIC and non-PIC merged
+    # objects, but just preferring PIC when available should be fine until there
+    # is a specific need to propagate both.
+    input_objs, is_pic = _get_object_files_preferring_pic(ctx.attr.deps)
 
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
@@ -152,7 +233,18 @@ def _merge_relocatable_object_impl(ctx):
         use_default_shell_env = True,
     )
 
-    return [DefaultInfo(files = depset([output]))]
+    return [
+        DefaultInfo(files = depset([output])),
+        CcInfo(
+            linking_context = _merged_relocatable_object_linking_context(
+                ctx,
+                merged_object = output,
+                is_pic = is_pic,
+                feature_configuration = feature_configuration,
+                cc_toolchain = cc_toolchain,
+            ),
+        ),
+    ]
 
 merge_relocatable_object = rule(
     implementation = _merge_relocatable_object_impl,
@@ -170,4 +262,5 @@ merge_relocatable_object = rule(
     },
     toolchains = use_cc_toolchain(),
     fragments = ["cpp"],
+    provides = [CcInfo, DefaultInfo],
 )
