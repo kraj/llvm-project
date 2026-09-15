@@ -241,6 +241,8 @@ def HasCFLT          : Predicate<"Subtarget->hasCFLT()">,
                                  AssemblerPredicateWithAll<(all_of FeatureCFLT), "cflt">;
 def HasLSC64B        : Predicate<"Subtarget->hasLSC64B()">,
                                  AssemblerPredicateWithAll<(all_of FeatureLSC64B), "lsc64b">;
+def HasSMEF16F8F16   : Predicate<"Subtarget->isStreaming() && Subtarget->hasSMEF16F8F16()">,
+                                 AssemblerPredicateWithAll<(all_of FeatureSMEF16F8F16), "sme-f16f8f16">;
 def HasSVE_PERM256     : Predicate<"Subtarget->hasSVE_PERM256()">,
                                  AssemblerPredicateWithAll<(all_of FeatureSVE_PERM256), "sve-perm256">;
 def HasSVE_LRCPC     : Predicate<"Subtarget->isSVEAvailable() && Subtarget->hasSVE_LRCPC()">,
