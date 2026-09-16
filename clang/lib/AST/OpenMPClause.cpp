@@ -3302,6 +3302,14 @@ TargetOMPContext::TargetOMPContext(
       DiagUnknownTrait(std::move(DiagUnknownTrait)) {
   ASTCtx.getFunctionFeatureMap(FeatureMap, CurrentFunctionDecl);
 
+  // The construct context starts at the innermost TARGET. Keep the caller's
+  // full stack intact so leaving the target restores the enclosing context.
+  auto Target = llvm::find(llvm::reverse(ConstructTraits),
+                           llvm::omp::TraitProperty::construct_target_target);
+  if (Target != ConstructTraits.rend())
+    ConstructTraits = ConstructTraits.take_back(
+        std::distance(ConstructTraits.rbegin(), Target) + 1);
+
   for (llvm::omp::TraitProperty Property : ConstructTraits)
     addTrait(Property);
 }

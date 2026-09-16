@@ -21,6 +21,7 @@
 #include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Support/Compiler.h"
+#include <optional>
 
 namespace llvm {
 class Triple;
@@ -118,10 +119,28 @@ LLVM_ABI bool isValidTraitPropertyForTraitSetAndSelector(TraitProperty Property,
                                                          TraitSelector Selector,
                                                          TraitSet Set);
 
-/// Variant match information describes the required traits and how they are
-/// scored (via the ScoresMap). In addition, the required consturct nesting is
-/// decribed as well.
+/// Required traits, their scores, and the ordered construct selectors.
+/// Unknown properties retain their identity and scores separately from the
+/// enumerated properties so they can participate in matching extensions.
 struct VariantMatchInfo {
+  struct UnknownTrait {
+    TraitSelector Selector;
+    StringRef Name;
+    std::optional<APInt> Score;
+
+    // Subset checks compare property identity, not its score.
+    bool operator==(const UnknownTrait &Other) const {
+      return Selector == Other.Selector && Name == Other.Name;
+    }
+  };
+
+  /// Keep unknown properties inactive without losing their selector or score.
+  void addUnknownTrait(TraitSelector Selector, StringRef Name,
+                       APInt *Score = nullptr) {
+    UnknownTraits.push_back(
+        {Selector, Name, Score ? std::optional<APInt>(*Score) : std::nullopt});
+  }
+
   /// Add the trait \p Property to the required trait set. \p RawString is the
   /// string we parsed and derived \p Property from. If \p Score is not null, it
   /// recorded as well. If \p Property is in the `construct` set it is recorded
@@ -156,6 +175,7 @@ struct VariantMatchInfo {
   SmallVector<StringRef, 8> ISATraits;
   SmallVector<TraitProperty, 8> ConstructTraits;
   SmallDenseMap<TraitProperty, APInt> ScoreMap;
+  SmallVector<UnknownTrait, 2> UnknownTraits;
 };
 
 /// The context for a source location is made up of active property traits,
