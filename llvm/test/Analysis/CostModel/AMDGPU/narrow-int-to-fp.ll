@@ -17,93 +17,93 @@
 ; wider than a byte are zero extended.
 define void @narrow_lanes_to_fp(<4 x i8> %a, <4 x i12> %b, <3 x i16> %c, <8 x i16> %d, <8 x i8> %e) {
 ; NO16BIT-LABEL: 'narrow_lanes_to_fp'
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 12 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; NO16BIT:  Cost Model: Found an estimated cost of 6 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 11 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 32 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 32 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; SDWA-LABEL: 'narrow_lanes_to_fp'
 ; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 6 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 10 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 10 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; SDWA:  Cost Model: Found an estimated cost of 3 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; SDWA:  Cost Model: Found an estimated cost of 12 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
 ; SDWA:  Cost Model: Found an estimated cost of 16 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; PACKED-LABEL: 'narrow_lanes_to_fp'
 ; PACKED:  Cost Model: Found an estimated cost of 12 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; PACKED:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; PACKED:  Cost Model: Found an estimated cost of 10 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
 ; PACKED:  Cost Model: Found an estimated cost of 12 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; PACKED:  Cost Model: Found an estimated cost of 12 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; PACKED:  Cost Model: Found an estimated cost of 6 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; PACKED:  Cost Model: Found an estimated cost of 5 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
 ; PACKED:  Cost Model: Found an estimated cost of 16 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
 ; PACKED:  Cost Model: Found an estimated cost of 24 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; TRUE16-LABEL: 'narrow_lanes_to_fp'
-; TRUE16:  Cost Model: Found an estimated cost of 12 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 12 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 10 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 10 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; TRUE16:  Cost Model: Found an estimated cost of 6 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 16 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 24 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 3 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 20 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; SDWA-CVTPK-LABEL: 'narrow_lanes_to_fp'
 ; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 3 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 12 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
 ; SDWA-CVTPK:  Cost Model: Found an estimated cost of 16 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; PACKED-CVTPK-LABEL: 'narrow_lanes_to_fp'
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 12 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 12 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 12 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 5 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 16 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 24 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; TRUE16-CVTPK-LABEL: 'narrow_lanes_to_fp'
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 12 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 12 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 16 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 24 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 3 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 20 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; NO16BIT-SIZE-LABEL: 'narrow_lanes_to_fp'
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 12 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 6 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 11 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 32 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 32 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
 ; SDWA-SIZE-LABEL: 'narrow_lanes_to_fp'
 ; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %as = sitofp <4 x i8> %a to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 6 for instruction: %au = uitofp <4 x i8> %a to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 10 for instruction: %bs = sitofp <4 x i12> %b to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 10 for instruction: %bu = uitofp <4 x i12> %b to <4 x half>
 ; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i12> %b to <4 x float>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 3 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %cu = uitofp <3 x i16> %c to <3 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 12 for instruction: %ds = sitofp <8 x i16> %d to <8 x half>
 ; SDWA-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %es = sitofp <8 x i8> %e to <8 x half>
 ;
   %as = sitofp <4 x i8> %a to <4 x half>
@@ -121,34 +121,34 @@ define void @wide_lanes_to_fp(<4 x i16> %a, <4 x i17> %b, <4 x i31> %c, <3 x i17
 ; NO16BIT-LABEL: 'wide_lanes_to_fp'
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
 ; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 8 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 6 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; NO16BIT:  Cost Model: Found an estimated cost of 6 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 16 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 11 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; NO16BIT:  Cost Model: Found an estimated cost of 11 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; SDWA-LABEL: 'wide_lanes_to_fp'
 ; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 4 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; SDWA:  Cost Model: Found an estimated cost of 3 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; SDWA:  Cost Model: Found an estimated cost of 3 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; SDWA:  Cost Model: Found an estimated cost of 6 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 6 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
+; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
+; SDWA:  Cost Model: Found an estimated cost of 14 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 14 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
+; SDWA:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
+; SDWA:  Cost Model: Found an estimated cost of 14 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 14 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; SDWA:  Cost Model: Found an estimated cost of 10 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; SDWA:  Cost Model: Found an estimated cost of 10 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; PACKED-LABEL: 'wide_lanes_to_fp'
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
@@ -157,46 +157,46 @@ define void @wide_lanes_to_fp(<4 x i16> %a, <4 x i17> %b, <4 x i31> %c, <3 x i17
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; PACKED:  Cost Model: Found an estimated cost of 14 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; PACKED:  Cost Model: Found an estimated cost of 14 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
 ; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; PACKED:  Cost Model: Found an estimated cost of 8 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; PACKED:  Cost Model: Found an estimated cost of 6 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; PACKED:  Cost Model: Found an estimated cost of 6 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; PACKED:  Cost Model: Found an estimated cost of 14 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; PACKED:  Cost Model: Found an estimated cost of 14 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; PACKED:  Cost Model: Found an estimated cost of 10 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; PACKED:  Cost Model: Found an estimated cost of 10 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; TRUE16-LABEL: 'wide_lanes_to_fp'
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 4 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 4 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 12 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 12 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
 ; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 8 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 6 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; TRUE16:  Cost Model: Found an estimated cost of 6 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 12 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 12 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 9 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; TRUE16:  Cost Model: Found an estimated cost of 9 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; SDWA-CVTPK-LABEL: 'wide_lanes_to_fp'
 ; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 3 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; SDWA-CVTPK:  Cost Model: Found an estimated cost of 3 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; SDWA-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; PACKED-CVTPK-LABEL: 'wide_lanes_to_fp'
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
@@ -205,62 +205,62 @@ define void @wide_lanes_to_fp(<4 x i16> %a, <4 x i17> %b, <4 x i31> %c, <3 x i17
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
 ; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; PACKED-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; PACKED-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; TRUE16-CVTPK-LABEL: 'wide_lanes_to_fp'
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 4 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
 ; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 6 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 10 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; TRUE16-CVTPK:  Cost Model: Found an estimated cost of 8 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; NO16BIT-SIZE-LABEL: 'wide_lanes_to_fp'
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
 ; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 6 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 6 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 16 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 11 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; NO16BIT-SIZE:  Cost Model: Found an estimated cost of 11 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
 ; SDWA-SIZE-LABEL: 'wide_lanes_to_fp'
 ; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %asf = sitofp <4 x i16> %a to <4 x float>
 ; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %auf = uitofp <4 x i16> %a to <4 x float>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 4 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 3 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
-; SDWA-SIZE:  Cost Model: Found an estimated cost of 3 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 6 for instruction: %ash = sitofp <4 x i16> %a to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 6 for instruction: %auh = uitofp <4 x i16> %a to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %bsf = sitofp <4 x i17> %b to <4 x float>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %buf = uitofp <4 x i17> %b to <4 x float>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 14 for instruction: %bsh = sitofp <4 x i17> %b to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 14 for instruction: %buh = uitofp <4 x i17> %b to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %csf = sitofp <4 x i31> %c to <4 x float>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 8 for instruction: %cuf = uitofp <4 x i31> %c to <4 x float>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 14 for instruction: %csh = sitofp <4 x i31> %c to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 14 for instruction: %cuh = uitofp <4 x i31> %c to <4 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 10 for instruction: %dsh = sitofp <3 x i17> %d to <3 x half>
+; SDWA-SIZE:  Cost Model: Found an estimated cost of 10 for instruction: %duh = uitofp <3 x i17> %d to <3 x half>
 ;
   %asf = sitofp <4 x i16> %a to <4 x float>
   %auf = uitofp <4 x i16> %a to <4 x float>
