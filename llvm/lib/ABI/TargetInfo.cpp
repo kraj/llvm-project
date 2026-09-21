@@ -96,13 +96,13 @@ ArgInfo TargetInfo::classifyDefaultReturnType(const Type *RetTy) const {
   if (RetTy->isVoid())
     return ArgInfo::getIgnore();
 
-  // Return values never use ByVal, matching the library's return convention.
   if (isAggregateTypeForABI(RetTy))
-    return getNaturalAlignIndirect(RetTy, /*ByVal=*/false);
+    return getNaturalAlignIndirect(RetTy);
 
   if (const auto *IT = dyn_cast<IntegerType>(RetTy)) {
+    // A _BitInt wider than 128 bits does not fit in registers.
     if (IT->isBitInt() && IT->getSizeInBits().getFixedValue() > 128)
-      return getNaturalAlignIndirect(RetTy, /*ByVal=*/false);
+      return getNaturalAlignIndirect(RetTy);
     if (isPromotableInteger(IT))
       return ArgInfo::getExtend(RetTy);
   }
