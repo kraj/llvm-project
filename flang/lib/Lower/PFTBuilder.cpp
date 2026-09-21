@@ -513,6 +513,7 @@ private:
         addContainedUnit(lower::pft::FunctionLikeUnit{
             func, pftParentStack.back(), semanticsContext});
     labelEvaluationMap = &unit.labelEvaluationMap;
+    incomingBranches = &unit.incomingBranches;
     assignSymbolLabelMap = &unit.assignSymbolLabelMap;
     containsStmtStack.push_back(false);
     containedUnitList = &unit.containedUnitList;
@@ -528,10 +529,12 @@ private:
     rewriteIfGotos();
     endFunctionBody();
     analyzeBranches(nullptr, *evaluationListStack.back()); // add branch links
+
     processEntryPoints();
     containsStmtStack.pop_back();
     popEvaluationList();
     labelEvaluationMap = nullptr;
+    incomingBranches = nullptr;
     assignSymbolLabelMap = nullptr;
     pftParentStack.pop_back();
     resetFunctionState();
@@ -588,6 +591,7 @@ private:
           [&](lower::pft::FunctionLikeUnit &p) {
             containedUnitList = &p.containedUnitList;
             labelEvaluationMap = &p.labelEvaluationMap;
+            incomingBranches = &p.incomingBranches;
             assignSymbolLabelMap = &p.assignSymbolLabelMap;
           },
           [&](auto &) { containedUnitList = nullptr; },
@@ -920,6 +924,11 @@ private:
                         &targetEvaluation) ==
                  sourceEvaluation.extraControlSuccessors.end())
       sourceEvaluation.extraControlSuccessors.push_back(&targetEvaluation);
+    // Record the reverse edge beside the forward one, so the two cannot
+    // disagree. markBranchTarget may be reached more than once for the same
+    // pair; the set vector drops the repeat while keeping the sources in the
+    // order they were seen.
+    (*incomingBranches)[&targetEvaluation].insert(&sourceEvaluation);
     targetEvaluation.isNewBlock = true;
     // If this is a branch into the body of a construct (usually illegal,
     // but allowed in some legacy cases), then the targetEvaluation and its
@@ -1371,6 +1380,7 @@ private:
   std::vector<lower::pft::EvaluationList *> evaluationListStack{};
   llvm::DenseMap<parser::Label, lower::pft::Evaluation *> *labelEvaluationMap{};
   lower::pft::SymbolLabelMap *assignSymbolLabelMap{};
+  lower::pft::IncomingBranchMap *incomingBranches{};
   std::map<std::string, lower::pft::Evaluation *> constructNameMap{};
   int specificationPartLevel{};
   int interfaceBodyLevel{};
@@ -1488,6 +1498,22 @@ public:
     } else if (eval.isA<parser::EntryStmt>() && eval.lexicalSuccessor) {
       outputStream << " -> " << eval.lexicalSuccessor->printIndex;
     }
+    // Incoming branches, the inverse of the "-> N" edges above, so a dump
+    // shows both directions of the branch graph.
+    // The map has to be reached through the owning procedure: the pointer the
+    // builder threads through branch analysis belongs to PFTBuilder, and
+    // dumping runs later, from PFTDumper, which has no access to it.
+    if (const lower::pft::FunctionLikeUnit *unit = eval.getOwningProcedure()) {
+      auto it = unit->incomingBranches.find(&eval);
+      if (it != unit->incomingBranches.end() && !it->second.empty()) {
+        outputStream << " <- ";
+        llvm::interleaveComma(it->second, outputStream,
+            [&](const lower::pft::Evaluation *src) {
+              outputStream << src->printIndex;
+            });
+      }
+    }
+
     bool extraNewline = false;
     if (!eval.position.empty())
       outputStream << ": " << eval.position.ToString();

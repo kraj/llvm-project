@@ -733,6 +733,11 @@ struct FunctionLikeUnit : public ProgramUnit {
   const semantics::Scope *scope;
   LabelEvalMap labelEvaluationMap;
   SymbolLabelMap assignSymbolLabelMap;
+  /// Evaluations that branch to a given evaluation -- the inverse of the
+  /// controlSuccessor / extraControlSuccessors edges. Recorded while branches
+  /// are analyzed so that "does anything outside this construct branch into
+  /// it" is a lookup instead of a walk over the whole function.
+  IncomingBranchMap incomingBranches;
   ContainedUnitList containedUnitList;
   EvaluationList evaluationList;
   /// <Symbol, Evaluation> pairs for each entry point. The pair at index 0

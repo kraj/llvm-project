@@ -14,6 +14,7 @@
 #define FORTRAN_LOWER_PFTDEFS_H
 
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/StringRef.h"
 
@@ -55,6 +56,12 @@ using Label = std::uint64_t;
 using LabelSet = llvm::SmallSet<Label, 4>;
 using SymbolLabelMap = llvm::DenseMap<SymbolRef, LabelSet>;
 using LabelEvalMap = llvm::DenseMap<Label, Evaluation *>;
+// A set vector: the sources are printed in PFT dumps, so their order has to be
+// stable and reproducible, which a plain pointer-keyed set does not guarantee,
+// while the set side keeps markBranchTarget from recording a pair twice when it
+// is reached more than once for it.
+using IncomingBranchMap =
+    llvm::DenseMap<const Evaluation *, llvm::SmallSetVector<Evaluation *, 2>>;
 
 } // namespace pft
 } // namespace lower
