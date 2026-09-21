@@ -1974,6 +1974,10 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
   case Intrinsic::amdgcn_udot4:
   case Intrinsic::amdgcn_sdot8:
   case Intrinsic::amdgcn_udot8: {
+    if (match(II.getArgOperand(0), m_Zero()) ||
+        match(II.getArgOperand(1), m_Zero()))
+      return IC.replaceInstUsesWith(II, II.getArgOperand(2));
+
     if (!match(II.getArgOperand(3), m_Zero()) || !II.hasOneUse())
       break;
 

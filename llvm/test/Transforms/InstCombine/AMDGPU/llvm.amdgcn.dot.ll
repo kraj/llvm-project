@@ -26,8 +26,7 @@ define i32 @sdot2_sub(<2 x i16> %a, <2 x i16> %b) {
 define i32 @sdot2_a_zero(<2 x i16> %b) {
 ; CHECK-LABEL: define i32 @sdot2_a_zero(
 ; CHECK-SAME: <2 x i16> [[B:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.sdot2(<2 x i16> zeroinitializer, <2 x i16> [[B]], i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.sdot2(<2 x i16> zeroinitializer, <2 x i16> %b, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -37,8 +36,7 @@ define i32 @sdot2_a_zero(<2 x i16> %b) {
 define i32 @sdot2_b_zero(<2 x i16> %a) {
 ; CHECK-LABEL: define i32 @sdot2_b_zero(
 ; CHECK-SAME: <2 x i16> [[A:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.sdot2(<2 x i16> [[A]], <2 x i16> zeroinitializer, i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.sdot2(<2 x i16> %a, <2 x i16> zeroinitializer, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -119,8 +117,7 @@ define i32 @udot2_sub(<2 x i16> %a, <2 x i16> %b) {
 define i32 @udot2_a_zero(<2 x i16> %b) {
 ; CHECK-LABEL: define i32 @udot2_a_zero(
 ; CHECK-SAME: <2 x i16> [[B:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.udot2(<2 x i16> zeroinitializer, <2 x i16> [[B]], i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.udot2(<2 x i16> zeroinitializer, <2 x i16> %b, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -130,8 +127,7 @@ define i32 @udot2_a_zero(<2 x i16> %b) {
 define i32 @udot2_b_zero(<2 x i16> %a) {
 ; CHECK-LABEL: define i32 @udot2_b_zero(
 ; CHECK-SAME: <2 x i16> [[A:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.udot2(<2 x i16> [[A]], <2 x i16> zeroinitializer, i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.udot2(<2 x i16> %a, <2 x i16> zeroinitializer, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -197,8 +193,7 @@ define i32 @sdot4_sub(i32 %a, i32 %b) {
 define i32 @sdot4_a_zero(i32 %b) {
 ; CHECK-LABEL: define i32 @sdot4_a_zero(
 ; CHECK-SAME: i32 [[B:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.sdot4(i32 0, i32 [[B]], i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.sdot4(i32 0, i32 %b, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -208,8 +203,7 @@ define i32 @sdot4_a_zero(i32 %b) {
 define i32 @sdot4_b_zero(i32 %a) {
 ; CHECK-LABEL: define i32 @sdot4_b_zero(
 ; CHECK-SAME: i32 [[A:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.sdot4(i32 [[A]], i32 0, i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.sdot4(i32 %a, i32 0, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -337,8 +331,7 @@ define i32 @udot4_sub(i32 %a, i32 %b) {
 define i32 @udot4_a_zero(i32 %b) {
 ; CHECK-LABEL: define i32 @udot4_a_zero(
 ; CHECK-SAME: i32 [[B:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.udot4(i32 0, i32 [[B]], i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.udot4(i32 0, i32 %b, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -348,8 +341,7 @@ define i32 @udot4_a_zero(i32 %b) {
 define i32 @udot4_b_zero(i32 %a) {
 ; CHECK-LABEL: define i32 @udot4_b_zero(
 ; CHECK-SAME: i32 [[A:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.udot4(i32 [[A]], i32 0, i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.udot4(i32 %a, i32 0, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -404,8 +396,7 @@ define i32 @sdot8_sub(i32 %a, i32 %b) {
 define i32 @sdot8_a_zero(i32 %b) {
 ; CHECK-LABEL: define i32 @sdot8_a_zero(
 ; CHECK-SAME: i32 [[B:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.sdot8(i32 0, i32 [[B]], i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.sdot8(i32 0, i32 %b, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -415,8 +406,7 @@ define i32 @sdot8_a_zero(i32 %b) {
 define i32 @sdot8_b_zero(i32 %a) {
 ; CHECK-LABEL: define i32 @sdot8_b_zero(
 ; CHECK-SAME: i32 [[A:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.sdot8(i32 [[A]], i32 0, i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.sdot8(i32 %a, i32 0, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -471,8 +461,7 @@ define i32 @udot8_sub(i32 %a, i32 %b) {
 define i32 @udot8_a_zero(i32 %b) {
 ; CHECK-LABEL: define i32 @udot8_a_zero(
 ; CHECK-SAME: i32 [[B:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.udot8(i32 0, i32 [[B]], i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.udot8(i32 0, i32 %b, i32 7, i1 false)
   %r = add i32 %dot, 9
@@ -482,8 +471,7 @@ define i32 @udot8_a_zero(i32 %b) {
 define i32 @udot8_b_zero(i32 %a) {
 ; CHECK-LABEL: define i32 @udot8_b_zero(
 ; CHECK-SAME: i32 [[A:%.*]]) {
-; CHECK-NEXT:    [[R:%.*]] = call i32 @llvm.amdgcn.udot8(i32 [[A]], i32 0, i32 16, i1 false)
-; CHECK-NEXT:    ret i32 [[R]]
+; CHECK-NEXT:    ret i32 16
 ;
   %dot = call i32 @llvm.amdgcn.udot8(i32 %a, i32 0, i32 7, i1 false)
   %r = add i32 %dot, 9
