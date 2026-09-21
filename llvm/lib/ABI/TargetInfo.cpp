@@ -71,6 +71,45 @@ const Type *TargetInfo::useFirstFieldIfTransparentUnion(const Type *Ty) const {
   return Ty;
 }
 
+ArgInfo TargetInfo::classifyDefaultArgumentType(const Type *Ty) const {
+  Ty = useFirstFieldIfTransparentUnion(Ty);
+
+  if (isAggregateTypeForABI(Ty)) {
+    // A record that must stay in memory keeps ByVal, everything else indirect.
+    if (RecordArgABI RAA = getRecordArgABI(Ty))
+      return getNaturalAlignIndirect(Ty, /*ByVal=*/RAA == RAA_DirectInMemory);
+    return getNaturalAlignIndirect(Ty);
+  }
+
+  if (const auto *IT = dyn_cast<IntegerType>(Ty)) {
+    // A _BitInt wider than 128 bits does not fit in registers.
+    if (IT->isBitInt() && IT->getSizeInBits().getFixedValue() > 128)
+      return getNaturalAlignIndirect(Ty);
+    if (isPromotableInteger(IT))
+      return ArgInfo::getExtend(Ty);
+  }
+
+  return ArgInfo::getDirect();
+}
+
+ArgInfo TargetInfo::classifyDefaultReturnType(const Type *RetTy) const {
+  if (RetTy->isVoid())
+    return ArgInfo::getIgnore();
+
+  // Return values never use ByVal, matching the library's return convention.
+  if (isAggregateTypeForABI(RetTy))
+    return getNaturalAlignIndirect(RetTy, /*ByVal=*/false);
+
+  if (const auto *IT = dyn_cast<IntegerType>(RetTy)) {
+    if (IT->isBitInt() && IT->getSizeInBits().getFixedValue() > 128)
+      return getNaturalAlignIndirect(RetTy, /*ByVal=*/false);
+    if (isPromotableInteger(IT))
+      return ArgInfo::getExtend(RetTy);
+  }
+
+  return ArgInfo::getDirect();
+}
+
 bool TargetInfo::maybeCommonClassifyReturnType(FunctionInfo &FI) const {
   const abi::Type *Ty = FI.getReturnType();
 

@@ -92,6 +92,14 @@ protected:
   /// return Ty unchanged.
   LLVM_ABI const Type *useFirstFieldIfTransparentUnion(const Type *Ty) const;
 
+  /// Default argument classification for targets without special rules.
+  /// Aggregates are passed indirectly and small integers are promoted.
+  LLVM_ABI ArgInfo classifyDefaultArgumentType(const Type *Ty) const;
+
+  /// Default return classification for targets without special rules.
+  /// Void is ignored and aggregates are returned indirectly.
+  LLVM_ABI ArgInfo classifyDefaultReturnType(const Type *RetTy) const;
+
   /// Apply rules for classifying return types that are common to all targets.
   LLVM_ABI bool maybeCommonClassifyReturnType(FunctionInfo &FI) const;
 
