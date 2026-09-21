@@ -1018,8 +1018,14 @@ static void genNestedEvaluations(lower::AbstractConverter &converter,
                                  int collapseValue = 0) {
   lower::pft::Evaluation *curEval = getCollapsedLoopEval(eval, collapseValue);
 
-  for (lower::pft::Evaluation &e : curEval->getNestedEvaluations())
-    converter.genEval(e);
+  // The directive consumes the DO itself, so genFIR(DoConstruct) -- where a
+  // plain loop's body is wrapped -- is never reached. Wrap here instead, so a
+  // loop with self-contained raw branching keeps its structured form inside
+  // the directive's region.
+  converter.withWrappedLoopBody(*curEval, [&]() {
+    for (lower::pft::Evaluation &e : curEval->getNestedEvaluations())
+      converter.genEval(e);
+  });
 }
 
 static mlir::Operation *setLoopVar(lower::AbstractConverter &converter,

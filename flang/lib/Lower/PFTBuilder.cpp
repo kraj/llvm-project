@@ -1744,6 +1744,10 @@ bool Fortran::lower::pft::Evaluation::lowerAsUnstructured() const {
   return isUnstructured() || clDisableStructuredFir;
 }
 
+bool Fortran::lower::pft::Evaluation::lowerBodyAsWrappedRegion() const {
+  return hasUnstructuredInternals() && !lowerAsUnstructured();
+}
+
 bool Fortran::lower::pft::Evaluation::forceAsUnstructured() const {
   return clDisableStructuredFir;
 }
@@ -2824,8 +2828,22 @@ static bool isStructurableWithUnstructuredInternals(
   if (!doConstruct)
     return false;
   const auto &loopControl = doConstruct->GetLoopControl();
-  if (!loopControl ||
-      !std::get_if<parser::LoopControl::Bounds>(&loopControl->u))
+  if (!loopControl)
+    return false;
+  const auto *bounds =
+      std::get_if<parser::LoopControl::Bounds>(&loopControl->u);
+  if (!bounds)
+    return false;
+
+  // A REAL control variable does not lower to fir.do_loop, whose induction
+  // variable must be a signless integer or index, so such a loop is lowered as
+  // raw CFG whatever its body looks like.
+  const semantics::Symbol *ctrlVar = bounds->Name().thing.symbol;
+  if (!ctrlVar)
+    return false;
+  const semantics::DeclTypeSpec *ctrlType = ctrlVar->GetType();
+  if (!ctrlType || ctrlType->category() != semantics::DeclTypeSpec::Numeric ||
+      ctrlType->numericTypeSpec().category() != common::TypeCategory::Integer)
     return false;
 
   const Fortran::lower::pft::Evaluation *endDoStmt =

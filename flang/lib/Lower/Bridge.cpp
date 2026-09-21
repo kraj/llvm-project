@@ -1125,6 +1125,16 @@ public:
     genFIR(eval, unstructuredContext);
   }
 
+  void withWrappedLoopBody(Fortran::lower::pft::Evaluation &loopEval,
+                           llvm::function_ref<void()> genBody) override final {
+    mlir::Block *yieldBlock = nullptr;
+    mlir::Block *savedEndDoBlock = nullptr;
+    mlir::scf::ExecuteRegionOp wrapOp =
+        wrapUnstructuredBody(loopEval, yieldBlock, savedEndDoBlock);
+    genBody();
+    closeUnstructuredBodyWrap(wrapOp, loopEval, yieldBlock, savedEndDoBlock);
+  }
+
   //===--------------------------------------------------------------------===//
   // Utility methods
   //===--------------------------------------------------------------------===//
@@ -2637,6 +2647,66 @@ private:
     return wrapOp;
   }
 
+  /// Wrap a loop's *body* -- not the construct, and not the loop control -- in
+  /// an scf.execute_region. A category (c) loop keeps its structured loop op
+  /// while its self-contained raw branching lives inside the region, which may
+  /// hold as many blocks as it needs.
+  ///
+  /// The builder must already be positioned inside the loop body. On return it
+  /// is inside the region. Returns null when the loop has no such internals.
+  mlir::scf::ExecuteRegionOp
+  wrapUnstructuredBody(Fortran::lower::pft::Evaluation &eval,
+                       mlir::Block *&yieldBlock,
+                       mlir::Block *&savedEndDoBlock) {
+    if (!eval.lowerBodyAsWrappedRegion())
+      return nullptr;
+
+    Fortran::lower::pft::EvaluationList &list = eval.getNestedEvaluations();
+    mlir::Location loc = toLocation();
+    auto wrapOp =
+        mlir::scf::ExecuteRegionOp::create(*builder, loc, mlir::TypeRange{},
+                                           /*noInline=*/builder->getUnitAttr());
+    ++wrapUnstructuredCount;
+    mlir::Block *entry = builder->createBlock(&wrapOp.getRegion());
+    builder->setInsertionPointToEnd(entry);
+    // Only the body: the loop control statements live in the enclosing region,
+    // so they must not get blocks here.
+    createEmptyBlocksIn(llvm::make_range(list.begin(), --list.end()));
+    yieldBlock = builder->createBlock(&wrapOp.getRegion());
+    builder->setInsertionPointToEnd(yieldBlock);
+    mlir::scf::YieldOp::create(*builder, loc);
+
+    // A CYCLE targets the EndDoStmt, which is the boundary between the loop
+    // body and the loop control. Inside the wrap that boundary is the region's
+    // yield block, so a CYCLE leaves the region rather than branching to a
+    // block the region cannot name.
+    savedEndDoBlock = list.back().block;
+    list.back().block = yieldBlock;
+
+    builder->setInsertionPointToEnd(entry);
+    return wrapOp;
+  }
+
+  /// Finalize a wrap created by wrapUnstructuredBody: restore the EndDoStmt
+  /// block, fall through to the region's yield, and resume after the wrap op
+  /// so the caller emits the loop control outside it.
+  void closeUnstructuredBodyWrap(mlir::scf::ExecuteRegionOp wrapOp,
+                                 Fortran::lower::pft::Evaluation &eval,
+                                 mlir::Block *yieldBlock,
+                                 mlir::Block *savedEndDoBlock) {
+    if (!wrapOp)
+      return;
+
+    eval.getNestedEvaluations().back().block = savedEndDoBlock;
+
+    if (mlir::Block *current = builder->getBlock())
+      if (current->empty() ||
+          !current->back().hasTrait<mlir::OpTrait::IsTerminator>())
+        genBranch(yieldBlock);
+
+    builder->setInsertionPointAfter(wrapOp);
+  }
+
   /// Finalize a wrap created by wrapUnstructuredConstruct: restore the
   /// original exit block and set the insertion point after the wrap op.
   void closeUnstructuredWrap(mlir::scf::ExecuteRegionOp wrapOp,
@@ -2664,9 +2734,16 @@ private:
     // skip generating any loop — just lower the body.  The IV value is
     // already available from the parent acc.loop's block argument.
     if (Fortran::lower::isCollapsedDoConstruct(doConstruct)) {
-      auto iter = eval.getNestedEvaluations().begin();
-      for (auto end = --eval.getNestedEvaluations().end(); iter != end; ++iter)
-        genFIR(*iter, unstructuredContext);
+      // The parent acc.loop supplies the iteration, so no loop op is built
+      // here for a wrap to sit inside. The body may still hold self-contained
+      // raw branching, so wrap it directly.
+      withWrappedLoopBody(eval, [&]() {
+        bool bodyIsWrapped = eval.lowerBodyAsWrappedRegion();
+        auto iter = eval.getNestedEvaluations().begin();
+        for (auto end = --eval.getNestedEvaluations().end(); iter != end;
+             ++iter)
+          genFIR(*iter, unstructuredContext || bodyIsWrapped);
+      });
       return;
     }
 
@@ -2689,11 +2766,16 @@ private:
                 builder->getInsertionPoint()->getBlock()->getParent()) &&
             "builder insertion point is not inside the newly generated loop");
 
-        // Loop body code.
-        auto iter = eval.getNestedEvaluations().begin();
-        for (auto end = --eval.getNestedEvaluations().end(); iter != end;
-             ++iter)
-          genFIR(*iter, unstructuredContext);
+        // The acc.loop supplies the iteration, so the body is emitted here
+        // rather than through the increment-loop path below. Wrap it when it
+        // holds self-contained raw branching.
+        withWrappedLoopBody(eval, [&]() {
+          bool bodyIsWrapped = eval.lowerBodyAsWrappedRegion();
+          auto iter = eval.getNestedEvaluations().begin();
+          for (auto end = --eval.getNestedEvaluations().end(); iter != end;
+               ++iter)
+            genFIR(*iter, unstructuredContext || bodyIsWrapped);
+        });
 
         builder->setInsertionPointAfter(loopOp);
         return;
@@ -2842,10 +2924,21 @@ private:
     if (!infiniteLoop && !whileCondition)
       genFIRIncrementLoopBegin(incrementLoopNestInfo, doStmtEval.dirs);
 
+    // The loop control is structured, but the body may hold raw branching
+    // confined to it. Wrap the body, leaving the loop control outside, so the
+    // structured loop op's single-block region stays well formed.
+    mlir::Block *bodyYieldBlock = nullptr;
+    mlir::Block *savedEndDoBlock = nullptr;
+    mlir::scf::ExecuteRegionOp bodyWrapOp =
+        wrapUnstructuredBody(eval, bodyYieldBlock, savedEndDoBlock);
+
     // Loop body code.
     auto iter = eval.getNestedEvaluations().begin();
     for (auto end = --eval.getNestedEvaluations().end(); iter != end; ++iter)
-      genFIR(*iter, unstructuredContext);
+      genFIR(*iter, unstructuredContext || bodyWrapOp);
+
+    closeUnstructuredBodyWrap(bodyWrapOp, eval, bodyYieldBlock,
+                              savedEndDoBlock);
 
     // An EndDoStmt in unstructured code may start a new block.
     Fortran::lower::pft::Evaluation &endDoEval = *iter;
@@ -6469,6 +6562,16 @@ private:
   /// boundaries.
   void createEmptyBlocks(
       std::list<Fortran::lower::pft::Evaluation> &evaluationList) {
+    createEmptyBlocksIn(
+        llvm::make_range(evaluationList.begin(), evaluationList.end()));
+  }
+
+  /// createEmptyBlocks over a sub-range of an evaluation list. A body-only wrap
+  /// must not pre-create blocks for the loop control statements, which live in
+  /// the enclosing region.
+  void createEmptyBlocksIn(
+      llvm::iterator_range<Fortran::lower::pft::EvaluationList::iterator>
+          evaluationList) {
     mlir::Region *region = &builder->getRegion();
     for (Fortran::lower::pft::Evaluation &eval : evaluationList) {
       if (eval.isNewBlock)
