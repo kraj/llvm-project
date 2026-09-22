@@ -11018,8 +11018,10 @@ void ResolveNamesVisitor::FinishSpecificationPart(
           // enabled.
           else if (IsAllocatable(symbol) &&
               context().languageFeatures().IsEnabled(
-                  common::LanguageFeature::CudaPinned))
+                  common::LanguageFeature::CudaPinned)) {
             object->set_cudaDataAttr(common::CUDADataAttr::Pinned);
+            object->set_cudaDataAttrIsImplicit();
+          }
         }
       }
     }
