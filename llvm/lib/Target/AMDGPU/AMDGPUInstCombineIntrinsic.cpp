@@ -2102,11 +2102,10 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
       break;
 
     const APInt *AccumDelta;
-    Constant *NewAcc;
     if (!match(AccumUser, m_c_Add(m_Specific(&II), m_APInt(AccumDelta))))
       break;
 
-    NewAcc = ConstantInt::get(II.getType(), *Acc + *AccumDelta);
+    Constant *NewAcc = ConstantInt::get(II.getType(), *Acc + *AccumDelta);
 
     IC.replaceOperand(II, 4, NewAcc);
     IC.replaceInstUsesWith(*AccumUser, &II);
