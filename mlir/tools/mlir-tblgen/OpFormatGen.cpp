@@ -3378,8 +3378,10 @@ void OperationFormat::genElementPrinter(FormatElement *element,
 }
 
 void OperationFormat::genPrinter(Operator &op, OpClass &opClass) {
+  // Declarative printers are generated for every operation. Favor smaller
+  // implementations to reduce both code size and optimizer work.
   auto *method = opClass.addMethod(
-      "void", "print",
+      "LLVM_ATTRIBUTE_MINSIZE void", "print",
       MethodParameter("::mlir::OpAsmPrinter &", "_odsPrinter"));
   auto &body = method->body();
 
