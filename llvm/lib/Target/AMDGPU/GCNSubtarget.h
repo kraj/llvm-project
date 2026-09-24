@@ -1024,8 +1024,11 @@ public:
   }
 
   /// True if VALU pipe occupancy is modeled with GFX1250BlockingCycles
-  /// (gfx1250 pipeline property, not gfx1250 ISA feature).
-  bool hasGFX1250VALUBlockingCycles() const { return AMDGPU::isGFX1250(*this); }
+  /// (gfx1250 pipeline property, not gfx1250 ISA feature). Full-rate 64-bit
+  /// chips (gfx1251) do not use this occupancy table.
+  bool hasGFX1250VALUBlockingCycles() const {
+    return AMDGPU::isGFX1250(*this) && !hasFullRate64Ops();
+  }
 
   /// \returns the number of significant bits in the immediate field of the
   /// S_NOP instruction.
