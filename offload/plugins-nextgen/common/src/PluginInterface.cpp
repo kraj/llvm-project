@@ -374,7 +374,7 @@ uint32_t GenericKernelTy::getEffectiveNumBlocks(
   uint64_t DefaultNumBlocks = GenericDevice.getDefaultNumBlocks();
   uint64_t TripCountNumBlocks = std::numeric_limits<uint64_t>::max();
   if (LoopTripCount > 0) {
-    if (isSPMDMode()) {
+    if (isSPMDMode() || isStridedLoopMode()) {
       // We have a combined construct, i.e. `target teams distribute
       // parallel for [simd]`. We launch so many blocks so that each thread
       // will execute one iteration of the loop; rounded up to the nearest

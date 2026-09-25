@@ -549,6 +549,7 @@ struct GenericKernelTy {
     case OMP_TGT_EXEC_MODE_GENERIC:
     case OMP_TGT_EXEC_MODE_GENERIC_SPMD:
     case OMP_TGT_EXEC_MODE_SPMD_NO_LOOP:
+    case OMP_TGT_EXEC_MODE_SPMD_STRIDED_LOOP:
       return true;
     }
     return false;
@@ -568,6 +569,8 @@ protected:
       return "Generic-SPMD";
     case OMP_TGT_EXEC_MODE_SPMD_NO_LOOP:
       return "SPMD-No-Loop";
+    case OMP_TGT_EXEC_MODE_SPMD_STRIDED_LOOP:
+      return "SPMD-Strided-Loop";
     }
     llvm_unreachable("Unknown execution mode!");
   }
@@ -608,8 +611,8 @@ private:
                                  bool IsNumThreadsStrict,
                                  bool IsNumThreadsFromUser) const;
 
-  /// Indicate if the kernel works in Generic SPMD, Generic, No-Loop
-  /// or SPMD mode.
+  /// Indicate if the kernel works in Generic SPMD, Generic, No-Loop,
+  /// Strided-Loop or SPMD mode.
   bool isGenericSPMDMode() const {
     return KernelEnvironment.Configuration.ExecMode ==
            OMP_TGT_EXEC_MODE_GENERIC_SPMD;
@@ -627,6 +630,10 @@ private:
   bool isNoLoopMode() const {
     return KernelEnvironment.Configuration.ExecMode ==
            OMP_TGT_EXEC_MODE_SPMD_NO_LOOP;
+  }
+  bool isStridedLoopMode() const {
+    return KernelEnvironment.Configuration.ExecMode ==
+           OMP_TGT_EXEC_MODE_SPMD_STRIDED_LOOP;
   }
 
   /// The kernel name.
