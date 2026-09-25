@@ -41,6 +41,8 @@ struct ol_platform_impl_t {
   /// Initialize the associated plugin and devices.
   llvm::Error init();
 
+  /// Is the platform initialized.
+  bool Initialized = false;
   /// Direct access to the plugin, may be uninitialized if accessed here.
   std::unique_ptr<GenericPluginTy> Plugin;
 
@@ -65,6 +67,10 @@ struct ol_device_impl_t {
 llvm::Error ol_platform_impl_t::destroy() { return Plugin->deinit(); }
 
 llvm::Error ol_platform_impl_t::init() {
+  if (Initialized)
+    return llvm::Error::success();
+  Initialized = true;
+
   if (!Plugin)
     return llvm::Error::success();
 
@@ -322,14 +328,6 @@ Error initPlugins(OffloadContext &Context, const ol_init_args_t *InitArgs) {
   } while (false);
 #include "Shared/Targets.def"
 
-  // Eagerly initialize all of the plugins and devices. We need to make sure
-  // that the platform is initialized at a consistent point to maintain the
-  // expected teardown order in the vendor libraries.
-  for (auto &Platform : Context.Platforms) {
-    if (Error Err = Platform->init())
-      return Err;
-  }
-
   Context.TracingEnabled = std::getenv("OFFLOAD_TRACE");
   Context.ValidationEnabled = !std::getenv("OFFLOAD_DISABLE_VALIDATION");
 
@@ -374,7 +372,8 @@ Error olShutDown_impl() {
 
   for (auto &Platform : OldContext->Platforms) {
     // Host plugin is nullptr and has no deinit
-    if (!Platform->Plugin || !Platform->Plugin->is_initialized())
+    if (!Platform->Initialized || !Platform->Plugin ||
+        !Platform->Plugin->is_initialized())
       continue;
 
     if (auto Res = Platform->destroy())
@@ -428,6 +427,9 @@ Error olGetPlatformInfoSize_impl(ol_platform_handle_t Platform,
 
 Error olPlatformRegisterRPCCallback_impl(ol_platform_handle_t Platform,
                                          ol_platform_rpc_cb_t Callback) {
+  if (auto Err = Platform->init())
+    return Err;
+
   Platform->Plugin->getRPCServer().registerCallback(Callback);
   return Error::success();
 }
@@ -602,6 +604,8 @@ Error olGetDeviceInfoSize_impl(ol_device_handle_t Device,
 
 Error olIterateDevices_impl(ol_device_iterate_cb_t Callback, void *UserData) {
   for (auto &Platform : OffloadContext::get().Platforms) {
+    if (auto Err = Platform->init())
+      return Err;
     for (auto &Device : Platform->Devices) {
       if (!Callback(Device.get(), UserData)) {
         return Error::success();
