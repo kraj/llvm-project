@@ -1088,15 +1088,6 @@ VOPD::InstInfo getVOPDInstInfo(unsigned VOPDOpcode,
   return VOPD::InstInfo(OpXInfo, OpYInfo);
 }
 
-TargetID createAMDGPUTargetID(const MCSubtargetInfo &STI,
-                              StringRef FeatureString) {
-  // In codegen the mode comes from module flags and FeatureString is empty, so
-  // the processor defaults apply. The assembler has no target directive, so it
-  // pins the mode via the +xnack/-xnack/+sramecc/-sramecc feature string.
-  return TargetID::createFromSubtargetFeatures(STI.getTargetTriple(),
-                                               STI.getCPU(), FeatureString);
-}
-
 namespace IsaInfo {
 
 unsigned getInstCacheLineSize(const MCSubtargetInfo &STI) {
@@ -1114,57 +1105,6 @@ unsigned getWavefrontSize(const MCSubtargetInfo &STI) {
     return 32;
 
   return 64;
-}
-
-// Maximum LDS a single work-group can address. This is a fixed HW cap. It does
-// not depend on how many SIMDs a work-group runs on.
-static unsigned getMaxHWAddressableLocalMemorySize(const MCSubtargetInfo &STI) {
-  if (STI.getFeatureBits().test(FeatureAddressableLocalMemorySize32768))
-    return 32768;
-  if (STI.getFeatureBits().test(FeatureAddressableLocalMemorySize65536))
-    return 65536;
-  if (STI.getFeatureBits().test(FeatureAddressableLocalMemorySize163840))
-    return 163840;
-  if (STI.getFeatureBits().test(FeatureAddressableLocalMemorySize196608))
-    return 196608;
-  if (STI.getFeatureBits().test(FeatureAddressableLocalMemorySize327680))
-    return 327680;
-  return 32768;
-}
-
-// Total physical size of LDS on the block, in bytes. On targets with
-// FeatureHalfAddressablePhysicalLocalMemory the physical block is twice the
-// addressable size (gfx6: 64 KiB physical and 32 KiB addressable;
-// gfx10/11/12: 128 KiB physical and 64 KiB addressable). On other targets it is
-// equal to the addressable size.
-static unsigned getPhysicalLocalMemorySize(const MCSubtargetInfo &STI) {
-  unsigned Addressable = getMaxHWAddressableLocalMemorySize(STI);
-  if (STI.getFeatureBits().test(FeatureHalfAddressablePhysicalLocalMemory))
-    return 2 * Addressable;
-  return Addressable;
-}
-
-// Sizes in use, by generation (addressable / physical block):
-//   gfx6              :  32 KiB addressable, 64 KiB physical block
-//   gfx7 / gfx8 / gfx9:  64 KiB
-//   gfx9.5 (gfx950)   : 160 KiB
-//   gfx10 / 11 / 12   :  64 KiB addressable, 128 KiB physical block
-//   gfx12.5 (gfx1250) : 320 KiB (always runs on four SIMDs)
-//   gfx13             : 192 KiB on four SIMDs, 96 KiB on two
-// Total available in the current mode. The physical size is halved when a
-// work-group runs on two SIMDs.
-unsigned getLocalMemorySize(const MCSubtargetInfo &STI) {
-  unsigned Size = getPhysicalLocalMemorySize(STI);
-  if (!isFullSIMDMode(STI))
-    Size /= 2;
-  return Size;
-}
-
-// What one work-group can allocate in the current mode. This is the HW
-// addressable cap, but never more than the total available in the current mode.
-unsigned getAddressableLocalMemorySize(const MCSubtargetInfo &STI) {
-  return std::min(getMaxHWAddressableLocalMemorySize(STI),
-                  getLocalMemorySize(STI));
 }
 
 unsigned getMaxWorkGroupsPerCU(const MCSubtargetInfo &STI,
@@ -1301,23 +1241,15 @@ unsigned getNumSGPRBlocks(const MCSubtargetInfo &STI, unsigned NumSGPRs) {
 unsigned getVGPRAllocGranule(const MCSubtargetInfo &STI,
                              unsigned DynamicVGPRBlockSize,
                              std::optional<bool> EnableWavefrontSize32) {
-  if (STI.getFeatureBits().test(FeatureGFX90AInsts))
-    return 8;
-
-  if (DynamicVGPRBlockSize != 0)
+  if (DynamicVGPRBlockSize != 0 &&
+      !STI.getFeatureBits().test(FeatureGFX90AInsts))
     return DynamicVGPRBlockSize;
 
   bool IsWave32 = EnableWavefrontSize32
                       ? *EnableWavefrontSize32
                       : STI.getFeatureBits().test(FeatureWavefrontSize32);
 
-  if (STI.getFeatureBits().test(Feature1536VGPRs))
-    return IsWave32 ? 24 : 12;
-
-  if (hasGFX10_3Insts(STI))
-    return IsWave32 ? 16 : 8;
-
-  return IsWave32 ? 8 : 4;
+  return AMDGPU::getVGPRAllocGranule(parseArchAMDGCN(STI.getCPU()), IsWave32);
 }
 
 unsigned getVGPREncodingGranule(const MCSubtargetInfo &STI,
@@ -1337,25 +1269,16 @@ unsigned getVGPREncodingGranule(const MCSubtargetInfo &STI,
 
 unsigned getArchVGPRAllocGranule() { return 4; }
 
-unsigned getAddressableNumArchVGPRs(const MCSubtargetInfo &STI) {
-  const auto &Features = STI.getFeatureBits();
-  if (Features.test(Feature1024AddressableVGPRs))
-    return Features.test(FeatureWavefrontSize32) ? 1024 : 512;
-  return 256;
-}
-
 unsigned getAddressableNumVGPRs(const MCSubtargetInfo &STI,
                                 unsigned DynamicVGPRBlockSize) {
-  const auto &Features = STI.getFeatureBits();
-  if (Features.test(FeatureGFX90AInsts))
-    return 512;
-
-  if (DynamicVGPRBlockSize != 0) {
+  if (DynamicVGPRBlockSize != 0 &&
+      !STI.getFeatureBits().test(FeatureGFX90AInsts)) {
     // On GFX12 we can allocate at most MaxDynamicVGPRBlocks blocks of VGPRs.
-    return MaxDynamicVGPRBlocks *
-           getVGPRAllocGranule(STI, DynamicVGPRBlockSize);
+    return MaxDynamicVGPRBlocks * DynamicVGPRBlockSize;
   }
-  return getAddressableNumArchVGPRs(STI);
+  return AMDGPU::getAddressableNumVGPRs(
+      parseArchAMDGCN(STI.getCPU()),
+      STI.getFeatureBits().test(FeatureWavefrontSize32));
 }
 
 unsigned getNumWavesPerEUWithNumVGPRs(const MCSubtargetInfo &STI,
