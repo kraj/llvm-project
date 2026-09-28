@@ -1897,6 +1897,16 @@ hostParallelCallback(OpenMPIRBuilder *OMPIRBuilder, Function &OutlinedFn,
          "Expected at least tid and bounded tid as arguments");
   unsigned NumCapturedVars = OutlinedFn.arg_size() - /* tid & bounded tid */ 2;
 
+  // CodeExtractor packs all captures into a fresh structure owned by the
+  // caller. Only this argument exposes the structure to the outlined function,
+  // and the synchronous fork keeps it alive until all callbacks return. These
+  // attributes describe the structure, not the objects its fields point to.
+  if (NumCapturedVars) {
+    assert(NumCapturedVars == 1 && "Expected an aggregate capture argument");
+    OutlinedFn.addParamAttr(2, Attribute::NoAlias);
+    OutlinedFn.addParamAttr(2, Attribute::NoFreeObj);
+  }
+
   CallInst *CI = cast<CallInst>(OutlinedFn.user_back());
   CI->getParent()->setName("omp_parallel");
   Builder.SetInsertPoint(CI);
