@@ -338,11 +338,11 @@ static mlir::Value buildIteratorOp(Fortran::lower::AbstractConverter &converter,
 }
 
 template <typename ClauseTuple>
-static void collectIteratorIVs(
-    const ClauseTuple &clause, Fortran::lower::AbstractConverter &converter,
-    Fortran::lower::StatementContext &stmtCtx,
-    llvm::SmallVectorImpl<IteratorRange> &iteratorRanges,
-    llvm::SmallPtrSetImpl<const Fortran::semantics::Symbol *> &ivSyms) {
+static void
+collectIteratorIVs(const ClauseTuple &clause,
+                   Fortran::lower::AbstractConverter &converter,
+                   Fortran::lower::StatementContext &stmtCtx,
+                   llvm::SmallVectorImpl<IteratorRange> &iteratorRanges) {
   auto &iteratorModifier =
       std::get<std::optional<omp::clause::Iterator>>(clause.t);
   if (!iteratorModifier.has_value())
@@ -354,9 +354,6 @@ static void collectIteratorIVs(
   for (const auto &itSpec : iteratorModifierSpecs)
     iteratorRanges.push_back(lowerIteratorRange<Fortran::evaluate::SomeType>(
         converter, itSpec, stmtCtx, clauseLocation));
-
-  for (const IteratorRange &r : iteratorRanges)
-    ivSyms.insert(&r.ivSym->GetUltimate());
 }
 
 //===----------------------------------------------------------------------===//
@@ -1047,21 +1044,18 @@ bool ClauseProcessor::processAffinity(
         };
 
         llvm::SmallVector<IteratorRange> iteratorRanges;
-        llvm::SmallPtrSet<const Fortran::semantics::Symbol *, 4> ivSyms;
-
-        auto &iteratorModifier =
-            std::get<std::optional<omp::clause::Iterator>>(clause.t);
-        collectIteratorIVs(clause, converter, stmtCtx, iteratorRanges, ivSyms);
+        collectIteratorIVs(clause, converter, stmtCtx, iteratorRanges);
 
         TodoLocators(clauseLocation, objects);
 
         for (const omp::Object &object : objects) {
           llvm::SmallVector<mlir::Value> bounds;
           std::stringstream asFortran;
-          if (iteratorModifier.has_value() &&
-              hasIteratorIVReference(object, ivSyms)) {
+          llvm::SmallVector<IteratorRange> objectRanges =
+              getIteratorRangesForObject(object, iteratorRanges);
+          if (!objectRanges.empty()) {
             mlir::Value iterHandle = buildIteratorOp(
-                converter, clauseLocation, iterTy, iteratorRanges,
+                converter, clauseLocation, iterTy, objectRanges,
                 [&](fir::FirOpBuilder &builder, mlir::Location loc,
                     llvm::ArrayRef<mlir::Value> /*ivs*/) -> mlir::Value {
                   lower::StatementContext iterStmtCtx;
@@ -1509,12 +1503,8 @@ bool ClauseProcessor::processDepend(lower::SymMap &symMap,
       return dependVar;
     };
 
-    auto &iteratorModifier =
-        std::get<std::optional<omp::clause::Iterator>>(clause.t);
-
     llvm::SmallVector<IteratorRange> iteratorRanges;
-    llvm::SmallPtrSet<const Fortran::semantics::Symbol *, 4> ivSyms;
-    collectIteratorIVs(clause, converter, stmtCtx, iteratorRanges, ivSyms);
+    collectIteratorIVs(clause, converter, stmtCtx, iteratorRanges);
 
     mlir::Type ptrTy =
         mlir::LLVM::LLVMPointerType::get(&converter.getMLIRContext());
@@ -1522,10 +1512,11 @@ bool ClauseProcessor::processDepend(lower::SymMap &symMap,
         mlir::omp::IteratedType::get(&converter.getMLIRContext(), ptrTy);
 
     for (const omp::Object &object : objects) {
-      if (iteratorModifier.has_value() &&
-          hasIteratorIVReference(object, ivSyms)) {
+      llvm::SmallVector<IteratorRange> objectRanges =
+          getIteratorRangesForObject(object, iteratorRanges);
+      if (!objectRanges.empty()) {
         mlir::Value iterHandle = buildIteratorOp(
-            converter, clauseLocation, iterTy, iteratorRanges,
+            converter, clauseLocation, iterTy, objectRanges,
             [&](fir::FirOpBuilder &builder, mlir::Location loc,
                 llvm::ArrayRef<mlir::Value> /*ivs*/) -> mlir::Value {
               lower::StatementContext iterStmtCtx;
