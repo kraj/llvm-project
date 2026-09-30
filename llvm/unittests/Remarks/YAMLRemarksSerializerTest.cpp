@@ -193,3 +193,32 @@ TEST(YAMLRemarks, SerializerRemarkStringRefOOBRead) {
                   "    DebugLoc:        { File: argpath, Line: 6, Column: 7 }\n"
                   "...\n");
 }
+
+TEST(YAMLRemarks, SerializerRemarkMultiLineArg) {
+  remarks::Remark R;
+  R.RemarkType = remarks::Type::Missed;
+  R.PassName = "pass";
+  R.RemarkName = "name";
+  R.FunctionName = "func";
+  R.Args.emplace_back();
+  R.Args.back().Key = "block";
+  R.Args.back().Val = "abc\ndef\nghi";
+  // A literal block scalar cannot hold control characters, so this has to be
+  // escaped in a double-quoted scalar instead.
+  R.Args.emplace_back();
+  R.Args.back().Key = "control";
+  R.Args.back().Val = "abc\ndef\n\x01"
+                      "ghi";
+  checkStandalone(remarks::Format::YAML, R,
+                  "--- !Missed\n"
+                  "Pass:            pass\n"
+                  "Name:            name\n"
+                  "Function:        func\n"
+                  "Args:\n"
+                  "  - block:            |\n"
+                  "      abc\n"
+                  "      def\n"
+                  "      ghi\n"
+                  "  - control:         \"abc\\ndef\\n\\x01ghi\"\n"
+                  "...\n");
+}

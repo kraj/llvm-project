@@ -273,12 +273,18 @@ Expected<StringRef> YAMLRemarkParser::parseStr(yaml::KeyValueNode &Node) {
     ValueBlock = dyn_cast_if_present<yaml::BlockScalarNode>(Node.getValue());
     if (!ValueBlock)
       return error("expected a value of scalar type.", Node);
-    Result = ValueBlock->getValue();
-  } else
-    Result = Value->getRawValue();
-
-  Result.consume_front("\'");
-  Result.consume_back("\'");
+    // The block value lives in the YAML document, which next() frees before
+    // returning the remark.
+    Result = Saver.save(ValueBlock->getValue());
+  } else {
+    SmallString<32> Storage;
+    Result = Value->getValue(Storage);
+    if (Error E = error())
+      return std::move(E);
+    // getValue only uses Storage when it had to unescape the value.
+    if (Result.data() == Storage.data())
+      Result = Saver.save(Result);
+  }
 
   return Result;
 }
