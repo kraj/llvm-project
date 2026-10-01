@@ -401,7 +401,8 @@ static void PutOpenMPRequirements(
 // naming the subject (which a directive in a subprogram may leave implicit).
 static void PutPluginDirectives(
     llvm::raw_ostream &os, const Scope &scope, SemanticsContext &context) {
-  for (const auto &[subject, directive] : context.GetPluginDirectives()) {
+  for (const auto &[subject, directive, fromModFile] :
+      context.GetPluginDirectives()) {
     if (&subject->owner() != &scope) {
       continue;
     }

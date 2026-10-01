@@ -698,15 +698,40 @@ public:
   ///   {prefix = "enzyme", keyword = "custom_rule",
   ///    args = {reverse = @_QMmPrev, ...}}
   /// Procedure and variable arguments are symbol references, declaring the
-  /// procedure if this module does not yet; the plugin's passes give them a
-  /// meaning.
+  /// procedure or module variable if this module does not yet; the plugin's
+  /// passes give them a meaning.
   void lowerPluginDirectives() {
     mlir::ModuleOp module{getModuleOp()};
     mlir::MLIRContext *ctx{module.getContext()};
-    for (const auto &[subject, directive] :
+    // The operation of a procedure or variable, declared if need be (as a
+    // reference to it would): procedures, and variables of modules, which
+    // may be another module's.
+    auto getOrDeclare{[&](const Fortran::semantics::Symbol &sym)
+                          -> mlir::Operation * {
+      if (mlir::Operation *op{module.lookupSymbol(mangleName(sym))}) {
+        return op;
+      }
+      if (Fortran::semantics::IsProcedure(sym)) {
+        return Fortran::lower::getOrDeclareFunction(
+            Fortran::evaluate::ProcedureDesignator{sym}, *this)
+            .getOperation();
+      }
+      if (sym.has<Fortran::semantics::ObjectEntityDetails>() &&
+          sym.owner().IsModule()) {
+        return Fortran::lower::declareModuleVariable(*this, sym).getOperation();
+      }
+      return nullptr;
+    }};
+    for (const auto &[subject, directive, fromModFile] :
          bridge.getSemanticsContext().GetPluginDirectives()) {
       const Fortran::semantics::Symbol &ultimate{subject->GetUltimate()};
-      mlir::Operation *target{module.lookupSymbol(mangleName(ultimate))};
+      // The unit with the directive keeps it even for a procedure or variable
+      // it does not use otherwise (e.g. an external procedure with an
+      // interface body); a unit that sees it through a module file only for
+      // those it uses.
+      mlir::Operation *target{fromModFile
+              ? module.lookupSymbol(mangleName(ultimate))
+              : getOrDeclare(ultimate)};
       if (!target) {
         continue; // neither defined nor referenced here
       }
@@ -724,21 +749,12 @@ public:
                   if (!n.symbol) {
                     return mlir::StringAttr::get(ctx, n.ToString());
                   }
-                  const Fortran::semantics::Symbol &sym{
-                      n.symbol->GetUltimate()};
-                  std::string name{mangleName(sym)};
-                  if (Fortran::semantics::IsProcedure(sym) &&
-                      !module.lookupSymbol(name)) {
-                    name =
-                        Fortran::lower::getOrDeclareFunction(
-                            Fortran::evaluate::ProcedureDesignator{sym}, *this)
-                            .getName()
-                            .str();
-                  }
-                  if (!module.lookupSymbol(name)) {
+                  mlir::Operation *op{getOrDeclare(n.symbol->GetUltimate())};
+                  if (!op) {
                     return mlir::StringAttr::get(ctx, n.ToString());
                   }
-                  return mlir::FlatSymbolRefAttr::get(ctx, name);
+                  return mlir::FlatSymbolRefAttr::get(
+                      mlir::SymbolTable::getSymbolName(op));
                 },
                 [&](const Fortran::parser::CompilerDirective::Plugin::
                         CommonBlock &c) -> mlir::Attribute {

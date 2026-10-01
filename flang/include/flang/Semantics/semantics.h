@@ -418,10 +418,13 @@ public:
   struct PluginDirective {
     SymbolRef subject;
     const parser::CompilerDirective *directive;
+    // Read from a module file, i.e. written in another translation unit.
+    bool fromModFile{false};
   };
-  void AddPluginDirective(
-      const Symbol &subject, const parser::CompilerDirective &directive) {
-    pluginDirectives_.push_back(PluginDirective{subject, &directive});
+  void AddPluginDirective(const Symbol &subject,
+      const parser::CompilerDirective &directive, bool fromModFile) {
+    pluginDirectives_.push_back(
+        PluginDirective{subject, &directive, fromModFile});
   }
   const std::vector<PluginDirective> &GetPluginDirectives() const {
     return pluginDirectives_;

@@ -11640,7 +11640,8 @@ void ResolveNamesVisitor::ResolvePluginDirective(
     }
   }
   if (ok) {
-    context().AddPluginDirective(*subject, x);
+    context().AddPluginDirective(*subject, x,
+        currScope().symbol() && currScope().symbol()->IsFromModFile());
   }
 }
 
