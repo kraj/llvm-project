@@ -3487,11 +3487,23 @@ struct CompilerDirective {
   EMPTY_CLASS(IVDep);
   EMPTY_CLASS(Simd);
   EMPTY_CLASS(Unrecognized);
+  // !DIR$ prefix keyword [( arg [, arg]... )] for a prefix registered by a
+  // plugin (see flang/Support/PluginDirectives.h).
+  struct Plugin {
+    struct Arg {
+      TUPLE_CLASS_BOILERPLATE(Arg);
+      std::tuple<std::optional<Name>,
+          std::variant<Name, std::uint64_t, std::string>>
+          t;
+    };
+    TUPLE_CLASS_BOILERPLATE(Plugin);
+    std::tuple<Name, Name, std::list<Arg>> t;
+  };
   CharBlock source;
   std::variant<std::list<IgnoreTKR>, LoopCount, std::list<AssumeAligned>,
       VectorAlways, VectorLength, std::list<NameValue>, Unroll, UnrollAndJam,
       Unrecognized, NoVector, NoUnroll, NoUnrollAndJam, ForceInline, Inline,
-      NoInline, InlineAlways, Prefetch, IVDep, Simd>
+      NoInline, InlineAlways, Prefetch, IVDep, Simd, Plugin>
       u;
 };
 

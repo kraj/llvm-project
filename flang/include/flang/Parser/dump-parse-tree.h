@@ -234,6 +234,8 @@ public:
   NODE(CompilerDirective, NameValue)
   NODE(CompilerDirective, NoInline)
   NODE(CompilerDirective, Unrecognized)
+  NODE(CompilerDirective, Plugin)
+  NODE(CompilerDirective::Plugin, Arg)
   NODE(CompilerDirective, VectorAlways)
   NODE_ENUM(CompilerDirective::VectorLength, VectorLength::Kind)
   NODE(CompilerDirective, VectorLength)

@@ -33,6 +33,7 @@ class IntrinsicTypeDefaultKinds;
 
 namespace Fortran::parser {
 struct AccObject;
+struct CompilerDirective;
 struct Name;
 struct Program;
 class AllCookedSources;
@@ -411,6 +412,21 @@ public:
     return branchTargets_.find(statementPosition) != branchTargets_.end();
   }
 
+  // Directives defined by plugins (flang/Support/PluginDirectives.h), after
+  // name resolution, with the procedure or variable they apply to. The names
+  // in their arguments have their symbols set.
+  struct PluginDirective {
+    SymbolRef subject;
+    const parser::CompilerDirective *directive;
+  };
+  void AddPluginDirective(
+      const Symbol &subject, const parser::CompilerDirective &directive) {
+    pluginDirectives_.push_back(PluginDirective{subject, &directive});
+  }
+  const std::vector<PluginDirective> &GetPluginDirectives() const {
+    return pluginDirectives_;
+  }
+
 private:
   struct ScopeIndexComparator {
     bool operator()(parser::CharBlock, parser::CharBlock) const;
@@ -458,6 +474,7 @@ private:
   std::map<SymbolRef, const IndexVarInfo, SymbolAddressCompare>
       activeIndexVars_;
   UnorderedSymbolSet errorSymbols_;
+  std::vector<PluginDirective> pluginDirectives_;
   std::set<std::string> tempNames_;
   const Scope *builtinsScope_{nullptr}; // module __Fortran_builtins
   Scope *ppcBuiltinTypesScope_{nullptr}; // module __Fortran_PPC_types

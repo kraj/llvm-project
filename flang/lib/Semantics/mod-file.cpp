@@ -396,6 +396,41 @@ static void PutOpenMPRequirements(
   }
 }
 
+// Directives defined by plugins whose subject this module declares, so that a
+// scope using the module sees them too. Written in canonical form, always
+// naming the subject (which a directive in a subprogram may leave implicit).
+static void PutPluginDirectives(
+    llvm::raw_ostream &os, const Scope &scope, SemanticsContext &context) {
+  for (const auto &[subject, directive] : context.GetPluginDirectives()) {
+    if (&subject->owner() != &scope) {
+      continue;
+    }
+    const auto &[prefix, keyword, args]{
+        std::get<parser::CompilerDirective::Plugin>(directive->u).t};
+    os << "!dir$ " << prefix.ToString() << ' ' << keyword.ToString() << '('
+       << subject->name().ToString();
+    for (const parser::CompilerDirective::Plugin::Arg &arg : args) {
+      const auto &argKeyword{std::get<0>(arg.t)};
+      if (!argKeyword) {
+        continue; // the subject, written above
+      }
+      os << ", " << argKeyword->ToString() << '=';
+      common::visit(
+          common::visitors{
+              [&](const parser::Name &n) {
+                os << (n.symbol ? n.symbol->name().ToString() : n.ToString());
+              },
+              [&](std::uint64_t n) { os << n; },
+              [&](const std::string &str) {
+                os << parser::QuoteCharacterLiteral(str);
+              },
+          },
+          std::get<1>(arg.t));
+    }
+    os << ")\n";
+  }
+}
+
 static void PutOpenMPDeclarativeDirectives(llvm::raw_ostream &os,
     const SymbolVector &symbols, SemanticsContext &semaCtx) {
   llvm::omp::Version version{semaCtx.langOptions().getOpenMPVersion()};
@@ -471,6 +506,7 @@ void ModFileWriter::PutSymbols(
   }
   PutOpenMPRequirements(decls_, DEREF(scope.symbol()), context_);
   PutOpenMPDeclarativeDirectives(decls_, sorted, context_);
+  PutPluginDirectives(decls_, scope, context_);
 
   for (const auto &set : scope.equivalenceSets()) {
     if (!set.empty() &&

@@ -38,6 +38,7 @@
 #include "type-parser-implementation.h"
 #include "flang/Parser/parse-tree.h"
 #include "flang/Parser/user-state.h"
+#include "flang/Support/PluginDirectives.h"
 
 namespace Fortran::parser {
 
@@ -1395,8 +1396,33 @@ constexpr auto inlinealwaysDir{
 constexpr auto inlineDir{"INLINE" >> construct<CompilerDirective::Inline>()};
 constexpr auto ivdep{"IVDEP" >> construct<CompilerDirective::IVDep>()};
 constexpr auto simd{"SIMD" >> construct<CompilerDirective::Simd>()};
+// The prefix of a directive defined by a plugin: a name that a plugin
+// registered (flang/Support/PluginDirectives.h).
+struct PluginDirectivePrefix {
+  using resultType = Name;
+  constexpr PluginDirectivePrefix() {}
+  std::optional<Name> Parse(ParseState &state) const {
+    if (std::optional<Name> n{name.Parse(state)}) {
+      if (common::isPluginDirectivePrefix(n->ToString())) {
+        return n;
+      }
+    }
+    return std::nullopt;
+  }
+};
+constexpr auto pluginDirectiveValue{
+    construct<std::variant<Name, std::uint64_t, std::string>>(name) ||
+    construct<std::variant<Name, std::uint64_t, std::string>>(digitString64) ||
+    construct<std::variant<Name, std::uint64_t, std::string>>(
+        space >> charLiteralConstantWithoutKind)};
+constexpr auto pluginDirectiveArg{construct<CompilerDirective::Plugin::Arg>(
+    maybe(name / "="_tok), pluginDirectiveValue)};
+constexpr auto pluginDirective{
+    construct<CompilerDirective::Plugin>(PluginDirectivePrefix{}, name,
+        defaulted(parenthesized(optionalList(pluginDirectiveArg))))};
 TYPE_PARSER(beginDirective >> some(letter) >> "$ "_tok >>
-    sourced((construct<CompilerDirective>(ignore_tkr) ||
+    sourced((construct<CompilerDirective>(pluginDirective) ||
+                construct<CompilerDirective>(ignore_tkr) ||
                 construct<CompilerDirective>(loopCount) ||
                 construct<CompilerDirective>(assumeAligned) ||
                 construct<CompilerDirective>(vectorAlways) ||

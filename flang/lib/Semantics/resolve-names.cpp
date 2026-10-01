@@ -41,6 +41,7 @@
 #include "flang/Semantics/tools.h"
 #include "flang/Semantics/type.h"
 #include "flang/Support/Fortran.h"
+#include "flang/Support/PluginDirectives.h"
 #include "flang/Support/default-kinds.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
@@ -2416,6 +2417,8 @@ public:
   void Post(const parser::AssignStmt &);
   void Post(const parser::AssignedGotoStmt &);
   void Post(const parser::CompilerDirective &);
+  void ResolvePluginDirective(const parser::CompilerDirective &,
+      const parser::CompilerDirective::Plugin &);
 
   bool Pre(const parser::SectionSubscript &);
 
@@ -11456,9 +11459,169 @@ void ResolveNamesVisitor::Post(const parser::CompilerDirective &x) {
           "INLINEALWAYS name '%s' does not match the subprogram name '%s'"_warn_en_US,
           inlineAlways->v->ToString(), sym->name().ToString());
     }
-  } else if (context().ShouldWarn(common::UsageWarning::IgnoredDirective)) {
+  } else if (const auto *plugin{
+                 std::get_if<parser::CompilerDirective::Plugin>(&x.u)}) {
+    ResolvePluginDirective(x, *plugin);
+  } else if (context().ShouldWarn(common::UsageWarning::IgnoredDirective) &&
+      // A module file may hold the directives of a plugin that is not
+      // loaded here (see PutPluginDirectives); they are not the user's to fix.
+      !(currScope().symbol() && currScope().symbol()->IsFromModFile())) {
     Say(x.source, "Unrecognized compiler directive was ignored"_warn_en_US)
         .set_usageWarning(common::UsageWarning::IgnoredDirective);
+  }
+}
+
+// A directive registered by a plugin: resolve its name arguments, check them
+// against the registered argument kinds, and record it with its subject.
+void ResolveNamesVisitor::ResolvePluginDirective(
+    const parser::CompilerDirective &x,
+    const parser::CompilerDirective::Plugin &plugin) {
+  const auto &[prefix, keyword, args]{plugin.t};
+  const common::PluginDirectiveSpec *spec{
+      common::lookupPluginDirective(prefix.ToString(), keyword.ToString())};
+  if (!spec) {
+    Say(keyword.source, "Unknown '%s' directive '%s'"_err_en_US,
+        prefix.ToString(), keyword.ToString());
+    return;
+  }
+  auto isProcedure{[](const Symbol &symbol) {
+    // A procedure under CONTAINS that is named before it is defined.
+    return symbol.has<SubprogramNameDetails>() ||
+        IsProcedure(symbol.GetUltimate());
+  }};
+  auto checkKind{[&](const parser::Name &name, const Symbol &symbol,
+                     common::PluginDirectiveArgKind kind) {
+    bool proc{isProcedure(symbol)};
+    if (kind == common::PluginDirectiveArgKind::Procedure && !proc) {
+      Say(name, "'%s' is not a procedure"_err_en_US);
+      return false;
+    }
+    if (kind == common::PluginDirectiveArgKind::Variable && proc) {
+      Say(name, "'%s' is not a variable"_err_en_US);
+      return false;
+    }
+    return true;
+  }};
+  auto resolve{[&](const parser::Name &name) -> Symbol * {
+    Symbol *symbol{FindSymbol(name)};
+    if (!symbol) {
+      Say(name, "'%s' is not declared"_err_en_US);
+      return nullptr;
+    }
+    name.symbol = symbol;
+    return symbol;
+  }};
+
+  // The subject: a leading positional name, or the enclosing subprogram.
+  auto it{args.begin()};
+  const Symbol *subject{nullptr};
+  if (it != args.end() && !std::get<0>(it->t)) {
+    const auto *name{std::get_if<parser::Name>(&std::get<1>(it->t))};
+    if (!name) {
+      Say(x.source,
+          "The subject of a '%s %s' directive must be a name"_err_en_US,
+          prefix.ToString(), keyword.ToString());
+      return;
+    }
+    subject = resolve(*name);
+    if (!subject) {
+      return;
+    }
+    ++it;
+  } else if (spec->subject != common::PluginDirectiveSubject::Variable) {
+    const Symbol *scopeSymbol{currScope().symbol()};
+    if (scopeSymbol && scopeSymbol->has<SubprogramDetails>()) {
+      subject = scopeSymbol;
+    }
+  }
+  if (!subject) {
+    Say(x.source,
+        "A '%s %s' directive must name what it applies to, or appear in a subprogram"_err_en_US,
+        prefix.ToString(), keyword.ToString());
+    return;
+  }
+  const parser::Name &subjectName{it != args.begin()
+          ? std::get<parser::Name>(std::get<1>(args.front().t))
+          : keyword};
+  if (spec->subject != common::PluginDirectiveSubject::Any &&
+      !checkKind(subjectName, *subject,
+          spec->subject == common::PluginDirectiveSubject::Procedure
+              ? common::PluginDirectiveArgKind::Procedure
+              : common::PluginDirectiveArgKind::Variable)) {
+    return;
+  }
+
+  // The other arguments are keyword arguments.
+  std::set<std::string> seen;
+  bool ok{true};
+  for (; it != args.end(); ++it) {
+    const auto &maybeKeyword{std::get<0>(it->t)};
+    if (!maybeKeyword) {
+      Say(x.source,
+          "Only the first argument of a '%s %s' directive may be positional"_err_en_US,
+          prefix.ToString(), keyword.ToString());
+      ok = false;
+      continue;
+    }
+    std::string argName{maybeKeyword->ToString()};
+    const common::PluginDirectiveArg *argSpec{nullptr};
+    for (const common::PluginDirectiveArg &a : spec->args) {
+      if (a.keyword == argName) {
+        argSpec = &a;
+      }
+    }
+    if (!argSpec) {
+      Say(maybeKeyword->source,
+          "'%s' is not an argument of the '%s %s' directive"_err_en_US, argName,
+          prefix.ToString(), keyword.ToString());
+      ok = false;
+      continue;
+    }
+    if (!seen.insert(argName).second) {
+      Say(maybeKeyword->source,
+          "Argument '%s' appears more than once"_err_en_US, argName);
+      ok = false;
+      continue;
+    }
+    const auto &value{std::get<1>(it->t)};
+    switch (argSpec->kind) {
+    case common::PluginDirectiveArgKind::Procedure:
+    case common::PluginDirectiveArgKind::Variable:
+      if (const auto *name{std::get_if<parser::Name>(&value)}) {
+        const Symbol *symbol{resolve(*name)};
+        ok &= symbol && checkKind(*name, *symbol, argSpec->kind);
+      } else {
+        Say(maybeKeyword->source, "Argument '%s' must be a name"_err_en_US,
+            argName);
+        ok = false;
+      }
+      break;
+    case common::PluginDirectiveArgKind::Integer:
+      if (!std::holds_alternative<std::uint64_t>(value)) {
+        Say(maybeKeyword->source, "Argument '%s' must be an integer"_err_en_US,
+            argName);
+        ok = false;
+      }
+      break;
+    case common::PluginDirectiveArgKind::String:
+      if (std::holds_alternative<std::uint64_t>(value)) {
+        Say(maybeKeyword->source,
+            "Argument '%s' must be a character literal or a name"_err_en_US,
+            argName);
+        ok = false;
+      }
+      break;
+    }
+  }
+  for (const common::PluginDirectiveArg &a : spec->args) {
+    if (a.required && !seen.count(a.keyword)) {
+      Say(x.source, "The '%s %s' directive requires argument '%s'"_err_en_US,
+          prefix.ToString(), keyword.ToString(), a.keyword);
+      ok = false;
+    }
+  }
+  if (ok) {
+    context().AddPluginDirective(*subject, x);
   }
 }
 
