@@ -1411,10 +1411,15 @@ struct PluginDirectivePrefix {
   }
 };
 constexpr auto pluginDirectiveValue{
-    construct<std::variant<Name, std::uint64_t, std::string>>(name) ||
-    construct<std::variant<Name, std::uint64_t, std::string>>(digitString64) ||
-    construct<std::variant<Name, std::uint64_t, std::string>>(
-        space >> charLiteralConstantWithoutKind)};
+    construct<std::variant<Name, CompilerDirective::Plugin::CommonBlock,
+        std::uint64_t, std::string>>(
+        construct<CompilerDirective::Plugin::CommonBlock>("/" >> name / "/")) ||
+    construct<std::variant<Name, CompilerDirective::Plugin::CommonBlock,
+        std::uint64_t, std::string>>(name) ||
+    construct<std::variant<Name, CompilerDirective::Plugin::CommonBlock,
+        std::uint64_t, std::string>>(digitString64) ||
+    construct<std::variant<Name, CompilerDirective::Plugin::CommonBlock,
+        std::uint64_t, std::string>>(space >> charLiteralConstantWithoutKind)};
 constexpr auto pluginDirectiveArg{construct<CompilerDirective::Plugin::Arg>(
     maybe(name / "="_tok), pluginDirectiveValue)};
 constexpr auto pluginDirective{

@@ -1966,6 +1966,11 @@ public:
     Walk(std::get<0>(x.t), "=");
     common::visit(common::visitors{
                       [&](const Name &n) { Walk(n); },
+                      [&](const CompilerDirective::Plugin::CommonBlock &c) {
+                        Put('/');
+                        Walk(c.v);
+                        Put('/');
+                      },
                       [&](std::uint64_t n) { Put(std::to_string(n)); },
                       [&](const std::string &str) { PutNormalized(str); },
                   },

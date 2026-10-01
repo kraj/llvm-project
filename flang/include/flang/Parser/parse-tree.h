@@ -3490,10 +3490,12 @@ struct CompilerDirective {
   // !DIR$ prefix keyword [( arg [, arg]... )] for a prefix registered by a
   // plugin (see flang/Support/PluginDirectives.h).
   struct Plugin {
+    // A COMMON block named in an argument, /name/.
+    WRAPPER_CLASS(CommonBlock, Name);
     struct Arg {
       TUPLE_CLASS_BOILERPLATE(Arg);
       std::tuple<std::optional<Name>,
-          std::variant<Name, std::uint64_t, std::string>>
+          std::variant<Name, CommonBlock, std::uint64_t, std::string>>
           t;
     };
     TUPLE_CLASS_BOILERPLATE(Plugin);

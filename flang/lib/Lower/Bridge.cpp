@@ -740,6 +740,15 @@ public:
                   }
                   return mlir::FlatSymbolRefAttr::get(ctx, name);
                 },
+                [&](const Fortran::parser::CompilerDirective::Plugin::
+                        CommonBlock &c) -> mlir::Attribute {
+                  std::string name{c.v.symbol ? mangleName(*c.v.symbol)
+                                              : c.v.ToString()};
+                  if (!module.lookupSymbol(name)) {
+                    return mlir::StringAttr::get(ctx, c.v.ToString());
+                  }
+                  return mlir::FlatSymbolRefAttr::get(ctx, name);
+                },
                 [&](std::uint64_t n) -> mlir::Attribute {
                   return builder->getI64IntegerAttr(n);
                 },

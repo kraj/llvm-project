@@ -11511,19 +11511,36 @@ void ResolveNamesVisitor::ResolvePluginDirective(
     name.symbol = symbol;
     return symbol;
   }};
+  auto resolveCommon{[&](const parser::Name &name) -> Symbol * {
+    Symbol *symbol{currScope().FindCommonBlockInVisibleScopes(name.source)};
+    if (!symbol) {
+      Say(name, "COMMON block /%s/ is not declared"_err_en_US);
+      return nullptr;
+    }
+    name.symbol = symbol;
+    return symbol;
+  }};
 
   // The subject: a leading positional name, or the enclosing subprogram.
   auto it{args.begin()};
   const Symbol *subject{nullptr};
+  const parser::Name *subjectNamePtr{nullptr};
   if (it != args.end() && !std::get<0>(it->t)) {
-    const auto *name{std::get_if<parser::Name>(&std::get<1>(it->t))};
-    if (!name) {
+    const auto &value{std::get<1>(it->t)};
+    if (const auto *name{std::get_if<parser::Name>(&value)}) {
+      subjectNamePtr = name;
+      subject = resolve(*name);
+    } else if (const auto *common{
+                   std::get_if<parser::CompilerDirective::Plugin::CommonBlock>(
+                       &value)}) {
+      subjectNamePtr = &common->v;
+      subject = resolveCommon(common->v);
+    } else {
       Say(x.source,
-          "The subject of a '%s %s' directive must be a name"_err_en_US,
+          "The subject of a '%s %s' directive must be a name or a COMMON block"_err_en_US,
           prefix.ToString(), keyword.ToString());
       return;
     }
-    subject = resolve(*name);
     if (!subject) {
       return;
     }
@@ -11540,9 +11557,7 @@ void ResolveNamesVisitor::ResolvePluginDirective(
         prefix.ToString(), keyword.ToString());
     return;
   }
-  const parser::Name &subjectName{it != args.begin()
-          ? std::get<parser::Name>(std::get<1>(args.front().t))
-          : keyword};
+  const parser::Name &subjectName{subjectNamePtr ? *subjectNamePtr : keyword};
   if (spec->subject != common::PluginDirectiveSubject::Any &&
       !checkKind(subjectName, *subject,
           spec->subject == common::PluginDirectiveSubject::Procedure
@@ -11590,6 +11605,10 @@ void ResolveNamesVisitor::ResolvePluginDirective(
       if (const auto *name{std::get_if<parser::Name>(&value)}) {
         const Symbol *symbol{resolve(*name)};
         ok &= symbol && checkKind(*name, *symbol, argSpec->kind);
+      } else if (const auto *common{std::get_if<
+                     parser::CompilerDirective::Plugin::CommonBlock>(&value)};
+          common && argSpec->kind == common::PluginDirectiveArgKind::Variable) {
+        ok &= resolveCommon(common->v) != nullptr;
       } else {
         Say(maybeKeyword->source, "Argument '%s' must be a name"_err_en_US,
             argName);

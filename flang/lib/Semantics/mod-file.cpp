@@ -407,8 +407,12 @@ static void PutPluginDirectives(
     }
     const auto &[prefix, keyword, args]{
         std::get<parser::CompilerDirective::Plugin>(directive->u).t};
-    os << "!dir$ " << prefix.ToString() << ' ' << keyword.ToString() << '('
-       << subject->name().ToString();
+    os << "!dir$ " << prefix.ToString() << ' ' << keyword.ToString() << '(';
+    if (subject->has<CommonBlockDetails>()) {
+      os << '/' << subject->name().ToString() << '/';
+    } else {
+      os << subject->name().ToString();
+    }
     for (const parser::CompilerDirective::Plugin::Arg &arg : args) {
       const auto &argKeyword{std::get<0>(arg.t)};
       if (!argKeyword) {
@@ -419,6 +423,9 @@ static void PutPluginDirectives(
           common::visitors{
               [&](const parser::Name &n) {
                 os << (n.symbol ? n.symbol->name().ToString() : n.ToString());
+              },
+              [&](const parser::CompilerDirective::Plugin::CommonBlock &c) {
+                os << '/' << c.v.ToString() << '/';
               },
               [&](std::uint64_t n) { os << n; },
               [&](const std::string &str) {
