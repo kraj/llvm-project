@@ -164,6 +164,7 @@ bool ShouldReport(ThreadState *thr, ReportType typ) {
 }
 
 ScopedReportBase::ScopedReportBase(ReportType typ, uptr tag) {
+  CheckedMutex::CheckNoLocks();
   rep_ = New<ReportDesc>();
   rep_->typ = typ;
   rep_->tag = tag;
@@ -676,6 +677,7 @@ static bool HandleRacyStacks(ThreadState *thr, VarSizeStackTrace traces[2]) {
 }
 
 bool OutputReport(ThreadState *thr, ScopedReport &srep) {
+  CheckedMutex::CheckNoLocks();
   // These should have been checked in ShouldReport.
   // It's too late to check them here, we have already taken locks.
   CHECK(flags()->report_bugs);
