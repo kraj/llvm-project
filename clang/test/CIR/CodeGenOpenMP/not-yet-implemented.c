@@ -29,4 +29,14 @@ void do_things() {
   // expected-error@+1{{ClangIR code gen Not Yet Implemented: OpenMP synthesized 'firstprivate' clause from construct decomposition}}
 #pragma omp target
   { i = 1; }
+
+  // The teams construct supports no clauses yet, so every `teams`-leaf clause is
+  // reported as not-yet-implemented.
+  // expected-error@+1{{ClangIR code gen Not Yet Implemented: OpenMP TEAMS 'num_teams' clause}}
+#pragma omp teams num_teams(4)
+  {}
+
+  // expected-error@+1{{ClangIR code gen Not Yet Implemented: OpenMP TEAMS 'thread_limit' clause}}
+#pragma omp teams thread_limit(8)
+  {}
 }

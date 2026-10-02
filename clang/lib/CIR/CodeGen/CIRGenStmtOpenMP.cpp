@@ -68,6 +68,7 @@ static bool isCombinableLeaf(llvm::omp::Directive dir) {
   switch (dir) {
   case llvm::omp::OMPD_target:
   case llvm::omp::OMPD_parallel:
+  case llvm::omp::OMPD_teams:
   case llvm::omp::OMPD_for:
     return true;
   default:
@@ -162,6 +163,48 @@ emitParallelOp(CIRGenFunction &cgf, const DirectiveTy &s,
   // Only set for reduction(task: ...), already rejected as NYI above.
   assert(!s.getTaskReductionRefExpr() &&
          "reduction(task: ...) should already be rejected as NYI");
+
+  mlir::LogicalResult res = emitBody();
+  mlir::omp::TerminatorOp::create(builder, end);
+  return res;
+}
+
+/// Evaluates the clauses allowed on an omp.teams leaf; none are supported
+/// yet, so every eligible clause is reported as NYI.
+static mlir::LogicalResult
+emitTeamsClauses(CIRGenFunction &cgf, CIRGenModule &cgm,
+                 CIRGenBuilderTy &builder, mlir::Location loc,
+                 llvm::ArrayRef<const OMPClause *> clauses,
+                 mlir::omp::TeamsOperands &clauseOps) {
+  OpenMPClauseEmitter ce(cgf, cgm, builder, loc, clauses);
+  return ce.emitNYI</*supported=*/>(
+      /*nyi=*/OpenMPNYIClauseList<
+          OMPAllocateClause, OMPDefaultClause, OMPDynGroupprivateClause,
+          OMPFirstprivateClause, OMPIfClause, OMPNumTeamsClause,
+          OMPPrivateClause, OMPReductionClause, OMPSharedClause,
+          OMPThreadLimitClause, OMPXAttributeClause>{},
+      llvm::omp::Directive::OMPD_teams);
+}
+
+template <typename DirectiveTy>
+static mlir::LogicalResult
+emitTeamsOp(CIRGenFunction &cgf, const DirectiveTy &s,
+            const omp::ConstructQueue &queue,
+            omp::ConstructQueue::const_iterator item, mlir::Location begin,
+            mlir::Location end, const mlir::omp::TeamsOperands &clauseOps,
+            llvm::function_ref<mlir::LogicalResult()> emitBody) {
+  CIRGenBuilderTy &builder = cgf.getBuilder();
+
+  auto teamsOp = mlir::omp::TeamsOp::create(builder, begin, clauseOps);
+  if (!omp::isLastItemInQueue(item, queue) ||
+      hasCombinableNestedLeaf(static_cast<const OMPExecutableDirective &>(s)))
+    teamsOp.setCombined(true);
+
+  mlir::Block &block = teamsOp.getRegion().emplaceBlock();
+  mlir::OpBuilder::InsertionGuard guard(builder);
+  builder.setInsertionPointToEnd(&block);
+
+  CIRGenFunction::LexicalScope ls{cgf, begin, builder.getInsertionBlock()};
 
   mlir::LogicalResult res = emitBody();
   mlir::omp::TerminatorOp::create(builder, end);
@@ -771,8 +814,28 @@ CIRGenFunction::emitOMPTargetDirective(const OMPTargetDirective &s) {
 }
 mlir::LogicalResult
 CIRGenFunction::emitOMPTeamsDirective(const OMPTeamsDirective &s) {
-  getCIRGenModule().errorNYI(s.getSourceRange(), "OpenMP OMPTeamsDirective");
-  return mlir::failure();
+  mlir::Location begin = getLoc(s.getBeginLoc());
+  mlir::Location end = getLoc(s.getEndLoc());
+
+  omp::ConstructQueue queue =
+      omp::buildConstructQueue(getContext().getLangOpts().OpenMP, s);
+  omp::ConstructQueue::const_iterator item = queue.begin();
+
+  if (mlir::failed(checkSynthesizedClauses(*this, s, item)))
+    return mlir::failure();
+
+  mlir::omp::TeamsOperands clauseOps;
+  if (mlir::failed(emitTeamsClauses(*this, getCIRGenModule(), builder, begin,
+                                    item->clauses, clauseOps)))
+    return mlir::failure();
+
+  return emitTeamsOp(*this, s, queue, item, begin, end, clauseOps,
+                     [&]() -> mlir::LogicalResult {
+                       const CapturedStmt *cs =
+                           s.getCapturedStmt(llvm::omp::OMPD_teams);
+                       return emitStmt(cs->getCapturedStmt(),
+                                       /*useCurrentScope=*/true);
+                     });
 }
 mlir::LogicalResult CIRGenFunction::emitOMPCancellationPointDirective(
     const OMPCancellationPointDirective &s) {
@@ -1058,9 +1121,48 @@ mlir::LogicalResult CIRGenFunction::emitOMPTeamsGenericLoopDirective(
 }
 mlir::LogicalResult
 CIRGenFunction::emitOMPTargetTeamsDirective(const OMPTargetTeamsDirective &s) {
-  getCIRGenModule().errorNYI(s.getSourceRange(),
-                             "OpenMP OMPTargetTeamsDirective");
-  return mlir::failure();
+  mlir::Location begin = getLoc(s.getBeginLoc());
+  mlir::Location end = getLoc(s.getEndLoc());
+
+  omp::ConstructQueue queue =
+      omp::buildConstructQueue(getContext().getLangOpts().OpenMP, s);
+  omp::ConstructQueue::const_iterator targetItem = queue.begin();
+  assert(targetItem->id == llvm::omp::OMPD_target &&
+         "expected 'target' to be the outermost leaf");
+
+  if (mlir::failed(checkSynthesizedClauses(*this, s, targetItem)))
+    return mlir::failure();
+
+  mlir::omp::TargetExtOperands targetOps;
+  llvm::SmallVector<const VarDecl *> mapSyms;
+  if (mlir::failed(emitTargetClauses(*this, getCIRGenModule(), builder, begin,
+                                     targetItem->clauses, targetOps, mapSyms)))
+    return mlir::failure();
+
+  return emitTargetOp(
+      *this, s, queue, targetItem, begin, end, targetOps, mapSyms,
+      [&]() -> mlir::LogicalResult {
+        omp::ConstructQueue::const_iterator teamsItem = std::next(targetItem);
+        assert(teamsItem != queue.end() &&
+               teamsItem->id == llvm::omp::OMPD_teams &&
+               "expected a 'teams' leaf nested in 'target'");
+
+        if (mlir::failed(checkSynthesizedClauses(*this, s, teamsItem)))
+          return mlir::failure();
+
+        mlir::omp::TeamsOperands teamsOps;
+        if (mlir::failed(emitTeamsClauses(*this, getCIRGenModule(), builder,
+                                          begin, teamsItem->clauses, teamsOps)))
+          return mlir::failure();
+
+        return emitTeamsOp(*this, s, queue, teamsItem, begin, end, teamsOps,
+                           [&]() -> mlir::LogicalResult {
+                             const CapturedStmt *cs =
+                                 s.getCapturedStmt(llvm::omp::OMPD_teams);
+                             return emitStmt(cs->getCapturedStmt(),
+                                             /*useCurrentScope=*/true);
+                           });
+      });
 }
 mlir::LogicalResult CIRGenFunction::emitOMPTargetTeamsDistributeDirective(
     const OMPTargetTeamsDistributeDirective &s) {
