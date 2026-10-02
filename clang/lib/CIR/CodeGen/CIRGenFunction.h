@@ -22,6 +22,7 @@
 
 #include "Address.h"
 
+#include "mlir/Dialect/OpenMP/OpenMPClauseOperands.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/BaseSubobject.h"
 #include "clang/AST/CharUnits.h"
@@ -2753,6 +2754,15 @@ public:
   //                         OpenMP Emission
   //===--------------------------------------------------------------------===//
 public:
+  /// The enclosing omp.target's host-evaluated loop bounds, forwarded as
+  /// host_eval block arguments and consumed once by the nested omp.loop_nest.
+  /// Mirrors Flang's HostEvalInfo.
+  struct OMPHostEvalBounds {
+    mlir::omp::LoopRelatedClauseOps ops;
+    bool applied = false;
+  };
+  std::optional<OMPHostEvalBounds> ompHostEvalBounds;
+
   mlir::LogicalResult emitOMPScopeDirective(const OMPScopeDirective &s);
   mlir::LogicalResult emitOMPErrorDirective(const OMPErrorDirective &s);
   mlir::LogicalResult emitOMPParallelDirective(const OMPParallelDirective &s);
