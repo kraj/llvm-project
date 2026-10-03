@@ -859,7 +859,7 @@ void ReportRace(ThreadState *thr, RawShadow *shadow_mem, Shadow cur, Shadow old,
     rep.AddLocation(addr_min, addr_max - addr_min);
 
     if (flags()->print_full_thread_history) {
-      const ReportDesc *rep_desc = rep.GetReport();
+      const ReportDesc* rep_desc = rep.GetReport();
       for (uptr i = 0; i < rep_desc->threads.Size(); i++) {
         Tid parent_tid = rep_desc->threads[i]->parent_tid;
         if (parent_tid == kMainTid || parent_tid == kInvalidTid)
