@@ -554,15 +554,16 @@ void AMDGPUTargetCodeGenInfo::setTargetAtomicMetadata(
   auto *RMW = dyn_cast<llvm::AtomicRMWInst>(&AtomicInst);
   auto *CmpX = dyn_cast<llvm::AtomicCmpXchgInst>(&AtomicInst);
 
-  // OpenCL and old style HIP atomics consider atomics targeting thread private
-  // memory to be undefined.
-  //
+  // OpenCL, HIP, and scoped atomics used in HIP programs, consider atomics
+  // targeting thread private  memory to be undefined, unless explictily
+  // specified via a command line arg.
   // TODO: This is probably undefined for atomic load/store, but there's not
   // much direct codegen benefit to knowing this.
   if (((RMW && RMW->getPointerAddressSpace() == llvm::AMDGPUAS::FLAT_ADDRESS) ||
        (CmpX &&
         CmpX->getPointerAddressSpace() == llvm::AMDGPUAS::FLAT_ADDRESS)) &&
-      AE && AE->threadPrivateMemoryAtomicsAreUndefined()) {
+      AE && (AE->isOpenCL() || AE->isHIP() || AE->isScopedAtomic()) &&
+      CGF.getLangOpts().threadPrivateMemoryAtomicsAreUndefined()) {
     llvm::MDBuilder MDHelper(CGF.getLLVMContext());
     llvm::MDNode *ASRange = MDHelper.createRange(
         llvm::APInt(32, llvm::AMDGPUAS::PRIVATE_ADDRESS),
