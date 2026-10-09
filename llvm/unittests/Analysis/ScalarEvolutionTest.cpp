@@ -1555,6 +1555,215 @@ TEST_F(ScalarEvolutionsTest, ProveImplicationViaNarrowing) {
   });
 }
 
+// x <u y && y >=s 0 --> x >=s 0.
+TEST_F(ScalarEvolutionsTest, ImpliedNonNegativeFromULT) {
+  LLVMContext C;
+  SMDiagnostic Err;
+  std::unique_ptr<Module> M =
+      parseAssemblyString("define void @foo(i32 %x, i32 %y, i32 %z, ptr %p) { "
+                          "entry: "
+                          "  %len = load i32, ptr %p, !range !0 "
+                          "  %len.smax = load i32, ptr %p, !range !1 "
+                          "  %len.smin = load i32, ptr %p, !range !2 "
+                          "  %len.big = load i32, ptr %p, !range !3 "
+                          "  %nonpos = load i32, ptr %p, !range !4 "
+                          "  ret void "
+                          "} "
+                          // [0, INT_MAX)
+                          "!0 = !{i32 0, i32 2147483647} "
+                          // [0, INT_MAX]
+                          "!1 = !{i32 0, i32 -2147483648} "
+                          // [0, INT_MIN] as unsigned
+                          "!2 = !{i32 0, i32 -2147483647} "
+                          // [0, INT_MIN + 1] as unsigned
+                          "!3 = !{i32 0, i32 -2147483646} "
+                          // [INT_MIN, 0]
+                          "!4 = !{i32 -2147483648, i32 1} ",
+                          Err, C);
+
+  ASSERT_TRUE(M && "Could not parse module?");
+  ASSERT_TRUE(!verifyModule(*M) && "Must have been well formed!");
+
+  runWithSE(*M, "foo", [](Function &F, LoopInfo &LI, ScalarEvolution &SE) {
+    auto GetArg = [&](unsigned I) { return SE.getSCEV(F.getArg(I)); };
+    auto GetInst = [&](StringRef Name) {
+      return SE.getSCEV(getInstructionByName(F, Name));
+    };
+    const SCEV *X = GetArg(0), *Y = GetArg(1), *Z = GetArg(2);
+    const SCEV *Len = GetInst("len");
+    const SCEV *LenSMax = GetInst("len.smax");
+    const SCEV *LenSMin = GetInst("len.smin");
+    const SCEV *LenBig = GetInst("len.big");
+    const SCEV *NonPos = GetInst("nonpos");
+    Type *Ty = X->getType();
+    const SCEV *Zero = SE.getZero(Ty);
+    const SCEV *MinusOne = SE.getMinusOne(Ty);
+    const SCEV *MinusThree = SE.getConstant(Ty, -3, /*isSigned=*/true);
+    const SCEV *Five = SE.getConstant(Ty, 5);
+    const auto SGE = ICmpInst::ICMP_SGE, SGT = ICmpInst::ICMP_SGT;
+    const auto SLT = ICmpInst::ICMP_SLT;
+    const auto ULT = ICmpInst::ICMP_ULT, ULE = ICmpInst::ICMP_ULE;
+    const auto UGT = ICmpInst::ICMP_UGT, UGE = ICmpInst::ICMP_UGE;
+
+    // FIXME: SCEV does not derive x >=s 0 from x <u len yet. All the checks
+    // down to the constant bound case should be EXPECT_TRUE.
+
+    // x <u len  &&  len >=s 0  -->  x >=s 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, Len));
+    // The same query, written as x >s -1.
+    EXPECT_FALSE(isImpliedCond(SE, SGT, X, MinusOne, ULT, X, Len));
+    // x <=u len  &&  len >=s 0  -->  x >=s 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULE, X, Len));
+    // len >u x  &&  len >=s 0  -->  x >=s 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, UGT, Len, X));
+    // len >=u x  &&  len >=s 0  -->  x >=s 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, UGE, Len, X));
+
+    // x >=s 0 implies any weaker lower bound.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, MinusThree, ULT, X, Len));
+    // The same with a non-constant bound. nonpos may be INT_MIN, so the query
+    // cannot be canonicalized to x >s nonpos - 1 and stays SGE.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, NonPos, ULT, X, Len));
+
+    // Mixed widths: an i32 query against an i64 found condition.
+    // sext(x) <u zext(len) --> x >=s 0.
+    Type *I64 = Type::getInt64Ty(F.getContext());
+    const SCEV *XSExt = SE.getSignExtendExpr(X, I64);
+    const SCEV *LenZExt = SE.getZeroExtendExpr(Len, I64);
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, XSExt, LenZExt));
+
+    // A constant bound is already handled via ranges.
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULT, X, Five));
+
+    // x >=s 0 holds whenever len <=u 2^(n-1), but only len >=s 0 is used.
+    // len may be INT_MAX: x <=u len reaches SCEV as x <u len + 1, and
+    // len + 1 may be INT_MIN.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULE, X, LenSMax));
+    // len may be INT_MIN.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, LenSMin));
+
+    // The bound may be INT_MIN + 1, so x may be INT_MIN.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, LenBig));
+    // The bound is unconstrained. E.g. x = -2 satisfies x <u -1.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, Y));
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, UGT, Y, X));
+
+    // The found condition constrains a different value than the one asked
+    // about.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, Z, Len));
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, Len, X));
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, UGT, X, Len));
+
+    // x may be 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGT, X, Zero, ULT, X, Len));
+    EXPECT_FALSE(isImpliedCond(SE, SGT, X, Five, ULT, X, Len));
+    // x and nonpos may both be 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGT, X, NonPos, ULT, X, Len));
+
+    // x + 1 >s 0 holds, but the rule only derives x >=s 0 and the range-based
+    // reasoning on top of it does not use nsw, so this is not proven.
+    const SCEV *XPlusOne = SE.getAddExpr(X, SE.getOne(Ty), SCEV::FlagNSW);
+    EXPECT_FALSE(isImpliedCond(SE, SGT, XPlusOne, Zero, ULT, X, Len));
+
+    // x <s len does not bound x from below. E.g. x = -1, len = 0.
+    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, SLT, X, Len));
+
+    // x <s 0 contradicts x <u len, so it must not be implied.
+    EXPECT_FALSE(isImpliedCond(SE, SLT, X, Zero, ULT, X, Len));
+  });
+}
+
+// The guard that dominates a loop proves the start value is non-negative.
+TEST_F(ScalarEvolutionsTest, GuardedStartNonNegative) {
+  LLVMContext C;
+  SMDiagnostic Err;
+  std::unique_ptr<Module> M = parseAssemblyString(
+      "define void @foo(i32 %start, ptr %p) { "
+      "entry: "
+      "  %len = load i32, ptr %p, !range !0 "
+      "  %c = icmp ult i32 %start, %len "
+      "  br i1 %c, label %loop, label %exit "
+      "loop: "
+      "  %iv = phi i32 [ %start, %entry ], [ %iv.next, %loop ] "
+      "  %iv.next = add nuw nsw i32 %iv, 1 "
+      "  %ec = icmp sgt i32 %iv, 99 "
+      "  br i1 %ec, label %exit, label %loop "
+      "exit: "
+      "  ret void "
+      "} "
+      "define void @bar(i32 %start, i32 %len) { "
+      "entry: "
+      "  %c = icmp ult i32 %start, %len "
+      "  br i1 %c, label %loop, label %exit "
+      "loop: "
+      "  %iv = phi i32 [ %start, %entry ], [ %iv.next, %loop ] "
+      "  %iv.next = add nuw nsw i32 %iv, 1 "
+      "  %ec = icmp sgt i32 %iv, 99 "
+      "  br i1 %ec, label %exit, label %loop "
+      "exit: "
+      "  ret void "
+      "} "
+      "define void @baz(i32 %start, i32 %len) { "
+      "entry: "
+      "  %len.ok = icmp ult i32 %len, 1000 "
+      "  br i1 %len.ok, label %pre, label %exit "
+      "pre: "
+      "  %c = icmp ult i32 %start, %len "
+      "  br i1 %c, label %loop, label %exit "
+      "loop: "
+      "  %iv = phi i32 [ %start, %pre ], [ %iv.next, %loop ] "
+      "  %iv.next = add nuw nsw i32 %iv, 1 "
+      "  %ec = icmp sgt i32 %iv, 99 "
+      "  br i1 %ec, label %exit, label %loop "
+      "exit: "
+      "  ret void "
+      "} "
+      "!0 = !{i32 0, i32 2147483647} ",
+      Err, C);
+
+  ASSERT_TRUE(M && "Could not parse module?");
+  ASSERT_TRUE(!verifyModule(*M) && "Must have been well formed!");
+
+  // len is known non-negative from !range: start >=s 0 holds in the loop.
+  runWithSE(*M, "foo", [](Function &F, LoopInfo &LI, ScalarEvolution &SE) {
+    const SCEV *Start = SE.getSCEV(F.getArg(0));
+    BasicBlock *Loop = getInstructionByName(F, "iv")->getParent();
+    const SCEV *Zero = SE.getZero(Start->getType());
+    // Not provable without the guard.
+    EXPECT_FALSE(SE.isKnownNonNegative(Start));
+    // FIXME: both should be EXPECT_TRUE.
+    EXPECT_FALSE(SE.isBasicBlockEntryGuardedByCond(Loop, ICmpInst::ICMP_SGE,
+                                                   Start, Zero));
+    EXPECT_FALSE(SE.isKnownPredicateAt(ICmpInst::ICMP_SGE, Start, Zero,
+                                       Loop->getTerminator()));
+  });
+
+  // len is an unconstrained argument: start = -2, len = -1 satisfies
+  // start <u len with a negative start, so nothing can be proven.
+  runWithSE(*M, "bar", [](Function &F, LoopInfo &LI, ScalarEvolution &SE) {
+    const SCEV *Start = SE.getSCEV(F.getArg(0));
+    BasicBlock *Loop = getInstructionByName(F, "iv")->getParent();
+    const SCEV *Zero = SE.getZero(Start->getType());
+    EXPECT_FALSE(SE.isBasicBlockEntryGuardedByCond(Loop, ICmpInst::ICMP_SGE,
+                                                   Start, Zero));
+    EXPECT_FALSE(SE.isKnownPredicateAt(ICmpInst::ICMP_SGE, Start, Zero,
+                                       Loop->getTerminator()));
+  });
+
+  // len is known to be <u 1000 only from a dominating guard, not from its own
+  // range. start >=s 0 holds in the loop, but it is not proven: the bound on
+  // len is checked with ranges only, to keep the rule cheap.
+  runWithSE(*M, "baz", [](Function &F, LoopInfo &LI, ScalarEvolution &SE) {
+    const SCEV *Start = SE.getSCEV(F.getArg(0));
+    BasicBlock *Loop = getInstructionByName(F, "iv")->getParent();
+    const SCEV *Zero = SE.getZero(Start->getType());
+    EXPECT_FALSE(SE.isBasicBlockEntryGuardedByCond(Loop, ICmpInst::ICMP_SGE,
+                                                   Start, Zero));
+    EXPECT_FALSE(SE.isKnownPredicateAt(ICmpInst::ICMP_SGE, Start, Zero,
+                                       Loop->getTerminator()));
+  });
+}
+
 TEST_F(ScalarEvolutionsTest, MatchURem) {
   LLVMContext C;
   SMDiagnostic Err;
