@@ -1344,6 +1344,21 @@ bool TargetLowering::SimplifyDemandedBits(
     return false;
   }
 
+  // Bypassing a shared operand does not remove it. Avoid giving its single-use
+  // input another use when the bitwise operation also remains: this extends the
+  // input's live range and can require an extra copy for a two-address
+  // operation. Still bypass bitwise operands, which can enable reassociation
+  // and folding.
+  auto SimplifyBitwiseOperand = [&](SDValue V) {
+    SDValue NewV = SimplifyMultipleUseDemandedBits(
+        V, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
+    if (NewV && !V.hasOneUse() && NewV.hasOneUse() &&
+        !ISD::isBitwiseLogicOp(V.getOpcode()) &&
+        llvm::is_contained(V->op_values(), NewV))
+      return SDValue();
+    return NewV;
+  };
+
   KnownBits Known2;
   switch (Op.getOpcode()) {
   case ISD::SCALAR_TO_VECTOR: {
@@ -1676,10 +1691,8 @@ bool TargetLowering::SimplifyDemandedBits(
 
     // Attempt to avoid multi-use ops if we don't need anything from them.
     if (!DemandedBits.isAllOnes() || !DemandedElts.isAllOnes()) {
-      SDValue DemandedOp0 = SimplifyMultipleUseDemandedBits(
-          Op0, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
-      SDValue DemandedOp1 = SimplifyMultipleUseDemandedBits(
-          Op1, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
+      SDValue DemandedOp0 = SimplifyBitwiseOperand(Op0);
+      SDValue DemandedOp1 = SimplifyBitwiseOperand(Op1);
       if (DemandedOp0 || DemandedOp1) {
         Op0 = DemandedOp0 ? DemandedOp0 : Op0;
         Op1 = DemandedOp1 ? DemandedOp1 : Op1;
@@ -1731,10 +1744,8 @@ bool TargetLowering::SimplifyDemandedBits(
 
     // Attempt to avoid multi-use ops if we don't need anything from them.
     if (!DemandedBits.isAllOnes() || !DemandedElts.isAllOnes()) {
-      SDValue DemandedOp0 = SimplifyMultipleUseDemandedBits(
-          Op0, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
-      SDValue DemandedOp1 = SimplifyMultipleUseDemandedBits(
-          Op1, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
+      SDValue DemandedOp0 = SimplifyBitwiseOperand(Op0);
+      SDValue DemandedOp1 = SimplifyBitwiseOperand(Op1);
       if (DemandedOp0 || DemandedOp1) {
         Op0 = DemandedOp0 ? DemandedOp0 : Op0;
         Op1 = DemandedOp1 ? DemandedOp1 : Op1;
@@ -1843,10 +1854,8 @@ bool TargetLowering::SimplifyDemandedBits(
 
     // Attempt to avoid multi-use ops if we don't need anything from them.
     if (!DemandedBits.isAllOnes() || !DemandedElts.isAllOnes()) {
-      SDValue DemandedOp0 = SimplifyMultipleUseDemandedBits(
-          Op0, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
-      SDValue DemandedOp1 = SimplifyMultipleUseDemandedBits(
-          Op1, DemandedBits, DemandedElts, TLO.DAG, Depth + 1);
+      SDValue DemandedOp0 = SimplifyBitwiseOperand(Op0);
+      SDValue DemandedOp1 = SimplifyBitwiseOperand(Op1);
       if (DemandedOp0 || DemandedOp1) {
         Op0 = DemandedOp0 ? DemandedOp0 : Op0;
         Op1 = DemandedOp1 ? DemandedOp1 : Op1;
