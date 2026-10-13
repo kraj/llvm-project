@@ -1605,42 +1605,39 @@ TEST_F(ScalarEvolutionsTest, ImpliedNonNegativeFromULT) {
     const auto ULT = ICmpInst::ICMP_ULT, ULE = ICmpInst::ICMP_ULE;
     const auto UGT = ICmpInst::ICMP_UGT, UGE = ICmpInst::ICMP_UGE;
 
-    // FIXME: SCEV does not derive x >=s 0 from x <u len yet. All the checks
-    // down to the constant bound case should be EXPECT_TRUE.
-
     // x <u len  &&  len >=s 0  -->  x >=s 0.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, Len));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULT, X, Len));
     // The same query, written as x >s -1.
-    EXPECT_FALSE(isImpliedCond(SE, SGT, X, MinusOne, ULT, X, Len));
+    EXPECT_TRUE(isImpliedCond(SE, SGT, X, MinusOne, ULT, X, Len));
     // x <=u len  &&  len >=s 0  -->  x >=s 0.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULE, X, Len));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULE, X, Len));
     // len >u x  &&  len >=s 0  -->  x >=s 0.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, UGT, Len, X));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, UGT, Len, X));
     // len >=u x  &&  len >=s 0  -->  x >=s 0.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, UGE, Len, X));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, UGE, Len, X));
 
     // x >=s 0 implies any weaker lower bound.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, MinusThree, ULT, X, Len));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, MinusThree, ULT, X, Len));
     // The same with a non-constant bound. nonpos may be INT_MIN, so the query
     // cannot be canonicalized to x >s nonpos - 1 and stays SGE.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, NonPos, ULT, X, Len));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, NonPos, ULT, X, Len));
 
     // Mixed widths: an i32 query against an i64 found condition.
     // sext(x) <u zext(len) --> x >=s 0.
     Type *I64 = Type::getInt64Ty(F.getContext());
     const SCEV *XSExt = SE.getSignExtendExpr(X, I64);
     const SCEV *LenZExt = SE.getZeroExtendExpr(Len, I64);
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, XSExt, LenZExt));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULT, XSExt, LenZExt));
 
     // A constant bound is already handled via ranges.
     EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULT, X, Five));
 
-    // x >=s 0 holds whenever len <=u 2^(n-1), but only len >=s 0 is used.
+    // x >=s 0 holds whenever len <=u 2^(n-1).
     // len may be INT_MAX: x <=u len reaches SCEV as x <u len + 1, and
     // len + 1 may be INT_MIN.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULE, X, LenSMax));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULE, X, LenSMax));
     // len may be INT_MIN.
-    EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, LenSMin));
+    EXPECT_TRUE(isImpliedCond(SE, SGE, X, Zero, ULT, X, LenSMin));
 
     // The bound may be INT_MIN + 1, so x may be INT_MIN.
     EXPECT_FALSE(isImpliedCond(SE, SGE, X, Zero, ULT, X, LenBig));
@@ -1731,11 +1728,10 @@ TEST_F(ScalarEvolutionsTest, GuardedStartNonNegative) {
     const SCEV *Zero = SE.getZero(Start->getType());
     // Not provable without the guard.
     EXPECT_FALSE(SE.isKnownNonNegative(Start));
-    // FIXME: both should be EXPECT_TRUE.
-    EXPECT_FALSE(SE.isBasicBlockEntryGuardedByCond(Loop, ICmpInst::ICMP_SGE,
-                                                   Start, Zero));
-    EXPECT_FALSE(SE.isKnownPredicateAt(ICmpInst::ICMP_SGE, Start, Zero,
-                                       Loop->getTerminator()));
+    EXPECT_TRUE(SE.isBasicBlockEntryGuardedByCond(Loop, ICmpInst::ICMP_SGE,
+                                                  Start, Zero));
+    EXPECT_TRUE(SE.isKnownPredicateAt(ICmpInst::ICMP_SGE, Start, Zero,
+                                      Loop->getTerminator()));
   });
 
   // len is an unconstrained argument: start = -2, len = -1 satisfies
