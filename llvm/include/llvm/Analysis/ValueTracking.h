@@ -844,6 +844,12 @@ LLVM_ABI bool isGuaranteedNotToBePoison(const Value *V,
                                         const DominatorTree *DT = nullptr,
                                         unsigned Depth = 0);
 
+/// Returns true if \p V is known to not violate the poison-generating
+/// attributes in \p Attrs.
+LLVM_ABI bool
+isKnownToSatisfyPoisonGeneratingAttributes(const Value *V, AttributeSet Attrs,
+                                           const SimplifyQuery &SQ);
+
 inline bool isGuaranteedNotToBePoison(const Value *V, AssumptionCache *AC,
                                       BasicBlock::iterator CtxI,
                                       const DominatorTree *DT = nullptr,

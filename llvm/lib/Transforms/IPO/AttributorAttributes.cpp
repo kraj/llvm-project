@@ -10477,11 +10477,28 @@ struct AANoUndefReturned final
       return;
 
     // Returning a value that violates a return attribute, e.g., nonnull, is
-    // poison.
+    // poison, so the attributes must hold for all returned values.
     AttributeMask AM = AttributeFuncs::getPoisonGeneratingAttributes();
-    AttributeSet RetAttrs =
-        getAssociatedFunction()->getAttributes().getRetAttrs();
-    if (any_of(RetAttrs, [&](Attribute Attr) { return AM.contains(Attr); }))
+    Function *F = getAssociatedFunction();
+    AttributeSet RetAttrs = F->getAttributes().getRetAttrs();
+    if (none_of(RetAttrs, [&](Attribute Attr) { return AM.contains(Attr); }))
+      return;
+
+    InformationCache &InfoCache = A.getInfoCache();
+    SimplifyQuery Q(
+        F->getDataLayout(), InfoCache.getTargetLibraryInfoForFunction(*F),
+        InfoCache.getAnalysisResultForFunction<DominatorTreeAnalysis>(*F),
+        InfoCache.getAnalysisResultForFunction<AssumptionAnalysis>(*F));
+    auto AttrsHold = [&](Instruction &I) {
+      return isKnownToSatisfyPoisonGeneratingAttributes(
+          cast<ReturnInst>(I).getReturnValue(), RetAttrs,
+          Q.getWithInstruction(&I));
+    };
+    bool UsedAssumedInformation = false;
+    if (!A.checkForAllInstructions(AttrsHold, *this, {Instruction::Ret},
+                                   UsedAssumedInformation,
+                                   /*CheckBBLivenessOnly=*/false,
+                                   /*CheckPotentiallyDead=*/true))
       indicatePessimisticFixpoint();
   }
 

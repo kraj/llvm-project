@@ -8389,6 +8389,27 @@ bool llvm::isGuaranteedNotToBePoison(const Value *V, AssumptionCache *AC,
                                             UndefPoisonKind::PoisonOnly);
 }
 
+bool llvm::isKnownToSatisfyPoisonGeneratingAttributes(const Value *V,
+                                                      AttributeSet Attrs,
+                                                      const SimplifyQuery &SQ) {
+  if (Attrs.hasAttribute(Attribute::NonNull) && !isKnownNonZero(V, SQ))
+    return false;
+
+  if (MaybeAlign Align = Attrs.getAlignment()) {
+    if (V->getPointerAlignment(SQ.DL) < *Align)
+      return false;
+  }
+
+  Attribute Range = Attrs.getAttribute(Attribute::Range);
+  if (Range.isValid() && !Range.getRange().contains(
+                             computeConstantRange(V, /*ForSigned=*/false, SQ)))
+    return false;
+
+  FPClassTest NoFPClass = Attrs.getNoFPClass();
+  return NoFPClass == fcNone ||
+         computeKnownFPClass(V, NoFPClass, SQ).isKnownNever(NoFPClass);
+}
+
 bool llvm::isGuaranteedNotToBeUndef(const Value *V, AssumptionCache *AC,
                                     const Instruction *CtxI,
                                     const DominatorTree *DT, unsigned Depth) {
