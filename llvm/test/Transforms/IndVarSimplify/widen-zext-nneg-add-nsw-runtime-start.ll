@@ -9,8 +9,7 @@ target datalayout = "e-m:e-i64:64-n8:16:32:64-S128"
 ; Where start is known non-negative on loop entry, i - 32 is computed in i64.
 ; Where start may be negative, i - 32 is computed in i32.
 
-; ---- start is known non-negative: i - 32 should be widened ----
-; FIXME: Only @const_start is computed in i64.
+; ---- start is known non-negative: i - 32 is computed in i64 ----
 
 ; Compound guard: start and start - 32 are both <u len, len is an array length.
 define void @runtime_start(ptr %a, i32 %start, ptr %len.p) {
@@ -32,17 +31,15 @@ define void @runtime_start(ptr %a, i32 %start, ptr %len.p) {
 ; CHECK-NEXT:    br label %[[LOOP:.*]]
 ; CHECK:       [[LOOP]]:
 ; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[TMP0]], %[[LOOP_PREHEADER]] ], [ [[INDVARS_IV_NEXT:%.*]], %[[LOOP]] ]
-; CHECK-NEXT:    [[TMP3:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[IDX:%.*]] = add nsw i32 [[TMP3]], -32
-; CHECK-NEXT:    [[TMP1:%.*]] = zext nneg i32 [[IDX]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = add nsw i64 [[INDVARS_IV]], -32
 ; CHECK-NEXT:    [[SRC:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[TMP1]]
 ; CHECK-NEXT:    [[V:%.*]] = load i8, ptr [[SRC]], align 1
 ; CHECK-NEXT:    [[V1:%.*]] = add i8 [[V]], 1
 ; CHECK-NEXT:    [[DST:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[INDVARS_IV]]
 ; CHECK-NEXT:    store i8 [[V1]], ptr [[DST]], align 1
 ; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
-; CHECK-NEXT:    [[TMP2:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp sgt i32 [[TMP2]], 9998
+; CHECK-NEXT:    [[LFTR_WIDEIV:%.*]] = trunc i64 [[INDVARS_IV_NEXT]] to i32
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[LFTR_WIDEIV]], 10000
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label %[[EXIT_LOOPEXIT:.*]], label %[[LOOP]]
 ; CHECK:       [[EXIT_LOOPEXIT]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
@@ -89,20 +86,20 @@ define void @ult_guard_len_range(ptr %a, i32 %start, ptr %len.p) {
 ; CHECK-NEXT:    br i1 [[C]], label %[[LOOP_PREHEADER:.*]], label %[[EXIT:.*]]
 ; CHECK:       [[LOOP_PREHEADER]]:
 ; CHECK-NEXT:    [[TMP0:%.*]] = zext i32 [[START]] to i64
+; CHECK-NEXT:    [[SMAX:%.*]] = call i32 @llvm.smax.i32(i32 [[START]], i32 9999)
+; CHECK-NEXT:    [[TMP1:%.*]] = add nuw i32 [[SMAX]], 1
 ; CHECK-NEXT:    br label %[[LOOP:.*]]
 ; CHECK:       [[LOOP]]:
 ; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[TMP0]], %[[LOOP_PREHEADER]] ], [ [[INDVARS_IV_NEXT:%.*]], %[[LOOP]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[IDX:%.*]] = add nsw i32 [[TMP1]], -32
-; CHECK-NEXT:    [[TMP2:%.*]] = zext nneg i32 [[IDX]] to i64
+; CHECK-NEXT:    [[TMP2:%.*]] = add nsw i64 [[INDVARS_IV]], -32
 ; CHECK-NEXT:    [[SRC:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[TMP2]]
 ; CHECK-NEXT:    [[V:%.*]] = load i8, ptr [[SRC]], align 1
 ; CHECK-NEXT:    [[V1:%.*]] = add i8 [[V]], 1
 ; CHECK-NEXT:    [[DST:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[INDVARS_IV]]
 ; CHECK-NEXT:    store i8 [[V1]], ptr [[DST]], align 1
 ; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
-; CHECK-NEXT:    [[TMP3:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp sgt i32 [[TMP3]], 9998
+; CHECK-NEXT:    [[LFTR_WIDEIV:%.*]] = trunc i64 [[INDVARS_IV_NEXT]] to i32
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[LFTR_WIDEIV]], [[TMP1]]
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label %[[EXIT_LOOPEXIT:.*]], label %[[LOOP]]
 ; CHECK:       [[EXIT_LOOPEXIT]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
@@ -142,20 +139,20 @@ define void @ule_guard_len_range(ptr %a, i32 %start, ptr %len.p) {
 ; CHECK-NEXT:    br i1 [[C]], label %[[LOOP_PREHEADER:.*]], label %[[EXIT:.*]]
 ; CHECK:       [[LOOP_PREHEADER]]:
 ; CHECK-NEXT:    [[TMP0:%.*]] = zext i32 [[START]] to i64
+; CHECK-NEXT:    [[SMAX:%.*]] = call i32 @llvm.smax.i32(i32 [[START]], i32 9999)
+; CHECK-NEXT:    [[TMP1:%.*]] = add nuw i32 [[SMAX]], 1
 ; CHECK-NEXT:    br label %[[LOOP:.*]]
 ; CHECK:       [[LOOP]]:
 ; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[TMP0]], %[[LOOP_PREHEADER]] ], [ [[INDVARS_IV_NEXT:%.*]], %[[LOOP]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[IDX:%.*]] = add nsw i32 [[TMP1]], -32
-; CHECK-NEXT:    [[TMP2:%.*]] = zext nneg i32 [[IDX]] to i64
+; CHECK-NEXT:    [[TMP2:%.*]] = add nsw i64 [[INDVARS_IV]], -32
 ; CHECK-NEXT:    [[SRC:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[TMP2]]
 ; CHECK-NEXT:    [[V:%.*]] = load i8, ptr [[SRC]], align 1
 ; CHECK-NEXT:    [[V1:%.*]] = add i8 [[V]], 1
 ; CHECK-NEXT:    [[DST:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[INDVARS_IV]]
 ; CHECK-NEXT:    store i8 [[V1]], ptr [[DST]], align 1
 ; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
-; CHECK-NEXT:    [[TMP3:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp sgt i32 [[TMP3]], 9998
+; CHECK-NEXT:    [[LFTR_WIDEIV:%.*]] = trunc i64 [[INDVARS_IV_NEXT]] to i32
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[LFTR_WIDEIV]], [[TMP1]]
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label %[[EXIT_LOOPEXIT:.*]], label %[[LOOP]]
 ; CHECK:       [[EXIT_LOOPEXIT]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
@@ -195,20 +192,20 @@ define void @ugt_guard_len_range(ptr %a, i32 %start, ptr %len.p) {
 ; CHECK-NEXT:    br i1 [[C]], label %[[LOOP_PREHEADER:.*]], label %[[EXIT:.*]]
 ; CHECK:       [[LOOP_PREHEADER]]:
 ; CHECK-NEXT:    [[TMP0:%.*]] = zext i32 [[START]] to i64
+; CHECK-NEXT:    [[SMAX:%.*]] = call i32 @llvm.smax.i32(i32 [[START]], i32 9999)
+; CHECK-NEXT:    [[TMP1:%.*]] = add nuw i32 [[SMAX]], 1
 ; CHECK-NEXT:    br label %[[LOOP:.*]]
 ; CHECK:       [[LOOP]]:
 ; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[TMP0]], %[[LOOP_PREHEADER]] ], [ [[INDVARS_IV_NEXT:%.*]], %[[LOOP]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[IDX:%.*]] = add nsw i32 [[TMP1]], -32
-; CHECK-NEXT:    [[TMP2:%.*]] = zext nneg i32 [[IDX]] to i64
+; CHECK-NEXT:    [[TMP2:%.*]] = add nsw i64 [[INDVARS_IV]], -32
 ; CHECK-NEXT:    [[SRC:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[TMP2]]
 ; CHECK-NEXT:    [[V:%.*]] = load i8, ptr [[SRC]], align 1
 ; CHECK-NEXT:    [[V1:%.*]] = add i8 [[V]], 1
 ; CHECK-NEXT:    [[DST:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[INDVARS_IV]]
 ; CHECK-NEXT:    store i8 [[V1]], ptr [[DST]], align 1
 ; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
-; CHECK-NEXT:    [[TMP3:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp sgt i32 [[TMP3]], 9998
+; CHECK-NEXT:    [[LFTR_WIDEIV:%.*]] = trunc i64 [[INDVARS_IV_NEXT]] to i32
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[LFTR_WIDEIV]], [[TMP1]]
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label %[[EXIT_LOOPEXIT:.*]], label %[[LOOP]]
 ; CHECK:       [[EXIT_LOOPEXIT]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
@@ -247,20 +244,20 @@ define void @sge_guard(ptr %a, i32 %start) {
 ; CHECK-NEXT:    br i1 [[C]], label %[[LOOP_PREHEADER:.*]], label %[[EXIT:.*]]
 ; CHECK:       [[LOOP_PREHEADER]]:
 ; CHECK-NEXT:    [[TMP0:%.*]] = zext i32 [[START]] to i64
+; CHECK-NEXT:    [[SMAX:%.*]] = call i32 @llvm.smax.i32(i32 [[START]], i32 9999)
+; CHECK-NEXT:    [[TMP1:%.*]] = add nuw i32 [[SMAX]], 1
 ; CHECK-NEXT:    br label %[[LOOP:.*]]
 ; CHECK:       [[LOOP]]:
 ; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[TMP0]], %[[LOOP_PREHEADER]] ], [ [[INDVARS_IV_NEXT:%.*]], %[[LOOP]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[IDX:%.*]] = add nsw i32 [[TMP1]], -32
-; CHECK-NEXT:    [[TMP2:%.*]] = zext nneg i32 [[IDX]] to i64
+; CHECK-NEXT:    [[TMP2:%.*]] = add nsw i64 [[INDVARS_IV]], -32
 ; CHECK-NEXT:    [[SRC:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[TMP2]]
 ; CHECK-NEXT:    [[V:%.*]] = load i8, ptr [[SRC]], align 1
 ; CHECK-NEXT:    [[V1:%.*]] = add i8 [[V]], 1
 ; CHECK-NEXT:    [[DST:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[INDVARS_IV]]
 ; CHECK-NEXT:    store i8 [[V1]], ptr [[DST]], align 1
 ; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
-; CHECK-NEXT:    [[TMP3:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp sgt i32 [[TMP3]], 9998
+; CHECK-NEXT:    [[LFTR_WIDEIV:%.*]] = trunc i64 [[INDVARS_IV_NEXT]] to i32
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[LFTR_WIDEIV]], [[TMP1]]
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label %[[EXIT_LOOPEXIT:.*]], label %[[LOOP]]
 ; CHECK:       [[EXIT_LOOPEXIT]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
@@ -300,20 +297,20 @@ define void @ult_guard_on_false_edge(ptr %a, i32 %start, ptr %len.p) {
 ; CHECK-NEXT:    br i1 [[C]], label %[[EXIT:.*]], label %[[LOOP_PREHEADER:.*]]
 ; CHECK:       [[LOOP_PREHEADER]]:
 ; CHECK-NEXT:    [[TMP0:%.*]] = zext i32 [[START]] to i64
+; CHECK-NEXT:    [[SMAX:%.*]] = call i32 @llvm.smax.i32(i32 [[START]], i32 9999)
+; CHECK-NEXT:    [[TMP1:%.*]] = add nuw i32 [[SMAX]], 1
 ; CHECK-NEXT:    br label %[[LOOP:.*]]
 ; CHECK:       [[LOOP]]:
 ; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[TMP0]], %[[LOOP_PREHEADER]] ], [ [[INDVARS_IV_NEXT:%.*]], %[[LOOP]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[IDX:%.*]] = add nsw i32 [[TMP1]], -32
-; CHECK-NEXT:    [[TMP2:%.*]] = zext nneg i32 [[IDX]] to i64
+; CHECK-NEXT:    [[TMP2:%.*]] = add nsw i64 [[INDVARS_IV]], -32
 ; CHECK-NEXT:    [[SRC:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[TMP2]]
 ; CHECK-NEXT:    [[V:%.*]] = load i8, ptr [[SRC]], align 1
 ; CHECK-NEXT:    [[V1:%.*]] = add i8 [[V]], 1
 ; CHECK-NEXT:    [[DST:%.*]] = getelementptr inbounds nuw i8, ptr [[A]], i64 [[INDVARS_IV]]
 ; CHECK-NEXT:    store i8 [[V1]], ptr [[DST]], align 1
 ; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
-; CHECK-NEXT:    [[TMP3:%.*]] = trunc nuw i64 [[INDVARS_IV]] to i32
-; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp sgt i32 [[TMP3]], 9998
+; CHECK-NEXT:    [[LFTR_WIDEIV:%.*]] = trunc i64 [[INDVARS_IV_NEXT]] to i32
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[LFTR_WIDEIV]], [[TMP1]]
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label %[[EXIT_LOOPEXIT:.*]], label %[[LOOP]]
 ; CHECK:       [[EXIT_LOOPEXIT]]:
 ; CHECK-NEXT:    br label %[[EXIT]]

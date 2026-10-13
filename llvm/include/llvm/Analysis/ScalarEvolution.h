@@ -2459,7 +2459,9 @@ private:
   /// Test if the condition described by Pred, LHS, RHS is known to be true on
   /// every iteration of \p L, by checking it on entry to \p L and on its
   /// backedge. Unlike the public overload, LHS and RHS may be any expressions
-  /// with recurrences of \p L and values available on entry to \p L.
+  /// with recurrences of \p L and values available on entry to \p L. If one
+  /// side is a recurrence of \p L, the other is invariant in \p L and the
+  /// predicate is monotonically increasing, checking it on entry is enough.
   bool isKnownOnEveryIteration(CmpPredicate Pred, const SCEV *LHS,
                                const SCEV *RHS, const Loop *L);
 
