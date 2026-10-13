@@ -5120,18 +5120,30 @@ LogicalResult cir::TypeInfoAttr::verify(
 void cir::TryOp::getSuccessorRegions(
     mlir::RegionBranchPoint point,
     llvm::SmallVectorImpl<mlir::RegionSuccessor> &regions) {
-  // The `try` and the `catchers` region branch back to the parent operation.
-  if (!point.isParent()) {
-    regions.emplace_back(getOperation());
+  // Execution always starts in the try region.
+  if (point.isParent()) {
+    regions.emplace_back(&getTryRegion());
     return;
   }
 
-  regions.push_back(mlir::RegionSuccessor(&getTryRegion()));
-
+  // A cir.resume ending the try region unwinds into the handlers, and the
+  // exception type decides which one runs.
+  //
   // TODO(CIR): If we know a target function never throws a specific type, we
   // can remove the catch handler.
-  for (mlir::Region &handlerRegion : this->getHandlerRegions())
-    regions.push_back(mlir::RegionSuccessor(&handlerRegion));
+  mlir::Operation *term = point.getTerminatorPredecessorOrNull();
+  assert(term && "expected a terminator predecessor");
+  if (term->getParentRegion() == &getTryRegion() && isa<cir::ResumeOp>(term) &&
+      !getHandlerRegions().empty()) {
+    for (mlir::Region &handlerRegion : getHandlerRegions())
+      regions.emplace_back(&handlerRegion);
+    return;
+  }
+
+  // Every other exit leaves the operation. An unwind out of the middle of the
+  // try region is not a RegionBranchPoint, so a handler reached only that way
+  // has no predecessor here.
+  regions.emplace_back(getOperation());
 }
 
 /// Verify that each cir.init_catch_param in \p handlerRegion, outside any

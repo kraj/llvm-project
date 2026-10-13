@@ -727,15 +727,129 @@ TEST_F(CIRControlFlowTest, TryOpWithCatchAll) {
   MutableArrayRef<Region> handlerRegions = tryOp.getHandlerRegions();
   ASSERT_EQ(handlerRegions.size(), 1u);
 
-  expectSuccessors(tryOp, RegionBranchPoint::parent(),
-                   {&tryRegion, &handlerRegions[0]});
+  // The body's cir.yield is a normal exit, so it skips the handler.
+  expectSuccessors(tryOp, RegionBranchPoint::parent(), {&tryRegion});
   expectTerminatorSuccessors(tryRegion, {nullptr});
   expectTerminatorSuccessors(handlerRegions[0], {nullptr});
 
   EXPECT_FALSE(asRegionBranch(tryOp).hasLoop());
 
-  // TODO: TryOp::getSuccessorInputs returns empty for handler regions that
-  // have block arguments, so verifyControlFlowInterfaceConsistency fails.
+  // Only a throw from the middle of the body reaches the handler, and that is
+  // not a branch point, so the handler region has no predecessor.
+  verifyControlFlowInterfaceConsistency(tryOp, /*requireAllReachable=*/false);
+}
+
+TEST_F(CIRControlFlowTest, TryOpResumeInBody) {
+  // A cir.resume left behind in the body by an already-flattened inner
+  // cleanup scope unwinds into the handlers.
+  OwningOpRef<ModuleOp> module = parse(R"CIR(
+    !u8i = !cir.int<u, 8>
+    !void = !cir.void
+    cir.func @f() {
+      cir.scope {
+        cir.try {
+          %tok = cir.eh.initiate cleanup : !cir.eh_token
+          cir.resume %tok : !cir.eh_token
+        } catch [type #cir.global_view<@_ZTIi> : !cir.ptr<!u8i>]
+            (%eh : !cir.eh_token) {
+          %ct, %exn = cir.begin_catch %eh
+            : !cir.eh_token -> (!cir.catch_token, !cir.ptr<!void>)
+          cir.end_catch %ct : !cir.catch_token
+          cir.yield
+        } unwind (%eh : !cir.eh_token) {
+          cir.resume %eh : !cir.eh_token
+        }
+      }
+      cir.return
+    }
+  )CIR");
+  auto tryOp = findFirstOp<cir::TryOp>(*module);
+
+  Region &tryRegion = tryOp.getTryRegion();
+  MutableArrayRef<Region> handlerRegions = tryOp.getHandlerRegions();
+  ASSERT_EQ(handlerRegions.size(), 2u);
+
+  expectSuccessors(tryOp, RegionBranchPoint::parent(), {&tryRegion});
+  expectTerminatorSuccessors(tryRegion,
+                             {&handlerRegions[0], &handlerRegions[1]});
+  // A cir.resume in the unwind handler leaves the op like any handler exit.
+  expectTerminatorSuccessors(handlerRegions[0], {nullptr});
+  expectTerminatorSuccessors(handlerRegions[1], {nullptr});
+
+  EXPECT_FALSE(asRegionBranch(tryOp).hasLoop());
+
+  verifyControlFlowInterfaceConsistency(tryOp);
+}
+
+TEST_F(CIRControlFlowTest, TryOpMultiBlockBody) {
+  // One block leaves the try body normally and another unwinds, so only the
+  // unwinding exit reaches the handler.
+  OwningOpRef<ModuleOp> module = parse(R"CIR(
+    !void = !cir.void
+    cir.func @f() {
+      cir.scope {
+        cir.try {
+          %cond = cir.const #cir.bool<true> : !cir.bool
+          cir.brcond %cond ^bb_normal, ^bb_unwind
+        ^bb_normal:
+          cir.yield
+        ^bb_unwind:
+          %tok = cir.eh.initiate cleanup : !cir.eh_token
+          cir.resume %tok : !cir.eh_token
+        } catch all (%eh : !cir.eh_token) {
+          %ct, %exn = cir.begin_catch %eh
+            : !cir.eh_token -> (!cir.catch_token, !cir.ptr<!void>)
+          cir.end_catch %ct : !cir.catch_token
+          cir.yield
+        }
+      }
+      cir.return
+    }
+  )CIR");
+  auto tryOp = findFirstOp<cir::TryOp>(*module);
+  Region &tryRegion = tryOp.getTryRegion();
+  Region &handler = tryOp.getHandlerRegions()[0];
+
+  // The cir.brcond block is not a branch point, so only the two exiting
+  // blocks show up here.
+  SmallVector<RegionBranchTerminatorOpInterface> bodyTerms;
+  for (RegionBranchPoint point :
+       asRegionBranch(tryOp).getAllRegionBranchPoints())
+    if (!point.isParent() &&
+        point.getTerminatorPredecessorOrNull()->getParentRegion() == &tryRegion)
+      bodyTerms.push_back(point.getTerminatorPredecessorOrNull());
+  ASSERT_EQ(bodyTerms.size(), 2u);
+  EXPECT_TRUE(isa<cir::YieldOp>(*bodyTerms[0]));
+  EXPECT_TRUE(isa<cir::ResumeOp>(*bodyTerms[1]));
+
+  expectSuccessors(tryOp, RegionBranchPoint(bodyTerms[0]), {nullptr});
+  expectSuccessors(tryOp, RegionBranchPoint(bodyTerms[1]), {&handler});
+  expectTerminatorSuccessors(handler, {nullptr});
+
+  EXPECT_FALSE(asRegionBranch(tryOp).hasLoop());
+
+  verifyControlFlowInterfaceConsistency(tryOp);
+}
+
+TEST_F(CIRControlFlowTest, TryOpResumeInBodyWithoutHandlers) {
+  OwningOpRef<ModuleOp> module = parse(R"CIR(
+    cir.func @f() {
+      cir.scope {
+        cir.try {
+          %tok = cir.eh.initiate cleanup : !cir.eh_token
+          cir.resume %tok : !cir.eh_token
+        }
+      }
+      cir.return
+    }
+  )CIR");
+  auto tryOp = findFirstOp<cir::TryOp>(*module);
+
+  // With no handler to unwind into, the cir.resume leaves the op.
+  expectSuccessors(tryOp, RegionBranchPoint::parent(), {&tryOp.getTryRegion()});
+  expectTerminatorSuccessors(tryOp.getTryRegion(), {nullptr});
+
+  verifyControlFlowInterfaceConsistency(tryOp);
 }
 
 TEST_F(CIRControlFlowTest, CoroutineOp) {
