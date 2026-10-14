@@ -3090,6 +3090,35 @@ bool AMDGPUInstructionSelector::isSGPR(Register Reg) const {
   return RBI.getRegBank(Reg, *MRI, TRI)->getID() == AMDGPU::SGPRRegBankID;
 }
 
+bool AMDGPUInstructionSelector::isOperandBankCompatibleWithRC(
+    Register Reg, const TargetRegisterClass &RC, const MachineRegisterInfo &MRI,
+    const TargetRegisterInfo & /*TRI*/,
+    const RegisterBankInfo & /*RBI*/) const {
+  // SGPR operands cannot be satisfied by a VGPR or AGPR without a copy that
+  // SIInstrInfo::copyPhysReg rejects. Fail the pattern so a later one, whose
+  // register class accepts this bank, can match. Same-bank class copies and
+  // SGPR-to-VGPR copies are unchanged.
+  if (!SIRegisterInfo::isSGPRClass(&RC))
+    return true;
+
+  const RegClassOrRegBank &RCOrRB = MRI.getRegClassOrRegBank(Reg);
+  if (!RCOrRB)
+    return true;
+
+  if (const auto *RB = dyn_cast<const RegisterBank *>(RCOrRB)) {
+    unsigned ID = RB->getID();
+    return ID == AMDGPU::SGPRRegBankID || ID == AMDGPU::VCCRegBankID;
+  }
+
+  if (const auto *ExistingRC = dyn_cast<const TargetRegisterClass *>(RCOrRB)) {
+    if (SIRegisterInfo::isSGPRClass(ExistingRC))
+      return true;
+    // A class with no SGPR cannot be constrained to an SGPR operand.
+    return SIRegisterInfo::hasSGPRs(ExistingRC);
+  }
+  return true;
+}
+
 bool AMDGPUInstructionSelector::isInstrUniform(const MachineInstr &MI) const {
   if (!MI.hasOneMemOperand())
     return false;

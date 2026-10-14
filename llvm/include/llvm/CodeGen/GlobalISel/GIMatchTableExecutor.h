@@ -48,8 +48,10 @@ class MachineInstr;
 class MachineIRBuilder;
 class MachineInstrBuilder;
 class MachineFunction;
+class GISelChangeObserver;
 class MachineOperand;
 class MachineRegisterInfo;
+class MCRegisterClass;
 class RegisterBankInfo;
 class TargetInstrInfo;
 class TargetRegisterInfo;
@@ -750,6 +752,54 @@ protected:
   }
 
   virtual uint32_t getRootFlagsToDrop() const { return 0; }
+
+  /// Return false when constraining \p Reg to \p RC would insert a cross-bank
+  /// copy that this target cannot lower (AMDGPU: VGPR/AGPR into an SGPR class).
+  /// The default accepts every constraint and lets constrainOperandRegClass
+  /// insert same-bank class copies.
+  virtual bool isOperandBankCompatibleWithRC(
+      Register Reg, const MCRegisterClass &RC, const MachineRegisterInfo &MRI,
+      const TargetRegisterInfo &TRI, const RegisterBankInfo &RBI) const {
+    return true;
+  }
+
+  /// Opcode, operand count, and flags of an instruction mutated by the current
+  /// rule, saved so a rejected constraint can restore it.
+  struct MutationSnapshot {
+    MachineInstr *MI = nullptr;
+    unsigned Opcode = 0;
+    unsigned NumOperands = 0;
+    uint32_t Flags = 0;
+  };
+
+  /// Remember \p MI the first time this rule mutates it.
+  LLVM_ABI static void
+  noteMutation(SmallVectorImpl<MutationSnapshot> &Mutations, MachineInstr *MI);
+
+  /// Remember COPYs that a successful operand constraint inserted around \p I.
+  LLVM_ABI static void
+  noteInsertedConstraintCopy(SmallVectorImpl<MachineInstr *> &ConstrainedCopies,
+                             MachineInstr &I, MachineInstr *OldPrev,
+                             MachineInstr *OldNext);
+
+  /// Undo this rule's edits so the next pattern matches the original root.
+  LLVM_ABI static void
+  rollbackFailedRule(SmallVectorImpl<MachineInstr *> &ConstrainedCopies,
+                     NewMIVector &OutMIs, ArrayRef<MachineInstr *> MatchedMIs,
+                     SmallVectorImpl<MutationSnapshot> &Mutations,
+                     GISelChangeObserver *Observer, const TargetInstrInfo &TII);
+
+  /// Register class \p MO will be constrained to, after the same narrowing
+  /// constrainSelectedInstRegOperands applies.
+  LLVM_ABI static const TargetRegisterClass *getAllocatableOperandRC(
+      const MachineOperand &MO, const TargetRegisterClass *OpRC,
+      const MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI);
+
+  /// Whether constraining \p MO to \p OpRC is legal for \p Exec.
+  LLVM_ABI static bool isConstraintBankCompatible(
+      const GIMatchTableExecutor &Exec, const MachineOperand &MO,
+      const TargetRegisterClass *OpRC, const MachineRegisterInfo &MRI,
+      const TargetRegisterInfo &TRI, const RegisterBankInfo &RBI);
 
   LLVM_ABI bool isOperandImmEqual(const MachineOperand &MO, int64_t Value,
                                   const MachineRegisterInfo &MRI,

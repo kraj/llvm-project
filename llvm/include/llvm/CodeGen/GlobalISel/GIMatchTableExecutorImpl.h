@@ -15,6 +15,7 @@
 #ifndef LLVM_CODEGEN_GLOBALISEL_GIMATCHTABLEEXECUTORIMPL_H
 #define LLVM_CODEGEN_GLOBALISEL_GIMATCHTABLEEXECUTORIMPL_H
 
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/GlobalISel/GIMatchTableExecutor.h"
 #include "llvm/CodeGen/GlobalISel/GISelChangeObserver.h"
@@ -39,6 +40,112 @@
 
 namespace llvm {
 
+/// Remember \p MI the first time this rule mutates it.
+inline void
+GIMatchTableExecutor::noteMutation(SmallVectorImpl<MutationSnapshot> &Mutations,
+                                   MachineInstr *MI) {
+  for (const MutationSnapshot &S : Mutations)
+    if (S.MI == MI)
+      return;
+  Mutations.push_back(
+      {MI, MI->getOpcode(), MI->getNumOperands(), MI->getFlags()});
+}
+
+/// Remember every COPY that a successful operand constraint inserted around
+/// \p I.
+///
+/// The caller snapshots \p OldPrev and \p OldNext before calling
+/// constrainOperandRegClass or constrainSelectedInstRegOperands. That helper
+/// inserts a COPY immediately before \p I for a use and immediately after \p I
+/// for a definition, so every instruction added by the call lies strictly
+/// between those neighbors. Both walks stop on the saved neighbor and record
+/// only copies. An in-place class change inserts nothing, and the walks do
+/// not run.
+inline void GIMatchTableExecutor::noteInsertedConstraintCopy(
+    SmallVectorImpl<MachineInstr *> &ConstrainedCopies, MachineInstr &I,
+    MachineInstr *OldPrev, MachineInstr *OldNext) {
+  for (MachineInstr *Prev = I.getPrevNode(); Prev && Prev != OldPrev;
+       Prev = Prev->getPrevNode())
+    if (Prev->isCopy())
+      ConstrainedCopies.push_back(Prev);
+  for (MachineInstr *Next = I.getNextNode(); Next && Next != OldNext;
+       Next = Next->getNextNode())
+    if (Next->isCopy())
+      ConstrainedCopies.push_back(Next);
+}
+
+/// Erase this rule's edits so the next pattern matches the original root.
+///
+/// Copies are erased first. Built instructions are erased next, skipping any
+/// entry that is one of the originally matched instructions in \p MatchedMIs
+/// or that has already been removed. Mutated instructions are then restored
+/// from the snapshot taken before setDesc. Operands added by the mutation are
+/// removed, then the opcode and flags are put back. The observer is notified
+/// around each restore. An instruction that no longer has a parent is skipped.
+inline void GIMatchTableExecutor::rollbackFailedRule(
+    SmallVectorImpl<MachineInstr *> &ConstrainedCopies, NewMIVector &OutMIs,
+    ArrayRef<MachineInstr *> MatchedMIs,
+    SmallVectorImpl<MutationSnapshot> &Mutations, GISelChangeObserver *Observer,
+    const TargetInstrInfo &TII) {
+  for (MachineInstr *Copy : llvm::reverse(ConstrainedCopies))
+    if (Copy->getParent())
+      Copy->eraseFromParent();
+  ConstrainedCopies.clear();
+
+  for (MachineInstrBuilder &MIB : llvm::reverse(OutMIs)) {
+    MachineInstr *MI = MIB.getInstr();
+    if (!MI || !MI->getParent())
+      continue;
+    if (llvm::is_contained(MatchedMIs, MI))
+      continue;
+    MI->eraseFromParent();
+  }
+  OutMIs.clear();
+
+  for (const MutationSnapshot &S : llvm::reverse(Mutations)) {
+    if (!S.MI->getParent())
+      continue;
+    if (Observer)
+      Observer->changingInstr(*S.MI);
+    while (S.MI->getNumOperands() > S.NumOperands)
+      S.MI->removeOperand(S.MI->getNumOperands() - 1);
+    S.MI->setDesc(TII.get(S.Opcode));
+    S.MI->setFlags(S.Flags);
+    if (Observer)
+      Observer->changedInstr(*S.MI);
+  }
+  Mutations.clear();
+}
+
+/// Return the allocatable register class \p MO will be constrained to or null
+/// when there is nothing to reject
+inline const TargetRegisterClass *GIMatchTableExecutor::getAllocatableOperandRC(
+    const MachineOperand &MO, const TargetRegisterClass *OpRC,
+    const MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI) {
+  if (!OpRC || !MO.isReg())
+    return nullptr;
+  Register Reg = MO.getReg();
+  if (!Reg || Reg.isPhysical())
+    return nullptr;
+  if (const auto *SubRC = TRI.getCommonSubClass(
+          OpRC, TRI.getConstrainedRegClassForReg(Reg, MRI)))
+    OpRC = SubRC;
+  return TRI.getAllocatableClass(OpRC);
+}
+
+/// Return true when constraining \p MO to \p OpRC is legal for \p Exec.
+inline bool GIMatchTableExecutor::isConstraintBankCompatible(
+    const GIMatchTableExecutor &Exec, const MachineOperand &MO,
+    const TargetRegisterClass *OpRC, const MachineRegisterInfo &MRI,
+    const TargetRegisterInfo &TRI, const RegisterBankInfo &RBI) {
+  const TargetRegisterClass *Narrow =
+      getAllocatableOperandRC(MO, OpRC, MRI, TRI);
+  if (!Narrow)
+    return true;
+  return Exec.isOperandBankCompatibleWithRC(MO.getReg(), *Narrow, MRI, TRI,
+                                            RBI);
+}
+
 template <class TgtExecutor, class PredicateBitset, class ComplexMatcherMemFn,
           class CustomRendererFn>
 bool GIMatchTableExecutor::executeMatchTable(
@@ -54,6 +161,8 @@ bool GIMatchTableExecutor::executeMatchTable(
   uint64_t CurrentIdx = 0;
   SmallVector<uint64_t, 8> OnFailResumeAt;
   NewMIVector OutMIs;
+  SmallVector<MutationSnapshot, 2> Mutations;
+  SmallVector<MachineInstr *, 4> ConstrainedCopies;
 
   GISelChangeObserver *Observer = Builder.getObserver();
   // Bypass the flag check on the instruction, and only look at the MCInstrDesc.
@@ -1096,6 +1205,7 @@ bool GIMatchTableExecutor::executeMatchTable(
       initializeOutMIFlagState(NewInsnID + 1);
 
       MachineInstr *OldMI = State.MIs[OldInsnID];
+      noteMutation(Mutations, OldMI);
       if (Observer)
         Observer->changingInstr(*OldMI);
       OutMIs[NewInsnID] = MachineInstrBuilder(*OldMI->getMF(), OldMI);
@@ -1512,7 +1622,22 @@ bool GIMatchTableExecutor::executeMatchTable(
       MachineRegisterInfo &MRI = MF.getRegInfo();
       const TargetRegisterClass &RC = *TRI.getRegClass(RCEnum);
       MachineOperand &MO = I.getOperand(OpIdx);
+      if (!isConstraintBankCompatible(*this, MO, &RC, MRI, TRI, RBI)) {
+        DEBUG_WITH_TYPE(TgtExecutor::getName(),
+                        dbgs()
+                            << CurrentIdx
+                            << ": GIR_ConstrainOperandRC rejected cross-bank "
+                               "constraint\n");
+        rollbackFailedRule(ConstrainedCopies, OutMIs, State.MIs, Mutations,
+                           Observer, TII);
+        if (handleReject() == RejectAndGiveUp)
+          return false;
+        break;
+      }
+      MachineInstr *OldPrev = I.getPrevNode();
+      MachineInstr *OldNext = I.getNextNode();
       constrainOperandRegClass(MF, TRI, MRI, TII, RBI, I, RC, MO);
+      noteInsertedConstraintCopy(ConstrainedCopies, I, OldPrev, OldNext);
       DEBUG_WITH_TYPE(TgtExecutor::getName(),
                       dbgs() << CurrentIdx << ": GIR_ConstrainOperandRC(OutMIs["
                              << InsnID << "], " << OpIdx << ", " << RCEnum
@@ -1526,8 +1651,35 @@ bool GIMatchTableExecutor::executeMatchTable(
                             ? 0
                             : readULEB();
       assert(OutMIs[InsnID] && "Attempted to add to undefined instruction");
-      constrainSelectedInstRegOperands(*OutMIs[InsnID].getInstr(), TII, TRI,
-                                       RBI);
+      MachineInstr &I = *OutMIs[InsnID].getInstr();
+      bool BanksOK = true;
+      for (unsigned OpI = 0, OpE = I.getNumExplicitOperands(); OpI != OpE;
+           ++OpI) {
+        MachineOperand &MO = I.getOperand(OpI);
+        if (!MO.isReg())
+          continue;
+        if (!isConstraintBankCompatible(
+                *this, MO, TII.getRegClass(I.getDesc(), OpI), MRI, TRI, RBI)) {
+          BanksOK = false;
+          break;
+        }
+      }
+      if (!BanksOK) {
+        DEBUG_WITH_TYPE(
+            TgtExecutor::getName(),
+            dbgs() << CurrentIdx
+                   << ": GIR_ConstrainSelectedInstOperands rejected cross-bank "
+                      "constraint\n");
+        rollbackFailedRule(ConstrainedCopies, OutMIs, State.MIs, Mutations,
+                           Observer, TII);
+        if (handleReject() == RejectAndGiveUp)
+          return false;
+        break;
+      }
+      MachineInstr *OldPrev = I.getPrevNode();
+      MachineInstr *OldNext = I.getNextNode();
+      constrainSelectedInstRegOperands(I, TII, TRI, RBI);
+      noteInsertedConstraintCopy(ConstrainedCopies, I, OldPrev, OldNext);
       DEBUG_WITH_TYPE(TgtExecutor::getName(),
                       dbgs() << CurrentIdx
                              << ": GIR_ConstrainSelectedInstOperands(OutMIs["

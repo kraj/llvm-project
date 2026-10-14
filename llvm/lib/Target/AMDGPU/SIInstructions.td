@@ -10,7 +10,10 @@
 // that are not yet supported remain commented out.
 //===----------------------------------------------------------------------===//
 
-class GCNPat<dag pattern, dag result> : Pat<pattern, result>, PredicateControl;
+class GCNPat<dag pattern, dag result> : Pat<pattern, result>, PredicateControl,
+                              GISelFlags {
+  let GIIgnoreCopies = 1;
+}
 
 class UniformSextInreg<ValueType VT> : PatFrag<
   (ops node:$src),
