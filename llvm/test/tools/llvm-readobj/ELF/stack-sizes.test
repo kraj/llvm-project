@@ -1085,8 +1085,8 @@ Symbols:
     Type:    STT_FUNC
     Binding: STB_GLOBAL
 
-## Check that on ARM the Thumb bit is cleared from function addresses, as in
-## --call-graph-info. This lets Thumb functions be found.
+## Check that on ARM the Thumb bit is cleared from function addresses, so that
+## Thumb functions are found.
 
 # RUN: yaml2obj --docnum=15 %s -o %t20
 # RUN: llvm-readelf --stack-sizes %t20 2>&1 | \
@@ -1133,8 +1133,8 @@ Symbols:
 
 ## Check that on ARM the Thumb bit is also cleared from the address that a
 ## relocation resolves to, so that Thumb functions are found in relocatable
-## object files too. The addend of a SHT_REL relocation is the value stored in
-## the address field, as in --call-graph-info.
+## object files too. The Addend of a SHT_REL relocation is the value stored in
+## the address field.
 
 # RUN: yaml2obj --docnum=16 %s -o %t21
 # RUN: llvm-readelf --stack-sizes %t21 2>&1 | \
