@@ -199,8 +199,10 @@ Display contents of the stackmap section.
 
 :::{option} --stack-sizes
 Display the contents of the stack sizes section(s), i.e. pairs of function
-names and the size of their stack frames. Currently only implemented for GNU
-style output.
+names and the size of their stack frames. In `LLVM` and `JSON` output (see
+{option}`--elf-output-style`), each entry also identifies its function as
+{option}`--call-graph-info` does: by its address in a linked file, or by the
+relocation that applies to the entry in a relocatable file.
 :::
 
 :::{option} --string-dump=<section[,section,...]>, -p
