@@ -230,13 +230,11 @@ template <class ELFT> struct FunctionCallGraphInfo {
 };
 
 // The relocation that applies to the address field of a .stack_sizes entry in
-// a relocatable file.
+// a relocatable file. Sym is null if the symbol could not be read.
 template <class ELFT> struct StackSizeRelocation {
   const Relocation<ELFT> &R;
-  // The symbol of the relocation, if it could be read, and its symbol table.
   const typename ELFT::Sym *Sym;
   const typename ELFT::Shdr &SymTab;
-  // The value stored in the address field.
   uint64_t FieldValue;
 };
 
@@ -380,9 +378,10 @@ protected:
                       unsigned Ndx, const Elf_Shdr *SymTab,
                       const Elf_Shdr *FunctionSec, const Elf_Shdr &StackSizeSec,
                       const RelocationResolver &Resolver, DataExtractor Data);
-  // Prints a stack size entry. Address is the function's address: the value
-  // stored in the entry in a linked file, or the value that its relocation
-  // resolves to in a relocatable file. Reloc is that relocation, if any.
+  /// Prints a stack size entry for the functions in \p FuncNames. \p Address
+  /// is the function's address: the value stored in the entry in a linked
+  /// file, or the value that its relocation resolves to in a relocatable file.
+  /// \p Reloc is that relocation, if any.
   virtual void printStackSizeEntry(uint64_t Size,
                                    ArrayRef<std::string> FuncNames,
                                    uint64_t Address,
@@ -7261,8 +7260,7 @@ bool ELFDumper<ELFT>::printFunctionStackSize(
     uint64_t SymValue, std::optional<const Elf_Shdr *> FunctionSec,
     const Elf_Shdr &StackSizeSec, DataExtractor Data, uint64_t *Offset,
     const StackSizeRelocation<ELFT> *Reloc) {
-  // As in --call-graph-info, clear the Thumb bit, which is not part of the
-  // function's address.
+  // Clear the Thumb bit, which is not part of the function's address.
   if (Obj.getHeader().e_machine == ELF::EM_ARM)
     SymValue &= ~1;
   SmallVector<uint32_t> FuncSymIndexes =
@@ -9046,8 +9044,8 @@ void LLVMELFDumper<ELFT>::printStackSizeEntry(
     const StackSizeRelocation<ELFT> *Reloc) {
   DictScope D(W, "Entry");
   W.printList("Functions", FuncNames);
-  // As in --call-graph-info, the function is identified by the relocation for
-  // the entry in a relocatable file, and by its address otherwise.
+  // The entry is identified by its relocation if it has one, and by the
+  // address stored in it otherwise.
   if (Reloc)
     printRelocationObject(Reloc->R, Reloc->Sym, Reloc->SymTab,
                           Reloc->FieldValue);
