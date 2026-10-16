@@ -11018,14 +11018,17 @@ bool LoongArchTargetLowering::isFPImmVLDILegal(const APFloat &Imm,
   return false;
 }
 
-bool LoongArchTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT,
-                                           bool ForCodeSize) const {
+TargetLowering::FPImmAction
+LoongArchTargetLowering::getFPImmAction(const APFloat &Imm, EVT VT,
+                                        bool ForCodeSize) const {
   // TODO: Maybe need more checks here after vector extension is supported.
   if (VT == MVT::f32 && !Subtarget.hasBasicF())
-    return false;
+    return FPImmAction::ConstantPool;
   if (VT == MVT::f64 && !Subtarget.hasBasicD())
-    return false;
-  return (Imm.isZero() || Imm.isOne() || isFPImmVLDILegal(Imm, VT));
+    return FPImmAction::ConstantPool;
+  return (Imm.isZero() || Imm.isOne() || isFPImmVLDILegal(Imm, VT))
+             ? FPImmAction::Legal
+             : FPImmAction::ConstantPool;
 }
 
 bool LoongArchTargetLowering::isCheapToSpeculateCttz(Type *) const {

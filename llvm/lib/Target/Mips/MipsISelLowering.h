@@ -491,11 +491,11 @@ using TargetRegisterClass = MCRegisterClass;
     EVT getOptimalMemOpType(LLVMContext &Context, const MemOp &Op,
                             const AttributeList &FuncAttributes) const override;
 
-    /// isFPImmLegal - Returns true if the target can instruction select the
+    /// getFPImmAction - Returns how to materialize the
     /// specified FP immediate natively. If false, the legalizer will
     /// materialize the FP immediate as a load from a constant pool.
-    bool isFPImmLegal(const APFloat &Imm, EVT VT,
-                      bool ForCodeSize) const override;
+    FPImmAction getFPImmAction(const APFloat &Imm, EVT VT,
+                               bool ForCodeSize) const override;
 
     bool isLegalICmpImmediate(int64_t Imm) const override;
     bool isLegalAddImmediate(int64_t Imm) const override;
