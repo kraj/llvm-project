@@ -121,7 +121,10 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(const MemoryBuffer *Buf) {
   // If the buffer is invalid, return an empty list.
   if (!Buf)
     return {};
-  auto &ExpectedDiags = ExpectedDiagsPerFile[Buf->getBufferIdentifier()];
+  auto [It, Inserted] = ExpectedDiagsPerBuffer.try_emplace(Buf);
+  if (!Inserted)
+    return It->second;
+  auto &ExpectedDiags = It->second;
 
   // The number of the last line that did not correlate to a designator.
   unsigned LastNonDesignatorLine = 0;
@@ -249,13 +252,7 @@ SourceMgrDiagnosticVerifier::process(SourceMgr::DiagKind Kind,
   if (Loc) {
     // If the buffer couldn't be resolved, `Diags` stays empty: a diagnostic
     // with a location in an unknown file can never match anything.
-    if (Loc->Buf) {
-      auto It = ExpectedDiagsPerFile.find(Loc->Buf->getBufferIdentifier());
-      if (It != ExpectedDiagsPerFile.end())
-        Diags = It->second;
-      else
-        Diags = computeExpectedDiags(Loc->Buf);
-    }
+    Diags = computeExpectedDiags(Loc->Buf);
   } else {
     Diags = ExpectedUnknownLocDiags;
   }
@@ -327,11 +324,16 @@ bool SourceMgrDiagnosticVerifier::verify() {
       emitError(Diag, "expected " + getDiagKindStr(Diag.Kind) + " \"" +
                           Diag.Substring + "\" was not produced");
   };
-  for (auto &ExpectedDiagsPair : ExpectedDiagsPerFile)
-    for (const ExpectedDiag &Diag : ExpectedDiagsPair.second)
+  // Check buffers in registration order so that the output is deterministic.
+  for (unsigned I = 0, E = Mgr.getNumBuffers(); I != E; ++I) {
+    auto It = ExpectedDiagsPerBuffer.find(Mgr.getMemoryBuffer(I + 1));
+    if (It == ExpectedDiagsPerBuffer.end())
+      continue;
+    for (const ExpectedDiag &Diag : It->second)
       CheckExpectedDiags(Diag);
+  }
   for (const ExpectedDiag &Diag : ExpectedUnknownLocDiags)
     CheckExpectedDiags(Diag);
-  ExpectedDiagsPerFile.clear();
+  ExpectedDiagsPerBuffer.clear();
   return OK;
 }
