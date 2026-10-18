@@ -96,7 +96,8 @@ TEST_F(SourceMgrDiagnosticVerifierTest, UnknownFileNeverMatches) {
   addBuffer("# expected-error {{anything}}\n");
   SourceMgrDiagnosticVerifier Verifier(SM, OS);
 
-  SourceMgrDiagnosticVerifier::Location Loc{/*Buf=*/nullptr, /*LineNo=*/1};
+  SourceMgrDiagnosticVerifier::Location Loc{/*Buf=*/nullptr, /*LineNo=*/1,
+                                            /*ColNo=*/1};
   EXPECT_EQ(Verifier.process(SourceMgr::DK_Error, Loc, "anything"),
             MatchResult::Unexpected);
   EXPECT_FALSE(Verifier.verify());
@@ -140,4 +141,21 @@ TEST_F(SourceMgrDiagnosticVerifierTest, CustomPrefixesAndCommentScoping) {
       MatchResult::Matched);
   EXPECT_TRUE(Verifier.verify());
   EXPECT_EQ(Output, "");
+}
+
+TEST_F(SourceMgrDiagnosticVerifierTest, ColumnChecking) {
+  const MemoryBuffer *Buf = addBuffer("bad_op arg1, arg2\n"
+                                      "# expected-error@-1:8 {{bad arg1}}\n");
+  SourceMgrDiagnosticVerifier Verifier(SM, OS);
+
+  // Column 8 ('arg1') matches; column 1 ('bad_op') does not.
+  SMLoc Col1Loc = SMLoc::getFromPointer(Buf->getBufferStart());
+  SMLoc Col8Loc = SMLoc::getFromPointer(Buf->getBufferStart() + 7);
+  EXPECT_EQ(
+      Verifier.process(SM.GetMessage(Col1Loc, SourceMgr::DK_Error, "bad arg1")),
+      MatchResult::Unexpected);
+  EXPECT_EQ(
+      Verifier.process(SM.GetMessage(Col8Loc, SourceMgr::DK_Error, "bad arg1")),
+      MatchResult::Matched);
+  EXPECT_FALSE(Verifier.verify());
 }

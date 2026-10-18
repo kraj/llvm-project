@@ -58,6 +58,8 @@ public:
     const MemoryBuffer *Buf;
     /// The 1-based line number of the diagnostic.
     unsigned LineNo;
+    /// The 1-based column number of the diagnostic.
+    unsigned ColNo;
   };
 
   /// Scans all buffers currently registered with \p Mgr for expected
@@ -106,6 +108,9 @@ private:
     SourceMgr::DiagKind Kind;
     /// The line number the expected diagnostic should be on.
     unsigned LineNo;
+    /// The column the expected diagnostic should be at, or 0 if any column
+    /// matches.
+    unsigned ColNo = 0;
     /// The location of the expected diagnostic within the input file.
     SMLoc FileLoc;
     /// A flag indicating if the expected diagnostic has been matched yet.
