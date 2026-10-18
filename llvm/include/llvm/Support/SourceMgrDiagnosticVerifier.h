@@ -23,6 +23,7 @@
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/SourceMgr.h"
 #include <optional>
+#include <string>
 
 namespace llvm {
 
@@ -64,7 +65,15 @@ public:
   /// diagnostic is reported in them. Verifier errors (near misses, unmatched
   /// expected diagnostics, malformed directives) are printed to \p OS,
   /// bypassing \p Mgr's diagnostic handler.
-  SourceMgrDiagnosticVerifier(const SourceMgr &Mgr, raw_ostream &OS);
+  ///
+  /// \p Prefixes are the directive prefixes to recognize (e.g. "expected"
+  /// for 'expected-error'); they must be non-empty. If \p CommentPrefixes is
+  /// non-empty, directives are only recognized after the first occurrence of
+  /// one of these strings on a line, so that text outside of comments is
+  /// ignored.
+  SourceMgrDiagnosticVerifier(const SourceMgr &Mgr, raw_ostream &OS,
+                              ArrayRef<StringRef> Prefixes = {"expected"},
+                              ArrayRef<StringRef> CommentPrefixes = {});
 
   /// Matches a diagnostic against the expected diagnostics for \p Loc, or
   /// against the '@unknown' expected diagnostics if \p Loc is std::nullopt.
@@ -127,9 +136,11 @@ private:
   const SourceMgr &Mgr;
   raw_ostream &OS;
 
-  /// Regex used to recognize 'expected-<kind>' comments.
-  Regex Expected{"expected-(error|note|remark|warning)(-re)? "
-                 "*(@([+-][0-9]+|above|below|unknown))? *{{(.*)}}$"};
+  /// Regex used to recognize '<prefix>-<kind>' comments.
+  Regex Expected;
+
+  /// The strings that start a comment, see the constructor.
+  SmallVector<std::string, 0> CommentPrefixes;
 
   /// The expected diagnostics for each buffer that has been scanned so far,
   /// keyed by buffer identifier (i.e. file name).
