@@ -43,14 +43,47 @@ public:
     /// The diagnostic's text matched an expected diagnostic, but its kind
     /// didn't; a message about this has already been printed.
     NearMiss,
-    /// The diagnostic did not match any expected diagnostic. The caller is
-    /// responsible for reporting it, if desired.
+    /// The diagnostic did not match any expected diagnostic.
     Unexpected,
     /// The diagnostic did not match, but \p ReportUnexpected was false, so
     /// nothing was printed and nothing needs to be done.
     Ignored,
   };
 
+  /// The location of an actual diagnostic.
+  struct Location {
+    /// The buffer containing the diagnostic, or null if it is in a file that
+    /// is not known to the SourceMgr (such a diagnostic never matches).
+    const MemoryBuffer *Buf;
+    /// The 1-based line number of the diagnostic.
+    unsigned LineNo;
+  };
+
+  /// Scans all buffers currently registered with \p Mgr for expected
+  /// diagnostics. Buffers added later are scanned the first time a
+  /// diagnostic is reported in them. Verifier errors (near misses, unmatched
+  /// expected diagnostics, malformed directives) are printed to \p OS,
+  /// bypassing \p Mgr's diagnostic handler.
+  SourceMgrDiagnosticVerifier(const SourceMgr &Mgr, raw_ostream &OS);
+
+  /// Matches a diagnostic against the expected diagnostics for \p Loc, or
+  /// against the '@unknown' expected diagnostics if \p Loc is std::nullopt.
+  /// Prints a message on a near miss. Reporting an unexpected diagnostic is
+  /// left to the caller. If \p ReportUnexpected is false, a diagnostic that
+  /// does not match is ignored instead of failing verification.
+  MatchResult process(SourceMgr::DiagKind Kind, std::optional<Location> Loc,
+                      StringRef Message, bool ReportUnexpected = true);
+
+  /// Like the overload above, but takes the location from \p Diag and also
+  /// prints \p Diag if it is unexpected.
+  MatchResult process(const SMDiagnostic &Diag, bool ReportUnexpected = true);
+
+  /// Reports any expected diagnostic that was never matched by a call to
+  /// \c process. Returns whether verification succeeded overall, i.e. no
+  /// diagnostic mismatches were recorded either here or by \c process.
+  bool verify();
+
+private:
   /// A single diagnostic expected via an 'expected-<kind>' comment.
   struct ExpectedDiag {
     ExpectedDiag(SourceMgr::DiagKind Kind, unsigned LineNo, SMLoc FileLoc,
@@ -59,16 +92,6 @@ public:
 
     /// Returns true if this diagnostic matches the given message.
     LLVM_ABI bool match(StringRef Str) const;
-
-    /// Computes the regex matcher for a '-re' diagnostic's substring.
-    /// Returns false and prints a message through \p Mgr on error.
-    LLVM_ABI bool computeRegex(raw_ostream &OS, SourceMgr &Mgr);
-
-    /// Prints \p Msg at this diagnostic's location and returns false, for
-    /// use as `return emitError(...);` in functions that report failure via
-    /// a bool return.
-    LLVM_ABI bool emitError(raw_ostream &OS, SourceMgr &Mgr,
-                            const Twine &Msg) const;
 
     /// The severity of the diagnostic expected.
     SourceMgr::DiagKind Kind;
@@ -85,45 +108,25 @@ public:
     std::optional<Regex> SubstringRegex;
   };
 
-  SourceMgrDiagnosticVerifier() = default;
+  /// Prints \p Diag to \c OS, bypassing the SourceMgr's diagnostic handler so
+  /// that a verifier installed as that handler does not re-enter itself.
+  void printDiag(const SMDiagnostic &Diag) const;
 
-  /// Computes and caches the list of expected diagnostics for \p Buf, if not
-  /// already cached. Returns the (mutable) cached list.
-  MutableArrayRef<ExpectedDiag> computeExpectedDiags(raw_ostream &OS,
-                                                     SourceMgr &Mgr,
-                                                     const MemoryBuffer *Buf);
+  /// Records a verification failure, prints \p Msg at \p Diag's location and
+  /// returns false.
+  bool emitError(const ExpectedDiag &Diag, const Twine &Msg);
 
-  /// Returns the cached expected diagnostics for the buffer named \p BufName,
-  /// or std::nullopt if \p computeExpectedDiags hasn't been called for it.
-  std::optional<MutableArrayRef<ExpectedDiag>>
-  getExpectedDiags(StringRef BufName);
+  /// Computes the regex matcher for a '-re' diagnostic's substring. Returns
+  /// false and prints a message on error.
+  bool computeRegex(ExpectedDiag &Diag);
 
-  /// Returns the expected diagnostics with an '@unknown' location.
-  MutableArrayRef<ExpectedDiag> getExpectedUnknownLocDiags() {
-    return ExpectedUnknownLocDiags;
-  }
+  /// Scans \p Buf for expected diagnostics and returns the list for its
+  /// buffer identifier.
+  MutableArrayRef<ExpectedDiag> computeExpectedDiags(const MemoryBuffer *Buf);
 
-  /// Matches a single actual diagnostic against the expected diagnostics
-  /// recorded for \p Buf / \p LineNo, computing them first via \p
-  /// computeExpectedDiags if they haven't been already. If \p HasLoc is
-  /// false, the diagnostic has no location and is matched against the
-  /// '@unknown' list instead (\p Buf / \p LineNo are ignored). If \p HasLoc
-  /// is true but \p Buf is null (e.g. the diagnostic's file isn't a known
-  /// buffer), the diagnostic is matched against an empty list, i.e. it can
-  /// never match and is always unexpected. On a near miss, prints a message
-  /// through \p Mgr. \p ReportUnexpected controls whether near misses /
-  /// unexpected diagnostics are reported at all.
-  MatchResult process(raw_ostream &OS, SourceMgr &Mgr, SourceMgr::DiagKind Kind,
-                      bool HasLoc, const MemoryBuffer *Buf, unsigned LineNo,
-                      StringRef Message, bool ReportUnexpected = true);
+  const SourceMgr &Mgr;
+  raw_ostream &OS;
 
-  /// Reports (through \p Mgr) any expected diagnostic that was never matched
-  /// by a call to \p process. Returns whether verification succeeded overall,
-  /// i.e. no diagnostic mismatches were recorded either here or by \p
-  /// process.
-  bool verify(raw_ostream &OS, SourceMgr &Mgr);
-
-private:
   /// Regex used to recognize 'expected-<kind>' comments.
   Regex Expected{"expected-(error|note|remark|warning)(-re)? "
                  "*(@([+-][0-9]+|above|below|unknown))? *{{(.*)}}$"};
