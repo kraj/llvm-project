@@ -2473,6 +2473,8 @@ static void AppendConstructTraitsForDirective(
     add(llvm::omp::TraitProperty::construct_dispatch_dispatch);
 }
 
+static SomeExpr NormalizeMetadirectiveCondition(const SomeExpr &expr);
+
 static void AddTraitPropertiesFromSelector(llvm::omp::TraitSet set,
     const parser::OmpTraitSelector &selector, llvm::omp::VariantMatchInfo &vmi,
     SemanticsContext &semaCtx,
@@ -2508,6 +2510,9 @@ static void AddTraitPropertiesFromSelector(llvm::omp::TraitSet set,
       }
       if (!dynamicCond) {
         dynamicCond = DynamicUserCondition{scalarExpr, prop.source};
+      }
+      if (const auto *expr{GetExpr(semaCtx, *scalarExpr)}) {
+        vmi.UserCondition = NormalizeMetadirectiveCondition(*expr).AsFortran();
       }
       vmi.addTrait(set, llvm::omp::TraitProperty::user_condition_unknown,
           "<condition>", scorePtr);
@@ -2780,6 +2785,12 @@ bool isRepeatableMetadirectiveCondition(const SomeExpr &expr) {
 }
 } // namespace
 
+static SomeExpr NormalizeMetadirectiveCondition(const SomeExpr &expr) {
+  MetadirectiveConditionNormalizer normalizer;
+  evaluate::rewrite::Mutator normalize{normalizer};
+  return normalize(expr);
+}
+
 bool IsRepeatableMetadirectiveCondition(
     const parser::ScalarExpr &condition, SemanticsContext &context) {
   const SomeExpr *expr{GetExpr(context, condition)};
@@ -2795,9 +2806,8 @@ bool AreSameRepeatableMetadirectiveCondition(const parser::ScalarExpr &left,
       !isRepeatableMetadirectiveCondition(*rightExpr))
     return false;
 
-  MetadirectiveConditionNormalizer normalizer;
-  evaluate::rewrite::Mutator normalize{normalizer};
-  return normalize(*leftExpr) == normalize(*rightExpr);
+  return NormalizeMetadirectiveCondition(*leftExpr) ==
+      NormalizeMetadirectiveCondition(*rightExpr);
 }
 
 llvm::SmallVector<unsigned, 4> GetMetadirectiveElsePathCandidates(

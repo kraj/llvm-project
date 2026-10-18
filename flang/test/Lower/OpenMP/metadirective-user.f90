@@ -544,3 +544,80 @@ subroutine test_multi_dynamic_multi_static(a, b)
   !$omp & default(nothing)
 #endif
 end subroutine
+
+! Both candidates score 5. The conditions differ, so neither selector is a
+! subset of the other and `a` is tested first.
+! CHECK-LABEL: func.func @_QPtest_distinct_conditions(
+! CHECK-SAME:    %[[ARG0:[^,]*]]: !fir.ref<!fir.logical<4>>
+! CHECK-SAME:    %[[ARG1:.*]]: !fir.ref<!fir.logical<4>>
+! CHECK:         %[[DECLA:.*]]:2 = hlfir.declare %[[ARG0]]
+! CHECK:         %[[DECLB:.*]]:2 = hlfir.declare %[[ARG1]]
+! CHECK:         %[[LOADA:.*]] = fir.load %[[DECLA]]#0
+! CHECK:         %[[CONDA:.*]] = fir.convert %[[LOADA]] : (!fir.logical<4>) -> i1
+! CHECK:         fir.if %[[CONDA]] {
+! CHECK-NEXT:      omp.taskyield
+! CHECK-NEXT:    } else {
+! CHECK:           %[[LOADB:.*]] = fir.load %[[DECLB]]#0
+! CHECK:           %[[CONDB:.*]] = fir.convert %[[LOADB]] : (!fir.logical<4>) -> i1
+! CHECK:           fir.if %[[CONDB]] {
+! CHECK-NEXT:        omp.taskwait
+! CHECK:         return
+subroutine test_distinct_conditions(a, b)
+  logical, intent(in) :: a, b
+  !$omp metadirective &
+  !$omp & when(user={condition(a)}, &
+  !$omp &      implementation={vendor(score(4): llvm)}: taskyield) &
+  !$omp & when(user={condition(b)}, device={kind(host)}, &
+  !$omp &      implementation={vendor(score(3): llvm)}: taskwait)
+end subroutine
+
+! With the same condition, the first selector is a strict subset of the second.
+! CHECK-LABEL: func.func @_QPtest_same_condition(
+! CHECK:         fir.if
+! CHECK-NEXT:      omp.taskwait
+! CHECK-NOT:     omp.taskyield
+! CHECK:         return
+subroutine test_same_condition(a)
+  logical, intent(in) :: a
+  !$omp metadirective &
+  !$omp & when(user={condition(a)}, &
+  !$omp &      implementation={vendor(score(4): llvm)}: taskyield) &
+  !$omp & when(user={condition(a)}, device={kind(host)}, &
+  !$omp &      implementation={vendor(score(3): llvm)}: taskwait)
+end subroutine
+
+! Outer parentheses don't change the condition.
+! CHECK-LABEL: func.func @_QPtest_parenthesized_condition(
+! CHECK:         fir.if
+! CHECK-NEXT:      omp.taskwait
+! CHECK-NOT:     omp.taskyield
+! CHECK:         return
+subroutine test_parenthesized_condition(a)
+  logical, intent(in) :: a
+  !$omp metadirective &
+  !$omp & when(user={condition((a))}, &
+  !$omp &      implementation={vendor(score(4): llvm)}: taskyield) &
+  !$omp & when(user={condition(a)}, device={kind(host)}, &
+  !$omp &      implementation={vendor(score(3): llvm)}: taskwait)
+end subroutine
+
+! Under match_none, both candidates score 3 and `a` is tested first.
+! CHECK-LABEL: func.func @_QPtest_distinct_conditions_match_none(
+! CHECK-SAME:    %[[ARG0:[^,]*]]: !fir.ref<!fir.logical<4>>
+! CHECK:         %[[DECLA:.*]]:2 = hlfir.declare %[[ARG0]]
+! CHECK:         %[[LOADA:.*]] = fir.load %[[DECLA]]#0
+! CHECK:         %[[CONDA:.*]] = fir.convert %[[LOADA]] : (!fir.logical<4>) -> i1
+! CHECK:         %[[NOTA:.*]] = arith.xori %[[CONDA]]
+! CHECK:         fir.if %[[NOTA]] {
+! CHECK-NEXT:      omp.taskyield
+! CHECK-NEXT:    } else {
+! CHECK:           omp.taskwait
+! CHECK:         return
+subroutine test_distinct_conditions_match_none(a, b)
+  logical, intent(in) :: a, b
+  !$omp metadirective &
+  !$omp & when(user={condition(score(2): a)}, &
+  !$omp &      implementation={extension(match_none)}: taskyield) &
+  !$omp & when(user={condition(b)}, device={arch(nvptx)}, &
+  !$omp &      implementation={extension(match_none)}: taskwait)
+end subroutine
