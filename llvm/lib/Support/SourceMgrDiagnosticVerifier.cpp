@@ -67,9 +67,9 @@ bool SourceMgrDiagnosticVerifier::emitError(const ExpectedDiag &Diag,
   SMRange Range;
   ArrayRef<SMRange> Ranges;
   if (Diag.FileLoc.isValid()) {
+    // Highlight the whole directive, up to and including the closing '}}'.
     Range =
-        SMRange(Diag.FileLoc, SMLoc::getFromPointer(Diag.FileLoc.getPointer() +
-                                                    Diag.Substring.size()));
+        SMRange(Diag.FileLoc, SMLoc::getFromPointer(Diag.Substring.end() + 2));
     Ranges = Range;
   }
   printDiag(Mgr.GetMessage(Diag.FileLoc, SourceMgr::DK_Error, Msg, Ranges));
