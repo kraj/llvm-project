@@ -39,6 +39,10 @@
 # RUN: not llvm-mc --triple=riscv32 --verify missing.s 2>&1 \
 # RUN:   | FileCheck missing.s
 
+## Directives in included files without diagnostics are checked too.
+# RUN: not llvm-mc --triple=riscv32 --verify include.s 2>&1 \
+# RUN:   | FileCheck included.s
+
 ## A file without diagnostics or directives passes.
 # RUN: llvm-mc --triple=riscv32 --verify no-diagnostics.s
 
@@ -142,6 +146,14 @@ addi a0, a0, 1
 # CHECK: error: unknown directive
 
 #--- missing.s
+addi a0, a0, 1
+# expected-error@-1 {{this will never happen}}
+# CHECK: error: expected error "this will never happen" was not produced
+
+#--- include.s
+.include "included.s"
+
+#--- included.s
 addi a0, a0, 1
 # expected-error@-1 {{this will never happen}}
 # CHECK: error: expected error "this will never happen" was not produced
