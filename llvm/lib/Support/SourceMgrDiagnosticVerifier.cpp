@@ -188,13 +188,30 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(const MemoryBuffer *Buf) {
 
       // Get the integer value without the @ and +/- prefix.
       if (OffsetMatch[0] == '+' || OffsetMatch[0] == '-') {
-        int Offset;
-        OffsetMatch.drop_front().getAsInteger(0, Offset);
+        // Parse as decimal so that e.g. '@+08' is not treated as octal.
+        unsigned Offset;
+        if (OffsetMatch.drop_front().getAsInteger(10, Offset)) {
+          emitError(Record, "invalid line offset '" + OffsetMatch + "'");
+          continue;
+        }
 
-        if (OffsetMatch.front() == '+')
+        if (OffsetMatch.front() == '+') {
+          if (Offset > E - Record.LineNo) {
+            emitError(Record, "line offset '" + OffsetMatch +
+                                  "' is past the end of the file");
+            continue;
+          }
           Record.LineNo += Offset;
-        else
+        } else {
+          // Line 0 is allowed since MLIR uses it for the implicit top-level
+          // module.
+          if (Offset > Record.LineNo) {
+            emitError(Record, "line offset '" + OffsetMatch +
+                                  "' is before the start of the file");
+            continue;
+          }
           Record.LineNo -= Offset;
+        }
       } else if (OffsetMatch.consume_front("unknown")) {
         if (Record.ColNo != 0) {
           emitError(Record, "cannot specify a column with '@unknown'");
