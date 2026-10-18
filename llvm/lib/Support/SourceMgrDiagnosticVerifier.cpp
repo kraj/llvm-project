@@ -12,6 +12,13 @@
 
 using namespace llvm;
 
+SourceMgrDiagnosticVerifier::SourceMgrDiagnosticVerifier(const SourceMgr &Mgr,
+                                                         raw_ostream &OS)
+    : Mgr(Mgr), OS(OS) {
+  for (unsigned I = 0, E = Mgr.getNumBuffers(); I != E; ++I)
+    (void)computeExpectedDiags(Mgr.getMemoryBuffer(I + 1));
+}
+
 /// Given a diagnostic kind, return a human readable string for it.
 static StringRef getDiagKindStr(SourceMgr::DiagKind Kind) {
   switch (Kind) {
@@ -27,15 +34,23 @@ static StringRef getDiagKindStr(SourceMgr::DiagKind Kind) {
   llvm_unreachable("Unknown SourceMgr::DiagKind");
 }
 
-bool SourceMgrDiagnosticVerifier::ExpectedDiag::emitError(
-    raw_ostream &OS, SourceMgr &Mgr, const Twine &Msg) const {
-  if (FileLoc.isValid()) {
-    SMRange Range(FileLoc, SMLoc::getFromPointer(FileLoc.getPointer() +
-                                                 Substring.size()));
-    Mgr.PrintMessage(OS, FileLoc, SourceMgr::DK_Error, Msg, Range);
-  } else {
-    Mgr.PrintMessage(OS, FileLoc, SourceMgr::DK_Error, Msg);
+void SourceMgrDiagnosticVerifier::printDiag(const SMDiagnostic &Diag) const {
+  Mgr.printIncludeStackForDiagnostic(Diag.getLoc(), OS);
+  Diag.print(nullptr, OS);
+}
+
+bool SourceMgrDiagnosticVerifier::emitError(const ExpectedDiag &Diag,
+                                            const Twine &Msg) {
+  OK = false;
+  SMRange Range;
+  ArrayRef<SMRange> Ranges;
+  if (Diag.FileLoc.isValid()) {
+    Range =
+        SMRange(Diag.FileLoc, SMLoc::getFromPointer(Diag.FileLoc.getPointer() +
+                                                    Diag.Substring.size()));
+    Ranges = Range;
   }
+  printDiag(Mgr.GetMessage(Diag.FileLoc, SourceMgr::DK_Error, Msg, Ranges));
   return false;
 }
 
@@ -47,11 +62,10 @@ bool SourceMgrDiagnosticVerifier::ExpectedDiag::match(StringRef Str) const {
   return Str.contains(Substring);
 }
 
-bool SourceMgrDiagnosticVerifier::ExpectedDiag::computeRegex(raw_ostream &OS,
-                                                             SourceMgr &Mgr) {
+bool SourceMgrDiagnosticVerifier::computeRegex(ExpectedDiag &Diag) {
   std::string RegexStr;
   raw_string_ostream RegexOS(RegexStr);
-  StringRef StrToProcess = Substring;
+  StringRef StrToProcess = Diag.Substring;
   while (!StrToProcess.empty()) {
     // Find the next regex block.
     size_t RegexIt = StrToProcess.find("{{");
@@ -65,25 +79,23 @@ bool SourceMgrDiagnosticVerifier::ExpectedDiag::computeRegex(raw_ostream &OS,
     // Find the end of the regex block.
     size_t RegexEndIt = StrToProcess.find("}}");
     if (RegexEndIt == StringRef::npos)
-      return emitError(OS, Mgr, "found start of regex with no end '}}'");
+      return emitError(Diag, "found start of regex with no end '}}'");
     StringRef RegexBlock = StrToProcess.take_front(RegexEndIt);
 
     // Validate that the regex is actually valid.
     std::string RegexError;
     if (!Regex(RegexBlock).isValid(RegexError))
-      return emitError(OS, Mgr, "invalid regex: " + RegexError);
+      return emitError(Diag, "invalid regex: " + RegexError);
 
     RegexOS << '(' << RegexBlock << ')';
     StrToProcess = StrToProcess.drop_front(RegexEndIt + 2);
   }
-  SubstringRegex = Regex(RegexStr);
+  Diag.SubstringRegex = Regex(RegexStr);
   return true;
 }
 
 MutableArrayRef<SourceMgrDiagnosticVerifier::ExpectedDiag>
-SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &OS,
-                                                  SourceMgr &Mgr,
-                                                  const MemoryBuffer *Buf) {
+SourceMgrDiagnosticVerifier::computeExpectedDiags(const MemoryBuffer *Buf) {
   // If the buffer is invalid, return an empty list.
   if (!Buf)
     return {};
@@ -128,10 +140,8 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &OS,
     ExpectedDiag Record(Kind, LineNo + 1, ExpectedStart, Matches[5]);
 
     // Check to see if this is a regex match, i.e. it includes the `-re`.
-    if (!Matches[2].empty() && !Record.computeRegex(OS, Mgr)) {
-      OK = false;
+    if (!Matches[2].empty() && !computeRegex(Record))
       continue;
-    }
 
     StringRef OffsetMatch = Matches[3];
     if (!OffsetMatch.empty()) {
@@ -171,28 +181,20 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &OS,
   return ExpectedDiags;
 }
 
-std::optional<MutableArrayRef<SourceMgrDiagnosticVerifier::ExpectedDiag>>
-SourceMgrDiagnosticVerifier::getExpectedDiags(StringRef BufName) {
-  auto ExpectedDiags = ExpectedDiagsPerFile.find(BufName);
-  if (ExpectedDiags != ExpectedDiagsPerFile.end())
-    return MutableArrayRef<ExpectedDiag>(ExpectedDiags->second);
-  return std::nullopt;
-}
-
 SourceMgrDiagnosticVerifier::MatchResult
-SourceMgrDiagnosticVerifier::process(raw_ostream &OS, SourceMgr &Mgr,
-                                     SourceMgr::DiagKind Kind, bool HasLoc,
-                                     const MemoryBuffer *Buf, unsigned LineNo,
+SourceMgrDiagnosticVerifier::process(SourceMgr::DiagKind Kind,
+                                     std::optional<Location> Loc,
                                      StringRef Message, bool ReportUnexpected) {
   MutableArrayRef<ExpectedDiag> Diags;
-  if (HasLoc) {
+  if (Loc) {
     // If the buffer couldn't be resolved, `Diags` stays empty: a diagnostic
     // with a location in an unknown file can never match anything.
-    if (Buf) {
-      if (auto MaybeDiags = getExpectedDiags(Buf->getBufferIdentifier()))
-        Diags = *MaybeDiags;
+    if (Loc->Buf) {
+      auto It = ExpectedDiagsPerFile.find(Loc->Buf->getBufferIdentifier());
+      if (It != ExpectedDiagsPerFile.end())
+        Diags = It->second;
       else
-        Diags = computeExpectedDiags(OS, Mgr, Buf);
+        Diags = computeExpectedDiags(Loc->Buf);
     }
   } else {
     Diags = ExpectedUnknownLocDiags;
@@ -205,7 +207,7 @@ SourceMgrDiagnosticVerifier::process(raw_ostream &OS, SourceMgr &Mgr,
   // If this was an expected error, remember that we saw it and return.
   for (auto &E : Diags) {
     // File line must match (unless it's an unknown location).
-    if (HasLoc && E.LineNo != LineNo)
+    if (Loc && E.LineNo != Loc->LineNo)
       continue;
     if (E.match(Message)) {
       if (E.Kind == Kind) {
@@ -226,29 +228,43 @@ SourceMgrDiagnosticVerifier::process(raw_ostream &OS, SourceMgr &Mgr,
 
   // Otherwise, emit an error for the near miss.
   if (NearMiss) {
-    Mgr.PrintMessage(OS, NearMiss->FileLoc, SourceMgr::DK_Error,
-                     "'" + getDiagKindStr(Kind) +
-                         "' diagnostic emitted when expecting a '" +
-                         getDiagKindStr(NearMiss->Kind) + "'");
+    printDiag(Mgr.GetMessage(NearMiss->FileLoc, SourceMgr::DK_Error,
+                             "'" + getDiagKindStr(Kind) +
+                                 "' diagnostic emitted when expecting a '" +
+                                 getDiagKindStr(NearMiss->Kind) + "'"));
     return MatchResult::NearMiss;
   }
   return MatchResult::Unexpected;
 }
 
-bool SourceMgrDiagnosticVerifier::verify(raw_ostream &OS, SourceMgr &Mgr) {
+SourceMgrDiagnosticVerifier::MatchResult
+SourceMgrDiagnosticVerifier::process(const SMDiagnostic &Diag,
+                                     bool ReportUnexpected) {
+  std::optional<Location> Loc;
+  if (Diag.getLoc().isValid()) {
+    const MemoryBuffer *Buf = nullptr;
+    if (unsigned ID = Mgr.FindBufferContainingLoc(Diag.getLoc()))
+      Buf = Mgr.getMemoryBuffer(ID);
+    Loc = Location{Buf, static_cast<unsigned>(Diag.getLineNo())};
+  }
+  MatchResult Result =
+      process(Diag.getKind(), Loc, Diag.getMessage(), ReportUnexpected);
+  if (Result == MatchResult::Unexpected)
+    printDiag(Diag);
+  return Result;
+}
+
+bool SourceMgrDiagnosticVerifier::verify() {
   // Verify that all expected errors were seen.
-  auto CheckExpectedDiags = [&](ExpectedDiag &Diag) {
-    if (!Diag.Matched) {
-      Diag.emitError(OS, Mgr,
-                     "expected " + getDiagKindStr(Diag.Kind) + " \"" +
-                         Diag.Substring + "\" was not produced");
-      OK = false;
-    }
+  auto CheckExpectedDiags = [&](const ExpectedDiag &Diag) {
+    if (!Diag.Matched)
+      emitError(Diag, "expected " + getDiagKindStr(Diag.Kind) + " \"" +
+                          Diag.Substring + "\" was not produced");
   };
   for (auto &ExpectedDiagsPair : ExpectedDiagsPerFile)
-    for (auto &Diag : ExpectedDiagsPair.second)
+    for (const ExpectedDiag &Diag : ExpectedDiagsPair.second)
       CheckExpectedDiags(Diag);
-  for (auto &Diag : ExpectedUnknownLocDiags)
+  for (const ExpectedDiag &Diag : ExpectedUnknownLocDiags)
     CheckExpectedDiags(Diag);
   ExpectedDiagsPerFile.clear();
   return OK;
