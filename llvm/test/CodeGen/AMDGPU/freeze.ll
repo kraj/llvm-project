@@ -22,11 +22,11 @@
 
 ;FIXME: add regbankcombine for
 ;     %val = ...
-;     %val1:vgpr(s32) = G_AND %val, 1
-;     %cmp:vcc(s1) = G_ICMP intpred(ne), %val1(s32), 0
-;     %res:vgpr(s32) = G_SELECT %cmp(s1), 1, 0
+;     %val1:vgpr(i32) = G_AND %val, 1
+;     %cmp:vcc(i1) = G_ICMP intpred(ne), %val1(i32), 0
+;     %res:vgpr(i32) = G_SELECT %cmp(i1), 1, 0
 ;  ->
-;     %res:vgpr(s32) = G_AND %val, 1
+;     %res:vgpr(i32) = G_AND %val, 1
 
 
 define void @freeze_v2i32(ptr addrspace(1) %ptra, ptr addrspace(1) %ptrb) {
