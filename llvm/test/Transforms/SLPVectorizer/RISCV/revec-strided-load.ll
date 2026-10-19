@@ -5,8 +5,8 @@
 define void @widened_strided_load(ptr %in0, ptr %out0) {
 ; CHECK-LABEL: @widened_strided_load(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP1:%.*]] = call <24 x i8> @llvm.masked.load.v24i8.p0(ptr align 2 [[IN0:%.*]], <24 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <24 x i8> poison)
-; CHECK-NEXT:    [[TMP0:%.*]] = shufflevector <24 x i8> [[TMP1]], <24 x i8> poison, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23>
+; CHECK-NEXT:    [[TMP1:%.*]] = call <2 x i64> @llvm.experimental.vp.strided.load.v2i64.p0.i64(ptr align 2 [[IN0:%.*]], i64 16, <2 x i1> splat (i1 true), i32 2)
+; CHECK-NEXT:    [[TMP0:%.*]] = bitcast <2 x i64> [[TMP1]] to <16 x i8>
 ; CHECK-NEXT:    store <16 x i8> [[TMP0]], ptr [[OUT0:%.*]], align 2
 ; CHECK-NEXT:    ret void
 ;
@@ -125,8 +125,12 @@ entry:
 define void @too_wide(ptr %in0, ptr %out0) {
 ; CHECK-LABEL: @too_wide(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP1:%.*]] = call <24 x i16> @llvm.masked.load.v24i16.p0(ptr align 2 [[IN0:%.*]], <24 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <24 x i16> poison)
-; CHECK-NEXT:    [[TMP0:%.*]] = shufflevector <24 x i16> [[TMP1]], <24 x i16> poison, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23>
+; CHECK-NEXT:    [[TMP5:%.*]] = insertelement <2 x ptr> poison, ptr [[IN0:%.*]], i64 0
+; CHECK-NEXT:    [[TMP1:%.*]] = shufflevector <2 x ptr> [[TMP5]], <2 x ptr> poison, <2 x i32> zeroinitializer
+; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr i16, <2 x ptr> [[TMP1]], <2 x i64> <i64 0, i64 16>
+; CHECK-NEXT:    [[TMP3:%.*]] = shufflevector <2 x ptr> [[TMP2]], <2 x ptr> poison, <16 x i32> <i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>
+; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr i16, <16 x ptr> [[TMP3]], <16 x i64> <i64 0, i64 1, i64 2, i64 3, i64 4, i64 5, i64 6, i64 7, i64 0, i64 1, i64 2, i64 3, i64 4, i64 5, i64 6, i64 7>
+; CHECK-NEXT:    [[TMP0:%.*]] = call <16 x i16> @llvm.masked.gather.v16i16.v16p0(<16 x ptr> align 2 [[TMP4]], <16 x i1> splat (i1 true), <16 x i16> poison)
 ; CHECK-NEXT:    store <16 x i16> [[TMP0]], ptr [[OUT0:%.*]], align 2
 ; CHECK-NEXT:    ret void
 ;
