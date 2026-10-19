@@ -8516,7 +8516,7 @@ Register CombinerHelper::simplifyMultipleUseDemandedBits(
 
   MachineInstr *DefMI = MRI.getVRegDef(R);
   assert(DefMI && "Expected a definition in generic SSA MIR");
-  if (!isa<GAnd>(DefMI) && !isa<GOr>(DefMI))
+  if (!isa<GLogicalBinOp>(DefMI))
     return Register();
 
   unsigned Opcode = DefMI->getOpcode();
@@ -8525,6 +8525,14 @@ Register CombinerHelper::simplifyMultipleUseDemandedBits(
   Register RHS = Logic->getRHSReg();
   assert(MRI.getType(LHS) == Ty && MRI.getType(RHS) == Ty &&
          "Logical operands must match the result type");
+
+  if (Opcode == TargetOpcode::G_XOR) {
+    if (DemandedBits.isSubsetOf(VT->getKnownBits(RHS).Zero))
+      return LHS;
+    if (DemandedBits.isSubsetOf(VT->getKnownBits(LHS).Zero))
+      return RHS;
+    return Register();
+  }
 
   auto LookThrough = [&](Register X, Register CReg) -> Register {
     std::optional<APInt> C = getConstantOrConstantSplatVector(CReg);
@@ -8555,10 +8563,13 @@ Register CombinerHelper::simplifyMultipleUseDemandedBits(
 bool CombinerHelper::simplifyDemandedBitsImpl(MachineInstr &MI, unsigned OpNo,
                                               const APInt &DemandedBits,
                                               KnownBits &Known, unsigned Depth,
-                                              bool DoRewrite) const {
+                                              bool DoRewrite,
+                                              bool IsRoot) const {
   Known = KnownBits(DemandedBits.getBitWidth());
-  assert(MI.getOperand(OpNo).isReg() && !MI.getOperand(OpNo).isDef() &&
-         "Expected a register use");
+  assert(MI.getOperand(OpNo).isReg() &&
+         (IsRoot || !MI.getOperand(OpNo).isDef()) &&
+         "Expected a register use or root definition");
+  assert((!IsRoot || OpNo == 0) && "Expected the root result");
   Register OpReg = MI.getOperand(OpNo).getReg();
   assert(OpReg.isVirtual() && "Expected a virtual register");
   LLT OpTy = MRI.getType(OpReg);
@@ -8586,7 +8597,8 @@ bool CombinerHelper::simplifyDemandedBitsImpl(MachineInstr &MI, unsigned OpNo,
     if (!DoRewrite || Repl == OpReg)
       return Repl != OpReg;
     DropPoisonFlags();
-    if (DefMI->getNumExplicitDefs() == 1 && MRI.hasOneNonDBGUse(OpReg)) {
+    if (IsRoot ||
+        (DefMI->getNumExplicitDefs() == 1 && MRI.hasOneNonDBGUse(OpReg))) {
       InvalidateDebugUses(DemandedBits);
       replaceRegWith(MRI, OpReg, Repl);
       eraseInst(*DefMI);
@@ -8642,8 +8654,176 @@ bool CombinerHelper::simplifyDemandedBitsImpl(MachineInstr &MI, unsigned OpNo,
     Demanded = APInt::getAllOnes(BW);
   }
 
+  auto BuildReplacement = [&](function_ref<Register()> Build) {
+    if (!DoRewrite)
+      return true;
+    MachineBasicBlock &SaveMBB = Builder.getMBB();
+    MachineBasicBlock::iterator SavePt = Builder.getInsertPt();
+    DebugLoc SaveDL = Builder.getDL();
+    Builder.setInstrAndDebugLoc(*DefMI);
+    Register Repl = Build();
+    Builder.setInsertPt(SaveMBB, SavePt);
+    Builder.setDebugLoc(SaveDL);
+    return Rewrite(Repl);
+  };
+  auto FoldKnown = [&]() {
+    if (!Demanded.isSubsetOf(Known.Zero | Known.One))
+      return false;
+    return BuildReplacement(
+        [&]() { return Builder.buildConstant(OpTy, Known.One).getReg(0); });
+  };
+  auto Legal = [&](unsigned Opc, std::initializer_list<LLT> Types) {
+    return isPreLegalize() || !LI || isLegal({Opc, Types});
+  };
+
   unsigned Opcode = DefMI->getOpcode();
   switch (Opcode) {
+  case TargetOpcode::G_TRUNC: {
+    Register Src = DefMI->getOperand(1).getReg();
+    unsigned SrcBW = MRI.getType(Src).getScalarSizeInBits();
+    APInt SrcDemand = Demanded.zext(SrcBW);
+    KnownBits SrcKnown(SrcBW);
+    bool Changed = simplifyDemandedBitsImpl(*DefMI, /*OpNo=*/1, SrcDemand,
+                                            SrcKnown, Depth + 1, DoRewrite);
+    if (Changed) {
+      DropPoisonFlags();
+      InvalidateDebugUses(Demanded);
+    }
+    Known = SrcKnown.trunc(BW);
+    if (Changed)
+      return true;
+
+    MachineInstr *Shift = MRI.getVRegDef(Src);
+    const TargetLowering &TLI = getTargetLowering();
+    if (Shift->getOpcode() == TargetOpcode::G_LSHR &&
+        MRI.hasOneNonDBGUse(Src) &&
+        (isPreLegalize() ||
+         TLI.isTypeDesirableForOp(
+             ISD::SRL, getApproximateEVTForLLT(OpTy, getContext())))) {
+      std::optional<unsigned> Amt = getValidConstShiftAmt(
+          getConstantOrConstantSplatVector(Shift->getOperand(2).getReg()), BW);
+      LLT AmtTy = MRI.getType(Shift->getOperand(2).getReg());
+      if (Amt &&
+          !(APInt::getHighBitsSet(SrcBW, SrcBW - BW).lshr(*Amt).trunc(BW) &
+            Demanded) &&
+          Legal(TargetOpcode::G_TRUNC, {OpTy, MRI.getType(Src)}) &&
+          Legal(TargetOpcode::G_LSHR, {OpTy, AmtTy}))
+        return BuildReplacement([&]() {
+          auto X = Builder.buildTrunc(OpTy, Shift->getOperand(1).getReg());
+          return Builder.buildLShr(OpTy, X, Shift->getOperand(2).getReg())
+              .getReg(0);
+        });
+    }
+    return FoldKnown();
+  }
+  case TargetOpcode::G_XOR: {
+    Register LHS = DefMI->getOperand(1).getReg();
+    Register RHS = DefMI->getOperand(2).getReg();
+    KnownBits LHSKnown(BW), RHSKnown(BW);
+    bool Changed = simplifyDemandedBitsImpl(*DefMI, /*OpNo=*/2, Demanded,
+                                            RHSKnown, Depth + 1, DoRewrite);
+    Changed |= simplifyDemandedBitsImpl(*DefMI, /*OpNo=*/1, Demanded, LHSKnown,
+                                        Depth + 1, DoRewrite);
+    Known = LHSKnown ^ RHSKnown;
+    if (Changed) {
+      DropPoisonFlags();
+      InvalidateDebugUses(Demanded);
+      return true;
+    }
+
+    if (Demanded.isSubsetOf(RHSKnown.Zero)) {
+      Known = LHSKnown;
+      return Rewrite(LHS);
+    }
+    if (Demanded.isSubsetOf(LHSKnown.Zero)) {
+      Known = RHSKnown;
+      return Rewrite(RHS);
+    }
+
+    const TargetLowering &TLI = getTargetLowering();
+    if (OpTy.isScalar() && MRI.hasOneNonDBGUse(OpReg)) {
+      for (unsigned SmallBW = llvm::bit_ceil(Demanded.getActiveBits());
+           SmallBW < BW; SmallBW = NextPowerOf2(SmallBW)) {
+        LLT SmallTy = OpTy.changeElementSize(SmallBW);
+        if (TLI.isTruncateFree(OpTy, SmallTy, getContext()) &&
+            TLI.isZExtFree(SmallTy, OpTy, getContext()) &&
+            Legal(TargetOpcode::G_TRUNC, {SmallTy, OpTy}) &&
+            Legal(TargetOpcode::G_XOR, {SmallTy}) &&
+            Legal(TargetOpcode::G_ANYEXT, {OpTy, SmallTy}))
+          return BuildReplacement([&]() {
+            auto X = Builder.buildTrunc(SmallTy, LHS);
+            auto Y = Builder.buildTrunc(SmallTy, RHS);
+            auto V = Builder.buildXor(SmallTy, X, Y);
+            return Builder.buildAnyExt(OpTy, V).getReg(0);
+          });
+      }
+    }
+
+    if (Demanded.isSubsetOf(LHSKnown.Zero | RHSKnown.Zero) &&
+        Legal(TargetOpcode::G_OR, {OpTy}))
+      return BuildReplacement(
+          [&]() { return Builder.buildOr(OpTy, LHS, RHS).getReg(0); });
+
+    if (std::optional<APInt> C = getConstantOrConstantSplatVector(RHS)) {
+      if (*C == LHSKnown.One && Legal(TargetOpcode::G_AND, {OpTy}))
+        return BuildReplacement([&]() {
+          auto Mask = Builder.buildConstant(OpTy, ~*C & Demanded);
+          return Builder.buildAnd(OpTy, LHS, Mask).getReg(0);
+        });
+
+      // Preserve the canonical NOT form instead of shrinking its constant.
+      if (!C->isAllOnes() && Demanded.isSubsetOf(*C))
+        return BuildReplacement([&]() {
+          auto Ones = Builder.buildConstant(OpTy, APInt::getAllOnes(BW));
+          return Builder.buildXor(OpTy, LHS, Ones).getReg(0);
+        });
+
+      MachineInstr *Shift = MRI.getVRegDef(LHS);
+      unsigned ShiftOpc = Shift->getOpcode();
+      if ((ShiftOpc == TargetOpcode::G_SHL ||
+           ShiftOpc == TargetOpcode::G_LSHR) &&
+          MRI.hasOneNonDBGUse(LHS)) {
+        std::optional<unsigned> Amt = getValidConstShiftAmt(
+            getConstantOrConstantSplatVector(Shift->getOperand(2).getReg()),
+            BW);
+        if (Amt) {
+          APInt Ones = APInt::getAllOnes(BW);
+          Ones = ShiftOpc == TargetOpcode::G_SHL ? Ones.shl(*Amt)
+                                                 : Ones.lshr(*Amt);
+          if ((Demanded & *C) == (Demanded & Ones) &&
+              TLI.isDesirableToCommuteXorWithShift(*DefMI, MRI))
+            return BuildReplacement([&]() {
+              auto Mask = Builder.buildConstant(OpTy, APInt::getAllOnes(BW));
+              auto Not =
+                  Builder.buildXor(OpTy, Shift->getOperand(1).getReg(), Mask);
+              return Builder
+                  .buildInstr(ShiftOpc, {OpTy},
+                              {Not, Shift->getOperand(2).getReg()})
+                  .getReg(0);
+            });
+        }
+      }
+      if (!C->isAllOnes() && !C->isSubsetOf(Demanded))
+        return BuildReplacement([&]() {
+          auto Mask = Builder.buildConstant(OpTy, *C & Demanded);
+          return Builder.buildXor(OpTy, LHS, Mask).getReg(0);
+        });
+    }
+    return FoldKnown();
+  }
+  case TargetOpcode::G_SELECT: {
+    KnownBits TrueKnown(BW), FalseKnown(BW);
+    bool Changed = simplifyDemandedBitsImpl(*DefMI, /*OpNo=*/3, Demanded,
+                                            FalseKnown, Depth + 1, DoRewrite);
+    Changed |= simplifyDemandedBitsImpl(*DefMI, /*OpNo=*/2, Demanded, TrueKnown,
+                                        Depth + 1, DoRewrite);
+    if (Changed) {
+      DropPoisonFlags();
+      InvalidateDebugUses(Demanded);
+    }
+    Known = TrueKnown.intersectWith(FalseKnown);
+    return Changed || FoldKnown();
+  }
   case TargetOpcode::G_AND:
   case TargetOpcode::G_OR: {
     auto *Logic = cast<GLogicalBinOp>(DefMI);
@@ -8808,6 +8988,22 @@ bool CombinerHelper::matchSimplifyDemandedBits(MachineInstr &MI,
 
   unsigned Opcode = MI.getOpcode();
   switch (Opcode) {
+  case TargetOpcode::G_TRUNC:
+  case TargetOpcode::G_XOR:
+  case TargetOpcode::G_SELECT: {
+    KnownBits Known(RootDemand.getBitWidth());
+    if (!simplifyDemandedBitsImpl(MI, /*OpNo=*/0, RootDemand, Known,
+                                  /*Depth=*/0, /*DoRewrite=*/false,
+                                  /*IsRoot=*/true))
+      return false;
+    MatchInfo = [this, &MI, RootDemand](MachineIRBuilder &) {
+      KnownBits Known(RootDemand.getBitWidth());
+      simplifyDemandedBitsImpl(MI, /*OpNo=*/0, RootDemand, Known,
+                               /*Depth=*/0, /*DoRewrite=*/true,
+                               /*IsRoot=*/true);
+    };
+    return true;
+  }
   case TargetOpcode::G_SHL:
   case TargetOpcode::G_LSHR:
   case TargetOpcode::G_ASHR: {

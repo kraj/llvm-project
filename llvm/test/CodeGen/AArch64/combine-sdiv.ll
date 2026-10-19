@@ -1623,7 +1623,7 @@ define i32 @combine_i32_sdiv_const7(i32 %x) {
 ; CHECK-GI-NEXT:    // kill: def $w0 killed $w0 def $x0
 ; CHECK-GI-NEXT:    movk w8, #37449, lsl #16
 ; CHECK-GI-NEXT:    smull x8, w0, w8
-; CHECK-GI-NEXT:    add x8, x0, x8, asr #32
+; CHECK-GI-NEXT:    add x8, x0, x8, lsr #32
 ; CHECK-GI-NEXT:    asr w8, w8, #2
 ; CHECK-GI-NEXT:    add w0, w8, w8, lsr #31
 ; CHECK-GI-NEXT:    ret
@@ -1647,7 +1647,7 @@ define i32 @combine_i32_sdiv_const100(i32 %x) {
 ; CHECK-GI-NEXT:    mov w8, #34079 // =0x851f
 ; CHECK-GI-NEXT:    movk w8, #20971, lsl #16
 ; CHECK-GI-NEXT:    smull x8, w0, w8
-; CHECK-GI-NEXT:    asr x8, x8, #32
+; CHECK-GI-NEXT:    lsr x8, x8, #32
 ; CHECK-GI-NEXT:    asr w8, w8, #5
 ; CHECK-GI-NEXT:    add w0, w8, w8, lsr #31
 ; CHECK-GI-NEXT:    ret

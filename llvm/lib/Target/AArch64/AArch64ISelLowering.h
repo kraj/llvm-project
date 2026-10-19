@@ -308,6 +308,8 @@ public:
 
   /// Returns false if N is a bit extraction pattern of (X >> C) & Mask.
   bool isDesirableToCommuteXorWithShift(const SDNode *N) const override;
+  bool isDesirableToCommuteXorWithShift(
+      const MachineInstr &MI, const MachineRegisterInfo &MRI) const override;
 
   /// Return true if it is profitable to fold a pair of shifts into a mask.
   bool shouldFoldConstantShiftPairToMask(const SDNode *N) const override;

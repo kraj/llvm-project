@@ -644,7 +644,8 @@ define i16 @red_mla_dup_ext_u8_s8_s16(ptr noalias nocapture noundef readonly %A,
 ; CHECK-GI-NEXT:    movi v1.2d, #0000000000000000
 ; CHECK-GI-NEXT:    add x10, x0, #8
 ; CHECK-GI-NEXT:    and x11, x8, #0xfffffff0
-; CHECK-GI-NEXT:    sbfx w9, w9, #8, #8
+; CHECK-GI-NEXT:    sxth w9, w9
+; CHECK-GI-NEXT:    lsr w9, w9, #8
 ; CHECK-GI-NEXT:    dup v2.8h, w9
 ; CHECK-GI-NEXT:    and x9, x8, #0xfffffff0
 ; CHECK-GI-NEXT:  .LBB5_5: // %vector.body

@@ -14,10 +14,11 @@ define <8 x i16> @dupsext_v8i8_v8i16(i8 %src, <8 x i8> %b) {
 ; CHECK-GI-LABEL: dupsext_v8i8_v8i16:
 ; CHECK-GI:       // %bb.0: // %entry
 ; CHECK-GI-NEXT:    lsl w8, w0, #8
-; CHECK-GI-NEXT:    sbfx w8, w8, #8, #8
+; CHECK-GI-NEXT:    sshll v0.8h, v0.8b, #0
+; CHECK-GI-NEXT:    sxth w8, w8
+; CHECK-GI-NEXT:    lsr w8, w8, #8
 ; CHECK-GI-NEXT:    dup v1.8h, w8
-; CHECK-GI-NEXT:    xtn v1.8b, v1.8h
-; CHECK-GI-NEXT:    smull v0.8h, v1.8b, v0.8b
+; CHECK-GI-NEXT:    mul v0.8h, v1.8h, v0.8h
 ; CHECK-GI-NEXT:    ret
 entry:
   %in = sext i8 %src to i16
@@ -305,8 +306,9 @@ define <2 x i16> @dupsext_v2i8_v2i16(i8 %src, <2 x i8> %b) {
 ; CHECK-GI:       // %bb.0: // %entry
 ; CHECK-GI-NEXT:    lsl w8, w0, #8
 ; CHECK-GI-NEXT:    shl v0.2s, v0.2s, #24
-; CHECK-GI-NEXT:    sbfx w8, w8, #8, #8
+; CHECK-GI-NEXT:    sxth w8, w8
 ; CHECK-GI-NEXT:    sshr v0.2s, v0.2s, #24
+; CHECK-GI-NEXT:    lsr w8, w8, #8
 ; CHECK-GI-NEXT:    dup v1.4h, w8
 ; CHECK-GI-NEXT:    zip1 v1.4h, v1.4h, v1.4h
 ; CHECK-GI-NEXT:    mul v0.2s, v1.2s, v0.2s
@@ -378,7 +380,8 @@ define <8 x i16> @nonsplat_shuffleinsert(i8 %src, <8 x i8> %b) {
 ; CHECK-GI:       // %bb.0: // %entry
 ; CHECK-GI-NEXT:    lsl w8, w0, #8
 ; CHECK-GI-NEXT:    sshll v0.8h, v0.8b, #0
-; CHECK-GI-NEXT:    sbfx w8, w8, #8, #8
+; CHECK-GI-NEXT:    sxth w8, w8
+; CHECK-GI-NEXT:    lsr w8, w8, #8
 ; CHECK-GI-NEXT:    mov v1.h[1], w8
 ; CHECK-GI-NEXT:    ext v1.16b, v1.16b, v1.16b, #4
 ; CHECK-GI-NEXT:    mul v0.8h, v1.8h, v0.8h

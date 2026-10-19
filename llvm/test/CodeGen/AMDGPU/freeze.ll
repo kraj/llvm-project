@@ -14142,7 +14142,6 @@ define void @freeze_v2i8(ptr addrspace(1) %ptra, ptr addrspace(1) %ptrb) {
 ; GFX6-GISEL-NEXT:    buffer_load_ushort v0, v[0:1], s[4:7], 0 addr64
 ; GFX6-GISEL-NEXT:    s_waitcnt vmcnt(0)
 ; GFX6-GISEL-NEXT:    v_lshrrev_b32_e32 v1, 8, v0
-; GFX6-GISEL-NEXT:    v_and_b32_e32 v1, 0xff, v1
 ; GFX6-GISEL-NEXT:    v_and_b32_e32 v0, 0xff, v0
 ; GFX6-GISEL-NEXT:    v_lshlrev_b32_e32 v1, 8, v1
 ; GFX6-GISEL-NEXT:    v_or_b32_e32 v0, v0, v1
@@ -14172,7 +14171,6 @@ define void @freeze_v2i8(ptr addrspace(1) %ptra, ptr addrspace(1) %ptrb) {
 ; GFX7-GISEL-NEXT:    buffer_load_ushort v0, v[0:1], s[4:7], 0 addr64
 ; GFX7-GISEL-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-GISEL-NEXT:    v_lshrrev_b32_e32 v1, 8, v0
-; GFX7-GISEL-NEXT:    v_and_b32_e32 v1, 0xff, v1
 ; GFX7-GISEL-NEXT:    v_and_b32_e32 v0, 0xff, v0
 ; GFX7-GISEL-NEXT:    v_lshlrev_b32_e32 v1, 8, v1
 ; GFX7-GISEL-NEXT:    v_or_b32_e32 v0, v0, v1
@@ -14299,15 +14297,14 @@ define void @freeze_v3i8(ptr addrspace(1) %ptra, ptr addrspace(1) %ptrb) {
 ; GFX6-GISEL-NEXT:    buffer_load_dword v0, v[0:1], s[4:7], 0 addr64
 ; GFX6-GISEL-NEXT:    s_waitcnt vmcnt(0)
 ; GFX6-GISEL-NEXT:    v_lshrrev_b32_e32 v1, 8, v0
-; GFX6-GISEL-NEXT:    v_and_b32_e32 v1, 0xff, v1
 ; GFX6-GISEL-NEXT:    v_lshrrev_b32_e32 v4, 16, v0
 ; GFX6-GISEL-NEXT:    v_and_b32_e32 v0, 0xff, v0
 ; GFX6-GISEL-NEXT:    v_lshlrev_b32_e32 v1, 8, v1
 ; GFX6-GISEL-NEXT:    v_and_b32_e32 v4, 0xff, v4
 ; GFX6-GISEL-NEXT:    v_or_b32_e32 v0, v0, v1
-; GFX6-GISEL-NEXT:    v_lshlrev_b32_e32 v4, 16, v4
+; GFX6-GISEL-NEXT:    v_lshlrev_b32_e32 v1, 16, v4
 ; GFX6-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
-; GFX6-GISEL-NEXT:    v_or_b32_e32 v0, v0, v4
+; GFX6-GISEL-NEXT:    v_or_b32_e32 v0, v0, v1
 ; GFX6-GISEL-NEXT:    v_lshrrev_b32_e32 v1, 16, v0
 ; GFX6-GISEL-NEXT:    buffer_store_short v0, v[2:3], s[4:7], 0 addr64
 ; GFX6-GISEL-NEXT:    buffer_store_byte v1, v[2:3], s[4:7], 0 addr64 offset:2
@@ -14338,15 +14335,14 @@ define void @freeze_v3i8(ptr addrspace(1) %ptra, ptr addrspace(1) %ptrb) {
 ; GFX7-GISEL-NEXT:    buffer_load_dword v0, v[0:1], s[4:7], 0 addr64
 ; GFX7-GISEL-NEXT:    s_waitcnt vmcnt(0)
 ; GFX7-GISEL-NEXT:    v_lshrrev_b32_e32 v1, 8, v0
-; GFX7-GISEL-NEXT:    v_and_b32_e32 v1, 0xff, v1
 ; GFX7-GISEL-NEXT:    v_lshrrev_b32_e32 v4, 16, v0
 ; GFX7-GISEL-NEXT:    v_and_b32_e32 v0, 0xff, v0
 ; GFX7-GISEL-NEXT:    v_lshlrev_b32_e32 v1, 8, v1
 ; GFX7-GISEL-NEXT:    v_and_b32_e32 v4, 0xff, v4
 ; GFX7-GISEL-NEXT:    v_or_b32_e32 v0, v0, v1
-; GFX7-GISEL-NEXT:    v_lshlrev_b32_e32 v4, 16, v4
+; GFX7-GISEL-NEXT:    v_lshlrev_b32_e32 v1, 16, v4
 ; GFX7-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
-; GFX7-GISEL-NEXT:    v_or_b32_e32 v0, v0, v4
+; GFX7-GISEL-NEXT:    v_or_b32_e32 v0, v0, v1
 ; GFX7-GISEL-NEXT:    v_lshrrev_b32_e32 v1, 16, v0
 ; GFX7-GISEL-NEXT:    buffer_store_short v0, v[2:3], s[4:7], 0 addr64
 ; GFX7-GISEL-NEXT:    buffer_store_byte v1, v[2:3], s[4:7], 0 addr64 offset:2

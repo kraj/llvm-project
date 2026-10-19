@@ -20407,6 +20407,28 @@ bool AArch64TargetLowering::isDesirableToCommuteXorWithShift(
   return false;
 }
 
+bool AArch64TargetLowering::isDesirableToCommuteXorWithShift(
+    const MachineInstr &MI, const MachineRegisterInfo &MRI) const {
+  const MachineInstr *Shift = MRI.getVRegDef(MI.getOperand(1).getReg());
+  assert(MI.getOpcode() == TargetOpcode::G_XOR &&
+         (Shift->getOpcode() == TargetOpcode::G_SHL ||
+          Shift->getOpcode() == TargetOpcode::G_LSHR) &&
+         "Expected XOR(SHIFT) pattern");
+  auto XorC =
+      getIConstantVRegValWithLookThrough(MI.getOperand(2).getReg(), MRI);
+  auto ShiftC =
+      getIConstantVRegValWithLookThrough(Shift->getOperand(2).getReg(), MRI);
+  unsigned MaskIdx, MaskLen;
+  if (!XorC || !ShiftC || !XorC->Value.isShiftedMask(MaskIdx, MaskLen))
+    return false;
+  unsigned ShiftAmt = ShiftC->Value.getZExtValue();
+  unsigned BitWidth =
+      MRI.getType(MI.getOperand(0).getReg()).getScalarSizeInBits();
+  if (Shift->getOpcode() == TargetOpcode::G_SHL)
+    return MaskIdx == ShiftAmt && MaskLen == BitWidth - ShiftAmt;
+  return MaskIdx == 0 && MaskLen == BitWidth - ShiftAmt;
+}
+
 bool AArch64TargetLowering::shouldFoldConstantShiftPairToMask(
     const SDNode *N) const {
   assert(((N->getOpcode() == ISD::SHL &&
