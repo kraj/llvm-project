@@ -385,6 +385,58 @@ llvm::AMDGPU::CoExecInfo llvm::AMDGPU::getMFMACoExecInfo(unsigned Opcode) {
   }
 }
 
+static unsigned getMFMANumPasses(const MachineInstr &MFMA,
+                                 const SIInstrInfo &TII) {
+  unsigned NumPasses = TII.getRepeatRate(MFMA);
+  assert(NumPasses >= 2 && "MFMA has no pass count in the scheduling model");
+  return NumPasses;
+}
+
+static unsigned getMFMASrcSize(const MachineInstr &MFMA, AMDGPU::OpName Name,
+                               const SIInstrInfo &TII) {
+  unsigned Opc = MFMA.getOpcode();
+  return TII.getOpSize(Opc, AMDGPU::getNamedOperandIdx(Opc, Name));
+}
+
+unsigned llvm::AMDGPU::getVALUIssueCycle(const MachineInstr &MFMA,
+                                         const SIInstrInfo &TII) {
+  assert(TII.getSubtarget().hasGFX940Insts() && SIInstrInfo::isMFMA(MFMA) &&
+         "expected a gfx942 or gfx950 MFMA");
+  if (!TII.isXDL(MFMA))
+    return getMFMANumPasses(MFMA, TII) + 2;
+
+  // An XDL holds VALU off for one cycle per 16 bytes of its widest A/B source.
+  unsigned MaxSrcSize = std::max(getMFMASrcSize(MFMA, OpName::src0, TII),
+                                 getMFMASrcSize(MFMA, OpName::src1, TII));
+  return 1 + MaxSrcSize / 16;
+}
+
+unsigned llvm::AMDGPU::getPackedVALUIssueCycle(const MachineInstr &MFMA,
+                                               unsigned PackedVALUOpc,
+                                               const SIInstrInfo &TII) {
+  assert(TII.getSubtarget().hasGFX940Insts() && SIInstrInfo::isMFMA(MFMA) &&
+         (TII.isPacked(PackedVALUOpc) || TII.isDOT(PackedVALUOpc)) &&
+         "expected a gfx942 or gfx950 MFMA and a packed VALU or DOT");
+  switch (PackedVALUOpc) {
+  case AMDGPU::V_PK_ADD_F32:
+  case AMDGPU::V_PK_FMA_F32:
+  case AMDGPU::V_PK_MOV_B32:
+  case AMDGPU::V_PK_MUL_F32:
+    break;
+  default:
+    if (!TII.isDOT(PackedVALUOpc))
+      return getVALUIssueCycle(MFMA, TII);
+  }
+
+  unsigned NumPasses = getMFMANumPasses(MFMA, TII);
+  if (!TII.isXDL(MFMA))
+    return NumPasses + 2;
+
+  // XDL2x (gfx950 MFMAs with a 16-byte or wider A) adds another cycle.
+  bool IsXDL2x = getMFMASrcSize(MFMA, OpName::src0, TII) >= 16;
+  return NumPasses + 2 + IsXDL2x;
+}
+
 InstructionFlavor llvm::AMDGPU::classifyFlavor(const MachineInstr &MI,
                                                const SIInstrInfo &SII) {
   if (MI.isDebugInstr())
