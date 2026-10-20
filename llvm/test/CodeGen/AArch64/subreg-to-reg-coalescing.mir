@@ -41,10 +41,9 @@ body: |
     ; CHECK-LABEL: name: insert_subreg_mix_subreg_to_reg
     ; CHECK: liveins: $w0
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: undef %src_as_64b_2.sub_32:gpr64common = COPY $w0
-    ; CHECK-NEXT: undef %src_as_64b.sub_32:gpr64 = COPY %src_as_64b_2.sub_32
+    ; CHECK-NEXT: undef %src_as_64b.sub_32:gpr64common = COPY $w0
     ; CHECK-NEXT: %used:gpr64common = UBFMXri %src_as_64b, 63, 31
-    ; CHECK-NEXT: %result:gpr64common = ADDXri %src_as_64b_2, 1, 0
+    ; CHECK-NEXT: %result:gpr64common = ADDXri %src_as_64b, 1, 0
     ; CHECK-NEXT: $x1 = COPY %used
     ; CHECK-NEXT: $x0 = COPY %result
     ; CHECK-NEXT: RET_ReallyLR implicit $x0, implicit $x1
@@ -92,10 +91,9 @@ body: |
     ; CHECK-LABEL: name: subreg_copy_mix_subreg_to_reg
     ; CHECK: liveins: $w0
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: undef %src_as_64b_2.sub_32:gpr64common = COPY $w0
-    ; CHECK-NEXT: undef %src_as_64b.sub_32:gpr64 = COPY %src_as_64b_2.sub_32
+    ; CHECK-NEXT: undef %src_as_64b.sub_32:gpr64common = COPY $w0
     ; CHECK-NEXT: %used:gpr64common = UBFMXri %src_as_64b, 63, 31
-    ; CHECK-NEXT: %result:gpr64common = ADDXri %src_as_64b_2, 1, 0
+    ; CHECK-NEXT: %result:gpr64common = ADDXri %src_as_64b, 1, 0
     ; CHECK-NEXT: $x1 = COPY %used
     ; CHECK-NEXT: $x0 = COPY %result
     ; CHECK-NEXT: RET_ReallyLR implicit $x0, implicit $x1
