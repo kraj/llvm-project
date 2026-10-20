@@ -8240,8 +8240,8 @@ NVPTXTargetLowering::AtomicExpansionKind
 NVPTXTargetLowering::shouldExpandAtomicRMWInIR(const AtomicRMWInst *AI) const {
   const DataLayout &DL = AI->getDataLayout();
   AtomicRMWInst::BinOp Op = AI->getOperation();
-    // atom.add may be used even when its FTZ behavior disagrees with
-    // the functions'.
+  // atom.add may be used even when its FTZ behavior disagrees with
+  // the functions'.
   const bool IgnoreFTZMismatch =
       AllowFTZAtomics ||
       AI->hasMetadata(LLVMContext::MD_atomic_ignore_denormal_mode);
