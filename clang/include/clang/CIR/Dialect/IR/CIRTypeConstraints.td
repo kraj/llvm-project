@@ -44,6 +44,19 @@ class CIR_TypeSummaries<list<Type> types> {
 }
 
 //===----------------------------------------------------------------------===//
+// Dialect predicates
+//===----------------------------------------------------------------------===//
+
+// Constrains the types nested in a CIR type. Every CIR type admits only CIR
+// types as parameters, so a CIR type holds no foreign type at any depth.
+def CIR_DialectType
+    : Type<CPred<"$_self && " #
+                 "::mlir::isa<::cir::CIRDialect>($_self.getDialect())">,
+           "any type from the CIR dialect"> {
+  let cppFunctionName = "isCIRType";
+}
+
+//===----------------------------------------------------------------------===//
 // Bool Type predicates
 //===----------------------------------------------------------------------===//
 

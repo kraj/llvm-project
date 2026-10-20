@@ -61,13 +61,6 @@ cir::FPTypeInterface cir::getFloatingPointType(const llvm::fltSemantics &sem,
   }
 }
 
-static bool isPureCIRType(mlir::Type ty) {
-  if (!ty)
-    return true;
-  return ty.getContext()->getOrLoadDialect<cir::CIRDialect>()->isPureCIRType(
-      ty);
-}
-
 //===----------------------------------------------------------------------===//
 // CIR Custom Parser/Printer Signatures
 //===----------------------------------------------------------------------===//
@@ -168,6 +161,16 @@ verifyRecordMemberKinds(function_ref<mlir::InFlightDiagnostic()> emitError,
   if (memberKinds.size() != numMembers)
     return emitError() << "expected " << numMembers << " member kinds, got "
                        << memberKinds.size();
+  return mlir::success();
+}
+
+static mlir::LogicalResult
+verifyRecordMemberTypes(function_ref<mlir::InFlightDiagnostic()> emitError,
+                        llvm::ArrayRef<mlir::Type> members) {
+  for (auto [idx, memberTy] : llvm::enumerate(members))
+    if (!cir::isCIRType(memberTy))
+      return emitError() << "record member at index " << idx
+                         << " must be a CIR type, got " << memberTy;
   return mlir::success();
 }
 
@@ -345,6 +348,8 @@ mlir::LogicalResult StructType::verify(
     bool packed, llvm::ArrayRef<RecordMemberKind> member_kinds, bool is_class) {
   if (name && name.getValue().empty())
     return emitError() << "identified records cannot have an empty name";
+  if (failed(verifyRecordMemberTypes(emitError, members)))
+    return mlir::failure();
   return verifyRecordMemberKinds(emitError, members.size(), member_kinds);
 }
 
@@ -387,6 +392,12 @@ void StructType::removeABIConversionNamePrefix() {
 void StructType::complete(ArrayRef<Type> members, bool packed,
                           ArrayRef<RecordMemberKind> memberKinds) {
   assert(!cir::MissingFeatures::astRecordDeclAttr());
+  // mutate() bypasses the verifier, so check what get() would have checked.
+  assert(
+      succeeded(verifyInvariants(
+          mlir::detail::getDefaultDiagnosticEmitFn(getContext()), members,
+          getName(), /*incomplete=*/false, packed, memberKinds, isClass())) &&
+      "invalid struct completion");
   if (mutate(members, packed, memberKinds).failed())
     llvm_unreachable("failed to complete struct");
 }
@@ -516,6 +527,10 @@ UnionType::verify(function_ref<mlir::InFlightDiagnostic()> emitError,
   // padding slot.
   if (llvm::is_contained(member_kinds, RecordMemberKind::Pad))
     return emitError() << "a union member cannot be marked pad";
+  if (failed(verifyRecordMemberTypes(emitError, members)))
+    return mlir::failure();
+  if (padding && !cir::isCIRType(padding))
+    return emitError() << "union padding must be a CIR type, got " << padding;
   // Every variant starts at offset zero, so a bit-field variant is an access
   // unit of its own.  There is no run for a zero-width bit-field to end, so a
   // variant always has storage.
@@ -563,6 +578,11 @@ void UnionType::complete(ArrayRef<Type> members, bool packed,
                          mlir::Type padding,
                          ArrayRef<RecordMemberKind> memberKinds) {
   assert(!cir::MissingFeatures::astRecordDeclAttr());
+  // mutate() bypasses the verifier, so check what get() would have checked.
+  assert(succeeded(verifyInvariants(
+             mlir::detail::getDefaultDiagnosticEmitFn(getContext()), members,
+             getName(), /*incomplete=*/false, packed, padding, memberKinds)) &&
+         "invalid union completion");
   if (mutate(members, packed, padding, memberKinds).failed())
     llvm_unreachable("failed to complete union");
 }
@@ -1303,13 +1323,10 @@ FuncType::verify(llvm::function_ref<mlir::InFlightDiagnostic()> emitError,
            << "!cir.func cannot have an explicit 'void' return type";
 
   // The calling convention lowering pass expects all types in a function
-  // signature to be CIR types.
-  for (mlir::Type type : argTypes) {
-    if (!isPureCIRType(type))
-      return emitError()
-             << "expected all types in the function signature to be CIR types";
-  }
-  if (!isPureCIRType(returnType))
+  // signature to be CIR types. CIR types only nest CIR types, so checking the
+  // signature's own types covers everything reachable from them.
+  if (!llvm::all_of(argTypes, cir::isCIRType) ||
+      (returnType && !cir::isCIRType(returnType)))
     return emitError()
            << "expected all types in the function signature to be CIR types";
 
@@ -1445,6 +1462,11 @@ BitFieldType::verify(llvm::function_ref<mlir::InFlightDiagnostic()> emitError,
                             "single zero-width bit-field";
     return mlir::success();
   }
+
+  if (!cir::isCIRType(storageType))
+    return emitError() << "bit-field access unit storage must be a CIR type, "
+                          "got "
+                       << storageType;
 
   if (mlir::isa<cir::BitFieldType>(storageType))
     return emitError() << "bit-field access unit storage cannot itself be a "
