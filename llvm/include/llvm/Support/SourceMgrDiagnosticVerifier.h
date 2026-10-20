@@ -23,7 +23,6 @@
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/SourceMgr.h"
 #include <optional>
-#include <string>
 
 namespace llvm {
 
@@ -67,13 +66,9 @@ public:
   /// bypassing \p Mgr's diagnostic handler.
   ///
   /// \p Prefixes are the directive prefixes to recognize (e.g. "expected"
-  /// for 'expected-error'); they must be non-empty. If \p CommentPrefixes is
-  /// non-empty, directives are only recognized after the first occurrence of
-  /// one of these strings on a line, so that text outside of comments is
-  /// ignored.
+  /// for 'expected-error'); they must be non-empty.
   SourceMgrDiagnosticVerifier(const SourceMgr &Mgr, raw_ostream &OS,
-                              ArrayRef<StringRef> Prefixes = {"expected"},
-                              ArrayRef<StringRef> CommentPrefixes = {});
+                              ArrayRef<StringRef> Prefixes = {"expected"});
 
   /// Matches a diagnostic against the expected diagnostics for \p Loc, or
   /// against the '@unknown' expected diagnostics if \p Loc is std::nullopt.
@@ -138,9 +133,6 @@ private:
 
   /// Regex used to recognize '<prefix>-<kind>' comments.
   Regex Expected;
-
-  /// The strings that start a comment, see the constructor.
-  SmallVector<std::string, 0> CommentPrefixes;
 
   /// The expected diagnostics for each buffer that has been scanned so far,
   /// keyed by buffer identifier (i.e. file name).

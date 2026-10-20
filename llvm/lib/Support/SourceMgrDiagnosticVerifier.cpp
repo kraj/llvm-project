@@ -10,13 +10,11 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
-#include <algorithm>
 
 using namespace llvm;
 
 SourceMgrDiagnosticVerifier::SourceMgrDiagnosticVerifier(
-    const SourceMgr &Mgr, raw_ostream &OS, ArrayRef<StringRef> Prefixes,
-    ArrayRef<StringRef> CommentPrefixes)
+    const SourceMgr &Mgr, raw_ostream &OS, ArrayRef<StringRef> Prefixes)
     : Mgr(Mgr), OS(OS) {
   assert(!Prefixes.empty() && "must have at least one prefix");
   std::string PrefixAlt;
@@ -30,11 +28,6 @@ SourceMgrDiagnosticVerifier::SourceMgrDiagnosticVerifier(
   Expected = Regex("(^|[^[:alnum:]_-])(" + PrefixAlt +
                    ")-(error|note|remark|warning)(-re)?"
                    " *(@([+-][0-9]+|above|below|unknown))? *{{(.*)}}$");
-
-  for (StringRef Prefix : CommentPrefixes) {
-    assert(!Prefix.empty() && "comment prefixes must be non-empty");
-    this->CommentPrefixes.push_back(Prefix.str());
-  }
 
   for (unsigned I = 0, E = Mgr.getNumBuffers(); I != E; ++I)
     (void)computeExpectedDiags(Mgr.getMemoryBuffer(I + 1));
@@ -133,12 +126,6 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(const MemoryBuffer *Buf) {
   Buf->getBuffer().split(Lines, '\n');
   for (unsigned LineNo = 0, E = Lines.size(); LineNo < E; ++LineNo) {
     StringRef Line = Lines[LineNo].rtrim();
-    if (!CommentPrefixes.empty()) {
-      size_t CommentStart = StringRef::npos;
-      for (StringRef Prefix : CommentPrefixes)
-        CommentStart = std::min(CommentStart, Line.find(Prefix));
-      Line = Line.substr(CommentStart);
-    }
 
     // Every directive contains '{{'; check that first to avoid running the
     // regex on most lines.
