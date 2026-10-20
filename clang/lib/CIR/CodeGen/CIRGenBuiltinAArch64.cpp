@@ -1598,9 +1598,9 @@ cir::VectorType CIRGenFunction::getSVEType(const SVETypeFlags &typeFlags) {
   case SVETypeFlags::EltTyFloat16:
     return cir::VectorType::get(builder.getFp16Ty(), 8, true);
   case SVETypeFlags::EltTyBFloat16:
-    return cir::VectorType::get(builder.getBF16Type(), 8, true);
+    return cir::VectorType::get(builder.getBfloat16Ty(), 8, true);
   case SVETypeFlags::EltTyFloat32:
-    return cir::VectorType::get(builder.getF32Type(), 4, true);
+    return cir::VectorType::get(builder.getSingleTy(), 4, true);
   case SVETypeFlags::EltTyFloat64:
     return cir::VectorType::get(builder.getDoubleTy(), 2, true);
 
