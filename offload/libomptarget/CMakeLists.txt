@@ -15,6 +15,7 @@ add_library(omptarget SHARED
   OpenMP/OMPT/Callback.cpp
 
   ../libompaccsupport/AsyncInfo.cpp
+  ../libompaccsupport/DiagnosticPrinter.cpp
   ../libompaccsupport/device.cpp
   ../libompaccsupport/PluginManager.cpp
   ../libompaccsupport/DeviceImage.cpp
