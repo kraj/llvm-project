@@ -4923,6 +4923,26 @@ Instruction *InstCombinerImpl::visitBitExtractInst(BitExtractInst &BE) {
                                      DL.getTypeSizeInBits(Src->getType()))
     return new BitCastInst(Src, BE.getType());
 
+  // bitextract ty, (bitcast x to bM), off
+  //   -> extractelement (bitcast x to <M/W x ty>), off/W,
+  //   if x is a vector and ty is W bits wide
+  Value *X;
+  uint64_t Off;
+  Type *Ty = BE.getType();
+  if (match(Src, m_BitCast(m_Value(X))) && match(Offset, m_ConstantInt(Off)) &&
+      isa<FixedVectorType>(X->getType()) &&
+      !X->getType()->isPtrOrPtrVectorTy() &&
+      (Ty->isIntegerTy() || Ty->isIEEELikeFPTy())) {
+    uint64_t SrcBits = DL.getTypeSizeInBits(Src->getType());
+    uint64_t W = DL.getTypeSizeInBits(Ty);
+    if (SrcBits % W == 0 && Off % W == 0) {
+      uint64_t NumElts = SrcBits / W;
+      uint64_t Idx = DL.isBigEndian() ? NumElts - 1 - Off / W : Off / W;
+      Value *Vec = Builder.CreateBitCast(X, FixedVectorType::get(Ty, NumElts));
+      return ExtractElementInst::Create(Vec, Builder.getInt64(Idx));
+    }
+  }
+
   return nullptr;
 }
 

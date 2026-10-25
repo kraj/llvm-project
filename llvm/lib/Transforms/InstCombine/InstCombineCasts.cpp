@@ -18,6 +18,7 @@
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Instruction.h"
@@ -3489,6 +3490,46 @@ static Value *foldCopySignIdioms(BitCastInst &CI,
   return Builder.CreateCopySign(Builder.CreateBitCast(Y, FTy), X);
 }
 
+/// bitcast (bitextract (bitcast x to bM), off) to <L x ty>
+///   -> shufflevector (bitcast x to <M/W x ty>), <off/W, ..., off/W + L - 1>,
+///   if x is a vector and ty is W bits wide
+static Instruction *foldBitCastBitExtract(BitCastInst &BitCast,
+                                          InstCombinerImpl &IC) {
+  auto *DestTy = dyn_cast<FixedVectorType>(BitCast.getType());
+  Value *X;
+  uint64_t Off;
+  if (!DestTy ||
+      !match(BitCast.getOperand(0),
+             m_OneUse(m_BitExtract(m_BitCast(m_Value(X)), m_ConstantInt(Off)))))
+    return nullptr;
+
+  // Pointer vectors can only be bitcast to pointer or byte vectors.
+  Type *SrcTy = X->getType();
+  Type *EltTy = DestTy->getElementType();
+  if (!isa<FixedVectorType>(SrcTy) || SrcTy->isPtrOrPtrVectorTy() ||
+      (!EltTy->isIntegerTy() && !EltTy->isIEEELikeFPTy() && !EltTy->isByteTy()))
+    return nullptr;
+
+  const DataLayout &DL = IC.getDataLayout();
+  uint64_t SrcBits = DL.getTypeSizeInBits(SrcTy);
+  uint64_t EltBits = DL.getTypeSizeInBits(EltTy);
+  if (SrcBits % EltBits != 0 || Off % EltBits != 0)
+    return nullptr;
+
+  // An out of range offset is poison, which InstSimplify folds.
+  uint64_t NumElts = SrcBits / EltBits;
+  uint64_t NumLanes = DestTy->getNumElements();
+  uint64_t First = Off / EltBits;
+  if (First + NumLanes > NumElts)
+    return nullptr;
+
+  if (DL.isBigEndian())
+    First = NumElts - NumLanes - First;
+  Value *Vec =
+      IC.Builder.CreateBitCast(X, FixedVectorType::get(EltTy, NumElts));
+  return new ShuffleVectorInst(Vec, createSequentialMask(First, NumLanes, 0));
+}
+
 Instruction *InstCombinerImpl::visitBitCast(BitCastInst &CI) {
   // If the operands are integer typed then apply the integer transforms,
   // otherwise just apply the common ones.
@@ -3620,6 +3661,9 @@ Instruction *InstCombinerImpl::visitBitCast(BitCastInst &CI) {
       return I;
 
   if (Instruction *I = canonicalizeBitCastExtElt(CI, *this))
+    return I;
+
+  if (Instruction *I = foldBitCastBitExtract(CI, *this))
     return I;
 
   if (Instruction *I = foldBitCastBitwiseLogic(CI, Builder))
