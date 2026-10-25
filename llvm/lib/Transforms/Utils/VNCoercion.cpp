@@ -361,9 +361,15 @@ static Value *getStoreValueForLoadHelper(Value *SrcVal, unsigned Offset,
     ShiftAmt = (StoreSize - LoadSize - Offset) * 8;
 
   Type *SrcTy = SrcVal->getType();
-  // Integers drop provenance, and one poison bit poisons the whole value.
+  // Integers drop provenance, and one poison bit poisons the whole value. A
+  // vector tracks poison per lane.
   if (SrcTy->isByteOrByteVectorTy() ||
-      (SrcTy->isPtrOrPtrVectorTy() && LoadTy->isByteOrByteVectorTy())) {
+      (SrcTy->isPtrOrPtrVectorTy() && LoadTy->isByteOrByteVectorTy()) ||
+      (SrcTy->isVectorTy() && LoadSize != StoreSize)) {
+    // Fold a constant bitextract, as the builder has no DataLayout.
+    if (auto *C = dyn_cast<Constant>(SrcVal))
+      if (Constant *Res = getConstantValueForLoad(C, Offset, LoadTy, DL))
+        return Res;
     unsigned SrcBits = DL.getTypeSizeInBits(SrcTy).getFixedValue();
     unsigned LoadBits = DL.getTypeSizeInBits(LoadTy).getFixedValue();
     if (LoadBits == SrcBits)
@@ -382,6 +388,11 @@ static Value *getStoreValueForLoadHelper(Value *SrcVal, unsigned Offset,
   if (SrcVal->getType()->isPtrOrPtrVectorTy())
     SrcVal =
         Builder.CreatePtrToInt(SrcVal, DL.getIntPtrType(SrcVal->getType()));
+  // If the load and store are the same size, there is nothing to shift.
+  // Return the value as is and let coerceAvailableValueToLoadType cast it. If
+  // one lane of a vector is poison, an integer cast would poison all lanes.
+  if (LoadSize == StoreSize)
+    return SrcVal;
   if (!SrcVal->getType()->isIntegerTy())
     SrcVal =
         Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, StoreSize * 8));
