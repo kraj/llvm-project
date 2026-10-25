@@ -4911,6 +4911,47 @@ Instruction *InstCombinerImpl::visitBitInsertInst(BitInsertInst &BI) {
   return nullptr;
 }
 
+/// bitextract ty, (bitcast x to bM), off
+///   -> extractelement (bitcast x to <M/W x ty>), off/W
+/// where ty is W bits wide, if x is a vector and W divides M and off.
+static Instruction *foldBitExtractBitCast(BitExtractInst &BE,
+                                          InstCombinerImpl &IC) {
+  Value *X;
+  uint64_t Off;
+  if (!match(&BE, m_BitExtract(m_BitCast(m_Value(X)), m_ConstantInt(Off))))
+    return nullptr;
+
+  // Pointers can only be bitcast to or from pointers or bytes. A byte result
+  // is kept, since a bitcast of it to a vector can become a shufflevector.
+  Type *SrcTy = X->getType();
+  Type *EltTy = BE.getType();
+  if (!isa<FixedVectorType>(SrcTy) || SrcTy->isPtrOrPtrVectorTy() ||
+      EltTy->isPointerTy() || EltTy->isByteTy())
+    return nullptr;
+
+  // A vector bitcast user is left to foldBitCastBitExtract, which turns the
+  // pair into a shufflevector.
+  if (BE.hasOneUse() && isa<BitCastInst>(BE.user_back()) &&
+      BE.user_back()->getType()->isVectorTy())
+    return nullptr;
+
+  const DataLayout &DL = IC.getDataLayout();
+  uint64_t SrcBits = DL.getTypeSizeInBits(SrcTy);
+  uint64_t EltBits = DL.getTypeSizeInBits(EltTy);
+  if (SrcBits % EltBits != 0 || Off % EltBits != 0)
+    return nullptr;
+
+  assert(Off + EltBits <= SrcBits &&
+         "Expected out of range offset to simplify to poison");
+  uint64_t NumElts = SrcBits / EltBits;
+  uint64_t Idx = Off / EltBits;
+  if (DL.isBigEndian())
+    Idx = NumElts - 1 - Idx;
+  Value *Vec =
+      IC.Builder.CreateBitCast(X, FixedVectorType::get(EltTy, NumElts));
+  return ExtractElementInst::Create(Vec, IC.Builder.getInt64(Idx));
+}
+
 Instruction *InstCombinerImpl::visitBitExtractInst(BitExtractInst &BE) {
   Value *Src = BE.getOperand(0);
   Value *Offset = BE.getOperand(1);
@@ -4922,6 +4963,9 @@ Instruction *InstCombinerImpl::visitBitExtractInst(BitExtractInst &BE) {
   if (match(Offset, m_Zero()) && DL.getTypeSizeInBits(BE.getType()) ==
                                      DL.getTypeSizeInBits(Src->getType()))
     return new BitCastInst(Src, BE.getType());
+
+  if (Instruction *I = foldBitExtractBitCast(BE, *this))
+    return I;
 
   return nullptr;
 }
