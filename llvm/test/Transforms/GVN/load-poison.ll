@@ -6,29 +6,31 @@
 
 ; Memory is poison per bit and keeps the provenance of pointers. A loaded value
 ; is poison per lane, or as a whole if it isn't a vector. Only pointers and bytes
-; keep provenance. So forwarding an earlier load to a later load can lose bits
-; the later load reads from memory.
+; keep provenance. When forwarding an earlier load would lose bits the later load
+; reads from memory, GVN turns the earlier load into a byte load.
 
 declare void @use(...) memory(none)
 
-; FIXME: Forwarding part of a lane spreads poison to the bytes the later load
-; reads.
+; Forwarding part of a lane goes through a byte load, so poison doesn't spread
+; to the bytes the later load reads.
 define i8 @load_v4i32_to_i8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i8 @load_v4i32_to_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load <4 x i32>, ptr [[P]], align 16
+; LE-NEXT:    [[V_BYTES:%.*]] = load <4 x b32>, ptr [[P]], align 16
+; LE-NEXT:    [[V:%.*]] = bitcast <4 x b32> [[V_BYTES]] to <4 x i32>
 ; LE-NEXT:    call void (...) @use(<4 x i32> [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = bitcast <4 x i32> [[V]] to b128
+; LE-NEXT:    [[TMP1:%.*]] = bitcast <4 x b32> [[V_BYTES]] to b128
 ; LE-NEXT:    [[TMP2:%.*]] = bitextract i8, b128 [[TMP1]], i32 0
 ; LE-NEXT:    ret i8 [[TMP2]]
 ;
 ; BE-LABEL: define i8 @load_v4i32_to_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load <4 x i32>, ptr [[P]], align 16
+; BE-NEXT:    [[V_BYTES:%.*]] = load <4 x b32>, ptr [[P]], align 16
+; BE-NEXT:    [[V:%.*]] = bitcast <4 x b32> [[V_BYTES]] to <4 x i32>
 ; BE-NEXT:    call void (...) @use(<4 x i32> [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = bitcast <4 x i32> [[V]] to b128
+; BE-NEXT:    [[TMP1:%.*]] = bitcast <4 x b32> [[V_BYTES]] to b128
 ; BE-NEXT:    [[TMP2:%.*]] = bitextract i8, b128 [[TMP1]], i32 120
 ; BE-NEXT:    ret i8 [[TMP2]]
 ;
@@ -38,14 +40,15 @@ define i8 @load_v4i32_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Same as above, from the second example in #99268.
+; Same as above, from the second example in #99268.
 define <2 x i64> @load_v2i64_to_v2i32(ptr %p) {
 ;
 ;
 ; LE-LABEL: define <2 x i64> @load_v2i64_to_v2i32(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load <2 x i64>, ptr [[P]], align 16
-; LE-NEXT:    [[TMP1:%.*]] = bitcast <2 x i64> [[V]] to b128
+; LE-NEXT:    [[V_BYTES:%.*]] = load <2 x b64>, ptr [[P]], align 16
+; LE-NEXT:    [[V:%.*]] = bitcast <2 x b64> [[V_BYTES]] to <2 x i64>
+; LE-NEXT:    [[TMP1:%.*]] = bitcast <2 x b64> [[V_BYTES]] to b128
 ; LE-NEXT:    [[TMP2:%.*]] = bitextract b64, b128 [[TMP1]], i32 0
 ; LE-NEXT:    [[TMP3:%.*]] = bitcast b64 [[TMP2]] to <2 x i32>
 ; LE-NEXT:    [[S:%.*]] = sext <2 x i32> [[TMP3]] to <2 x i64>
@@ -54,8 +57,9 @@ define <2 x i64> @load_v2i64_to_v2i32(ptr %p) {
 ;
 ; BE-LABEL: define <2 x i64> @load_v2i64_to_v2i32(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load <2 x i64>, ptr [[P]], align 16
-; BE-NEXT:    [[TMP1:%.*]] = bitcast <2 x i64> [[V]] to b128
+; BE-NEXT:    [[V_BYTES:%.*]] = load <2 x b64>, ptr [[P]], align 16
+; BE-NEXT:    [[V:%.*]] = bitcast <2 x b64> [[V_BYTES]] to <2 x i64>
+; BE-NEXT:    [[TMP1:%.*]] = bitcast <2 x b64> [[V_BYTES]] to b128
 ; BE-NEXT:    [[TMP2:%.*]] = bitextract b64, b128 [[TMP1]], i32 64
 ; BE-NEXT:    [[TMP3:%.*]] = bitcast b64 [[TMP2]] to <2 x i32>
 ; BE-NEXT:    [[S:%.*]] = sext <2 x i32> [[TMP3]] to <2 x i64>
@@ -69,23 +73,24 @@ define <2 x i64> @load_v2i64_to_v2i32(ptr %p) {
   ret <2 x i64> %r
 }
 
-; FIXME: Same as above, for a scalar.
+; Same as above, for a scalar.
 define i8 @load_i32_to_i8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i8 @load_i32_to_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; LE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i8
+; LE-NEXT:    [[TMP1:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret i8 [[TMP1]]
 ;
 ; BE-LABEL: define i8 @load_i32_to_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; BE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
+; BE-NEXT:    [[TMP2:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 24
 ; BE-NEXT:    ret i8 [[TMP2]]
 ;
   %v = load i32, ptr %p
@@ -94,25 +99,24 @@ define i8 @load_i32_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Same as above, for a pointer.
+; Same as above, for a pointer.
 define i32 @load_ptr_to_i32(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i32 @load_ptr_to_i32(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load ptr, ptr [[P]], align 8
+; LE-NEXT:    [[V_BYTES:%.*]] = load b64, ptr [[P]], align 8
+; LE-NEXT:    [[V:%.*]] = bitcast b64 [[V_BYTES]] to ptr
 ; LE-NEXT:    call void (...) @use(ptr [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = ptrtoint ptr [[V]] to i64
-; LE-NEXT:    [[TMP2:%.*]] = trunc i64 [[TMP1]] to i32
+; LE-NEXT:    [[TMP2:%.*]] = bitextract i32, b64 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret i32 [[TMP2]]
 ;
 ; BE-LABEL: define i32 @load_ptr_to_i32(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load ptr, ptr [[P]], align 8
+; BE-NEXT:    [[V_BYTES:%.*]] = load b64, ptr [[P]], align 8
+; BE-NEXT:    [[V:%.*]] = bitcast b64 [[V_BYTES]] to ptr
 ; BE-NEXT:    call void (...) @use(ptr [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = ptrtoint ptr [[V]] to i64
-; BE-NEXT:    [[TMP2:%.*]] = lshr i64 [[TMP1]], 32
-; BE-NEXT:    [[TMP3:%.*]] = trunc i64 [[TMP2]] to i32
+; BE-NEXT:    [[TMP3:%.*]] = bitextract i32, b64 [[V_BYTES]], i32 32
 ; BE-NEXT:    ret i32 [[TMP3]]
 ;
   %v = load ptr, ptr %p
@@ -121,15 +125,15 @@ define i32 @load_ptr_to_i32(ptr %p) {
   ret i32 %x
 }
 
-; FIXME: A byte is poison per bit, so a byte load reads part of a lane even if
-; it is as wide as the earlier load.
+; A byte is poison per bit, so a byte load reads part of a lane even if it is
+; as wide as the earlier load.
 define b32 @load_i32_to_b32(ptr %p) {
 ;
 ; CHECK-LABEL: define b32 @load_i32_to_b32(
 ; CHECK-SAME: ptr [[P:%.*]]) {
-; CHECK-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; CHECK-NEXT:    [[TMP1:%.*]] = load b32, ptr [[P]], align 4
+; CHECK-NEXT:    [[V:%.*]] = bitcast b32 [[TMP1]] to i32
 ; CHECK-NEXT:    call void (...) @use(i32 [[V]])
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32 [[V]] to b32
 ; CHECK-NEXT:    ret b32 [[TMP1]]
 ;
   %v = load i32, ptr %p
@@ -138,25 +142,24 @@ define b32 @load_i32_to_b32(ptr %p) {
   ret b32 %x
 }
 
-; FIXME: Same as above, for a narrower byte.
+; Same as above, for a narrower byte.
 define b8 @load_i32_to_b8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define b8 @load_i32_to_b8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; LE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i8
-; LE-NEXT:    [[TMP2:%.*]] = bitcast i8 [[TMP1]] to b8
+; LE-NEXT:    [[TMP2:%.*]] = bitextract b8, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret b8 [[TMP2]]
 ;
 ; BE-LABEL: define b8 @load_i32_to_b8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; BE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
-; BE-NEXT:    [[TMP3:%.*]] = bitcast i8 [[TMP2]] to b8
+; BE-NEXT:    [[TMP3:%.*]] = bitextract b8, b32 [[V_BYTES]], i32 24
 ; BE-NEXT:    ret b8 [[TMP3]]
 ;
   %v = load i32, ptr %p
@@ -165,14 +168,15 @@ define b8 @load_i32_to_b8(ptr %p) {
   ret b8 %x
 }
 
-; FIXME: Same as above, for scalable vectors.
+; Same as above, for scalable vectors.
 define <vscale x 4 x i32> @load_nxv2i64_to_nxv4i32(ptr %p) {
 ;
 ; CHECK-LABEL: define <vscale x 4 x i32> @load_nxv2i64_to_nxv4i32(
 ; CHECK-SAME: ptr [[P:%.*]]) {
-; CHECK-NEXT:    [[V:%.*]] = load <vscale x 2 x i64>, ptr [[P]], align 16
+; CHECK-NEXT:    [[V_BYTES:%.*]] = load <vscale x 2 x b64>, ptr [[P]], align 16
+; CHECK-NEXT:    [[V:%.*]] = bitcast <vscale x 2 x b64> [[V_BYTES]] to <vscale x 2 x i64>
 ; CHECK-NEXT:    call void (...) @use(<vscale x 2 x i64> [[V]])
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast <vscale x 2 x i64> [[V]] to <vscale x 4 x i32>
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast <vscale x 2 x b64> [[V_BYTES]] to <vscale x 4 x i32>
 ; CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP1]]
 ;
   %v = load <vscale x 2 x i64>, ptr %p
@@ -181,13 +185,14 @@ define <vscale x 4 x i32> @load_nxv2i64_to_nxv4i32(ptr %p) {
   ret <vscale x 4 x i32> %x
 }
 
-; FIXME: An integer has no provenance, so the pointer loses it.
+; An integer has no provenance, so the pointer goes through a byte load.
 define ptr @load_i64_to_ptr(ptr %p) {
 ; CHECK-LABEL: define ptr @load_i64_to_ptr(
 ; CHECK-SAME: ptr [[P:%.*]]) {
-; CHECK-NEXT:    [[V:%.*]] = load i64, ptr [[P]], align 8
+; CHECK-NEXT:    [[V_BYTES:%.*]] = load b64, ptr [[P]], align 8
+; CHECK-NEXT:    [[V:%.*]] = bitcast b64 [[V_BYTES]] to i64
 ; CHECK-NEXT:    call void (...) @use(i64 [[V]])
-; CHECK-NEXT:    [[TMP1:%.*]] = inttoptr i64 [[V]] to ptr
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast b64 [[V_BYTES]] to ptr
 ; CHECK-NEXT:    ret ptr [[TMP1]]
 ;
   %v = load i64, ptr %p
@@ -196,25 +201,22 @@ define ptr @load_i64_to_ptr(ptr %p) {
   ret ptr %x
 }
 
-; FIXME: Same as above, for a pointer in another address space.
+; Same as above, for a pointer in another address space.
 define ptr addrspace(1) @load_ptr_to_ptr1(ptr %p) {
 ; LE-LABEL: define ptr addrspace(1) @load_ptr_to_ptr1(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load ptr, ptr [[P]], align 8
+; LE-NEXT:    [[V_BYTES:%.*]] = load b64, ptr [[P]], align 8
+; LE-NEXT:    [[V:%.*]] = bitcast b64 [[V_BYTES]] to ptr
 ; LE-NEXT:    call void (...) @use(ptr [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = ptrtoint ptr [[V]] to i64
-; LE-NEXT:    [[TMP2:%.*]] = trunc i64 [[TMP1]] to i32
-; LE-NEXT:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to ptr addrspace(1)
+; LE-NEXT:    [[TMP3:%.*]] = bitextract ptr addrspace(1), b64 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret ptr addrspace(1) [[TMP3]]
 ;
 ; BE-LABEL: define ptr addrspace(1) @load_ptr_to_ptr1(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load ptr, ptr [[P]], align 8
+; BE-NEXT:    [[V_BYTES:%.*]] = load b64, ptr [[P]], align 8
+; BE-NEXT:    [[V:%.*]] = bitcast b64 [[V_BYTES]] to ptr
 ; BE-NEXT:    call void (...) @use(ptr [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = ptrtoint ptr [[V]] to i64
-; BE-NEXT:    [[TMP2:%.*]] = lshr i64 [[TMP1]], 32
-; BE-NEXT:    [[TMP3:%.*]] = trunc i64 [[TMP2]] to i32
-; BE-NEXT:    [[TMP4:%.*]] = inttoptr i32 [[TMP3]] to ptr addrspace(1)
+; BE-NEXT:    [[TMP4:%.*]] = bitextract ptr addrspace(1), b64 [[V_BYTES]], i32 32
 ; BE-NEXT:    ret ptr addrspace(1) [[TMP4]]
 ;
   %v = load ptr, ptr %p
@@ -223,14 +225,14 @@ define ptr addrspace(1) @load_ptr_to_ptr1(ptr %p) {
   ret ptr addrspace(1) %x
 }
 
-; FIXME: A byte keeps pointer bits that the pointer loses, for example when
-; memory holds the bytes of two pointers.
+; A byte keeps pointer bits that the pointer loses, for example when memory
+; holds the bytes of two pointers.
 define b64 @load_ptr_to_b64(ptr %p) {
 ; CHECK-LABEL: define b64 @load_ptr_to_b64(
 ; CHECK-SAME: ptr [[P:%.*]]) {
-; CHECK-NEXT:    [[V:%.*]] = load ptr, ptr [[P]], align 8
+; CHECK-NEXT:    [[TMP1:%.*]] = load b64, ptr [[P]], align 8
+; CHECK-NEXT:    [[V:%.*]] = bitcast b64 [[TMP1]] to ptr
 ; CHECK-NEXT:    call void (...) @use(ptr [[V]])
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast ptr [[V]] to b64
 ; CHECK-NEXT:    ret b64 [[TMP1]]
 ;
   %v = load ptr, ptr %p
@@ -239,13 +241,13 @@ define b64 @load_ptr_to_b64(ptr %p) {
   ret b64 %x
 }
 
-; FIXME: Same as above, even if the earlier load is never poison.
+; Same as above, even if the earlier load is never poison.
 define b32 @load_i32_noundef_to_b32(ptr %p) {
 ; CHECK-LABEL: define b32 @load_i32_noundef_to_b32(
 ; CHECK-SAME: ptr [[P:%.*]]) {
-; CHECK-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !noundef [[META0:![0-9]+]]
+; CHECK-NEXT:    [[TMP1:%.*]] = load b32, ptr [[P]], align 4
+; CHECK-NEXT:    [[V:%.*]] = bitcast b32 [[TMP1]] to i32
 ; CHECK-NEXT:    call void (...) @use(i32 [[V]])
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32 [[V]] to b32
 ; CHECK-NEXT:    ret b32 [[TMP1]]
 ;
   %v = load i32, ptr %p, !noundef !{}
@@ -254,13 +256,14 @@ define b32 @load_i32_noundef_to_b32(ptr %p) {
   ret b32 %x
 }
 
-; FIXME: Same as above, even if each lane is a single bit.
+; Same as above, even if each lane is a single bit.
 define b8 @load_v8i1_to_b8(ptr %p) {
 ; CHECK-LABEL: define b8 @load_v8i1_to_b8(
 ; CHECK-SAME: ptr [[P:%.*]]) {
-; CHECK-NEXT:    [[V:%.*]] = load <8 x i1>, ptr [[P]], align 1
+; CHECK-NEXT:    [[V_BYTES:%.*]] = load <8 x b1>, ptr [[P]], align 1
+; CHECK-NEXT:    [[V:%.*]] = bitcast <8 x b1> [[V_BYTES]] to <8 x i1>
 ; CHECK-NEXT:    call void (...) @use(<8 x i1> [[V]])
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast <8 x i1> [[V]] to b8
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast <8 x b1> [[V_BYTES]] to b8
 ; CHECK-NEXT:    ret b8 [[TMP1]]
 ;
   %v = load <8 x i1>, ptr %p
@@ -320,14 +323,14 @@ define i8 @load_i32_noundef_to_i8(ptr %p) {
 ;
 ; LE-LABEL: define i8 @load_i32_noundef_to_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !noundef [[META0]]
+; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !noundef [[META0:![0-9]+]]
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
 ; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i8
 ; LE-NEXT:    ret i8 [[TMP1]]
 ;
 ; BE-LABEL: define i8 @load_i32_noundef_to_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !noundef [[META0]]
+; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !noundef [[META0:![0-9]+]]
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
 ; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 24
 ; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
@@ -363,24 +366,24 @@ define i8 @load_b32_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison. The byte load must stay
-; atomic.
+; The byte load stays atomic.
 define i8 @load_atomic_i32_to_i8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i8 @load_atomic_i32_to_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load atomic i32, ptr [[P]] acquire, align 4
+; LE-NEXT:    [[V_BYTES:%.*]] = load atomic b32, ptr [[P]] acquire, align 4
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i8
+; LE-NEXT:    [[TMP1:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret i8 [[TMP1]]
 ;
 ; BE-LABEL: define i8 @load_atomic_i32_to_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load atomic i32, ptr [[P]] acquire, align 4
+; BE-NEXT:    [[V_BYTES:%.*]] = load atomic b32, ptr [[P]] acquire, align 4
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
+; BE-NEXT:    [[TMP2:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 24
 ; BE-NEXT:    ret i8 [[TMP2]]
 ;
   %v = load atomic i32, ptr %p acquire, align 4
@@ -389,24 +392,24 @@ define i8 @load_atomic_i32_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison. The byte load must stay
-; volatile.
+; The byte load stays volatile.
 define i8 @load_volatile_i32_to_i8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i8 @load_volatile_i32_to_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load volatile i32, ptr [[P]], align 4
+; LE-NEXT:    [[V_BYTES:%.*]] = load volatile b32, ptr [[P]], align 4
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i8
+; LE-NEXT:    [[TMP1:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret i8 [[TMP1]]
 ;
 ; BE-LABEL: define i8 @load_volatile_i32_to_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load volatile i32, ptr [[P]], align 4
+; BE-NEXT:    [[V_BYTES:%.*]] = load volatile b32, ptr [[P]], align 4
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
+; BE-NEXT:    [[TMP2:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 24
 ; BE-NEXT:    ret i8 [[TMP2]]
 ;
   %v = load volatile i32, ptr %p
@@ -415,27 +418,17 @@ define i8 @load_volatile_i32_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison. A volatile load can't change
-; from floating-point to a byte, which is lowered as an integer.
+; A volatile load can't change from floating-point to a byte, which is lowered
+; as an integer. So the later load isn't forwarded.
 define i8 @load_volatile_float_to_i8(ptr %p) {
 ;
 ;
-; LE-LABEL: define i8 @load_volatile_float_to_i8(
-; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load volatile float, ptr [[P]], align 4
-; LE-NEXT:    call void (...) @use(float [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = bitcast float [[V]] to i32
-; LE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
-; LE-NEXT:    ret i8 [[TMP2]]
-;
-; BE-LABEL: define i8 @load_volatile_float_to_i8(
-; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load volatile float, ptr [[P]], align 4
-; BE-NEXT:    call void (...) @use(float [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = bitcast float [[V]] to i32
-; BE-NEXT:    [[TMP2:%.*]] = lshr i32 [[TMP1]], 24
-; BE-NEXT:    [[TMP3:%.*]] = trunc i32 [[TMP2]] to i8
-; BE-NEXT:    ret i8 [[TMP3]]
+; CHECK-LABEL: define i8 @load_volatile_float_to_i8(
+; CHECK-SAME: ptr [[P:%.*]]) {
+; CHECK-NEXT:    [[V:%.*]] = load volatile float, ptr [[P]], align 4
+; CHECK-NEXT:    call void (...) @use(float [[V]])
+; CHECK-NEXT:    [[X:%.*]] = load i8, ptr [[P]], align 1
+; CHECK-NEXT:    ret i8 [[X]]
 ;
   %v = load volatile float, ptr %p
   call void (...) @use(float %v)
@@ -443,24 +436,24 @@ define i8 @load_volatile_float_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison. Metadata that only fits the
-; original type can't move to the byte load.
+; Metadata that only fits the original type doesn't move to the byte load.
 define i8 @load_i32_metadata_to_i8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i8 @load_i32_metadata_to_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !invariant.load [[META0]]
+; LE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4, !invariant.load [[META0]]
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i8
+; LE-NEXT:    [[TMP1:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    ret i8 [[TMP1]]
 ;
 ; BE-LABEL: define i8 @load_i32_metadata_to_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4, !invariant.load [[META0]]
+; BE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4, !invariant.load [[META0]]
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i8
+; BE-NEXT:    [[TMP2:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 24
 ; BE-NEXT:    ret i8 [[TMP2]]
 ;
   %v = load i32, ptr %p, !range !0, !invariant.load !{}, !tbaa !1
@@ -469,32 +462,30 @@ define i8 @load_i32_metadata_to_i8(ptr %p) {
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison. Both later loads should
-; read from the same byte load.
+; Both later loads read from the same byte load.
 define i8 @load_i32_to_i16_i8(ptr %p) {
 ;
 ;
 ; LE-LABEL: define i8 @load_i32_to_i16_i8(
 ; LE-SAME: ptr [[P:%.*]]) {
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; LE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V]] to i16
+; LE-NEXT:    [[TMP1:%.*]] = bitextract i16, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    [[Q:%.*]] = getelementptr i8, ptr [[P]], i64 2
-; LE-NEXT:    [[TMP2:%.*]] = lshr i32 [[V]], 16
-; LE-NEXT:    [[TMP3:%.*]] = trunc i32 [[TMP2]] to i8
+; LE-NEXT:    [[TMP3:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 16
 ; LE-NEXT:    [[T:%.*]] = trunc i16 [[TMP1]] to i8
 ; LE-NEXT:    [[R:%.*]] = add i8 [[T]], [[TMP3]]
 ; LE-NEXT:    ret i8 [[R]]
 ;
 ; BE-LABEL: define i8 @load_i32_to_i16_i8(
 ; BE-SAME: ptr [[P:%.*]]) {
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; BE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP1:%.*]] = lshr i32 [[V]], 16
-; BE-NEXT:    [[TMP2:%.*]] = trunc i32 [[TMP1]] to i16
+; BE-NEXT:    [[TMP2:%.*]] = bitextract i16, b32 [[V_BYTES]], i32 16
 ; BE-NEXT:    [[Q:%.*]] = getelementptr i8, ptr [[P]], i64 2
-; BE-NEXT:    [[TMP3:%.*]] = lshr i32 [[V]], 8
-; BE-NEXT:    [[TMP4:%.*]] = trunc i32 [[TMP3]] to i8
+; BE-NEXT:    [[TMP4:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 8
 ; BE-NEXT:    [[T:%.*]] = trunc i16 [[TMP2]] to i8
 ; BE-NEXT:    [[R:%.*]] = add i8 [[T]], [[TMP4]]
 ; BE-NEXT:    ret i8 [[R]]
@@ -509,7 +500,7 @@ define i8 @load_i32_to_i16_i8(ptr %p) {
   ret i8 %r
 }
 
-; FIXME: Forwarding part of a lane spreads poison, from each predecessor.
+; Each predecessor forwards through its own byte load.
 define i8 @load_i32_to_i8_nonlocal(ptr %p, i1 %c) {
 ;
 ;
@@ -518,14 +509,16 @@ define i8 @load_i32_to_i8_nonlocal(ptr %p, i1 %c) {
 ; LE-NEXT:  [[ENTRY:.*:]]
 ; LE-NEXT:    br i1 [[C]], label %[[A:.*]], label %[[B:.*]]
 ; LE:       [[A]]:
-; LE-NEXT:    [[V1:%.*]] = load i32, ptr [[P]], align 4
+; LE-NEXT:    [[V1_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; LE-NEXT:    [[V1:%.*]] = bitcast b32 [[V1_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V1]])
-; LE-NEXT:    [[TMP0:%.*]] = trunc i32 [[V1]] to i8
+; LE-NEXT:    [[TMP0:%.*]] = bitextract i8, b32 [[V1_BYTES]], i32 0
 ; LE-NEXT:    br label %[[MERGE:.*]]
 ; LE:       [[B]]:
-; LE-NEXT:    [[V2:%.*]] = load i32, ptr [[P]], align 4
+; LE-NEXT:    [[V2_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; LE-NEXT:    [[V2:%.*]] = bitcast b32 [[V2_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V2]])
-; LE-NEXT:    [[TMP1:%.*]] = trunc i32 [[V2]] to i8
+; LE-NEXT:    [[TMP1:%.*]] = bitextract i8, b32 [[V2_BYTES]], i32 0
 ; LE-NEXT:    br label %[[MERGE]]
 ; LE:       [[MERGE]]:
 ; LE-NEXT:    [[X:%.*]] = phi i8 [ [[TMP1]], %[[B]] ], [ [[TMP0]], %[[A]] ]
@@ -536,19 +529,19 @@ define i8 @load_i32_to_i8_nonlocal(ptr %p, i1 %c) {
 ; BE-NEXT:  [[ENTRY:.*:]]
 ; BE-NEXT:    br i1 [[C]], label %[[A:.*]], label %[[B:.*]]
 ; BE:       [[A]]:
-; BE-NEXT:    [[V1:%.*]] = load i32, ptr [[P]], align 4
+; BE-NEXT:    [[V1_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; BE-NEXT:    [[V1:%.*]] = bitcast b32 [[V1_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V1]])
-; BE-NEXT:    [[TMP0:%.*]] = lshr i32 [[V1]], 24
-; BE-NEXT:    [[TMP1:%.*]] = trunc i32 [[TMP0]] to i8
+; BE-NEXT:    [[TMP0:%.*]] = bitextract i8, b32 [[V1_BYTES]], i32 24
 ; BE-NEXT:    br label %[[MERGE:.*]]
 ; BE:       [[B]]:
-; BE-NEXT:    [[V2:%.*]] = load i32, ptr [[P]], align 4
+; BE-NEXT:    [[V2_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; BE-NEXT:    [[V2:%.*]] = bitcast b32 [[V2_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V2]])
-; BE-NEXT:    [[TMP2:%.*]] = lshr i32 [[V2]], 24
-; BE-NEXT:    [[TMP3:%.*]] = trunc i32 [[TMP2]] to i8
+; BE-NEXT:    [[TMP1:%.*]] = bitextract i8, b32 [[V2_BYTES]], i32 24
 ; BE-NEXT:    br label %[[MERGE]]
 ; BE:       [[MERGE]]:
-; BE-NEXT:    [[X:%.*]] = phi i8 [ [[TMP3]], %[[B]] ], [ [[TMP1]], %[[A]] ]
+; BE-NEXT:    [[X:%.*]] = phi i8 [ [[TMP1]], %[[B]] ], [ [[TMP0]], %[[A]] ]
 ; BE-NEXT:    ret i8 [[X]]
 ;
 entry:
@@ -569,7 +562,7 @@ merge:
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison, through PRE.
+; PRE forwards through a byte load.
 define i8 @load_i32_to_i8_pre(ptr %p, i1 %c) {
 ;
 ;
@@ -578,9 +571,10 @@ define i8 @load_i32_to_i8_pre(ptr %p, i1 %c) {
 ; LE-NEXT:  [[ENTRY:.*:]]
 ; LE-NEXT:    br i1 [[C]], label %[[A:.*]], label %[[B:.*]]
 ; LE:       [[A]]:
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; LE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; LE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP0:%.*]] = trunc i32 [[V]] to i8
+; LE-NEXT:    [[TMP0:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 0
 ; LE-NEXT:    br label %[[MERGE:.*]]
 ; LE:       [[B]]:
 ; LE-NEXT:    call void (...) @use()
@@ -595,17 +589,17 @@ define i8 @load_i32_to_i8_pre(ptr %p, i1 %c) {
 ; BE-NEXT:  [[ENTRY:.*:]]
 ; BE-NEXT:    br i1 [[C]], label %[[A:.*]], label %[[B:.*]]
 ; BE:       [[A]]:
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; BE-NEXT:    [[V_BYTES:%.*]] = load b32, ptr [[P]], align 4
+; BE-NEXT:    [[V:%.*]] = bitcast b32 [[V_BYTES]] to i32
 ; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP0:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP1:%.*]] = trunc i32 [[TMP0]] to i8
+; BE-NEXT:    [[TMP0:%.*]] = bitextract i8, b32 [[V_BYTES]], i32 24
 ; BE-NEXT:    br label %[[MERGE:.*]]
 ; BE:       [[B]]:
 ; BE-NEXT:    call void (...) @use()
 ; BE-NEXT:    [[X_PRE:%.*]] = load i8, ptr [[P]], align 1
 ; BE-NEXT:    br label %[[MERGE]]
 ; BE:       [[MERGE]]:
-; BE-NEXT:    [[X:%.*]] = phi i8 [ [[X_PRE]], %[[B]] ], [ [[TMP1]], %[[A]] ]
+; BE-NEXT:    [[X:%.*]] = phi i8 [ [[X_PRE]], %[[B]] ], [ [[TMP0]], %[[A]] ]
 ; BE-NEXT:    ret i8 [[X]]
 ;
 entry:
@@ -625,42 +619,23 @@ merge:
   ret i8 %x
 }
 
-; FIXME: Forwarding part of a lane spreads poison. %v from the previous
-; iteration comes after %x in the block, and GVN can't replace %v while it visits
-; the block.
+; %v from the previous iteration comes after %x in the block. GVN can't replace
+; %v while it visits the block, so %x isn't forwarded.
 define void @load_i32_to_i8_loop(ptr %p, i1 %c) {
 ;
 ;
-; LE-LABEL: define void @load_i32_to_i8_loop(
-; LE-SAME: ptr [[P:%.*]], i1 [[C:%.*]]) {
-; LE-NEXT:  [[ENTRY:.*]]:
-; LE-NEXT:    [[X_PRE:%.*]] = load i8, ptr [[P]], align 1
-; LE-NEXT:    br label %[[LOOP:.*]]
-; LE:       [[LOOP]]:
-; LE-NEXT:    [[X:%.*]] = phi i8 [ [[TMP0:%.*]], %[[LOOP]] ], [ [[X_PRE]], %[[ENTRY]] ]
-; LE-NEXT:    call void (...) @use(i8 [[X]])
-; LE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
-; LE-NEXT:    call void (...) @use(i32 [[V]])
-; LE-NEXT:    [[TMP0]] = trunc i32 [[V]] to i8
-; LE-NEXT:    br i1 [[C]], label %[[LOOP]], label %[[EXIT:.*]]
-; LE:       [[EXIT]]:
-; LE-NEXT:    ret void
-;
-; BE-LABEL: define void @load_i32_to_i8_loop(
-; BE-SAME: ptr [[P:%.*]], i1 [[C:%.*]]) {
-; BE-NEXT:  [[ENTRY:.*]]:
-; BE-NEXT:    [[X_PRE:%.*]] = load i8, ptr [[P]], align 1
-; BE-NEXT:    br label %[[LOOP:.*]]
-; BE:       [[LOOP]]:
-; BE-NEXT:    [[X:%.*]] = phi i8 [ [[TMP1:%.*]], %[[LOOP]] ], [ [[X_PRE]], %[[ENTRY]] ]
-; BE-NEXT:    call void (...) @use(i8 [[X]])
-; BE-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
-; BE-NEXT:    call void (...) @use(i32 [[V]])
-; BE-NEXT:    [[TMP0:%.*]] = lshr i32 [[V]], 24
-; BE-NEXT:    [[TMP1]] = trunc i32 [[TMP0]] to i8
-; BE-NEXT:    br i1 [[C]], label %[[LOOP]], label %[[EXIT:.*]]
-; BE:       [[EXIT]]:
-; BE-NEXT:    ret void
+; CHECK-LABEL: define void @load_i32_to_i8_loop(
+; CHECK-SAME: ptr [[P:%.*]], i1 [[C:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    br label %[[LOOP:.*]]
+; CHECK:       [[LOOP]]:
+; CHECK-NEXT:    [[X:%.*]] = load i8, ptr [[P]], align 1
+; CHECK-NEXT:    call void (...) @use(i8 [[X]])
+; CHECK-NEXT:    [[V:%.*]] = load i32, ptr [[P]], align 4
+; CHECK-NEXT:    call void (...) @use(i32 [[V]])
+; CHECK-NEXT:    br i1 [[C]], label %[[LOOP]], label %[[EXIT:.*]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    ret void
 ;
 entry:
   br label %loop
