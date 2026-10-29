@@ -3534,41 +3534,80 @@ static bool handleUncountableExitsWithSideEffects(
   return true;
 }
 
-// Returns true if any non-branch recipe in the loop may have side effects.
-// For now this relies on LoopVectorizationLegality::isVectorizableEarlyExitLoop
-// rejecting loops with side effects other than stores.
-static bool loopMayHaveSideEffects(VPBasicBlock *HeaderVPBB) {
-  return any_of(vp_rpo_plain_cfg_loop_body(HeaderVPBB), [](VPBasicBlock *VPBB) {
-    return any_of(*VPBB, [](VPRecipeBase &R) {
-      return match(&R, m_VPInstruction<Instruction::Store>());
-    });
-  });
+// Returns the blocks in the loop with a non-branch recipe that may have side
+// effects. For now this relies on
+// LoopVectorizationLegality::isVectorizableEarlyExitLoop rejecting loops with
+// side effects other than stores.
+static SmallVector<VPBasicBlock *>
+blocksWithSideEffects(VPBasicBlock *HeaderVPBB) {
+  return to_vector(make_filter_range(
+      vp_rpo_plain_cfg_loop_body(HeaderVPBB), [](VPBasicBlock *VPBB) {
+        return any_of(make_pointer_range(*VPBB),
+                      match_fn(m_VPInstruction<Instruction::Store>()));
+      }));
 }
 
 bool VPlanTransforms::handleUncountableEarlyExits(
     VPlan &Plan, OptimizationRemarkEmitter *ORE, Loop *TheLoop,
     PredicatedScalarEvolution &PSE, DominatorTree &DT, AssumptionCache *AC,
     UncountableExitStyle Style) {
-#ifndef NDEBUG
   VPDominatorTree VPDT(Plan);
-#endif
 
   auto *MiddleVPBB = VPBlockUtils::getPlainCFGMiddleBlock(Plan);
   auto [HeaderVPBB, LatchVPBB] = VPBlockUtils::getPlainCFGHeaderAndLatch(Plan);
 
-  if (loopMayHaveSideEffects(HeaderVPBB))
-    Style = UncountableExitStyle::MaskedHandleExitInScalarLoop;
+  // Side effects can be masked off the lanes from the first exiting one on in
+  // the vector loop if they come after all the early exits. Otherwise handle
+  // the exiting lane in the scalar loop.
+  // TODO: Legality only allows side effects that the scalar loop style can
+  // handle, relax it for side effects after all the early exits.
+  SmallVector<VPBasicBlock *> SideEffectVPBBs =
+      blocksWithSideEffects(HeaderVPBB);
+  if (!SideEffectVPBBs.empty()) {
+    auto EarlyExits = vputils::getEarlyExits(Plan, MiddleVPBB);
+    // TODO: Split the latch when it contains side effects.
+    if (is_contained(SideEffectVPBBs, LatchVPBB))
+      Style = UncountableExitStyle::MaskedHandleExitInScalarLoop;
+    for (auto [EarlyExitingVPBB, _] : EarlyExits)
+      for (VPBasicBlock *VPBB : SideEffectVPBBs)
+        if (!VPDT.properlyDominates(EarlyExitingVPBB, VPBB))
+          Style = UncountableExitStyle::MaskedHandleExitInScalarLoop;
 
-  // Dereferenceability is checked separately for uncountable exit loops with
-  // stores, as only the loads contributing to the exit condition need to
-  // be checked.
-  if (Style == UncountableExitStyle::ReadOnly &&
+    // The lanes from the first exiting one on skip the blocks after their exit,
+    // but still branch on the latch's exit condition, so it can't use values
+    // from those blocks.
+    SmallVector<VPValue *> Worklist = {
+        LatchVPBB->getTerminator()->getOperand(0)};
+    SmallPtrSet<VPRecipeBase *, 8> Visited;
+    while (!Worklist.empty()) {
+      VPRecipeBase *R = Worklist.pop_back_val()->getDefiningRecipe();
+      if (!R || !Visited.insert(R).second ||
+          all_of(EarlyExits, [&](const auto &Exit) {
+            return VPDT.dominates(R->getParent(), Exit.first);
+          }))
+        continue;
+      if (R->getParent() != LatchVPBB || isa<VPPhi>(R)) {
+        Style = UncountableExitStyle::MaskedHandleExitInScalarLoop;
+        break;
+      }
+      append_range(Worklist, R->operands());
+    }
+  }
+
+  // The vector loop style executes every load on the lanes past the first
+  // exiting one, so they all need to be dereferenceable. Otherwise loops with
+  // side effects can fall back to the scalar loop style, which checks just the
+  // loads contributing to the exit conditions.
+  if (Style == UncountableExitStyle::MaskedHandleExitInVectorLoop &&
       !areAllLoadsDereferenceable(HeaderVPBB, TheLoop, PSE, DT, AC)) {
-    reportVectorizationFailure(
-        "Auto-vectorization of early exit loops with potentially "
-        "faulting loads is not supported",
-        "EarlyExitFaultingLoads", ORE, TheLoop);
-    return false;
+    if (SideEffectVPBBs.empty()) {
+      reportVectorizationFailure(
+          "Auto-vectorization of early exit loops with potentially "
+          "faulting loads is not supported",
+          "EarlyExitFaultingLoads", ORE, TheLoop);
+      return false;
+    }
+    Style = UncountableExitStyle::MaskedHandleExitInScalarLoop;
   }
 
   VPBuilder LatchBuilder(LatchVPBB->getTerminator());
@@ -3601,7 +3640,7 @@ bool VPlanTransforms::handleUncountableEarlyExits(
     });
   }
 
-  if (Style == UncountableExitStyle::ReadOnly) {
+  if (Style == UncountableExitStyle::MaskedHandleExitInVectorLoop) {
     // Lanes after the first one to exit run iterations the scalar loop never
     // does, so they mustn't branch on poison.
     for (VPBasicBlock *VPBB : vp_rpo_plain_cfg_loop_body(HeaderVPBB)) {
@@ -3609,6 +3648,42 @@ bool VPlanTransforms::handleUncountableEarlyExits(
       if (!Term || VPBB == LatchVPBB)
         continue;
       Term->setOperand(0, VPBuilder(Term).createFreeze(Term->getOperand(0)));
+    }
+
+    if (!SideEffectVPBBs.empty()) {
+      // Branch from each exiting block to the latch on every lane from the
+      // first that takes the exit, so none of them reach the side effects.
+      for (EarlyExitInfo &Exit : Exits) {
+        VPBasicBlock *EarlyExitingVPBB = Exit.EarlyExitingVPBB;
+        VPBuilder ExitingBuilder(EarlyExitingVPBB->getTerminator());
+        VPValue *ExitMask = ExitingBuilder.createWidenIntrinsic(
+            Intrinsic::mask_beforefirst,
+            ExitingBuilder.createFreeze(ExitingBuilder.createNaryOp(
+                VPInstruction::MaskedCond, Exit.CondToExit)),
+            Type::getInt1Ty(Plan.getContext()));
+        EarlyExitingVPBB->getTerminator()->setOperand(0, ExitMask);
+        VPBlockUtils::connectBlocks(EarlyExitingVPBB, LatchVPBB);
+        for (VPPhi &Phi : make_isa_range<VPPhi>(LatchVPBB->phis()))
+          Phi.addIncoming(Plan.getPoison(Phi.getScalarType()));
+      }
+
+      // If we took the exiting branch then any uses in the latch and beyond are
+      // poison.
+      VPDT.recalculate(Plan);
+      for (VPBasicBlock *VPBB : {LatchVPBB, MiddleVPBB}) {
+        for (VPRecipeBase &R :
+             make_range(VPBB->getFirstNonPhi(), VPBB->end())) {
+          for (auto [I, Op] : enumerate(R.operands())) {
+            VPRecipeBase *DefR = Op->getDefiningRecipe();
+            if (!DefR || VPDT.dominates(DefR->getParent(), VPBB))
+              continue;
+            DenseMap<VPBasicBlock *, VPValue *> Defs = {
+                {HeaderVPBB, Plan.getPoison(Op->getScalarType())}};
+            Defs[DefR->getParent()] = Op;
+            R.setOperand(I, vputils::reconstructSSA(LatchVPBB, Defs));
+          }
+        }
+      }
     }
 
     // An exit's condition is false on any path that didn't go through its
@@ -3768,7 +3843,8 @@ bool VPlanTransforms::handleUncountableEarlyExits(
       ExitIRI->addIncoming(NewIncoming);
     }
 
-    EarlyExitingVPBB->getTerminator()->eraseFromParent();
+    if (EarlyExitingVPBB->getNumSuccessors() == 2)
+      EarlyExitingVPBB->getTerminator()->eraseFromParent();
     VPBlockUtils::disconnectBlocks(EarlyExitingVPBB, EarlyExitVPBB);
     VPBlockUtils::connectBlocks(VectorEarlyExitVPBB, EarlyExitVPBB);
   }
