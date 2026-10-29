@@ -55,8 +55,8 @@ class LLVM_ABI LoadStoreVec final : public RegionPass {
   /// reverts it otherwise. \returns true if the transaction was accepted.
   bool acceptOrRevert();
 
-  /// Checks legality of vectorization and \returns the vector type on success,
-  /// nullopt otherwise.
+  /// Checks that \p Bndl accesses consecutive memory and is legal to
+  /// vectorize. \returns the vector type on success, nullopt otherwise.
   std::optional<Type *> canVectorize(BndlRef<Instruction *> Bndl);
 
   /// Builds a single vector load out of \p Loads. \returns the new load,
