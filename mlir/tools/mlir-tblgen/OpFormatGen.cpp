@@ -614,7 +614,8 @@ const char *const enumAttrParserCode = R"(
 /// {5}: The error message on failure when the enum isn't present.
 /// {6}: The attribute assignment expression.
 /// {7}: The C++ enum type.
-/// {8}: The optional parser for the enum separator.
+/// {8}: The code that parses the next case keyword into `attrStr`, breaking
+///      out of the loop when there is none.
 const char *const unquotedBitEnumAttrParserCode = R"(
   {
     ::llvm::StringRef attrStr;
@@ -629,10 +630,7 @@ const char *const unquotedBitEnumAttrParserCode = R"(
           return parser.emitError(loc, "invalid ")
                  << "{0} attribute specification: \"" << attrStr << '"';;
         flags = flags | *flag;
-        if (failed(parser.{8}()))
-          break;
-        if (parser.parseKeyword(&attrStr))
-          return ::mlir::failure();
+        {8}
       }
       auto attrOptional = ::std::optional<{7}>(flags);
       {0}Attr = {3};
@@ -1311,18 +1309,32 @@ static void genEnumAttrParser(const NamedAttribute *var, MethodBody &body,
 
   if (formatAsEnumDirective && enumInfo.isBitEnum() &&
       (formatBitEnumAsUnquoted || !enumInfo.printBitEnumQuoted())) {
-    StringRef separator = enumInfo.getDef().getValueAsString("separator");
-    StringRef parseSeparatorFn = llvm::StringSwitch<StringRef>(separator.trim())
-                                     .Case("|", "parseOptionalVerticalBar")
-                                     .Case(",", "parseOptionalComma")
-                                     .Default("invalid bit enum separator");
+    // With a space-only separator, the cases are a run of keywords;
+    // otherwise each further case follows a separator token.
+    StringRef separator =
+        enumInfo.getDef().getValueAsString("separator").trim();
+    std::string parseNextCase;
+    if (separator.empty()) {
+      parseNextCase =
+          formatv("if (parser.parseOptionalKeyword(&attrStr, {0})) break;",
+                  validCaseKeywordsStr);
+    } else {
+      StringRef parseSeparatorFn = llvm::StringSwitch<StringRef>(separator)
+                                       .Case("|", "parseOptionalVerticalBar")
+                                       .Case(",", "parseOptionalComma")
+                                       .Default("invalid bit enum separator");
+      parseNextCase = formatv("if (failed(parser.{0}())) break;\n"
+                              "        if (parser.parseKeyword(&attrStr))\n"
+                              "          return ::mlir::failure();",
+                              parseSeparatorFn);
+    }
     std::string enumType =
         (enumInfo.getCppNamespace() + "::" + enumInfo.getEnumClassName()).str();
     body << formatv(unquotedBitEnumAttrParserCode, var->name,
                     enumInfo.getCppNamespace(),
                     enumInfo.getStringToSymbolFnName(), attrBuilderStr,
                     validCaseKeywordsStr, errorMessage, attrAssignment,
-                    enumType, parseSeparatorFn);
+                    enumType, parseNextCase);
     return;
   }
 
@@ -4007,6 +4019,16 @@ OpFormatParser::verifyEnumAdjacentLiterals(SMLoc loc,
     if (literal->getSpelling() == separator) {
       return emitError(loc, "unquoted bit enum cannot be followed by its '" +
                                 separator + "' separator literal");
+    }
+    // With a space-only separator, the parser would take a following case
+    // literal as another flag.
+    if (separator.empty() &&
+        llvm::any_of(enumInfo.getAllCases(), [&](const EnumCase &enumCase) {
+          return enumCase.getStr() == literal->getSpelling();
+        })) {
+      return emitError(loc, "space-separated bit enum cannot be followed by "
+                            "its '" +
+                                literal->getSpelling() + "' case literal");
     }
   }
   return success();

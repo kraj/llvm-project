@@ -225,8 +225,39 @@ FieldParser<std::optional<{0}>, std::optional<{0}>>::parse(AsmParser &parser) {{
 } // namespace mlir
 )";
 
+  // With a space-only separator, the flags are a run of case keywords that
+  // ends at the first token that is not one.
+  const char *const fieldParserDefsSpaceBitEnum = R"(
+namespace mlir {
+FailureOr<{0}> FieldParser<{0}, {0}>::parse(AsmParser &parser) {{
+  auto loc = parser.getCurrentLocation();
+  FailureOr<std::optional<{0}>> flags =
+      FieldParser<std::optional<{0}>>::parse(parser);
+  if (failed(flags))
+    return failure();
+  if (!*flags)
+    return parser.emitError(loc, "expected one of {3} for {2}");
+  return **flags;
+}
+
+FailureOr<std::optional<{0}>>
+FieldParser<std::optional<{0}>, std::optional<{0}>>::parse(AsmParser &parser) {{
+  std::optional<{0}> flags;
+  ::llvm::StringRef enumKeyword;
+  while (::mlir::succeeded(parser.parseOptionalKeyword(&enumKeyword, {4})))
+    flags = flags.value_or({0}{{}) | *{1}::symbolizeEnum<{0}>(enumKeyword);
+  return flags;
+}
+} // namespace mlir
+)";
+
   if (enumInfo.isNewStyleBitEnum()) {
     StringRef separator = enumInfo.getDef().getValueAsString("separator");
+    if (separator.trim().empty()) {
+      os << formatv(fieldParserDefsSpaceBitEnum, qualName, cppNamespace,
+                    enumInfo.getSummary(), casesList, casesInitList);
+      return;
+    }
     StringRef parseSeparatorFn =
         llvm::StringSwitch<StringRef>(separator.trim())
             .Case("|", "parseOptionalVerticalBar")
@@ -579,8 +610,13 @@ static void emitStrToSymFnForBitEnum(const Record &enumDef, raw_ostream &os) {
 
   // Split the string to get symbols for all the bits.
   os << "  ::llvm::SmallVector<::llvm::StringRef, 2> symbols;\n";
-  // Remove whitespace from the separator string when parsing.
-  os << formatv("  str.split(symbols, \"{0}\");\n\n", separatorTrimmed);
+  // Remove whitespace from the separator string when parsing. A space-only
+  // separator splits on spaces and drops the empty pieces.
+  if (separatorTrimmed.empty())
+    os << "  str.split(symbols, ' ', /*MaxSplit=*/-1, "
+          "/*KeepEmpty=*/false);\n\n";
+  else
+    os << formatv("  str.split(symbols, \"{0}\");\n\n", separatorTrimmed);
 
   os << formatv("  {0} val = 0;\n", underlyingType);
   os << "  for (auto symbol : symbols) {\n";
