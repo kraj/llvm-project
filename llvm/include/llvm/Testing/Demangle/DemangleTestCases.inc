@@ -30234,4 +30234,9 @@
 {"__alloc_token_123__ZnwmRKSt9nothrow_t", "operator new(unsigned long, std::nothrow_t const&) (.alloc_token)"},
 {"__alloc_token__Znwm.llvm.1234", "operator new(unsigned long) (.llvm.1234) (.alloc_token)"},
 {"__alloc_token_123__Z3foov", "foo() (.alloc_token)"},
+{"_ZN4hlsl3absEu11matrix_typeILm1ELm2EjE", "hlsl::abs(matrix_type<1ul, 2ul, unsigned int>)"},
+{"_Z10load_storePu11matrix_typeILm5ELm5EdES0_", "load_store(matrix_type<5ul, 5ul, double>*, matrix_type<5ul, 5ul, double>*)"},
+{"_Z1fu3FooIiiE", "f(Foo<int, int>)"},
+{"_Z1fu3FooIiE", "f(Foo(int))"},
+{"_Z1fu3FooILi1EE", "f(Foo<1>)"},
     // clang-format on
