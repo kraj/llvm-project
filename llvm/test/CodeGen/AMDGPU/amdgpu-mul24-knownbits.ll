@@ -213,3 +213,92 @@ define i32 @mul_u24_overflow(i32 %x, i32 %y) {
 
 declare i32 @llvm.amdgcn.mul.i24(i32, i32)
 declare i32 @llvm.amdgcn.mul.u24(i32, i32)
+
+; These products can have nonzero upper words. Operand widths must not limit
+; the width of the known bits returned for the i64 result.
+define i64 @mul_u24_i64_high(i32 %x, i32 %y) {
+; GCN-LABEL: mul_u24_i64_high:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_mul_hi_u32_u24_e32 v0, v0, v1
+; GCN-NEXT:    v_mov_b32_e32 v1, 0
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+;
+; GISEL-LABEL: mul_u24_i64_high:
+; GISEL:       ; %bb.0:
+; GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GISEL-NEXT:    v_mul_hi_u32_u24_e32 v0, v0, v1
+; GISEL-NEXT:    v_mov_b32_e32 v1, 0
+; GISEL-NEXT:    s_setpc_b64 s[30:31]
+  %mul = call i64 @llvm.amdgcn.mul.u24.i64(i32 %x, i32 %y)
+  %r = lshr i64 %mul, 32
+  ret i64 %r
+}
+
+define i64 @mul_i24_i64_high(i32 %x, i32 %y) {
+; GCN-LABEL: mul_i24_i64_high:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_mul_hi_i32_i24_e32 v0, v0, v1
+; GCN-NEXT:    v_mov_b32_e32 v1, 0
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+;
+; GISEL-LABEL: mul_i24_i64_high:
+; GISEL:       ; %bb.0:
+; GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GISEL-NEXT:    v_mul_hi_i32_i24_e32 v0, v0, v1
+; GISEL-NEXT:    v_mov_b32_e32 v1, 0
+; GISEL-NEXT:    s_setpc_b64 s[30:31]
+  %mul = call i64 @llvm.amdgcn.mul.i24.i64(i32 %x, i32 %y)
+  %r = lshr i64 %mul, 32
+  ret i64 %r
+}
+
+; The product is strictly negative after sign extending the low 24 bits.
+define i64 @mul_i24_i64_negative(i32 %x, i32 %y) {
+; GCN-LABEL: mul_i24_i64_negative:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_mov_b32_e32 v0, 1
+; GCN-NEXT:    v_mov_b32_e32 v1, 0
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+;
+; GISEL-LABEL: mul_i24_i64_negative:
+; GISEL:       ; %bb.0:
+; GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GISEL-NEXT:    v_or_b32_e32 v0, 0x800000, v0
+; GISEL-NEXT:    v_and_or_b32 v1, v1, 7, 1
+; GISEL-NEXT:    v_mul_hi_i32_i24_e32 v0, v0, v1
+; GISEL-NEXT:    v_lshrrev_b32_e32 v0, 31, v0
+; GISEL-NEXT:    v_mov_b32_e32 v1, 0
+; GISEL-NEXT:    s_setpc_b64 s[30:31]
+  %a = or i32 %x, 8388608
+  %mask = and i32 %y, 7
+  %b = or i32 %mask, 1
+  %mul = call i64 @llvm.amdgcn.mul.i24.i64(i32 %a, i32 %b)
+  %r = lshr i64 %mul, 63
+  ret i64 %r
+}
+
+; Unsigned i24 products fit in 48 bits, independently of operand bits 24-31.
+define i64 @mul_u24_i64_known_zero(i32 %x, i32 %y) {
+; GCN-LABEL: mul_u24_i64_known_zero:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_mov_b32_e32 v0, 0
+; GCN-NEXT:    v_mov_b32_e32 v1, 0
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+;
+; GISEL-LABEL: mul_u24_i64_known_zero:
+; GISEL:       ; %bb.0:
+; GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GISEL-NEXT:    v_mov_b32_e32 v0, 0
+; GISEL-NEXT:    v_mov_b32_e32 v1, 0
+; GISEL-NEXT:    s_setpc_b64 s[30:31]
+  %mul = call i64 @llvm.amdgcn.mul.u24.i64(i32 %x, i32 %y)
+  %r = lshr i64 %mul, 48
+  ret i64 %r
+}
+
+declare i64 @llvm.amdgcn.mul.i24.i64(i32, i32)
+declare i64 @llvm.amdgcn.mul.u24.i64(i32, i32)

@@ -20636,7 +20636,7 @@ void SITargetLowering::computeKnownBitsForTargetInstr(
                               Depth + 1);
       VT.computeKnownBitsImpl(MI->getOperand(3).getReg(), Known2, DemandedElts,
                               Depth + 1);
-      unsigned BitWidth = Known.getBitWidth();
+      unsigned BitWidth = MRI.getType(R).getScalarSizeInBits();
       if (IID == Intrinsic::amdgcn_mul_i24) {
         Known = Known.trunc(24).sext(BitWidth);
         Known2 = Known2.trunc(24).sext(BitWidth);

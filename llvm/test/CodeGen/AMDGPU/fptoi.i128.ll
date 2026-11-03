@@ -910,7 +910,9 @@ define i128 @fptosi_bf16_to_i128(bfloat %x) {
 ; GISEL-NEXT:    v_sub_u16_sdwa v0, v0, v6 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_0
 ; GISEL-NEXT:    v_lshrrev_b16_e32 v0, v0, v4
 ; GISEL-NEXT:    v_mul_hi_i32_i24_e32 v1, v0, v7
+; GISEL-NEXT:    v_ashrrev_i32_e32 v2, 31, v1
 ; GISEL-NEXT:    v_mul_i32_i24_e32 v0, v0, v7
+; GISEL-NEXT:    v_mov_b32_e32 v3, v2
 ; GISEL-NEXT:  ; %bb.5: ; %Flow1
 ; GISEL-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; GISEL-NEXT:  .LBB6_6: ; %fp-to-i-cleanup
