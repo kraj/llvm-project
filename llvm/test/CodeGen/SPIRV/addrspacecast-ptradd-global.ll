@@ -69,7 +69,7 @@
 @obj_y = addrspace(1) global ptr addrspace(4) getelementptr (i8, ptr addrspace(4) addrspacecast (ptr addrspace(1) @obj to ptr addrspace(4)), i64 8), align 8
 @obj_n = addrspace(1) global ptr addrspace(4) getelementptr (i8, ptr addrspace(4) addrspacecast (ptr addrspace(1) @obj to ptr addrspace(4)), i64 16), align 8
 
-@lds = addrspace(3) global [16 x i8] undef, align 1
+@lds = addrspace(3) global [16 x i8] poison, align 1
 @lds_off = addrspace(1) global ptr addrspace(1) getelementptr (i8, ptr addrspace(1) addrspacecast (ptr addrspace(3) @lds to ptr addrspace(1)), i64 4), align 8
 
 @null_off = addrspace(1) global ptr addrspace(4) getelementptr (i8, ptr addrspace(4) addrspacecast (ptr addrspace(1) null to ptr addrspace(4)), i64 72), align 8
