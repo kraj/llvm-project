@@ -100,7 +100,7 @@ static Regex buildExpectedRegex(ArrayRef<StringRef> prefixes) {
       },
       [&] { pattern += '|'; });
   pattern += ")-(error|note|remark|warning)(-re)?"
-             "( *@([+-][0-9]+|above|below|unknown))?"
+             "( *@([+-][0-9]+|above|below|unknown))?(:([0-9]+))?"
              "( +([0-9]+))? *{{(.*)}}$";
   return Regex(pattern);
 }
@@ -131,7 +131,7 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &os,
   SmallVector<StringRef, 100> lines;
   buf->getBuffer().split(lines, '\n');
   for (unsigned lineNo = 0, e = lines.size(); lineNo < e; ++lineNo) {
-    SmallVector<StringRef, 10> matches;
+    SmallVector<StringRef, 12> matches;
     if (!expected.match(lines[lineNo].rtrim(), &matches)) {
       // Check for designators that apply to this line.
       if (!designatorsForNextLine.empty()) {
@@ -157,7 +157,7 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &os,
       assert(matches[3] == "note");
       kind = SourceMgr::DK_Note;
     }
-    ExpectedDiag record(kind, lineNo + 1, expectedStart, matches[9]);
+    ExpectedDiag record(kind, lineNo + 1, expectedStart, matches[11]);
 
     // Check to see if this is a regex match, i.e. it includes the `-re`.
     if (!matches[4].empty() && !record.computeRegex(os, mgr)) {
@@ -166,9 +166,16 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &os,
     }
 
     if (!matches[8].empty() &&
-        (matches[8].getAsInteger(10, record.numExpected) ||
+        (matches[8].getAsInteger(10, record.colNo) || record.colNo == 0)) {
+      record.emitError(os, mgr, "invalid column '" + matches[7] + "'");
+      ok = false;
+      continue;
+    }
+
+    if (!matches[10].empty() &&
+        (matches[10].getAsInteger(10, record.numExpected) ||
          record.numExpected == 0)) {
-      record.emitError(os, mgr, "invalid count '" + matches[8] + "'");
+      record.emitError(os, mgr, "invalid count '" + matches[10] + "'");
       ok = false;
       continue;
     }
@@ -208,6 +215,11 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &os,
           record.lineNo -= offset;
         }
       } else if (offsetMatch.consume_front("unknown")) {
+        if (record.colNo != 0) {
+          record.emitError(os, mgr, "cannot specify a column with '@unknown'");
+          ok = false;
+          continue;
+        }
         // This is matching unknown locations.
         record.fileLoc = SMLoc();
         expectedUnknownLocDiags.emplace_back(std::move(record));
@@ -232,11 +244,10 @@ SourceMgrDiagnosticVerifier::computeExpectedDiags(raw_ostream &os,
   return expectedDiags;
 }
 
-SourceMgrDiagnosticVerifier::MatchResult
-SourceMgrDiagnosticVerifier::process(raw_ostream &os, SourceMgr &mgr,
-                                     SourceMgr::DiagKind kind, bool hasLoc,
-                                     const MemoryBuffer *buf, unsigned lineNo,
-                                     StringRef message, bool reportUnexpected) {
+SourceMgrDiagnosticVerifier::MatchResult SourceMgrDiagnosticVerifier::process(
+    raw_ostream &os, SourceMgr &mgr, SourceMgr::DiagKind kind, bool hasLoc,
+    const MemoryBuffer *buf, unsigned lineNo, unsigned colNo, StringRef message,
+    bool reportUnexpected) {
   MutableArrayRef<ExpectedDiag> diags;
   if (hasLoc) {
     // If the buffer couldn't be resolved, `diags` stays empty: a diagnostic
@@ -257,6 +268,8 @@ SourceMgrDiagnosticVerifier::process(raw_ostream &os, SourceMgr &mgr,
   for (auto &e : diags) {
     // File line must match (unless it's an unknown location).
     if (hasLoc && e.lineNo != lineNo)
+      continue;
+    if (hasLoc && e.colNo != 0 && e.colNo != colNo)
       continue;
     if (e.numSeen == e.numExpected || !e.match(message))
       continue;
