@@ -30234,4 +30234,6 @@
 {"__alloc_token_123__ZnwmRKSt9nothrow_t", "operator new(unsigned long, std::nothrow_t const&) (.alloc_token)"},
 {"__alloc_token__Znwm.llvm.1234", "operator new(unsigned long) (.llvm.1234) (.alloc_token)"},
 {"__alloc_token_123__Z3foov", "foo() (.alloc_token)"},
+{"_ZN6test514fun3I2S1IiEiEEDTcldtcvS1_IT0_E_EdnT_EEv", "decltype(((S1<int>)()).~S1<int>()) test51::fun3<S1<int>, int>()"},
+{"_Z1fI1AiEDTcvT_IT0_ELi0EES2_", "decltype((A<int>)(0)) f<A, int>(int)"},
     // clang-format on
