@@ -8942,7 +8942,11 @@ void SIInstrInfo::moveToVALUImpl(
         return;
       } else if (RI.getMatchingSuperRegClass(SrcRegRC, NewDstRC,
                                              AMDGPU::lo16)) {
-        Inst.getOperand(1).setSubReg(AMDGPU::lo16);
+        // Read the low half, unless the copy already reads a 16-bit
+        // subregister such as hi16.
+        MachineOperand &SrcOp = Inst.getOperand(1);
+        if (!SrcOp.getSubReg() || RI.getSubRegIdxSize(SrcOp.getSubReg()) != 16)
+          SrcOp.setSubReg(AMDGPU::lo16);
         Register NewDstReg = MRI.createVirtualRegister(NewDstRC);
         MRI.replaceRegWith(DstReg, NewDstReg);
         addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
