@@ -815,7 +815,8 @@ def STACK_SMASH_HANDLER : RuntimeLibcall;
 def SAFESTACK_POINTER_ADDRESS : RuntimeLibcall<Ptr, []>;
 
 // Really a global variable, not a function
-def SAFESTACK_UNSAFE_STACK_PTR : RuntimeLibcall;
+def SAFESTACK_UNSAFE_STACK_PTR
+    : RuntimeLibcallVariable<AllocaPtr, /*threadLocal=*/true>;
 
 def STACK_PROBE : RuntimeLibcall;
 def SECURITY_CHECK_COOKIE : RuntimeLibcall<Void, [Ptr]>;
@@ -1229,7 +1230,7 @@ def KMPC_FREE_SHARED : RuntimeLibcall<Void, [Ptr, SizeT]>;
 // in some way from callable functions.
 // --------------------------------------------------------------------
 
-def STACK_CHECK_GUARD : RuntimeLibcall;
+def STACK_CHECK_GUARD : RuntimeLibcallVariable<Ptr>;
 
 //--------------------------------------------------------------------
 // Define the implementation libcalls making up runtime libraries.
