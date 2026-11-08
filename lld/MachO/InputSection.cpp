@@ -328,8 +328,8 @@ StringPiece &CStringInputSection::getStringPiece(uint64_t off) {
   if (off >= data.size())
     fatal(toString(this) + ": offset is outside the section");
 
-  auto it =
-      partition_point(pieces, [=](StringPiece p) { return p.inSecOff <= off; });
+  auto it = partition_point(
+      pieces, [=](const StringPiece &p) { return p.inSecOff <= off; });
   return it[-1];
 }
 
@@ -341,8 +341,8 @@ size_t CStringInputSection::getStringPieceIndex(uint64_t off) const {
   if (off >= data.size())
     fatal(toString(this) + ": offset is outside the section");
 
-  auto it =
-      partition_point(pieces, [=](StringPiece p) { return p.inSecOff <= off; });
+  auto it = partition_point(
+      pieces, [=](const StringPiece &p) { return p.inSecOff <= off; });
   return std::distance(pieces.begin(), it) - 1;
 }
 
@@ -370,7 +370,10 @@ WordLiteralInputSection::WordLiteralInputSection(const Section &section,
     llvm_unreachable("invalid literal section type");
   }
 
-  live.resize(data.size() >> power2LiteralSize, !config->deadStrip);
+  size_t numLiterals = data.size() >> power2LiteralSize;
+  live = std::make_unique<std::atomic<bool>[]>(numLiterals);
+  if (!config->deadStrip)
+    std::fill_n(live.get(), numLiterals, true);
 }
 
 uint64_t WordLiteralInputSection::getOffset(uint64_t off) const {
