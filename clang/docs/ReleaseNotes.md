@@ -1546,6 +1546,9 @@ The `alpha.cplusplus.UseAfterLifetimeEnd` checker was renamed to `alpha.core.Use
 
 ### OpenMP Support
 
+- `atomic` constructs in target device code now use device scope instead of
+  system scope, matching the OpenMP 6.0 default when no `memscope` clause is
+  given.
 - Fixed an OpenMP `requires` directive read from a PCH or module losing its effect on
   semantic checks, which caused spurious `reverse_offload` errors.
 - Added the OpenMP 6.1 `#pragma omp flatten` loop transformation and the

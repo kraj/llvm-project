@@ -4276,6 +4276,8 @@ public:
   ///                             memory.
   /// \param IsRemoteMemory       False if X is known not to be in remote
   ///                             memory.
+  /// \param SSID                 Synchronization scope of the generated atomic
+  ///                             instructions.
   ///
   /// \return Insertion point after generated atomic capture IR.
   /// Whether to emit special handling for IEEE 754 -0.0 == +0.0 in
@@ -4295,14 +4297,15 @@ public:
       AtomicOpValue &R, Value *E, Value *D, AtomicOrdering AO,
       omp::OMPAtomicCompareOp Op, bool IsXBinopExpr, bool IsPostfixUpdate,
       bool IsFailOnly, bool IsWeak = false, bool IsIgnoreDenormalMode = false,
-      bool IsFineGrainedMemory = true, bool IsRemoteMemory = true);
+      bool IsFineGrainedMemory = true, bool IsRemoteMemory = true,
+      SyncScope::ID SSID = SyncScope::System);
   LLVM_ABI InsertPointTy createAtomicCompare(
       const LocationDescription &Loc, AtomicOpValue &X, AtomicOpValue &V,
       AtomicOpValue &R, Value *E, Value *D, AtomicOrdering AO,
       omp::OMPAtomicCompareOp Op, bool IsXBinopExpr, bool IsPostfixUpdate,
       bool IsFailOnly, AtomicOrdering Failure, bool IsWeak = false,
       bool IsIgnoreDenormalMode = false, bool IsFineGrainedMemory = true,
-      bool IsRemoteMemory = true);
+      bool IsRemoteMemory = true, SyncScope::ID SSID = SyncScope::System);
 
   /// Create the control flow structure of a canonical OpenMP loop.
   ///

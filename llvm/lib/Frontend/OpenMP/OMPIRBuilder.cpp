@@ -12010,13 +12010,13 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
     AtomicOpValue &R, Value *E, Value *D, AtomicOrdering AO,
     omp::OMPAtomicCompareOp Op, bool IsXBinopExpr, bool IsPostfixUpdate,
     bool IsFailOnly, bool IsWeak, bool IsIgnoreDenormalMode,
-    bool IsFineGrainedMemory, bool IsRemoteMemory) {
+    bool IsFineGrainedMemory, bool IsRemoteMemory, SyncScope::ID SSID) {
 
   AtomicOrdering Failure = AtomicCmpXchgInst::getStrongestFailureOrdering(AO);
   return createAtomicCompare(Loc, X, V, R, E, D, AO, Op, IsXBinopExpr,
                              IsPostfixUpdate, IsFailOnly, Failure, IsWeak,
                              IsIgnoreDenormalMode, IsFineGrainedMemory,
-                             IsRemoteMemory);
+                             IsRemoteMemory, SSID);
 }
 
 OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
@@ -12024,7 +12024,8 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
     AtomicOpValue &R, Value *E, Value *D, AtomicOrdering AO,
     omp::OMPAtomicCompareOp Op, bool IsXBinopExpr, bool IsPostfixUpdate,
     bool IsFailOnly, AtomicOrdering Failure, bool IsWeak,
-    bool IsIgnoreDenormalMode, bool IsFineGrainedMemory, bool IsRemoteMemory) {
+    bool IsIgnoreDenormalMode, bool IsFineGrainedMemory, bool IsRemoteMemory,
+    SyncScope::ID SSID) {
 
   if (!updateToLocation(Loc))
     return Loc.IP;
@@ -12082,7 +12083,7 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
       // Load X atomically.
       LoadInst *XCurr = Builder.CreateLoad(IntCastTy, X.Var,
                                            X.Var->getName() + ".atomic.load");
-      XCurr->setAtomic(AtomicOrdering::Monotonic);
+      XCurr->setAtomic(AtomicOrdering::Monotonic, SSID);
       Value *XFP = Builder.CreateBitCast(XCurr, X.ElemTy);
 
       // IEEE 754: NaN != NaN, but cmpxchg would succeed if E and X have
@@ -12128,7 +12129,7 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
       // ZeroBB: cmpxchg with X's loaded bit-pattern.
       Builder.SetInsertPoint(ZeroBB);
       AtomicCmpXchgInst *ResZero = Builder.CreateAtomicCmpXchg(
-          X.Var, XCurr, DBCast, MaybeAlign(), AO, Failure);
+          X.Var, XCurr, DBCast, MaybeAlign(), AO, Failure, SSID);
       ResZero->setWeak(IsWeak);
       Value *OldZero = Builder.CreateExtractValue(ResZero, /*Idxs=*/0);
       Value *OkZero = Builder.CreateExtractValue(ResZero, /*Idxs=*/1);
@@ -12137,7 +12138,7 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
       // NormalBB: original bitwise cmpxchg.
       Builder.SetInsertPoint(NormalBB);
       AtomicCmpXchgInst *ResNormal = Builder.CreateAtomicCmpXchg(
-          X.Var, EBCast, DBCast, MaybeAlign(), AO, Failure);
+          X.Var, EBCast, DBCast, MaybeAlign(), AO, Failure, SSID);
       ResNormal->setWeak(IsWeak);
       Value *OldNormal = Builder.CreateExtractValue(ResNormal, /*Idxs=*/0);
       Value *OkNormal = Builder.CreateExtractValue(ResNormal, /*Idxs=*/1);
@@ -12174,10 +12175,10 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
         Value *EBCast = Builder.CreateBitCast(E, IntCastTy);
         Value *DBCast = Builder.CreateBitCast(D, IntCastTy);
         Result = Builder.CreateAtomicCmpXchg(X.Var, EBCast, DBCast,
-                                             MaybeAlign(), AO, Failure);
+                                             MaybeAlign(), AO, Failure, SSID);
       } else {
-        Result =
-            Builder.CreateAtomicCmpXchg(X.Var, E, D, MaybeAlign(), AO, Failure);
+        Result = Builder.CreateAtomicCmpXchg(X.Var, E, D, MaybeAlign(), AO,
+                                             Failure, SSID);
       }
       Result->setWeak(IsWeak);
 
@@ -12330,7 +12331,7 @@ OpenMPIRBuilder::InsertPointTy OpenMPIRBuilder::createAtomicCompare(
     }
 
     AtomicRMWInst *OldValue =
-        Builder.CreateAtomicRMW(NewOp, X.Var, E, MaybeAlign(), AO);
+        Builder.CreateAtomicRMW(NewOp, X.Var, E, MaybeAlign(), AO, SSID);
     setAtomicRMWMetadata(OldValue, T, IsIgnoreDenormalMode, IsFineGrainedMemory,
                          IsRemoteMemory);
     if (V.Var) {
