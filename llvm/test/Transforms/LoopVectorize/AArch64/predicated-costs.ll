@@ -43,6 +43,9 @@ define void @test_predicated_load_cast_hint(ptr %dst.1, ptr %dst.2, ptr %src, i8
 ; CHECK:       [[VECTOR_MEMCHECK]]:
 ; CHECK-NEXT:    [[SCEVGEP4:%.*]] = getelementptr i8, ptr [[DST_2]], i64 1
 ; CHECK-NEXT:    [[SCEVGEP5:%.*]] = getelementptr i8, ptr [[SRC]], i64 1
+; CHECK-NEXT:    [[BOUND0:%.*]] = icmp ult ptr [[DST_2]], [[SCEVGEP5]]
+; CHECK-NEXT:    [[BOUND1:%.*]] = icmp ult ptr [[SRC]], [[SCEVGEP4]]
+; CHECK-NEXT:    [[FOUND_CONFLICT:%.*]] = and i1 [[BOUND0]], [[BOUND1]]
 ; CHECK-NEXT:    [[TMP18:%.*]] = shl i64 [[OFF]], 3
 ; CHECK-NEXT:    [[SCEVGEP6:%.*]] = getelementptr i8, ptr [[DST_1]], i64 [[TMP18]]
 ; CHECK-NEXT:    [[TMP19:%.*]] = zext nneg i32 [[SMAX16]] to i64
@@ -52,9 +55,6 @@ define void @test_predicated_load_cast_hint(ptr %dst.1, ptr %dst.2, ptr %src, i8
 ; CHECK-NEXT:    [[TMP23:%.*]] = add i64 [[TMP22]], [[TMP18]]
 ; CHECK-NEXT:    [[TMP24:%.*]] = add i64 [[TMP23]], 8
 ; CHECK-NEXT:    [[SCEVGEP8:%.*]] = getelementptr i8, ptr [[DST_1]], i64 [[TMP24]]
-; CHECK-NEXT:    [[BOUND0:%.*]] = icmp ult ptr [[DST_2]], [[SCEVGEP5]]
-; CHECK-NEXT:    [[BOUND1:%.*]] = icmp ult ptr [[SRC]], [[SCEVGEP4]]
-; CHECK-NEXT:    [[FOUND_CONFLICT:%.*]] = and i1 [[BOUND0]], [[BOUND1]]
 ; CHECK-NEXT:    [[BOUND09:%.*]] = icmp ult ptr [[DST_2]], [[SCEVGEP8]]
 ; CHECK-NEXT:    [[BOUND110:%.*]] = icmp ult ptr [[SCEVGEP6]], [[SCEVGEP4]]
 ; CHECK-NEXT:    [[FOUND_CONFLICT11:%.*]] = and i1 [[BOUND09]], [[BOUND110]]
