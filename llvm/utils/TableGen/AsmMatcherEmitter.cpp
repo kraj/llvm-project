@@ -2242,12 +2242,23 @@ static unsigned emitConvertFuncs(CodeGenTarget &Target, StringRef ClassName,
         const Record *RegClass = Op.getRegClass();
         bool HasRegCoercion =
             RegClass && Info.RegConversions.contains(RegClass);
+        // For RegClassByHwMode operands: the HwModes that select a register
+        // class that needs coercion.
+        SmallVector<std::pair<unsigned, const Record *>, 0> HwModeCoercions;
+        if (RegClass && RegClass->isSubClassOf("RegClassByHwMode"))
+          for (auto [ModeId, ModeRC] :
+               Target.getHwModes().getHwModeSelect(RegClass).Items)
+            if (Info.RegConversions.contains(ModeRC))
+              HwModeCoercions.emplace_back(ModeId, ModeRC);
         // Registers are always converted the same, don't duplicate the
         // conversion function based on them unless they need to be coerced.
         std::string Class;
         std::string Name = "CVT_";
         if (HasRegCoercion) {
           Class = RegClass->getName().str();
+          Name += "convertTo" + Class;
+        } else if (!HwModeCoercions.empty()) {
+          Class = Op.Class->ClassName;
           Name += "convertTo" + Class;
         } else if (Op.Class->isRegisterClass()) {
           Class = "Reg";
@@ -2302,6 +2313,27 @@ static unsigned emitConvertFuncs(CodeGenTarget &Target, StringRef ClassName,
           CoercedRegClasses.insert(RegClass);
           CvtOS << "      Inst.addOperand(MCOperand::createReg(convertTo"
                 << Class << "(Operands[OpIdx]->getReg())));\n";
+        } else if (!HwModeCoercions.empty()) {
+          // Only convert the register in the HwModes that need it.
+          assert(OpInfo.MINumOperands == 1 && "Expected a single register");
+          CvtOS << "      switch "
+                   "(STI->getHwMode(MCSubtargetInfo::HwMode_RegInfo)) {\n";
+          for (auto [ModeId, ModeRC] : HwModeCoercions) {
+            CoercedRegClasses.insert(ModeRC);
+            CvtOS << "      case " << ModeId << ": // "
+                  << Target.getHwModes().getModeName(ModeId,
+                                                     /*IncludeDefault=*/true)
+                  << "\n"
+                  << "        Inst.addOperand(MCOperand::createReg(convertTo"
+                  << ModeRC->getName() << "(Operands[OpIdx]->getReg())));\n"
+                  << "        break;\n";
+          }
+          CvtOS << "      default:\n"
+                << "        static_cast<" << TargetOperandClass
+                << " &>(*Operands[OpIdx])." << Op.Class->RenderMethod
+                << "(Inst, 1);\n"
+                << "        break;\n"
+                << "      }\n";
         } else {
           CvtOS << "      static_cast<" << TargetOperandClass
                 << " &>(*Operands[OpIdx])." << Op.Class->RenderMethod
