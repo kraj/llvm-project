@@ -89,10 +89,23 @@ llvm::Expected<lldb::TypeSystemSP> Interpreter::GetTypeSystemFromCU() {
 
   lldb::TargetSP target_sp = m_exe_ctx.GetTargetSP();
   if (!target_sp)
-    return llvm::createStringError("no target for frame");
+    return llvm::createStringError("no target in execution context");
+  // If there is no frame, get the default target language.
   if (language == lldb::eLanguageTypeUnknown)
     language = target_sp->GetLanguage().AsLanguageType();
+  // If the default language is not specified, fall back to C++.
+  if (language == lldb::eLanguageTypeUnknown)
+    language = lldb::eLanguageTypeC_plus_plus;
   return target_sp->GetScratchTypeSystemForLanguage(language);
+}
+
+static llvm::Expected<lldb::TypeSystemSP>
+GetTypeSystem(CompilerType compiler_type) {
+  lldb::TypeSystemSP type_system =
+      compiler_type.GetTypeSystem().GetSharedPointer();
+  if (!type_system)
+    return llvm::createStringError("no type system");
+  return type_system;
 }
 
 // DIL normally treats '.' as member access, but register names may contain
@@ -124,11 +137,11 @@ Interpreter::UnaryConversion(lldb::ValueObjectSP valobj, uint32_t location) {
   if (!valobj)
     return llvm::make_error<DILDiagnosticError>(m_expr, "invalid value object",
                                                 location);
-  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
-  if (!type_system)
-    return type_system.takeError();
 
   CompilerType in_type = valobj->GetCompilerType();
+  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystem(in_type);
+  if (!type_system)
+    return type_system.takeError();
   if (valobj->IsBitfield()) {
     // Promote bitfields. If `int` can represent the bitfield value, it is
     // converted to `int`. Otherwise, if `unsigned int` can represent it, it
@@ -264,7 +277,7 @@ Interpreter::PromoteSignedInteger(CompilerType &lhs_type,
       return rhs_size.takeError();
 
     if (*rhs_size == *lhs_size) {
-      llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
+      llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystem(lhs_type);
       if (!type_system)
         return type_system.takeError();
       CompilerType r_type_unsigned = GetBasicType(
@@ -752,7 +765,8 @@ Interpreter::Visit(const UnaryOpNode &node) {
       return llvm::make_error<DILDiagnosticError>(m_expr, errMsg,
                                                   node.GetLocation());
     }
-    llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
+    llvm::Expected<lldb::TypeSystemSP> type_system =
+        GetTypeSystem(operand_type);
     if (!type_system)
       return type_system.takeError();
     auto value_or_err = operand->GetValueAsBool();
@@ -960,7 +974,7 @@ llvm::Expected<lldb::ValueObjectSP> Interpreter::EvaluateBinarySubtraction(
     }
     diff /= item_size;
 
-    llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
+    llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystem(lhs_type);
     if (!type_system)
       return type_system.takeError();
     CompilerType ptrdiff_type = type_system.get()->GetPointerDiffType(true);
@@ -1281,7 +1295,8 @@ Interpreter::EvaluateComparison(BinaryOpKind kind, lldb::ValueObjectSP lhs,
                                       rhs_is_literal, location))
     return error;
 
-  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
+  llvm::Expected<lldb::TypeSystemSP> type_system =
+      GetTypeSystem(lhs->GetCompilerType());
   if (!type_system)
     return type_system.takeError();
   CompilerType boolean_type = GetBasicType(*type_system, lldb::eBasicTypeBool);
@@ -1370,7 +1385,7 @@ Interpreter::EvaluateLogical(const BinaryOpNode &node) {
     return llvm::make_error<DILDiagnosticError>(m_expr, errMsg,
                                                 node.GetLocation());
   }
-  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
+  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystem(lhs_type);
   if (!type_system)
     return type_system.takeError();
 
@@ -1429,7 +1444,7 @@ Interpreter::Visit(const BinaryOpNode &node) {
   lldb::TypeSystemSP rhs_system =
       rhs->GetCompilerType().GetTypeSystem().GetSharedPointer();
   if (lhs_system->GetPluginName() != rhs_system->GetPluginName()) {
-    // TODO: Attempt to convert values to current CU's type system
+    // TODO: Attempt to convert literals to another argument's type system.
     return llvm::make_error<DILDiagnosticError>(
         m_expr, "operands have different type systems", node.GetLocation());
   }
@@ -2219,13 +2234,13 @@ Interpreter::Visit(const ConditionalNode &node) {
 }
 
 llvm::Expected<lldb::ValueObjectSP> Interpreter::Visit(const SizeOfNode &node) {
-  CompilerType typearg = node.GetTypeArg();
+  CompilerType arg_type = node.GetTypeArg();
   Scalar size;
-  if (typearg.IsValid()) {
-    if (typearg.IsReferenceType())
-      typearg = typearg.GetNonReferenceType();
+  if (arg_type.IsValid()) {
+    if (arg_type.IsReferenceType())
+      arg_type = arg_type.GetNonReferenceType();
     llvm::Expected<uint64_t> byte_size =
-        typearg.GetByteSize(m_exe_ctx.GetTargetSP().get());
+        arg_type.GetByteSize(m_exe_ctx.GetTargetSP().get());
     if (!byte_size)
       return byte_size.takeError();
     size = *byte_size;
@@ -2244,9 +2259,10 @@ llvm::Expected<lldb::ValueObjectSP> Interpreter::Visit(const SizeOfNode &node) {
     if (!byte_size)
       return byte_size.takeError();
     size = *byte_size;
+    arg_type = arg->GetCompilerType();
   }
 
-  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystemFromCU();
+  llvm::Expected<lldb::TypeSystemSP> type_system = GetTypeSystem(arg_type);
   if (!type_system)
     return type_system.takeError();
   CompilerType size_type = type_system.get()->GetSizeType();
