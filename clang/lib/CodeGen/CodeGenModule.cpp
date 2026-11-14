@@ -4118,7 +4118,7 @@ static void addLinkOptionsPostorder(CodeGenModule &CGM, Module *Mod,
   if (Mod->UseExportAsModuleLinkName)
     return;
 
-  for (const Module::LinkLibrary &LL : llvm::reverse(Mod->LinkLibraries)) {
+  for (const Module::LinkLibrary &LL : llvm::reverse(Mod->getLinkLibraries())) {
     // Link against a framework.  Frameworks are currently Darwin only, so we
     // don't to ask TargetCodeGenInfo for the spelling of the linker option.
     if (LL.IsFramework) {

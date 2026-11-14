@@ -410,19 +410,6 @@ public:
   /// The module signature.
   ASTFileSignature Signature;
 
-  /// The name of the umbrella entry, as written in the module map.
-  std::string UmbrellaAsWritten;
-
-  // The path to the umbrella entry relative to the root module's \c Directory.
-  std::string UmbrellaRelativeToRootModuleDirectory;
-
-  /// The module through which entities defined in this module will
-  /// eventually be exposed, for use in "private" modules.
-  std::string ExportAsModule;
-
-  /// For the debug info, the path to this module's .apinotes file, if any.
-  std::string APINotesFile;
-
   /// Does this Module is a named module of a standard named module?
   bool isNamedModule() const {
     switch (Kind) {
@@ -466,14 +453,8 @@ private:
   std::optional<ModuleFileName> ASTFileName;
   std::optional<ModuleFileKey> ASTFileKey;
 
-  /// The top-level headers associated with this module.
-  llvm::SmallSetVector<FileEntryRef, 2> TopHeaders;
-
   /// top-level header filenames that aren't resolved to FileEntries yet.
   std::vector<std::string> TopHeaderNames;
-
-  /// Cache of modules visible to lookup in this module.
-  mutable llvm::DenseSet<const Module*> VisibleModulesCache;
 
   /// The ID used when referencing this module within a VisibleModuleSet.
   unsigned VisibilityID;
@@ -540,12 +521,6 @@ public:
     std::string FeatureName;
     bool RequiredState;
   };
-
-  /// The set of language features required to use this module.
-  ///
-  /// If any of these requirements are not available, the \c IsAvailable bit
-  /// will be false to indicate that this (sub)module is not available.
-  SmallVector<Requirement, 2> Requirements;
 
   /// A module with the same name that shadows this module.
   Module *ShadowingModule = nullptr;
@@ -653,10 +628,6 @@ public:
   /// module depends.
   llvm::SmallVector<ModuleRef, 2> Imports;
 
-  /// The set of top-level modules that affected the compilation of this module,
-  /// but were not imported.
-  llvm::SmallVector<ModuleRef, 2> AffectingClangModules;
-
   /// Describes an exported module.
   ///
   /// The pointer is the module being re-exported, while the bit will be true
@@ -681,13 +652,6 @@ public:
     bool Wildcard;
   };
 
-  /// The directly used modules.
-  SmallVector<Module *, 2> DirectUses;
-
-  /// When \c NoUndeclaredIncludes is true, the set of modules this module tried
-  /// to import but didn't because they are not direct uses.
-  llvm::SmallSetVector<const Module *, 2> UndeclaredUses;
-
   /// A library or framework to link against when an entity from this
   /// module is used.
   struct LinkLibrary {
@@ -705,17 +669,9 @@ public:
     bool IsFramework = false;
   };
 
-  /// The set of libraries or frameworks to link against when
-  /// an entity from this module is used.
-  llvm::SmallVector<LinkLibrary, 2> LinkLibraries;
-
   /// Autolinking uses the framework name for linking purposes
   /// when this is false and the export_as name otherwise.
   bool UseExportAsModuleLinkName = false;
-
-  /// The set of "configuration macros", which are macros that
-  /// (intentionally) change how this module is built.
-  std::vector<std::string> ConfigMacros;
 
   /// An unresolved conflict with another module.
   struct UnresolvedConflict {
@@ -734,9 +690,6 @@ public:
     /// The message provided to the user when there is a conflict.
     std::string Message;
   };
-
-  /// The list of conflicts.
-  std::vector<Conflict> Conflicts;
 
 private:
   /// Out-of-line storage for a group of members that are empty in the vast
@@ -890,6 +843,156 @@ public:
   void clearUnresolvedConflicts() {
     Unresolved.clear(&UnresolvedDirectives::Conflicts);
   }
+
+private:
+  /// Members that are empty in the vast majority of modules.
+  struct ColdMembers {
+    /// The name of the umbrella entry, as written in the module map.
+    std::string UmbrellaAsWritten;
+
+    /// The path to the umbrella entry relative to the root module's
+    /// \c Directory.
+    std::string UmbrellaRelativeToRootModuleDirectory;
+
+    /// The module through which entities defined in this module will
+    /// eventually be exposed, for use in "private" modules.
+    std::string ExportAsModule;
+
+    /// For the debug info, the path to this module's .apinotes file, if any.
+    std::string APINotesFile;
+
+    /// The set of language features required to use this module.
+    SmallVector<Requirement, 0> Requirements;
+
+    /// The set of top-level modules that affected the compilation of this
+    /// module, but were not imported.
+    SmallVector<ModuleRef, 0> AffectingClangModules;
+
+    /// The directly used modules.
+    SmallVector<Module *, 0> DirectUses;
+
+    /// The set of modules this module tried to import but didn't because they
+    /// are not direct uses.
+    llvm::SetVector<const Module *> UndeclaredUses;
+
+    /// The set of libraries or frameworks to link against.
+    SmallVector<LinkLibrary, 0> LinkLibraries;
+
+    /// The set of "configuration macros".
+    SmallVector<std::string, 0> ConfigMacros;
+
+    /// The list of conflicts.
+    SmallVector<Conflict, 0> Conflicts;
+
+    /// The top-level headers associated with this module.
+    llvm::SetVector<FileEntryRef> TopHeaders;
+
+    /// Cache of modules visible to lookup in this module.
+    llvm::DenseSet<const Module *> VisibleModulesCache;
+
+    bool empty() const {
+      return UmbrellaAsWritten.empty() &&
+             UmbrellaRelativeToRootModuleDirectory.empty() &&
+             ExportAsModule.empty() && APINotesFile.empty() &&
+             Requirements.empty() && AffectingClangModules.empty() &&
+             DirectUses.empty() && UndeclaredUses.empty() &&
+             LinkLibraries.empty() && ConfigMacros.empty() &&
+             Conflicts.empty() && TopHeaders.empty() &&
+             VisibleModulesCache.empty();
+    }
+  };
+
+  /// Mutable because the visible modules cache is built lazily.
+  mutable LazyMembers<ColdMembers> Cold;
+
+public:
+  /// The name of the umbrella entry, as written in the module map.
+  StringRef getUmbrellaAsWritten() const {
+    return Cold.get().UmbrellaAsWritten;
+  }
+
+  /// The path to the umbrella entry relative to the root module's
+  /// \c Directory.
+  StringRef getUmbrellaRelativeToRootModuleDirectory() const {
+    return Cold.get().UmbrellaRelativeToRootModuleDirectory;
+  }
+
+  /// Set the umbrella entry's name as written in the module map and its path
+  /// relative to the root module's \c Directory.
+  void setUmbrellaAsWritten(StringRef NameAsWritten,
+                            StringRef PathRelativeToRootModuleDirectory) {
+    Cold.set(&ColdMembers::UmbrellaAsWritten, NameAsWritten);
+    Cold.set(&ColdMembers::UmbrellaRelativeToRootModuleDirectory,
+             PathRelativeToRootModuleDirectory);
+  }
+
+  /// The module through which entities defined in this module will
+  /// eventually be exposed, for use in "private" modules.
+  StringRef getExportAsModule() const { return Cold.get().ExportAsModule; }
+  void setExportAsModule(StringRef Name) {
+    Cold.set(&ColdMembers::ExportAsModule, Name);
+  }
+
+  /// For the debug info, the path to this module's .apinotes file, if any.
+  StringRef getAPINotesFile() const { return Cold.get().APINotesFile; }
+  void setAPINotesFile(StringRef File) {
+    Cold.set(&ColdMembers::APINotesFile, File);
+  }
+
+  /// The set of language features required to use this module.
+  ///
+  /// If any of these requirements are not available, the \c IsAvailable bit
+  /// will be false to indicate that this (sub)module is not available.
+  ArrayRef<Requirement> getRequirements() const {
+    return Cold.get().Requirements;
+  }
+  void clearRequirements() { Cold.clear(&ColdMembers::Requirements); }
+
+  /// The set of top-level modules that affected the compilation of this module,
+  /// but were not imported.
+  ArrayRef<ModuleRef> getAffectingClangModules() const {
+    return Cold.get().AffectingClangModules;
+  }
+  void addAffectingClangModule(ModuleRef M) {
+    Cold.getOrCreate().AffectingClangModules.push_back(M);
+  }
+
+  /// The directly used modules.
+  ArrayRef<Module *> getDirectUses() const { return Cold.get().DirectUses; }
+  void addDirectUse(Module *M) { Cold.getOrCreate().DirectUses.push_back(M); }
+
+  /// When \c NoUndeclaredIncludes is true, the set of modules this module tried
+  /// to import but didn't because they are not direct uses.
+  ArrayRef<const Module *> getUndeclaredUses() const {
+    return Cold.get().UndeclaredUses.getArrayRef();
+  }
+
+  /// The set of libraries or frameworks to link against when
+  /// an entity from this module is used.
+  ArrayRef<LinkLibrary> getLinkLibraries() const {
+    return Cold.get().LinkLibraries;
+  }
+  void addLinkLibrary(LinkLibrary Library) {
+    Cold.getOrCreate().LinkLibraries.push_back(std::move(Library));
+  }
+  void clearLinkLibraries() { Cold.clear(&ColdMembers::LinkLibraries); }
+
+  /// The set of "configuration macros", which are macros that
+  /// (intentionally) change how this module is built.
+  ArrayRef<std::string> getConfigMacros() const {
+    return Cold.get().ConfigMacros;
+  }
+  void addConfigMacro(StringRef Macro) {
+    Cold.getOrCreate().ConfigMacros.push_back(Macro.str());
+  }
+  void clearConfigMacros() { Cold.clear(&ColdMembers::ConfigMacros); }
+
+  /// The list of conflicts.
+  ArrayRef<Conflict> getConflicts() const { return Cold.get().Conflicts; }
+  void addConflict(Conflict C) {
+    Cold.getOrCreate().Conflicts.push_back(std::move(C));
+  }
+  void clearConflicts() { Cold.clear(&ColdMembers::Conflicts); }
 
   /// Construct a new module or submodule.
   Module(ModuleConstructorTag, StringRef Name, SourceLocation DefinitionLoc,
@@ -1115,15 +1218,17 @@ public:
   /// Retrieve the umbrella directory as written.
   std::optional<DirectoryName> getUmbrellaDirAsWritten() const {
     if (const auto *Dir = std::get_if<DirectoryEntryRef>(&Umbrella))
-      return DirectoryName{UmbrellaAsWritten,
-                           UmbrellaRelativeToRootModuleDirectory, *Dir};
+      return DirectoryName{
+          std::string(getUmbrellaAsWritten()),
+          std::string(getUmbrellaRelativeToRootModuleDirectory()), *Dir};
     return std::nullopt;
   }
 
   /// Retrieve the umbrella header as written.
   std::optional<Header> getUmbrellaHeaderAsWritten() const {
     if (const auto *Hdr = std::get_if<FileEntryRef>(&Umbrella))
-      return Header{UmbrellaAsWritten, UmbrellaRelativeToRootModuleDirectory,
+      return Header{std::string(getUmbrellaAsWritten()),
+                    std::string(getUmbrellaRelativeToRootModuleDirectory()),
                     *Hdr};
     return std::nullopt;
   }
@@ -1202,9 +1307,9 @@ public:
   /// module currently being built, if it's queried before we see all
   /// of its imports.
   bool isModuleVisible(const Module *M) const {
-    if (VisibleModulesCache.empty())
+    if (Cold.get().VisibleModulesCache.empty())
       buildVisibleModulesCache();
-    return VisibleModulesCache.count(M);
+    return Cold.get().VisibleModulesCache.count(M);
   }
 
   unsigned getVisibilityID() const { return VisibilityID; }

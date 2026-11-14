@@ -1925,7 +1925,7 @@ static bool suggestModule(HeaderSearch &HS, ModuleMap::KnownHeader Module,
         return true;
       }
       // TODO: Add this module (or just its module map file) into something like
-      // `RequestingModule->AffectingClangModules`.
+      // `RequestingModule->getAffectingClangModules()`.
       return false;
     }
   }

@@ -62,10 +62,10 @@ void ModuleMap::resolveLinkAsDependencies(Module *Mod) {
 }
 
 void ModuleMap::addLinkAsDependency(Module *Mod) {
-  if (findModule(Mod->ExportAsModule))
+  if (findModule(Mod->getExportAsModule()))
     Mod->UseExportAsModuleLinkName = true;
   else
-    PendingLinkAsModule[Mod->ExportAsModule].insert(Mod->Name);
+    PendingLinkAsModule[Mod->getExportAsModule()].insert(Mod->Name);
 }
 
 Module::HeaderKind ModuleMap::headerRoleToKind(ModuleHeaderRole Role) {
@@ -1126,8 +1126,8 @@ static void inferFrameworkLink(Module *Mod) {
 
   StringRef FrameworkName(Mod->Name);
   FrameworkName.consume_back("_Private");
-  Mod->LinkLibraries.emplace_back(FrameworkName.str(),
-                                  /*IsFramework=*/true);
+  Mod->addLinkLibrary(Module::LinkLibrary(FrameworkName.str(),
+                                          /*IsFramework=*/true));
 }
 
 Module *ModuleMap::inferFrameworkModule(DirectoryEntryRef FrameworkDir,
@@ -1337,9 +1337,8 @@ void ModuleMap::setUmbrellaHeaderAsWritten(
     HeaderOwnerLocs[{&UmbrellaHeader.getFileEntry(), Mod}] = Loc;
   Mod->Umbrella = UmbrellaHeader;
   Mod->UmbrellaDeclLoc = Loc;
-  Mod->UmbrellaAsWritten = NameAsWritten.str();
-  Mod->UmbrellaRelativeToRootModuleDirectory =
-      PathRelativeToRootModuleDirectory.str();
+  Mod->setUmbrellaAsWritten(NameAsWritten.str(),
+                            PathRelativeToRootModuleDirectory.str());
   UmbrellaDirs[UmbrellaHeader.getDir()] = Mod;
   // A header added next to the umbrella header doesn't change the module, but
   // it should rebuild to warn that the umbrella header doesn't include it.
@@ -1372,9 +1371,8 @@ void ModuleMap::setUmbrellaDirAsWritten(
     const Twine &PathRelativeToRootModuleDirectory, SourceLocation Loc) {
   Mod->Umbrella = UmbrellaDir;
   Mod->UmbrellaDeclLoc = Loc;
-  Mod->UmbrellaAsWritten = NameAsWritten.str();
-  Mod->UmbrellaRelativeToRootModuleDirectory =
-      PathRelativeToRootModuleDirectory.str();
+  Mod->setUmbrellaAsWritten(NameAsWritten.str(),
+                            PathRelativeToRootModuleDirectory.str());
   UmbrellaDirs[UmbrellaDir] = Mod;
   // The umbrella directory tree is enumerated to collect the module's headers.
   recordDirectoryDependencies(Mod, UmbrellaDir.getName());
@@ -1695,7 +1693,7 @@ bool ModuleMap::resolveUses(Module *Mod, bool Complain) {
   for (auto &UDU : Top->takeUnresolvedDirectUses()) {
     Module *DirectUse = resolveModuleId(UDU, Top, Complain);
     if (DirectUse)
-      Top->DirectUses.push_back(DirectUse);
+      Top->addDirectUse(DirectUse);
     else
       Top->addUnresolvedDirectUse(std::move(UDU));
   }
@@ -1708,7 +1706,7 @@ bool ModuleMap::resolveConflicts(Module *Mod, bool Complain) {
       Module::Conflict Conflict;
       Conflict.Other = OtherMod;
       Conflict.Message = UC.Message;
-      Mod->Conflicts.push_back(Conflict);
+      Mod->addConflict(std::move(Conflict));
     } else
       Mod->addUnresolvedConflict(std::move(UC));
   }
@@ -2035,7 +2033,7 @@ void ModuleMapLoader::handleModuleDecl(const modulemap::ModuleDecl &MD) {
   // If the active module is a top-level framework, and there are no link
   // libraries, automatically link against the framework.
   if (ActiveModule->IsFramework && !ActiveModule->isSubFramework() &&
-      ActiveModule->LinkLibraries.empty())
+      ActiveModule->getLinkLibraries().empty())
     inferFrameworkLink(ActiveModule);
 
   // If the module meets all requirements but is still unavailable, mark the
@@ -2272,18 +2270,18 @@ void ModuleMapLoader::handleExportDecl(const modulemap::ExportDecl &ED) {
 void ModuleMapLoader::handleExportAsDecl(const modulemap::ExportAsDecl &EAD) {
   const auto &ModName = EAD.Id.front();
 
-  if (!ActiveModule->ExportAsModule.empty()) {
-    if (ActiveModule->ExportAsModule == ModName.first) {
+  if (!ActiveModule->getExportAsModule().empty()) {
+    if (ActiveModule->getExportAsModule() == ModName.first) {
       Diags.Report(ModName.second, diag::warn_mmap_redundant_export_as)
           << ActiveModule->Name << ModName.first;
     } else {
       Diags.Report(ModName.second, diag::err_mmap_conflicting_export_as)
-          << ActiveModule->Name << ActiveModule->ExportAsModule
+          << ActiveModule->Name << ActiveModule->getExportAsModule()
           << ModName.first;
     }
   }
 
-  ActiveModule->ExportAsModule = ModName.first;
+  ActiveModule->setExportAsModule(ModName.first);
   Map.addLinkAsDependency(ActiveModule);
 }
 
@@ -2295,8 +2293,8 @@ void ModuleMapLoader::handleUseDecl(const modulemap::UseDecl &UD) {
 }
 
 void ModuleMapLoader::handleLinkDecl(const modulemap::LinkDecl &LD) {
-  ActiveModule->LinkLibraries.emplace_back(std::string{LD.Library},
-                                           LD.Framework);
+  ActiveModule->addLinkLibrary(
+      Module::LinkLibrary(std::string{LD.Library}, LD.Framework));
 }
 
 void ModuleMapLoader::handleConfigMacros(
@@ -2311,8 +2309,8 @@ void ModuleMapLoader::handleConfigMacros(
   if (CMD.Exhaustive) {
     ActiveModule->ConfigMacrosExhaustive = true;
   }
-  ActiveModule->ConfigMacros.insert(ActiveModule->ConfigMacros.end(),
-                                    CMD.Macros.begin(), CMD.Macros.end());
+  for (StringRef Macro : CMD.Macros)
+    ActiveModule->addConfigMacro(Macro);
 }
 
 void ModuleMapLoader::handleConflict(const modulemap::ConflictDecl &CD) {

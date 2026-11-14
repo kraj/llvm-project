@@ -229,7 +229,7 @@ APINotesManager::getCurrentModuleAPINotes(Module *M, bool LookInModule,
                                           ArrayRef<std::string> SearchPaths) {
   FileManager &FM = SM.getFileManager();
   auto ModuleName = M->getTopLevelModuleName();
-  auto ExportedModuleName = M->getTopLevelModule()->ExportAsModule;
+  StringRef ExportedModuleName = M->getTopLevelModule()->getExportAsModule();
   llvm::SmallVector<FileEntryRef, 2> APINotes;
 
   // First, look relative to the module itself.
@@ -317,7 +317,7 @@ bool APINotesManager::loadCurrentModuleAPINotes(
   for (auto File : APINotes) {
     CurrentModuleReaders[NumReaders++] = loadAPINotes(File).release();
     if (!getCurrentModuleReaders().empty())
-      M->APINotesFile = File.getName().str();
+      M->setAPINotesFile(File.getName());
   }
 
   if (NumReaders > 0)

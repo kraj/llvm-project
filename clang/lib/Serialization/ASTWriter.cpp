@@ -246,7 +246,7 @@ GetAffectingModuleMaps(const Preprocessor &PP, Module *RootModule) {
 
     for (const Module *ImportedModule : CurrentModule->Imports)
       CollectModuleMapsForHierarchy(ImportedModule, AR_ImportOrTextualHeader);
-    for (const Module *UndeclaredModule : CurrentModule->UndeclaredUses)
+    for (const Module *UndeclaredModule : CurrentModule->getUndeclaredUses())
       CollectModuleMapsForHierarchy(UndeclaredModule, AR_ImportOrTextualHeader);
 
     for (Module *M : CurrentModule->submodules())
@@ -3190,7 +3190,7 @@ void ASTWriter::WriteSubmodules(Module *WritingModule, ASTContext *Context) {
     }
 
     // Emit the requirements.
-    for (const auto &R : Mod->Requirements) {
+    for (const auto &R : Mod->getRequirements()) {
       RecordData::value_type Record[] = {SUBMODULE_REQUIRES, R.RequiredState};
       Stream.EmitRecordWithBlob(RequiresAbbrev, Record, R.FeatureName);
     }
@@ -3246,9 +3246,9 @@ void ASTWriter::WriteSubmodules(Module *WritingModule, ASTContext *Context) {
     }
 
     // Emit the modules affecting compilation that were not imported.
-    if (!Mod->AffectingClangModules.empty()) {
+    if (!Mod->getAffectingClangModules().empty()) {
       RecordData Record;
-      for (Module *I : Mod->AffectingClangModules)
+      for (Module *I : Mod->getAffectingClangModules())
         Record.push_back(getSubmoduleID(I));
       Stream.EmitRecord(SUBMODULE_AFFECTING_MODULES, Record);
     }
@@ -3272,14 +3272,14 @@ void ASTWriter::WriteSubmodules(Module *WritingModule, ASTContext *Context) {
     // TODO: Consider serializing undeclared uses of modules.
 
     // Emit the link libraries.
-    for (const auto &LL : Mod->LinkLibraries) {
+    for (const auto &LL : Mod->getLinkLibraries()) {
       RecordData::value_type Record[] = {SUBMODULE_LINK_LIBRARY,
                                          LL.IsFramework};
       Stream.EmitRecordWithBlob(LinkLibraryAbbrev, Record, LL.Library);
     }
 
     // Emit the conflicts.
-    for (const auto &C : Mod->Conflicts) {
+    for (const auto &C : Mod->getConflicts()) {
       // FIXME: This may fail; we don't require that all conflicting modules
       // are local or imported.
       RecordData::value_type Record[] = {SUBMODULE_CONFLICT,
@@ -3288,7 +3288,7 @@ void ASTWriter::WriteSubmodules(Module *WritingModule, ASTContext *Context) {
     }
 
     // Emit the configuration macros.
-    for (const auto &CM : Mod->ConfigMacros) {
+    for (const auto &CM : Mod->getConfigMacros()) {
       RecordData::value_type Record[] = {SUBMODULE_CONFIG_MACRO};
       Stream.EmitRecordWithBlob(ConfigMacroAbbrev, Record, CM);
     }
@@ -3305,9 +3305,10 @@ void ASTWriter::WriteSubmodules(Module *WritingModule, ASTContext *Context) {
     }
 
     // Emit the name of the re-exported module, if any.
-    if (!Mod->ExportAsModule.empty()) {
+    if (!Mod->getExportAsModule().empty()) {
       RecordData::value_type Record[] = {SUBMODULE_EXPORT_AS};
-      Stream.EmitRecordWithBlob(ExportAsAbbrev, Record, Mod->ExportAsModule);
+      Stream.EmitRecordWithBlob(ExportAsAbbrev, Record,
+                                Mod->getExportAsModule());
     }
 
     // Emit one SUBMODULE_CHILD record per direct child so the reader can
