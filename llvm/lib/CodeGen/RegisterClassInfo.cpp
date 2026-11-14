@@ -275,6 +275,13 @@ unsigned RegisterClassInfo::computePSetLimit(unsigned Idx) const {
   // return non-zero value.
   if (NAllocatableRegs == 0)
     return RegPressureSetLimit;
+  // The stress limit clips each register class's allocation order. Apply it
+  // directly in pressure units instead of treating clipped registers as
+  // reserved.
+  if (StressRA) {
+    return std::min(RegPressureSetLimit,
+                    NAllocatableRegs * TRI->getRegClassWeight(RC).RegWeight);
+  }
   unsigned NReserved = RC->getNumRegs() - NAllocatableRegs;
   unsigned ReservedRegWeight = TRI->getRegClassWeight(RC).RegWeight * NReserved;
   // A target-provided limit may already account for restricted register
