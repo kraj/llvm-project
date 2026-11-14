@@ -225,6 +225,14 @@ public:
   std::optional<std::pair<Intrinsic::ID, SmallVector<Value *, 3>>>
   convertOrOfShiftsToFunnelShift(Instruction &Or);
 
+  /// Build the mask of a shufflevector of (bitcast x to <K x EltTy>) that reads
+  /// the bits of \p BE, which extracts from (bitcast x to ...). Each lane of
+  /// \p BE reads one range of bits, which gives a run of mask elements.
+  /// Returns false if \p EltTy does not divide the lanes, the ranges and the
+  /// offsets.
+  bool getBitExtractShuffleMask(BitExtractInst &BE, Type *EltTy,
+                                SmallVectorImpl<int> &Mask);
+
 private:
   bool annotateAnyAllocSite(CallBase &Call, const TargetLibraryInfo *TLI);
   bool isDesirableIntType(unsigned BitWidth) const;
