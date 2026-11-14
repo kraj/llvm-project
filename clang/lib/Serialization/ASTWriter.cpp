@@ -1253,7 +1253,7 @@ ASTFileSignature ASTWriter::createSignatureForNamedModule() const {
   // We need to combine all the export imported modules no matter
   // we used it or not.
   for (auto [ExportImported, _] : WritingModule->Exports)
-    Hasher.update(ExportImported->Signature);
+    Hasher.update(ExportImported->getSignature());
 
   // We combine all the used modules to make sure the signature is precise.
   // Consider the case like:
@@ -1278,7 +1278,7 @@ ASTFileSignature ASTWriter::createSignatureForNamedModule() const {
   // efficiency may a problem too. Here we just combine the hash value of the
   // used modules conservatively.
   for (Module *M : TouchedTopLevelModules)
-    Hasher.update(M->Signature);
+    Hasher.update(M->getSignature());
 
   return ASTFileSignature::create(Hasher.result());
 }
@@ -1548,10 +1548,10 @@ void ASTWriter::WriteControlBlock(Preprocessor &PP, StringRef isysroot) {
     Record.clear();
 
     auto &Map = PP.getHeaderSearchInfo().getModuleMap();
-    AddPath(WritingModule->PresumedModuleMapFile.empty()
+    AddPath(WritingModule->getPresumedModuleMapFile().empty()
                 ? Map.getModuleMapFileForUniquing(WritingModule)
                       ->getNameAsRequested()
-                : StringRef(WritingModule->PresumedModuleMapFile),
+                : WritingModule->getPresumedModuleMapFile(),
             Record);
 
     // Additional module map files.

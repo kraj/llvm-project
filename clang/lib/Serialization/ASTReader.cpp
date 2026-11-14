@@ -6583,7 +6583,8 @@ Module *ASTReader::getSubmodule(uint32_t GlobalID) {
 
         F.DidReadTopLevelSubmodule = true;
         CurrentModule->setASTFileNameAndKey(F.FileName, F.FileKey);
-        CurrentModule->PresumedModuleMapFile = F.ModuleMapPath;
+        CurrentModule->setPresumedModuleMapFile(F.ModuleMapPath);
+        CurrentModule->setSignature(F.Signature);
       }
 
       CurrentModule->Kind = Kind;
@@ -6594,7 +6595,6 @@ Module *ASTReader::getSubmodule(uint32_t GlobalID) {
       // location to be marked as "unaffecting" when writing and avoid creating
       // duplicate locations for the same module map file.
       CurrentModule->DefinitionLoc = DefinitionLoc;
-      CurrentModule->Signature = F.Signature;
       CurrentModule->IsFromModuleFile = true;
       if (InferredAllowedBy.isValid())
         ModMap.setInferredModuleAllowedBy(CurrentModule, InferredAllowedBy);

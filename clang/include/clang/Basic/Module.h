@@ -394,21 +394,14 @@ public:
   /// are found.
   OptionalDirectoryEntryRef Directory;
 
-  /// The presumed file name for the module map defining this module.
-  /// Only non-empty when building from preprocessed source.
-  std::string PresumedModuleMapFile;
-
   /// The umbrella header or directory.
   std::variant<std::monostate, FileEntryRef, DirectoryEntryRef> Umbrella;
 
   /// The location of the umbrella header or directory declaration.
   SourceLocation UmbrellaDeclLoc;
 
-  /// Directories this module depends on the listing of.
-  std::vector<std::string> DirectoryDependencies;
-
-  /// The module signature.
-  ASTFileSignature Signature;
+  /// The location of the inferred submodule.
+  SourceLocation InferredSubmoduleLoc;
 
   /// Does this Module is a named module of a standard named module?
   bool isNamedModule() const {
@@ -448,11 +441,6 @@ private:
   /// \c SubModules vector at which that submodule resides.
   llvm::StringMap<unsigned> SubModuleIndex;
 
-  /// The AST file name and key if this is a top-level module which has a
-  /// corresponding serialized AST file, or null otherwise.
-  std::optional<ModuleFileName> ASTFileName;
-  std::optional<ModuleFileKey> ASTFileKey;
-
   /// top-level header filenames that aren't resolved to FileEntries yet.
   std::vector<std::string> TopHeaderNames;
 
@@ -480,7 +468,8 @@ private:
   // The begin index for a HeaderKind also acts the end index of HeaderKind - 1.
   // The extra element at the end acts as the end index of the last HeaderKind.
   unsigned HeaderKindBeginIndex[NumHeaderKinds + 1] = {};
-  SmallVector<Header, 2> HeadersStorage;
+  // Almost all modules have at most one header.
+  SmallVector<Header, 1> HeadersStorage;
 
 public:
   ArrayRef<Header> getAllHeaders() const { return HeadersStorage; }
@@ -609,6 +598,10 @@ public:
   LLVM_PREFERRED_TYPE(bool)
   unsigned NamedModuleHasInit : 1;
 
+  /// Autolinking uses the framework name for linking purposes
+  /// when this is false and the export_as name otherwise.
+  bool UseExportAsModuleLinkName = false;
+
   /// Describes the visibility of the various names within a
   /// particular module.
   enum NameVisibilityKind {
@@ -621,9 +614,6 @@ public:
   /// The visibility of names within this particular module.
   NameVisibilityKind NameVisibility;
 
-  /// The location of the inferred submodule.
-  SourceLocation InferredSubmoduleLoc;
-
   /// The set of modules imported by this module, and on which this
   /// module depends.
   llvm::SmallVector<ModuleRef, 2> Imports;
@@ -634,8 +624,9 @@ public:
   /// to indicate that this is a wildcard export.
   using ExportDecl = std::pair<ModuleRef, bool>;
 
-  /// The set of export declarations.
-  SmallVector<ExportDecl, 2> Exports;
+  /// The set of export declarations. Almost all modules have at most one
+  /// (typically "export *").
+  SmallVector<ExportDecl, 1> Exports;
 
   /// Describes an exported module that has not yet been resolved
   /// (perhaps because the module it refers to has not yet been loaded).
@@ -668,10 +659,6 @@ public:
     /// Whether this is a framework rather than a library.
     bool IsFramework = false;
   };
-
-  /// Autolinking uses the framework name for linking purposes
-  /// when this is false and the export_as name otherwise.
-  bool UseExportAsModuleLinkName = false;
 
   /// An unresolved conflict with another module.
   struct UnresolvedConflict {
@@ -994,6 +981,60 @@ public:
   }
   void clearConflicts() { Cold.clear(&ColdMembers::Conflicts); }
 
+private:
+  /// Members that are only set on top-level modules, kept out of line because
+  /// the vast majority of modules are submodules.
+  struct TopLevelMembers {
+    /// The presumed file name for the module map defining this module.
+    /// Only non-empty when building from preprocessed source.
+    std::string PresumedModuleMapFile;
+
+    /// Directories this module depends on the listing of.
+    std::vector<std::string> DirectoryDependencies;
+
+    /// The AST file name and key if this is a top-level module which has a
+    /// corresponding serialized AST file, or null otherwise.
+    std::optional<ModuleFileName> ASTFileName;
+    std::optional<ModuleFileKey> ASTFileKey;
+
+    /// The signature of the AST file this module was deserialized from.
+    ASTFileSignature Signature;
+
+    bool empty() const {
+      return PresumedModuleMapFile.empty() && DirectoryDependencies.empty() &&
+             !ASTFileName && !ASTFileKey && !Signature;
+    }
+  };
+
+  LazyMembers<TopLevelMembers> TopLevelOnly;
+
+public:
+  /// The presumed file name for the module map defining this module.
+  /// Only non-empty when building from preprocessed source.
+  StringRef getPresumedModuleMapFile() const {
+    return TopLevelOnly.get().PresumedModuleMapFile;
+  }
+  void setPresumedModuleMapFile(StringRef File) {
+    TopLevelOnly.set(&TopLevelMembers::PresumedModuleMapFile, File);
+  }
+
+  /// The signature of the AST file this module was deserialized from, or a
+  /// null signature if it wasn't deserialized from an AST file.
+  ///
+  /// All submodules are deserialized from the same AST file as their top-level
+  /// module, so the signature is only stored on the top-level module.
+  ASTFileSignature getSignature() const {
+    if (!IsFromModuleFile)
+      return ASTFileSignature();
+    return getTopLevelModule()->TopLevelOnly.get().Signature;
+  }
+
+  /// Set the signature of the AST file the top-level module of this module was
+  /// deserialized from.
+  void setSignature(ASTFileSignature NewSignature) {
+    getTopLevelModule()->TopLevelOnly.getOrCreate().Signature = NewSignature;
+  }
+
   /// Construct a new module or submodule.
   Module(ModuleConstructorTag, StringRef Name, SourceLocation DefinitionLoc,
          Module *Parent, bool IsFramework, bool IsExplicit,
@@ -1195,14 +1236,14 @@ public:
 
   /// The serialized AST file name for this module, if one was created.
   const ModuleFileName *getASTFileName() const {
-    const Module *TopLevel = getTopLevelModule();
-    return TopLevel->ASTFileName ? &*TopLevel->ASTFileName : nullptr;
+    const auto &Name = getTopLevelModule()->TopLevelOnly.get().ASTFileName;
+    return Name ? &*Name : nullptr;
   }
 
   /// The serialized AST file key for this module, if one was created.
   const ModuleFileKey *getASTFileKey() const {
-    const Module *TopLevel = getTopLevelModule();
-    return TopLevel->ASTFileKey ? &*TopLevel->ASTFileKey : nullptr;
+    const auto &Key = getTopLevelModule()->TopLevelOnly.get().ASTFileKey;
+    return Key ? &*Key : nullptr;
   }
 
   /// Set the serialized module file for the top-level module of this module.
@@ -1210,9 +1251,9 @@ public:
     assert(((!getASTFileName() && !getASTFileKey()) ||
             *getASTFileKey() == NewKey) &&
            "file path changed");
-    Module *TopLevel = getTopLevelModule();
-    TopLevel->ASTFileName = NewName;
-    TopLevel->ASTFileKey = NewKey;
+    TopLevelMembers &Data = getTopLevelModule()->TopLevelOnly.getOrCreate();
+    Data.ASTFileName = std::move(NewName);
+    Data.ASTFileKey = std::move(NewKey);
   }
 
   /// Retrieve the umbrella directory as written.
@@ -1244,7 +1285,7 @@ public:
   void addDirectoryDependency(StringRef Path);
 
   ArrayRef<std::string> getDirectoryDependencies() const {
-    return DirectoryDependencies;
+    return TopLevelOnly.get().DirectoryDependencies;
   }
 
   /// Add a top-level header associated with this module.
