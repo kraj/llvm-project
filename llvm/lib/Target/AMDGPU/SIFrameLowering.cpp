@@ -1864,10 +1864,10 @@ void SIFrameLowering::determinePrologEpilogSGPRSaves(
       for (MachineOperand &Op :
            make_early_inc_range(MRI.reg_operands(ReservedRegForExecCopy))) {
         MachineInstr &MI = *Op.getParent();
-        if (MI.getOpcode() != LMC.OrSaveExecOpc && MI.getOpcode() != LMC.MovOpc)
-          continue;
-        if (MI.readsRegister(LMC.ExecReg, TRI) ||
-            MI.modifiesRegister(LMC.ExecReg, TRI))
+        if (MI.getOpcode() == LMC.OrSaveExecOpc ||
+            (MI.getOpcode() == LMC.MovOpc &&
+             (MI.readsRegister(LMC.ExecReg, TRI) ||
+              MI.modifiesRegister(LMC.ExecReg, TRI))))
           Op.setReg(UnusedScratchReg);
       }
       LiveUnits.addReg(UnusedScratchReg);
@@ -2027,8 +2027,6 @@ void SIFrameLowering::determineCalleeSaves(MachineFunction &MF,
   if (!ST.hasGFX90AInsts())
     SavedVGPRs.clearBitsInMask(TRI->getAllAGPRRegMask());
 
-  // Whole-wave spills use the original EXEC mask from the first argument, but
-  // the barrier workaround needs separate storage for the current EXEC mask.
   determinePrologEpilogSGPRSaves(
       MF, SavedVGPRs, NeedExecCopyReservedReg || NeedExecCopyForAsyncBarrier);
 
