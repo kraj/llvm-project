@@ -22,6 +22,7 @@
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
+#include "llvm/IR/NVVMIntrinsicUtils.h"
 #include "llvm/Support/Casting.h"
 
 #include <array>
@@ -944,6 +945,11 @@ mlir::NVVM::IDArgPair TensormapReplaceOp::getIntrinsicIDAndArgs(
             });
     args.push_back(builder.getInt32(val));
   }
+
+  // TODO: Add support for the alloc_class qualifier.
+  if (thisOp.getField() == NVVM::TensormapField::GLOBAL_ADDRESS)
+    args.push_back(builder.getInt32(
+        static_cast<unsigned>(llvm::nvvm::TensormapAllocClass::SMALL)));
 
   static constexpr llvm::Intrinsic::ID IDs[] = {
       llvm::Intrinsic::nvvm_tensormap_replace_global_address,
