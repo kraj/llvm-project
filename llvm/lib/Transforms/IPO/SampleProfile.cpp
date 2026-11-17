@@ -26,7 +26,6 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PriorityQueue.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SmallVector.h"
@@ -940,13 +939,13 @@ void SampleProfileLoader::findExternalInlineCandidate(
 /// find out callsites with corresponding inline instances.
 ///
 /// For such callsites,
-/// - If it is hot enough, inline the callsites and adds callsites of the callee
-///   into the caller. If the call is an indirect call, first promote
-///   it to direct call. Each indirect call is limited with a single target.
+/// - If a callsite is hot enough, inline it and add the callee's callsites
+///   to the caller. If the call is an indirect call, first promote
+///   it to a direct call. An indirect call can have multiple profiled targets.
 ///
-/// - If a callsite is not inlined, merge the its profile to the outline
-///   version (if --sample-profile-merge-inlinee is true), or scale the
-///   counters of standalone function based on the profile of inlined
+/// - After inlining finishes, merge profiles of remaining calls into their
+///   standalone functions (if --sample-profile-merge-inlinee is true), or scale
+///   the counters of the standalone function based on the profile of inlined
 ///   instances (if --sample-profile-merge-inlinee is false).
 ///
 ///   Later passes may consume the updated profiles.
@@ -966,7 +965,6 @@ bool SampleProfileLoader::inlineHotFunctions(
          "ProfAccForSymsInList should be false when profile-sample-accurate "
          "is enabled");
 
-  MapVector<CallBase *, const FunctionSamples *> LocalNotInlinedCallSites;
   bool Changed = false;
   bool LocalChanged = true;
   while (LocalChanged) {
@@ -984,9 +982,6 @@ bool SampleProfileLoader::inlineHotFunctions(
               assert((!FunctionSamples::UseMD5 || FS->GUIDToFuncNameMap) &&
                      "GUIDToFuncNameMap has to be populated");
               AllCandidates.push_back(CB);
-              if (FS->getHeadSamplesEstimate() > 0 ||
-                  FunctionSamples::ProfileIsCS)
-                LocalNotInlinedCallSites.insert({CB, FS});
               if (callsiteIsHot(FS, PSI, ProfAccForSymsInList))
                 Hot = true;
               else if (shouldInlineColdCallee(*CB))
@@ -1007,8 +1002,11 @@ bool SampleProfileLoader::inlineHotFunctions(
     }
     for (CallBase *I : CIS) {
       Function *CalledFunction = I->getCalledFunction();
-      InlineCandidate Candidate = {I, LocalNotInlinedCallSites.lookup(I),
-                                   0 /* dummy count */,
+      const FunctionSamples *CalleeSamples = findCalleeFunctionSamples(*I);
+      if (CalleeSamples && !FunctionSamples::ProfileIsCS &&
+          CalleeSamples->getHeadSamplesEstimate() == 0)
+        CalleeSamples = nullptr;
+      InlineCandidate Candidate = {I, CalleeSamples, 0 /* dummy count */,
                                    1.0 /* dummy distribution factor */};
       // Do not inline recursive calls.
       if (CalledFunction == &F)
@@ -1027,14 +1025,15 @@ bool SampleProfileLoader::inlineHotFunctions(
 
           Candidate = {I, FS, FS->getHeadSamplesEstimate(), 1.0};
           if (tryPromoteAndInlineCandidate(F, Candidate, SumOrigin, Sum)) {
-            LocalNotInlinedCallSites.erase(I);
             LocalChanged = true;
+          } else if (Candidate.CallInstr != I) {
+            // Promotion changes the IR even if the direct call is not inlined.
+            Changed = true;
           }
         }
       } else if (CalledFunction && CalledFunction->getSubprogram() &&
                  !CalledFunction->isDeclaration()) {
         if (tryInlineCandidate(Candidate)) {
-          LocalNotInlinedCallSites.erase(I);
           LocalChanged = true;
         }
       } else if (LTOPhase == ThinOrFullLTOPhase::ThinLTOPreLink) {
@@ -1048,9 +1047,49 @@ bool SampleProfileLoader::inlineHotFunctions(
 
   // For CS profile, profile for not inlined context will be merged when
   // base profile is being retrieved.
-  if (!FunctionSamples::ProfileIsCS)
-    promoteMergeNotInlinedContextSamples(LocalNotInlinedCallSites.takeVector(),
-                                         F);
+  if (!FunctionSamples::ProfileIsCS) {
+    // Inspect surviving calls after all iterations. An indirect fallback can
+    // remain after inlining, and promotion can leave a new direct call behind.
+    SmallVector<std::pair<CallBase *, const FunctionSamples *>, 8>
+        NotInlinedCallSites;
+    for (auto &BB : F) {
+      for (CallBase &CB : make_isa_range<CallBase>(BB)) {
+        if (isa<IntrinsicInst>(CB))
+          continue;
+        if (!CB.isIndirectCall()) {
+          if (const FunctionSamples *FS = findCalleeFunctionSamples(CB))
+            if (FS->getHeadSamplesEstimate() > 0)
+              NotInlinedCallSites.emplace_back(&CB, FS);
+          continue;
+        }
+        // ThinLTO pre-link deliberately leaves promotion to the backend.
+        if (LTOPhase == ThinOrFullLTOPhase::ThinLTOPreLink)
+          continue;
+        uint64_t Sum = 0;
+        auto CalleeSamples = findIndirectCallFunctionSamples(CB, Sum);
+        if (CalleeSamples.empty())
+          continue;
+        // Read the full history even if the promotion limit has been lowered.
+        // A target blocked by that limit still needs its samples recovered.
+        auto ValueData = getValueProfDataFromInst(
+            CB, IPVK_IndirectCallTarget, std::numeric_limits<uint32_t>::max(),
+            Sum, /*GetNoICPValue=*/true);
+        for (const FunctionSamples *FS : CalleeSamples) {
+          const Function *Callee = SymbolMap.lookup(FS->getFunction());
+          if (!Callee || FS->getHeadSamplesEstimate() == 0)
+            continue;
+          uint64_t GUID =
+              Function::getGUIDAssumingExternalLinkage(Callee->getName());
+          if (llvm::any_of(ValueData, [GUID](const InstrProfValueData &V) {
+                return V.Value == GUID && V.Count == NOMORE_ICP_MAGICNUM;
+              }))
+            continue;
+          NotInlinedCallSites.emplace_back(&CB, FS);
+        }
+      }
+    }
+    promoteMergeNotInlinedContextSamples(NotInlinedCallSites, F);
+  }
   return Changed;
 }
 
@@ -1377,9 +1416,7 @@ void SampleProfileLoader::promoteMergeNotInlinedContextSamples(
     CallBase *I = Pair.first;
     const FunctionSamples *FS = Pair.second;
     Function *Callee = I->getCalledFunction();
-    // The iterative inliner can still record targets it already inlined.
-    // Recover indirect targets only with the priority inliner's bookkeeping.
-    if (!Callee && CallsitePrioritizedInline) {
+    if (!Callee) {
       Callee = SymbolMap.lookup(FS->getFunction());
       // Do not merge a recursive context into the profile that owns it.
       if (Callee == &F)
