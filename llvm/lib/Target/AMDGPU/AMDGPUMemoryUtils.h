@@ -57,6 +57,16 @@ unsigned getNumNamedBarriersDeclared(const DataLayout &DL,
 bool isDynamicLDS(const GlobalVariable &GV);
 bool isLDSVariableToLower(const GlobalVariable &GV);
 
+/// Convert \p GV, an LDS variable or a named barrier, to an external
+/// declaration so that the linker allocates it with object linking. A
+/// declaration cannot be in a comdat, so this also removes \p GV from its
+/// comdat.
+void externalizeLDSGlobalForObjectLinking(GlobalVariable &GV);
+
+/// Record in the amdgpu.lds.uses metadata that \p F uses the LDS variable
+/// \p GV.
+void recordLDSUseForObjectLinking(Function &F, GlobalVariable &GV);
+
 struct GVUsesInfoTy {
   FunctionVariableMap DirectAccess;
   FunctionVariableMap IndirectAccess;
