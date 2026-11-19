@@ -240,6 +240,10 @@ void GCNHazardRecognizer::updateWMMAWindowState(const MachineInstr &MI) {
 
   // Start a new co-execution window.
   ActiveCoExecInfo = AMDGPU::getCoExecInfo(MI, TII);
+  if (ActiveCoExecInfo.TotalWindow == 0) {
+    CurrentCoExecStage = std::nullopt;
+    return;
+  }
   CurrentCoExecStage = 0;
   CoExecWindowLog.fill('.');
 
