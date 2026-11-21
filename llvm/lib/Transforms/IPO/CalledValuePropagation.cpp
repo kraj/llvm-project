@@ -21,6 +21,7 @@
 #include "llvm/Analysis/SparsePropagation.h"
 #include "llvm/Analysis/ValueLatticeUtils.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/IPO.h"
@@ -381,16 +382,35 @@ static bool runCVP(Module &M) {
 
   // Attach metadata to the indirect call sites that were collected indicating
   // the set of functions they can possibly target.
+  SmallPtrSetImpl<CallBase *> &IndirectCalls = Lattice.getIndirectCalls();
+
+  // To keep the output deterministic generate the metadata in program order.
+  // Collect all functions that'll get a metadata so we can skip scanning
+  // functions that won't get any metadata in the instructions.
+  SmallPtrSet<Function *, 16> FunctionsWithIndirectCalls;
+  for (CallBase *C : IndirectCalls)
+    FunctionsWithIndirectCalls.insert(C->getFunction());
+
   bool Changed = false;
   MDBuilder MDB(M.getContext());
-  for (CallBase *C : Lattice.getIndirectCalls()) {
-    auto RegI = CVPLatticeKey(C->getCalledOperand(), IPOGrouping::Register);
-    CVPLatticeVal LV = Solver.getExistingValueState(RegI);
-    if (!LV.isFunctionSet() || LV.getFunctions().empty())
+  for (Function &F : M) {
+    if (!FunctionsWithIndirectCalls.contains(&F))
       continue;
-    MDNode *Callees = MDB.createCallees(LV.getFunctions());
-    C->setMetadata(LLVMContext::MD_callees, Callees);
-    Changed = true;
+
+    for (Instruction &I : instructions(F)) {
+      auto *C = dyn_cast<CallBase>(&I);
+      if (!C || !IndirectCalls.contains(C))
+        continue;
+
+      auto RegI = CVPLatticeKey(C->getCalledOperand(), IPOGrouping::Register);
+      CVPLatticeVal LV = Solver.getExistingValueState(RegI);
+      if (!LV.isFunctionSet() || LV.getFunctions().empty())
+        continue;
+
+      MDNode *Callees = MDB.createCallees(LV.getFunctions());
+      C->setMetadata(LLVMContext::MD_callees, Callees);
+      Changed = true;
+    }
   }
 
   return Changed;
