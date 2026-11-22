@@ -189,6 +189,42 @@ define i32 @weighted_selects(i32 %a, i32 %b) !prof !19 {
   ret i32 %sel1
 }
 
+; A predictable select of two constants.
+define i32 @weighted_select_consts(i32 %a) {
+; CHECK-LABEL: weighted_select_consts:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    testl %edi, %edi
+; CHECK-NEXT:    jne .LBB12_1
+; CHECK-NEXT:  # %bb.2: # %select.false
+; CHECK-NEXT:    movl $5, %eax
+; CHECK-NEXT:    retq
+; CHECK-NEXT:  .LBB12_1:
+; CHECK-NEXT:    movl $7, %eax
+; CHECK-NEXT:    retq
+  %cmp = icmp ne i32 %a, 0
+  %sel = select i1 %cmp, i32 7, i32 5, !prof !16
+  ret i32 %sel
+}
+
+@g = external dso_local global i8
+
+; A predictable select of a null pointer and the address of a global.
+define ptr @weighted_select_null_global(i32 %a) {
+; CHECK-LABEL: weighted_select_null_global:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    testl %edi, %edi
+; CHECK-NEXT:    jne .LBB13_1
+; CHECK-NEXT:  # %bb.2: # %select.false
+; CHECK-NEXT:    movl $g, %eax
+; CHECK-NEXT:    retq
+; CHECK-NEXT:  .LBB13_1:
+; CHECK-NEXT:    xorl %eax, %eax
+; CHECK-NEXT:    retq
+  %cmp = icmp ne i32 %a, 0
+  %sel = select i1 %cmp, ptr null, ptr @g, !prof !16
+  ret ptr %sel
+}
+
 ; A predictable logical or feeding a branch in the same block.
 declare i64 @slow(i64, ptr, i64)
 

@@ -472,6 +472,71 @@ f:
   ret i32 0
 }
 
+; Another select on the same condition with branch weights follows the logical
+; or.
+define i32 @logical_or_br_cond_shared_weighted(i32 %a, i32 %b) {
+; CHECK-LABEL: define i32 @logical_or_br_cond_shared_weighted(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
+; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
+; CHECK-NEXT:    [[V:%.*]] = select i1 [[C1]], i32 [[A]], i32 [[B]], !prof [[PROF0]]
+; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
+; CHECK:       [[T]]:
+; CHECK-NEXT:    ret i32 [[V]]
+; CHECK:       [[F]]:
+; CHECK-NEXT:    ret i32 0
+;
+entry:
+  %c1 = icmp ugt i32 %a, 10
+  %c2 = icmp ugt i32 %b, 20
+  %or = select i1 %c1, i1 true, i1 %c2, !prof !0
+  %v = select i1 %c1, i32 %a, i32 %b, !prof !0
+  br i1 %or, label %t, label %f, !prof !0
+
+t:
+  ret i32 %v
+
+f:
+  ret i32 0
+}
+
+; Another select on the same condition with branch weights comes right before
+; the logical or.
+define i32 @logical_or_br_cond_shared_weighted_before(i32 %a, i32 %b) {
+; CHECK-LABEL: define i32 @logical_or_br_cond_shared_weighted_before(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*]]:
+; CHECK-NEXT:    [[V_FROZEN:%.*]] = freeze i32 [[A]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[V_FROZEN]], 10
+; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
+; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
+; CHECK:       [[SELECT_FALSE]]:
+; CHECK-NEXT:    br label %[[SELECT_END]]
+; CHECK:       [[SELECT_END]]:
+; CHECK-NEXT:    [[V:%.*]] = phi i32 [ [[A]], %[[ENTRY]] ], [ [[B]], %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
+; CHECK:       [[T]]:
+; CHECK-NEXT:    ret i32 [[V]]
+; CHECK:       [[F]]:
+; CHECK-NEXT:    ret i32 0
+;
+entry:
+  %c1 = icmp ugt i32 %a, 10
+  %c2 = icmp ugt i32 %b, 20
+  %v = select i1 %c1, i32 %a, i32 %b, !prof !0
+  %or = select i1 %c1, i1 true, i1 %c2, !prof !0
+  br i1 %or, label %t, label %f, !prof !0
+
+t:
+  ret i32 %v
+
+f:
+  ret i32 0
+}
+
 ; (a && b) || c with branch weights on both selects.
 define i32 @logical_and_or_br_weighted(i32 %a, i32 %b, i32 %c) {
 ; CHECK-LABEL: define i32 @logical_and_or_br_weighted(
