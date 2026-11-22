@@ -3,8 +3,9 @@
 
 target triple = "x86_64-unknown-unknown"
 
-; Logical or/and selects with branch weights that feed a conditional branch in
-; the same block, directly or through more logical ops of the same kind.
+; Logical or/and selects with branch weights. Most of them feed a conditional
+; branch in the same block, directly or through more logical ops of the same
+; kind.
 
 define i32 @logical_or_br(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br(
@@ -124,16 +125,11 @@ f:
 define i32 @logical_and_or_br(i32 %a, i32 %b, i32 %c) {
 ; CHECK-LABEL: define i32 @logical_and_or_br(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]], i32 [[C:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[AND_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[AND_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[AND:%.*]] = phi i1 [ [[C2]], %[[ENTRY]] ], [ false, %[[SELECT_FALSE]] ]
 ; CHECK-NEXT:    [[TMP0:%.*]] = icmp ugt i32 [[C]], 30
+; CHECK-NEXT:    [[AND:%.*]] = select i1 [[C1]], i1 [[C2]], i1 false, !prof [[PROF0]]
 ; CHECK-NEXT:    [[OR:%.*]] = select i1 [[AND]], i1 true, i1 [[TMP0]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
@@ -160,15 +156,10 @@ f:
 define i32 @logical_or_br_other_block(i32 %a, i32 %b, i1 %x) {
 ; CHECK-LABEL: define i32 @logical_or_br_other_block(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]], i1 [[X:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[OR_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[X]], label %[[NEXT:.*]], label %[[F:.*]]
 ; CHECK:       [[NEXT]]:
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F]], !prof [[PROF0]]
@@ -197,15 +188,10 @@ f:
 define i32 @logical_or_br_multiuse(i32 %a, i32 %b, ptr %p) {
 ; CHECK-LABEL: define i32 @logical_or_br_multiuse(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]], ptr [[P:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[OR_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
 ; CHECK-NEXT:    store i1 [[OR]], ptr [[P]], align 1
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
@@ -228,19 +214,14 @@ f:
 }
 
 ; The branch is unpredictable. SelectionDAGBuilder does not split it into one
-; branch per condition, so the branch weights of the select still apply.
+; branch per condition, but the branch weights of the select are still ignored.
 define i32 @logical_or_br_unpredictable(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br_unpredictable(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[OR_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !unpredictable [[META1:![0-9]+]]
 ; CHECK:       [[T]]:
 ; CHECK-NEXT:    ret i32 1
@@ -260,20 +241,15 @@ f:
   ret i32 0
 }
 
-; The second condition is an expensive compare: it is computed only on the
-; path that needs it.
+; The second condition is an expensive compare. SelectionDAGBuilder splits the
+; branch, so the compare is computed only on the path that needs it.
 define i32 @logical_or_br_expensive_cmp(i32 %a, i256 %x, i256 %y) {
 ; CHECK-LABEL: define i32 @logical_or_br_expensive_cmp(
 ; CHECK-SAME: i32 [[A:%.*]], i256 [[X:%.*]], i256 [[Y:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[OR_FROZEN]], 10
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE_SINK:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE_SINK]]:
+; CHECK-NEXT:  [[SELECT_FALSE_SINK:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ult i256 [[X]], [[Y]]
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE_SINK]] ]
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
 ; CHECK-NEXT:    ret i32 1
@@ -295,20 +271,15 @@ f:
 
 declare i1 @expensive(i32, i32, i32) speculatable memory(none) nounwind willreturn
 
-; The second condition is expensive and not a compare: it is computed only on
-; the path that needs it.
+; The second condition is expensive and not a compare. It stays an operand of
+; the logical or, so it is computed on both paths.
 define i32 @logical_or_br_expensive(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br_expensive(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[OR:%.*]] = icmp ugt i32 [[OR_FROZEN]], 10
-; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]]
-; CHECK:       [[F]]:
+; CHECK-NEXT:  [[F:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = call i1 @expensive(i32 [[A]], i32 [[B]], i32 [[B]])
-; CHECK-NEXT:    br label %[[T]]
-; CHECK:       [[T]]:
-; CHECK-NEXT:    [[OR1:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[F]] ]
+; CHECK-NEXT:    [[OR1:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]]
 ; CHECK-NEXT:    br i1 [[OR1]], label %[[T1:.*]], label %[[F1:.*]]
 ; CHECK:       [[T1]]:
 ; CHECK-NEXT:    ret i32 1
@@ -332,22 +303,12 @@ f:
 define i32 @logical_and_chain_br_expensive(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_and_chain_br_expensive(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[AND1_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[AND1_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[AND1:%.*]] = phi i1 [ [[C2]], %[[ENTRY]] ], [ false, %[[SELECT_FALSE]] ]
-; CHECK-NEXT:    [[AND2_FROZEN:%.*]] = freeze i1 [[AND1]]
-; CHECK-NEXT:    br i1 [[AND2_FROZEN]], label %[[SELECT_TRUE_SINK:.*]], label %[[SELECT_END1:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_TRUE_SINK]]:
+; CHECK-NEXT:    [[AND1:%.*]] = select i1 [[C1]], i1 [[C2]], i1 false, !prof [[PROF0]]
 ; CHECK-NEXT:    [[C3:%.*]] = call i1 @expensive(i32 [[A]], i32 [[B]], i32 [[B]])
-; CHECK-NEXT:    br label %[[SELECT_END1]]
-; CHECK:       [[SELECT_END1]]:
-; CHECK-NEXT:    [[AND2:%.*]] = phi i1 [ [[C3]], %[[SELECT_TRUE_SINK]] ], [ false, %[[SELECT_END]] ]
+; CHECK-NEXT:    [[AND2:%.*]] = select i1 [[AND1]], i1 [[C3]], i1 false, !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[AND2]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
 ; CHECK-NEXT:    ret i32 1
@@ -373,14 +334,9 @@ f:
 define i32 @logical_or_br_arg_cond_expensive(i1 %c1, i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br_arg_cond_expensive(
 ; CHECK-SAME: i1 [[C1:%.*]], i32 [[A:%.*]], i32 [[B:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i1 [[C1]]
-; CHECK-NEXT:    br i1 [[OR_FROZEN]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE_SINK:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE_SINK]]:
+; CHECK-NEXT:  [[SELECT_FALSE_SINK:.*:]]
 ; CHECK-NEXT:    [[C2:%.*]] = call i1 @expensive(i32 [[A]], i32 [[B]], i32 [[B]])
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE_SINK]] ]
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
 ; CHECK-NEXT:    ret i32 1
@@ -405,23 +361,12 @@ declare i32 @expensive.i32(i32, i32, i32) speculatable memory(none) nounwind wil
 define i32 @logical_or_br_cond_shared_expensive(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br_cond_shared_expensive(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[OR_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[OR_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE]] ]
-; CHECK-NEXT:    [[V_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[TMP0:%.*]] = icmp ugt i32 [[V_FROZEN]], 10
-; CHECK-NEXT:    br i1 [[TMP0]], label %[[SELECT_TRUE_SINK:.*]], label %[[SELECT_END1:.*]]
-; CHECK:       [[SELECT_TRUE_SINK]]:
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
 ; CHECK-NEXT:    [[E:%.*]] = call i32 @expensive.i32(i32 [[A]], i32 [[B]], i32 [[B]])
-; CHECK-NEXT:    br label %[[SELECT_END1]]
-; CHECK:       [[SELECT_END1]]:
-; CHECK-NEXT:    [[V:%.*]] = phi i32 [ [[E]], %[[SELECT_TRUE_SINK]] ], [ [[B]], %[[SELECT_END]] ]
+; CHECK-NEXT:    [[V:%.*]] = select i1 [[C1]], i32 [[E]], i32 [[B]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
 ; CHECK-NEXT:    ret i32 [[V]]
@@ -477,13 +422,18 @@ f:
 define i32 @logical_or_br_cond_shared_weighted(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br_cond_shared_weighted(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:  [[ENTRY:.*]]:
 ; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
 ; CHECK-NEXT:    [[OR:%.*]] = select i1 [[C1]], i1 true, i1 [[C2]], !prof [[PROF0]]
-; CHECK-NEXT:    [[V:%.*]] = select i1 [[C1]], i32 [[A]], i32 [[B]], !prof [[PROF0]]
-; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
+; CHECK-NEXT:    [[V_FROZEN:%.*]] = freeze i1 [[C1]]
+; CHECK-NEXT:    br i1 [[V_FROZEN]], label %[[SELECT_END:.*]], label %[[T:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
+; CHECK-NEXT:    br label %[[SELECT_END]]
+; CHECK:       [[SELECT_END]]:
+; CHECK-NEXT:    [[V:%.*]] = phi i32 [ [[A]], %[[ENTRY]] ], [ [[B]], %[[T]] ]
+; CHECK-NEXT:    br i1 [[OR]], label %[[T1:.*]], label %[[F:.*]], !prof [[PROF0]]
+; CHECK:       [[T1]]:
 ; CHECK-NEXT:    ret i32 [[V]]
 ; CHECK:       [[F]]:
 ; CHECK-NEXT:    ret i32 0
@@ -510,13 +460,14 @@ define i32 @logical_or_br_cond_shared_weighted_before(i32 %a, i32 %b) {
 ; CHECK-NEXT:  [[ENTRY:.*]]:
 ; CHECK-NEXT:    [[V_FROZEN:%.*]] = freeze i32 [[A]]
 ; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[V_FROZEN]], 10
-; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
 ; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
 ; CHECK:       [[SELECT_FALSE]]:
 ; CHECK-NEXT:    br label %[[SELECT_END]]
 ; CHECK:       [[SELECT_END]]:
 ; CHECK-NEXT:    [[V:%.*]] = phi i32 [ [[A]], %[[ENTRY]] ], [ [[B]], %[[SELECT_FALSE]] ]
-; CHECK-NEXT:    [[OR:%.*]] = phi i1 [ true, %[[ENTRY]] ], [ [[C2]], %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp ugt i32 [[B]], 20
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp ugt i32 [[A]], 10
+; CHECK-NEXT:    [[OR:%.*]] = select i1 [[TMP1]], i1 true, i1 [[TMP0]], !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
 ; CHECK-NEXT:    ret i32 [[V]]
@@ -541,16 +492,11 @@ f:
 define i32 @logical_and_or_br_weighted(i32 %a, i32 %b, i32 %c) {
 ; CHECK-LABEL: define i32 @logical_and_or_br_weighted(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]], i32 [[C:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[AND_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[AND_FROZEN]], 10
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[C1:%.*]] = icmp ugt i32 [[A]], 10
 ; CHECK-NEXT:    [[C2:%.*]] = icmp ugt i32 [[B]], 20
-; CHECK-NEXT:    br i1 [[C1]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[AND:%.*]] = phi i1 [ [[C2]], %[[ENTRY]] ], [ false, %[[SELECT_FALSE]] ]
 ; CHECK-NEXT:    [[TMP0:%.*]] = icmp ugt i32 [[C]], 30
+; CHECK-NEXT:    [[AND:%.*]] = select i1 [[C1]], i1 [[C2]], i1 false, !prof [[PROF0]]
 ; CHECK-NEXT:    [[OR:%.*]] = select i1 [[AND]], i1 true, i1 [[TMP0]], !prof [[PROF0]]
 ; CHECK-NEXT:    br i1 [[OR]], label %[[T:.*]], label %[[F:.*]], !prof [[PROF0]]
 ; CHECK:       [[T]]:
@@ -579,14 +525,9 @@ define i32 @logical_or_selfref_unreachable(i1 %c) {
 ; CHECK-SAME: i1 [[C:%.*]]) {
 ; CHECK-NEXT:  [[ENTRY:.*:]]
 ; CHECK-NEXT:    ret i32 0
-; CHECK:       [[DEAD:.*]]:
-; CHECK-NEXT:    [[S_FROZEN:%.*]] = freeze i1 [[S:%.*]]
-; CHECK-NEXT:    br i1 [[S_FROZEN]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[S]] = phi i1 [ true, %[[DEAD]] ], [ [[C]], %[[SELECT_FALSE]] ]
-; CHECK-NEXT:    br i1 [[C]], label %[[DEAD]], label %[[EXIT:.*]]
+; CHECK:       [[SELECT_END:.*]]:
+; CHECK-NEXT:    [[S:%.*]] = select i1 [[S]], i1 true, i1 [[C]], !prof [[PROF0]]
+; CHECK-NEXT:    br i1 [[C]], label %[[SELECT_END]], label %[[EXIT:.*]]
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    ret i32 1
 ;
@@ -602,8 +543,7 @@ exit:
 }
 
 ; A select on the same condition with an expensive operand comes before the
-; logical or, not next to it. It stays in the entry block, so turning the
-; logical or into a branch would not sink its operand.
+; logical or, not next to it.
 define i32 @logical_or_br_cond_shared_expensive_before(i32 %a, i32 %b) {
 ; CHECK-LABEL: define i32 @logical_or_br_cond_shared_expensive_before(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {

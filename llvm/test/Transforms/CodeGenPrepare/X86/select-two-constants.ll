@@ -10,14 +10,9 @@ target triple = "x86_64-unknown-unknown"
 define i32 @select_consts(i32 %a) {
 ; CHECK-LABEL: define i32 @select_consts(
 ; CHECK-SAME: i32 [[A:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[S_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[S_FROZEN]], 10
-; CHECK-NEXT:    br i1 [[C]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0:![0-9]+]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[S:%.*]] = phi i32 [ 7, %[[ENTRY]] ], [ 5, %[[SELECT_FALSE]] ]
+; CHECK-NEXT:  [[SELECT_END:.*:]]
+; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[A]], 10
+; CHECK-NEXT:    [[S:%.*]] = select i1 [[C]], i32 7, i32 5, !prof [[PROF0:![0-9]+]]
 ; CHECK-NEXT:    ret i32 [[S]]
 ;
 entry:
@@ -30,14 +25,9 @@ entry:
 define ptr @select_null_global(i32 %a) {
 ; CHECK-LABEL: define ptr @select_null_global(
 ; CHECK-SAME: i32 [[A:%.*]]) {
-; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[S_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[S_FROZEN]], 10
-; CHECK-NEXT:    br i1 [[C]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
-; CHECK:       [[SELECT_FALSE]]:
-; CHECK-NEXT:    br label %[[SELECT_END]]
-; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[S:%.*]] = phi ptr [ null, %[[ENTRY]] ], [ @g, %[[SELECT_FALSE]] ]
+; CHECK-NEXT:  [[SELECT_END:.*:]]
+; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[A]], 10
+; CHECK-NEXT:    [[S:%.*]] = select i1 [[C]], ptr null, ptr @g, !prof [[PROF0]]
 ; CHECK-NEXT:    ret ptr [[S]]
 ;
 entry:
@@ -58,7 +48,8 @@ define i32 @select_then_consts(i32 %a, i32 %p, i32 %q, ptr %o) {
 ; CHECK-NEXT:    br label %[[SELECT_END]]
 ; CHECK:       [[SELECT_END]]:
 ; CHECK-NEXT:    [[V:%.*]] = phi i32 [ [[P]], %[[ENTRY]] ], [ [[Q]], %[[SELECT_FALSE]] ]
-; CHECK-NEXT:    [[K:%.*]] = phi i32 [ 7, %[[ENTRY]] ], [ 5, %[[SELECT_FALSE]] ]
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp ugt i32 [[A]], 10
+; CHECK-NEXT:    [[K:%.*]] = select i1 [[TMP0]], i32 7, i32 5
 ; CHECK-NEXT:    store i32 [[K]], ptr [[O]], align 4
 ; CHECK-NEXT:    ret i32 [[V]]
 ;
@@ -75,13 +66,13 @@ define i32 @consts_then_select(i32 %a, i32 %p, i32 %q, ptr %o) {
 ; CHECK-LABEL: define i32 @consts_then_select(
 ; CHECK-SAME: i32 [[A:%.*]], i32 [[P:%.*]], i32 [[Q:%.*]], ptr [[O:%.*]]) {
 ; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[K_FROZEN:%.*]] = freeze i32 [[A]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[K_FROZEN]], 10
-; CHECK-NEXT:    br i1 [[C]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
+; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[A]], 10
+; CHECK-NEXT:    [[K:%.*]] = select i1 [[C]], i32 7, i32 5, !prof [[PROF0]]
+; CHECK-NEXT:    [[V_FROZEN:%.*]] = freeze i1 [[C]]
+; CHECK-NEXT:    br i1 [[V_FROZEN]], label %[[SELECT_END:.*]], label %[[SELECT_FALSE:.*]], !prof [[PROF0]]
 ; CHECK:       [[SELECT_FALSE]]:
 ; CHECK-NEXT:    br label %[[SELECT_END]]
 ; CHECK:       [[SELECT_END]]:
-; CHECK-NEXT:    [[K:%.*]] = phi i32 [ 7, %[[ENTRY]] ], [ 5, %[[SELECT_FALSE]] ]
 ; CHECK-NEXT:    [[V:%.*]] = phi i32 [ [[P]], %[[ENTRY]] ], [ [[Q]], %[[SELECT_FALSE]] ]
 ; CHECK-NEXT:    store i32 [[K]], ptr [[O]], align 4
 ; CHECK-NEXT:    ret i32 [[V]]

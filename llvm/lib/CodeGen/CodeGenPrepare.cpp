@@ -7374,49 +7374,6 @@ static bool sinkSelectOperand(const TargetTransformInfo *TTI, Value *V) {
          TTI->isExpensiveToSpeculativelyExecute(I);
 }
 
-/// Returns true if \p SI is a logical and/or that reaches a conditional branch
-/// in the same block through one-use logical ops of the same kind, and the
-/// branch is not marked unpredictable. SelectionDAGBuilder may split such a
-/// branch into one branch per condition.
-static bool isLogicalOpFeedingBranch(SelectInst *SI) {
-  bool IsAnd = match(SI, m_LogicalAnd());
-  if (!IsAnd && !match(SI, m_LogicalOr()))
-    return false;
-  Instruction *I = SI;
-  while (I->hasOneUse()) {
-    auto *U = cast<Instruction>(I->user_back());
-    // comesBefore() also ends the walk on a cycle in unreachable code.
-    if (U->getParent() != SI->getParent() || !I->comesBefore(U))
-      return false;
-    if (auto *Br = dyn_cast<CondBrInst>(U))
-      return !Br->hasMetadata(LLVMContext::MD_unpredictable);
-    if (IsAnd ? !match(U, m_LogicalAnd()) : !match(U, m_LogicalOr()))
-      return false;
-    I = U;
-  }
-  return false;
-}
-
-/// Returns true if the branch weights of \p SI should not make it a branch:
-/// a branch on the i1 result of a logical and/or would prevent splitting the
-/// branch it feeds into one branch per condition. Keep the weights if \p SI, or
-/// a later select on the same condition in the block, has an operand worth
-/// computing only on one path, so that the branch still sinks it. A later
-/// select moves into the new block, where it can become a branch too.
-static bool shouldIgnoreBranchWeights(const TargetTransformInfo *TTI,
-                                      SelectInst *SI) {
-  if (!isLogicalOpFeedingBranch(SI))
-    return false;
-  Value *Cond = SI->getCondition();
-  return none_of(make_range(SI->getIterator(), SI->getParent()->end()),
-                 [&](Instruction &I) {
-                   auto *S = dyn_cast<SelectInst>(&I);
-                   return S && S->getCondition() == Cond &&
-                          (sinkSelectOperand(TTI, S->getTrueValue()) ||
-                           sinkSelectOperand(TTI, S->getFalseValue()));
-                 });
-}
-
 /// Returns true if a SelectInst should be turned into an explicit branch.
 static bool isFormingBranchFromSelectProfitable(const TargetTransformInfo *TTI,
                                                 const TargetLowering *TLI,
@@ -7436,8 +7393,7 @@ static bool isFormingBranchFromSelectProfitable(const TargetTransformInfo *TTI,
     uint64_t Sum = TrueWeight + FalseWeight;
     if (Sum != 0) {
       auto Probability = BranchProbability::getBranchProbability(Max, Sum);
-      if (Probability > TTI->getPredictableBranchThreshold() &&
-          !shouldIgnoreBranchWeights(TTI, SI))
+      if (Probability > TTI->getPredictableBranchThreshold())
         return true;
     }
   }
@@ -7557,13 +7513,30 @@ bool CodeGenPrepare::optimizeSelectInst(SelectInst *SI) {
   if (!Opts.disable_select_optimize)
     return false;
 
+  TargetLowering::SelectSupportKind SelectKind;
+  if (SI->getType()->isVectorTy())
+    SelectKind = TargetLowering::ScalarCondVectorVal;
+  else
+    SelectKind = TargetLowering::ScalarValSelect;
+  bool SelectSupported = TLI->isSelectSupported(SelectKind);
+
+  // Like SelectOptimize, leave the selects that the target does not treat like
+  // selects, such as a select of two constants or a logical and/or. Check every
+  // select of a group, so that the result does not depend on their order. A
+  // select that the target does not support is always expanded.
+  auto IsSelectLike = [&](SelectInst *S) {
+    return !SelectSupported || TTI->shouldTreatInstructionLikeSelect(S);
+  };
+  if (!IsSelectLike(SI))
+    return false;
+
   // Find all consecutive select instructions that share the same condition.
   SmallVector<SelectInst *, 2> ASI;
   ASI.push_back(SI);
   for (BasicBlock::iterator It = ++BasicBlock::iterator(SI);
        It != SI->getParent()->end(); ++It) {
     SelectInst *I = dyn_cast<SelectInst>(&*It);
-    if (I && SI->getCondition() == I->getCondition()) {
+    if (I && SI->getCondition() == I->getCondition() && IsSelectLike(I)) {
       ASI.push_back(I);
     } else {
       break;
@@ -7586,13 +7559,7 @@ bool CodeGenPrepare::optimizeSelectInst(SelectInst *SI) {
   if (VectorCond || SI->getMetadata(LLVMContext::MD_unpredictable))
     return false;
 
-  TargetLowering::SelectSupportKind SelectKind;
-  if (SI->getType()->isVectorTy())
-    SelectKind = TargetLowering::ScalarCondVectorVal;
-  else
-    SelectKind = TargetLowering::ScalarValSelect;
-
-  if (TLI->isSelectSupported(SelectKind) &&
+  if (SelectSupported &&
       (!isFormingBranchFromSelectProfitable(TTI, TLI, SI) ||
        llvm::shouldOptimizeForSize(SI->getParent(), PSI, BFI)))
     return false;
