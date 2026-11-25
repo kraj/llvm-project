@@ -1083,7 +1083,15 @@ mlir::Value CIRAttrToValue::visitCirAttr(cir::ConstRecordAttr constRecord) {
 
 /// ConstVectorAttr visitor.
 mlir::Value CIRAttrToValue::visitCirAttr(cir::ConstVectorAttr attr) {
-  const mlir::Type llvmTy = converter->convertType(attr.getType());
+  const auto llvmTy =
+      mlir::cast<mlir::VectorType>(converter->convertType(attr.getType()));
+  const mlir::Type llvmEltTy = llvmTy.getElementType();
+
+  // A vector that is undef or poison in every element is that one value.
+  if (llvm::all_of(attr.getElts(), llvm::IsaPred<cir::UndefAttr>))
+    return mlir::LLVM::UndefOp::create(rewriter, parentLoc, llvmTy);
+  if (llvm::all_of(attr.getElts(), llvm::IsaPred<cir::PoisonAttr>))
+    return mlir::LLVM::PoisonOp::create(rewriter, parentLoc, llvmTy);
 
   SmallVector<mlir::Attribute> mlirValues;
   for (const mlir::Attribute elementAttr : attr.getElts()) {
@@ -1096,17 +1104,39 @@ mlir::Value CIRAttrToValue::visitCirAttr(cir::ConstVectorAttr attr) {
           converter->convertType(floatAttr.getType()), floatAttr.getValue());
     } else if (auto boolAttr = mlir::dyn_cast<cir::BoolAttr>(elementAttr)) {
       mlirAttr = rewriter.getBoolAttr(boolAttr.getValue());
+    } else if (mlir::isa<cir::ZeroAttr, cir::UndefAttr, cir::PoisonAttr>(
+                   elementAttr)) {
+      // An undef or poison element is inserted over this zero below.
+      mlirAttr = rewriter.getZeroAttr(llvmEltTy);
     } else {
-      llvm_unreachable("vector constant with an element that is neither an "
-                       "int, a float, or a bool");
+      llvm_unreachable("unexpected ConstVectorAttr element");
     }
     mlirValues.push_back(mlirAttr);
   }
 
-  return mlir::LLVM::ConstantOp::create(
+  mlir::Value result = mlir::LLVM::ConstantOp::create(
       rewriter, parentLoc, llvmTy,
-      mlir::DenseElementsAttr::get(mlir::cast<mlir::ShapedType>(llvmTy),
-                                   mlirValues));
+      mlir::DenseElementsAttr::get(llvmTy, mlirValues));
+
+  // A dense constant holds only literals, so an undef or poison element is
+  // inserted into it. The translation to LLVM IR folds the insertions back
+  // into one constant. The scalar visitors are not used here: they produce the
+  // in-memory type, which for a bool is not the type of a vector element.
+  for (const auto [lane, elementAttr] : llvm::enumerate(attr.getElts())) {
+    mlir::Value element;
+    if (mlir::isa<cir::UndefAttr>(elementAttr))
+      element = mlir::LLVM::UndefOp::create(rewriter, parentLoc, llvmEltTy);
+    else if (mlir::isa<cir::PoisonAttr>(elementAttr))
+      element = mlir::LLVM::PoisonOp::create(rewriter, parentLoc, llvmEltTy);
+    else
+      continue;
+    mlir::Value index = mlir::LLVM::ConstantOp::create(
+        rewriter, parentLoc, rewriter.getI64Type(), lane);
+    result = mlir::LLVM::InsertElementOp::create(rewriter, parentLoc, result,
+                                                 element, index);
+  }
+
+  return result;
 }
 
 // GlobalViewAttr / GlobalOffsetAttr visitors.
