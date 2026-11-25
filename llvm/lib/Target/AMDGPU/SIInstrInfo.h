@@ -1053,15 +1053,17 @@ public:
 
   bool isMAI(uint32_t Opcode) const { return isMAI(get(Opcode)); }
 
-  static bool isMFMA(const MachineInstr &MI) {
-    return isMAI(MI) && MI.getOpcode() != AMDGPU::V_ACCVGPR_WRITE_B32_e64 &&
-           MI.getOpcode() != AMDGPU::V_ACCVGPR_READ_B32_e64;
+  static bool isMFMA(const MCInstrDesc &Desc) {
+    unsigned Opc = Desc.getOpcode();
+    return isMAI(Desc) && Opc != AMDGPU::V_ACCVGPR_WRITE_B32_e64 &&
+           Opc != AMDGPU::V_ACCVGPR_READ_B32_e64 &&
+           Opc != AMDGPU::V_ACCVGPR_WRITE_B32_vi &&
+           Opc != AMDGPU::V_ACCVGPR_READ_B32_vi;
   }
 
-  bool isMFMA(uint32_t Opcode) const {
-    return isMAI(Opcode) && Opcode != AMDGPU::V_ACCVGPR_WRITE_B32_e64 &&
-           Opcode != AMDGPU::V_ACCVGPR_READ_B32_e64;
-  }
+  static bool isMFMA(const MachineInstr &MI) { return isMFMA(MI.getDesc()); }
+
+  bool isMFMA(uint32_t Opcode) const { return isMFMA(get(Opcode)); }
 
   static bool isDOT(const MachineInstr &MI) { return SIInstrFlags::isDOT(MI); }
 
