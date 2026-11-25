@@ -90,7 +90,7 @@ unsigned bar0(foo0_t *f) {
   // LLVM-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // LLVM-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // LLVM-STRICT-2: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
-  // LLVM-STRICT-3: store i32 0
+  // LLVM-STRICT-3: ret i32 0
   // OGCG-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // OGCG-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // OGCG-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
@@ -111,8 +111,8 @@ unsigned bar1(foo1_t *f) {
   // LLVM-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // LLVM-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // LLVM-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
-  // LLVM-STRICT-2: store i32 8
-  // LLVM-STRICT-3: store i32 8
+  // LLVM-STRICT-2: ret i32 8
+  // LLVM-STRICT-3: ret i32 8
   // OGCG-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // OGCG-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // OGCG-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
@@ -132,9 +132,9 @@ unsigned bar2(foo2_t *f) {
   // CIR-STRICT-3: cir.const #cir.int<16>
   // LLVM-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // LLVM-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
-  // LLVM-STRICT-1: store i32 16
-  // LLVM-STRICT-2: store i32 16
-  // LLVM-STRICT-3: store i32 16
+  // LLVM-STRICT-1: ret i32 16
+  // LLVM-STRICT-2: ret i32 16
+  // LLVM-STRICT-3: ret i32 16
   // OGCG-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // OGCG-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 false)
   // OGCG-STRICT-1: ret i32 16
@@ -180,7 +180,7 @@ unsigned dyn_bar0(foo0_t *f) {
   // LLVM-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // LLVM-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // LLVM-STRICT-2: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
-  // LLVM-STRICT-3: store i32 0
+  // LLVM-STRICT-3: ret i32 0
   // OGCG-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // OGCG-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // OGCG-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
@@ -201,8 +201,8 @@ unsigned dyn_bar1(foo1_t *f) {
   // LLVM-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // LLVM-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // LLVM-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
-  // LLVM-STRICT-2: store i32 8
-  // LLVM-STRICT-3: store i32 8
+  // LLVM-STRICT-2: ret i32 8
+  // LLVM-STRICT-3: ret i32 8
   // OGCG-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // OGCG-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // OGCG-STRICT-1: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
@@ -222,9 +222,9 @@ unsigned dyn_bar2(foo2_t *f) {
   // CIR-STRICT-3: cir.const #cir.int<16>
   // LLVM-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // LLVM-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
-  // LLVM-STRICT-1: store i32 16
-  // LLVM-STRICT-2: store i32 16
-  // LLVM-STRICT-3: store i32 16
+  // LLVM-STRICT-1: ret i32 16
+  // LLVM-STRICT-2: ret i32 16
+  // LLVM-STRICT-3: ret i32 16
   // OGCG-NO-STRICT: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // OGCG-STRICT-0: llvm.objectsize.i64.p0(ptr {{.*}}, i1 false, i1 true, i1 true)
   // OGCG-STRICT-1: ret i32 16
@@ -259,11 +259,11 @@ unsigned babar0(foofoo0_t *f) {
   // CIR-STRICT-1: cir.const #cir.int<0>
   // CIR-STRICT-2: cir.const #cir.int<0>
   // CIR-STRICT-3: cir.const #cir.int<0>
-  // LLVM-NO-STRICT: store i32 0
-  // LLVM-STRICT-0: store i32 0
-  // LLVM-STRICT-1: store i32 0
-  // LLVM-STRICT-2: store i32 0
-  // LLVM-STRICT-3: store i32 0
+  // LLVM-NO-STRICT: ret i32 0
+  // LLVM-STRICT-0: ret i32 0
+  // LLVM-STRICT-1: ret i32 0
+  // LLVM-STRICT-2: ret i32 0
+  // LLVM-STRICT-3: ret i32 0
   // OGCG-NO-STRICT: ret i32 0
   // OGCG-STRICT-0: ret i32 0
   // OGCG-STRICT-1: ret i32 0
@@ -281,11 +281,11 @@ unsigned babar1(foofoo1_t *f) {
   // CIR-STRICT-1: cir.const #cir.int<8>
   // CIR-STRICT-2: cir.const #cir.int<8>
   // CIR-STRICT-3: cir.const #cir.int<8>
-  // LLVM-NO-STRICT: store i32 8
-  // LLVM-STRICT-0: store i32 8
-  // LLVM-STRICT-1: store i32 8
-  // LLVM-STRICT-2: store i32 8
-  // LLVM-STRICT-3: store i32 8
+  // LLVM-NO-STRICT: ret i32 8
+  // LLVM-STRICT-0: ret i32 8
+  // LLVM-STRICT-1: ret i32 8
+  // LLVM-STRICT-2: ret i32 8
+  // LLVM-STRICT-3: ret i32 8
   // OGCG-NO-STRICT: ret i32 8
   // OGCG-STRICT-0: ret i32 8
   // OGCG-STRICT-1: ret i32 8
@@ -303,11 +303,11 @@ unsigned babar2(foofoo2_t *f) {
   // CIR-STRICT-1: cir.const #cir.int<16>
   // CIR-STRICT-2: cir.const #cir.int<16>
   // CIR-STRICT-3: cir.const #cir.int<16>
-  // LLVM-NO-STRICT: store i32 16
-  // LLVM-STRICT-0: store i32 16
-  // LLVM-STRICT-1: store i32 16
-  // LLVM-STRICT-2: store i32 16
-  // LLVM-STRICT-3: store i32 16
+  // LLVM-NO-STRICT: ret i32 16
+  // LLVM-STRICT-0: ret i32 16
+  // LLVM-STRICT-1: ret i32 16
+  // LLVM-STRICT-2: ret i32 16
+  // LLVM-STRICT-3: ret i32 16
   // OGCG-NO-STRICT: ret i32 16
   // OGCG-STRICT-0: ret i32 16
   // OGCG-STRICT-1: ret i32 16

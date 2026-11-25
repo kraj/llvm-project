@@ -28,9 +28,7 @@ __m128d test_mm_undefined_pd(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<2 x !cir.double>
 
   // LLVM-LABEL: test_mm_undefined_pd
-  // LLVM: store <2 x double> zeroinitializer, ptr %[[A:.*]], align 16
-  // LLVM: %{{.*}} = load <2 x double>, ptr %[[A]], align 16
-  // LLVM: ret <2 x double> %{{.*}}
+  // LLVM: ret <2 x double> zeroinitializer
 
   // OGCG-LABEL: test_mm_undefined_pd
   // OGCG: ret <2 x double> zeroinitializer
@@ -47,9 +45,7 @@ __m128i test_mm_undefined_si128(void) {
   // CIR: cir.return %{{.*}} :
 
   // LLVM-LABEL: test_mm_undefined_si128
-  // LLVM: store <2 x i64> zeroinitializer, ptr %[[A:.*]], align 16
-  // LLVM: %{{.*}} = load <2 x i64>, ptr %[[A]], align 16
-  // LLVM: ret <2 x i64> %{{.*}}
+  // LLVM: ret <2 x i64> zeroinitializer
 
   // OGCG-LABEL: test_mm_undefined_si128
   // OGCG: ret <2 x i64> zeroinitializer

@@ -18,9 +18,7 @@ __m512bh test_mm512_undefined_pbh(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<32 x !cir.bf16>
 
   // LLVM-LABEL: test_mm512_undefined_pbh
-  // LLVM: store <32 x bfloat> zeroinitializer, ptr %[[A:.*]], align 64
-  // LLVM: %{{.*}} = load <32 x bfloat>, ptr %[[A]], align 64
-  // LLVM: ret <32 x bfloat> %{{.*}}
+  // LLVM: ret <32 x bfloat> zeroinitializer
 
   // OGCG-LABEL: test_mm512_undefined_pbh
   // OGCG: ret <32 x bfloat> zeroinitializer

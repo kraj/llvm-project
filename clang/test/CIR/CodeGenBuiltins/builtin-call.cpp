@@ -31,11 +31,7 @@ bool is_constant_evaluated() {
 // CIR: %[[FALSE:.+]] = cir.const #false
 
 // LLVM: define {{.*}}i1 @_Z21is_constant_evaluatedv()
-// LLVM: %[[MEM:.+]] = alloca i8
-// LLVM: store i8 0, ptr %[[MEM]]
-// LLVM: %[[RETVAL:.+]] = load i8, ptr %[[MEM]]
-// LLVM: %[[BOOL:.+]] = trunc i8 %[[RETVAL]] to i1
-// LLVM: ret i1 %[[BOOL]]
+// LLVM: ret i1 false
 // LLVM: }
 
 // OGCG: define {{.*}}i1 @_Z21is_constant_evaluatedv()
@@ -50,10 +46,7 @@ long double constant_fp_builtin_ld() {
 // CIR: %[[PONE:.+]] = cir.const #cir.fp<1.000000e-01> : !cir.long_double<!cir.f80>
 
 // LLVM: define {{.*}}x86_fp80 @_Z22constant_fp_builtin_ldv()
-// LLVM: %[[MEM:.+]] = alloca x86_fp80
-// LLVM: store x86_fp80 1.000000e-01, ptr %[[MEM]]
-// LLVM: %[[RETVAL:.+]] = load x86_fp80, ptr %[[MEM]]
-// LLVM: ret x86_fp80 %[[RETVAL]]
+// LLVM: ret x86_fp80 1.000000e-01
 // LLVM: }
 
 // OGCG: define {{.*}}x86_fp80 @_Z22constant_fp_builtin_ldv()
@@ -68,10 +61,7 @@ float constant_fp_builtin_single() {
 // CIR: %[[PONE:.+]] = cir.const #cir.fp<1.000000e-01> : !cir.float
 
 // LLVM: define {{.*}}float @_Z26constant_fp_builtin_singlev()
-// LLVM: %[[MEM:.+]] = alloca float
-// LLVM: store float 1.000000e-01, ptr %[[MEM]]
-// LLVM: %[[RETVAL:.+]] = load float, ptr %[[MEM]]
-// LLVM: ret float %[[RETVAL]]
+// LLVM: ret float 1.000000e-01
 // LLVM: }
 
 // OGCG: define {{.*}}float @_Z26constant_fp_builtin_singlev()

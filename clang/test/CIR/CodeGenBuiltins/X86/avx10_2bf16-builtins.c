@@ -18,9 +18,7 @@ __m128bh test_mm_undefined_pbh(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<8 x !cir.bf16>
 
   // LLVM-LABEL: @test_mm_undefined_pbh
-  // LLVM: store <8 x bfloat> zeroinitializer, ptr %[[A:.*]], align 16
-  // LLVM: %{{.*}} = load <8 x bfloat>, ptr %[[A]], align 16
-  // LLVM: ret <8 x bfloat> %{{.*}}
+  // LLVM: ret <8 x bfloat> zeroinitializer
 
   // OGCG-LABEL: test_mm_undefined_pbh
   // OGCG: ret <8 x bfloat> zeroinitializer
@@ -37,9 +35,7 @@ __m256bh test_mm256_undefined_pbh(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<16 x !cir.bf16>
 
   // LLVM-LABEL: @test_mm256_undefined_pbh
-  // LLVM: store <16 x bfloat> zeroinitializer, ptr %[[A:.*]], align 32
-  // LLVM: %{{.*}} = load <16 x bfloat>, ptr %[[A]], align 32
-  // LLVM: ret <16 x bfloat> %{{.*}}
+  // LLVM: ret <16 x bfloat> zeroinitializer
 
   // OGCG-LABEL: test_mm256_undefined_pbh
   // OGCG: ret <16 x bfloat> zeroinitializer

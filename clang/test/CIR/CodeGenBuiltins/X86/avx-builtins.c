@@ -83,9 +83,7 @@ __m256 test_mm256_undefined_ps(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<8 x !cir.float>
 
   // LLVM-LABEL: test_mm256_undefined_ps
-  // LLVM: store <8 x float> zeroinitializer, ptr %[[A:.*]], align 32
-  // LLVM: %{{.*}} = load <8 x float>, ptr %[[A]], align 32
-  // LLVM: ret <8 x float> %{{.*}}
+  // LLVM: ret <8 x float> zeroinitializer
 
   // OGCG-LABEL: test_mm256_undefined_ps
   // OGCG: ret <8 x float> zeroinitializer
@@ -98,9 +96,7 @@ __m256d test_mm256_undefined_pd(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<4 x !cir.double>
 
   // LLVM-LABEL: test_mm256_undefined_pd
-  // LLVM: store <4 x double> zeroinitializer, ptr %[[A:.*]], align 32
-  // LLVM: %{{.*}} = load <4 x double>, ptr %[[A]], align 32
-  // LLVM: ret <4 x double> %{{.*}}
+  // LLVM: ret <4 x double> zeroinitializer
 
   // OGCG-LABEL: test_mm256_undefined_pd
   // OGCG: ret <4 x double> zeroinitializer
@@ -114,9 +110,7 @@ __m256i test_mm256_undefined_si256(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<4 x !s64i>
 
   // LLVM-LABEL: test_mm256_undefined_si256
-  // LLVM: store <4 x i64> zeroinitializer, ptr %[[A:.*]], align 32
-  // LLVM: %{{.*}} = load <4 x i64>, ptr %[[A]], align 32
-  // LLVM: ret <4 x i64> %{{.*}}
+  // LLVM: ret <4 x i64> zeroinitializer
 
   // OGCG-LABEL: test_mm256_undefined_si256
   // OGCG: ret <4 x i64> zeroinitializer

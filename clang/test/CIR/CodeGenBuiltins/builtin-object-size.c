@@ -736,7 +736,7 @@ static struct DynStructVar D32 = {
 };
 unsigned long test32(void) {
   // CIR: cir.const #cir.int<19>
-  // LLVM: store i64 19
+  // LLVM: ret i64 19
   // OGCG: ret i64 19
   return __builtin_object_size(&D32, 1);
 }
@@ -750,7 +750,7 @@ static struct DynStructVar D33 = {
 };
 unsigned long test33(void) {
   // CIR: cir.const #cir.int<16>
-  // LLVM: store i64 16
+  // LLVM: ret i64 16
   // OGCG: ret i64 16
   return __builtin_object_size(&D33, 1);
 }
@@ -763,7 +763,7 @@ static struct DynStructVar D34 = {
 };
 unsigned long test34(void) {
   // CIR: cir.const #cir.int<16>
-  // LLVM: store i64 16
+  // LLVM: ret i64 16
   // OGCG: ret i64 16
   return __builtin_object_size(&D34, 1);
 }
@@ -773,7 +773,7 @@ unsigned long test34(void) {
 // OGCG-LABEL: define {{.*}} i64 @test35
 unsigned long test35(void) {
   // CIR: cir.const #cir.int<16>
-  // LLVM: store i64 16
+  // LLVM: ret i64 16
   // OGCG: ret i64 16
   return __builtin_object_size(&(struct DynStructVar){}, 1);
 }
@@ -785,7 +785,7 @@ struct Z { struct A { int x, y[]; } z; int a; int b[]; };
 static struct Z my_z = { .b = {1,2,3} };
 unsigned long test37(void) {
   // CIR: cir.const #cir.int<4>
-  // LLVM: store i64 4
+  // LLVM: ret i64 4
   // OGCG: ret i64 4
   return __builtin_object_size(&my_z.z, 1);
 }

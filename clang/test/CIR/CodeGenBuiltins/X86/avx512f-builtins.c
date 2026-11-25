@@ -22,9 +22,7 @@ __m512 test_mm512_undefined(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<16 x !cir.float>
 
   // LLVM-LABEL: test_mm512_undefined
-  // LLVM: store <16 x float> zeroinitializer, ptr %[[A:.*]], align 64
-  // LLVM: %{{.*}} = load <16 x float>, ptr %[[A]], align 64
-  // LLVM: ret <16 x float> %{{.*}}
+  // LLVM: ret <16 x float> zeroinitializer
 
   // OGCG-LABEL: test_mm512_undefined
   // OGCG: ret <16 x float> zeroinitializer
@@ -38,9 +36,7 @@ __m512 test_mm512_undefined_ps(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<16 x !cir.float>
 
   // LLVM-LABEL: test_mm512_undefined_ps
-  // LLVM: store <16 x float> zeroinitializer, ptr %[[A:.*]], align 64
-  // LLVM: %{{.*}} = load <16 x float>, ptr %[[A]], align 64
-  // LLVM: ret <16 x float> %{{.*}}
+  // LLVM: ret <16 x float> zeroinitializer
 
   // OGCG-LABEL: test_mm512_undefined_ps
   // OGCG: ret <16 x float> zeroinitializer
@@ -53,9 +49,7 @@ __m512d test_mm512_undefined_pd(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<8 x !cir.double>
 
   // LLVM-LABEL: test_mm512_undefined_pd
-  // LLVM: store <8 x double> zeroinitializer, ptr %[[A:.*]], align 64
-  // LLVM: %{{.*}} = load <8 x double>, ptr %[[A]], align 64
-  // LLVM: ret <8 x double> %{{.*}}
+  // LLVM: ret <8 x double> zeroinitializer
 
   // OGCG-LABEL: test_mm512_undefined_pd
   // OGCG: ret <8 x double> zeroinitializer
@@ -69,9 +63,7 @@ __m512i test_mm512_undefined_epi32(void) {
   // CIR: cir.return %{{.*}} : !cir.vector<8 x !s64i>
 
   // LLVM-LABEL: test_mm512_undefined_epi32
-  // LLVM: store <8 x i64> zeroinitializer, ptr %[[A:.*]], align 64
-  // LLVM: %{{.*}} = load <8 x i64>, ptr %[[A]], align 64
-  // LLVM: ret <8 x i64> %{{.*}}
+  // LLVM: ret <8 x i64> zeroinitializer
 
   // OGCG-LABEL: test_mm512_undefined_epi32
   // OGCG: ret <8 x i64> zeroinitializer

@@ -93,9 +93,7 @@ __mmask32 test_kshiftli_mask32_out_of_range(__mmask32 A) {
   // CIR: cir.return [[RES]] : !u32i
 
   // LLVM-LABEL: test_kshiftli_mask32_out_of_range
-  // LLVM: store i32 0, ptr [[VAL:%.*]], align 4
-  // LLVM: [[RES:%.*]] = load i32, ptr [[VAL]], align 4
-  // LLVM: ret i32 [[RES]]
+  // LLVM: ret i32 0
 
   // OGCG-LABEL: test_kshiftli_mask32_out_of_range
   // OGCG: ret i32 0
@@ -111,9 +109,7 @@ __mmask32 test_kshiftri_mask32_out_of_range(__mmask32 A) {
   // CIR: cir.return [[RES]] : !u32i
 
   // LLVM-LABEL: test_kshiftri_mask32_out_of_range
-  // LLVM: store i32 0, ptr [[VAL:%.*]], align 4
-  // LLVM: [[RES:%.*]] = load i32, ptr [[VAL]], align 4
-  // LLVM: ret i32 [[RES]]
+  // LLVM: ret i32 0
 
   // OGCG-LABEL: test_kshiftri_mask32_out_of_range
   // OGCG: ret i32 0

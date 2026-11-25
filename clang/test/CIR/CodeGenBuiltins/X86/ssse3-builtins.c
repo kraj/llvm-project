@@ -49,7 +49,7 @@ __m128i mm_alignr_epi8_imm32(__m128i a, __m128i b) {
   // CIR: cir.const #cir.zero : !cir.vector<16 x !s8i>
 
   // LLVM-LABEL: mm_alignr_epi8_imm32
-  // LLVM: store <2 x i64> zeroinitializer
+  // LLVM: ret <2 x i64> zeroinitializer
 
   // OGCG-LABEL: mm_alignr_epi8_imm32
   // OGCG: ret <2 x i64> zeroinitializer

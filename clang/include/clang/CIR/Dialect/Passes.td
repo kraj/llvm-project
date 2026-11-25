@@ -45,6 +45,27 @@ def CIRFoldEmptyBranches : Pass<"cir-fold-empty-branches"> {
   let dependentDialects = ["cir::CIRDialect"];
 }
 
+def CIRForwardReturnStore : Pass<"cir-forward-return-store"> {
+  let summary = "Returns the value stored to the return slot directly";
+  let description = [{
+    Mirrors the return value peephole of classic codegen
+    (`findDominatingStoreToReturnValue` in clang/lib/CodeGen/CGCall.cpp) on
+    flattened CIR. In a function with a single `cir.return` of a value loaded
+    from its `return_slot` alloca, the load is replaced with the value of the
+    store to the slot that dominates it, and the store is erased. The slot is
+    erased once it has no other uses.
+
+    As in classic codegen, if the slot has one store, the store's block must be
+    reached by following single predecessors up from the return's block. If
+    the slot has more uses, the store must immediately precede the load,
+    ignoring casts and `cir.lifetime.end`. Volatile and atomic accesses and
+    slots holding records, arrays or complex values are left alone.
+  }];
+
+  let constructor = "mlir::createCIRForwardReturnStorePass()";
+  let dependentDialects = ["cir::CIRDialect"];
+}
+
 def CIRSimplify : Pass<"cir-simplify"> {
   let summary = "Performs CIR simplification and code optimization";
   let description = [{

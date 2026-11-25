@@ -20,9 +20,6 @@ int f0(void) {
 // CIR: %[[TMP_RET:.*]] = cir.load %[[RET_ADDR]] : !cir.ptr<!s32i>, !s32i
 // CIR: cir.return %[[TMP_RET]] : !s32i
 
-// LLVM: %[[RET_ADDR:.*]] = alloca i32
-// LLVM: store i32 16, ptr %[[RET_ADDR]], align 4
-// LLVM: %[[TMP_RET:.*]] = load i32, ptr %[[RET_ADDR]], align 4
-// LLVM: ret i32 %[[TMP_RET]]
+// LLVM: ret i32 16
 
 // OGCG: ret i32 16

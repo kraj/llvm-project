@@ -55,10 +55,7 @@ int test1(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test1()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 0, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 0
 
 // OGCG: define{{.*}} i32 @test1()
 // OGCG:   ret i32 0
@@ -79,10 +76,7 @@ int test2(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test2()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 0, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 0
 
 // OGCG: define{{.*}} i32 @test2()
 // OGCG:   ret i32 0
@@ -101,10 +95,7 @@ int test3(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test3()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 0, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 0
 
 // OGCG: define{{.*}} i32 @test3()
 // OGCG:   ret i32 0
@@ -125,10 +116,7 @@ int test4(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test4()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 0, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 0
 
 // OGCG: define{{.*}} i32 @test4()
 // OGCG:   ret i32 0
@@ -149,10 +137,7 @@ int test5(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test5()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 1, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 1
 
 // OGCG: define{{.*}} i32 @test5()
 // OGCG:   ret i32 1
@@ -194,10 +179,7 @@ int test7(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test7()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 1, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 1
 
 // OGCG: define{{.*}} i32 @test7()
 // OGCG:   ret i32 1
@@ -214,10 +196,7 @@ int test8(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test8()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 0, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 0
 
 // OGCG: define{{.*}} i32 @test8()
 // OGCG:   ret i32 0
@@ -236,10 +215,7 @@ int test9(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test9()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 0, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 0
 
 // OGCG: define{{.*}} i32 @test9()
 // OGCG:   ret i32 0
@@ -256,10 +232,7 @@ int test10(void) {
 // CIR:   cir.return %[[TMP2]] : !s32i
 
 // LLVM: define{{.*}} i32 @test10()
-// LLVM:   %[[TMP1:.*]] = alloca i32
-// LLVM:   store i32 1, ptr %[[TMP1]]
-// LLVM:   %[[TMP2:.*]] = load i32, ptr %[[TMP1]]
-// LLVM:   ret i32 %[[TMP2]]
+// LLVM:   ret i32 1
 
 // OGCG: define{{.*}} i32 @test10()
 // OGCG:   ret i32 1

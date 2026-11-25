@@ -22,9 +22,7 @@ int test_structured_binding_size() {
 // CIR:   cir.return %[[RET:.*]] : !s32i
 
 // LLVM: define{{.*}} i32 @_Z28test_structured_binding_sizev()
-// LLVM:   store i32 3, ptr %[[RETVAL:.*]]
-// LLVM:   %[[RET:.*]] = load i32, ptr %[[RETVAL:.*]]
-// LLVM:   ret i32 %[[RET:.*]]
+// LLVM:   ret i32 3
 
 // OGCG: define{{.*}} i32 @_Z28test_structured_binding_sizev()
 // OGCG:   ret i32 3

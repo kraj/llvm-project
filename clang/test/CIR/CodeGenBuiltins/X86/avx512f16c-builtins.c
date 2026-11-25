@@ -112,7 +112,7 @@ __m512 test_mm512_cvt_roundph_ps(__m256i a) {
   // CIR: %{{.*}} = cir.call_llvm_intrinsic "x86.avx512.mask.vcvtph2ps.512" %{{.*}}, %{{.*}}, %{{.*}}, %{{.*}} : (!cir.vector<16 x !s16i>, !cir.vector<16 x !cir.float>, !u16i, !s32i) -> !cir.vector<16 x !cir.float>
 
   // LLVM-LABEL: @test_mm512_cvt_roundph_ps
-  // LLVM: call <16 x float> @llvm.x86.avx512.mask.vcvtph2ps.512(<16 x i16> %{{.*}}, <16 x float> %{{.*}}, i16 -1, i32 8)
+  // LLVM: call <16 x float> @llvm.x86.avx512.mask.vcvtph2ps.512(<16 x i16> %{{.*}}, <16 x float> zeroinitializer, i16 -1, i32 8)
 
   // OGCG-LABEL: @test_mm512_cvt_roundph_ps
   // OGCG: call <16 x float> @llvm.x86.avx512.mask.vcvtph2ps.512(<16 x i16> %{{.*}}, <16 x float> zeroinitializer, i16 -1, i32 8)

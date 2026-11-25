@@ -12,17 +12,9 @@ bool f1(unsigned char c) {
 // CIR: cir.func{{.*}} @_Z2f1h
 // CIR:   cir.cast int_to_bool %{{.*}} : !u8i -> !cir.bool
 
-// Note: The full zext/store/load/trunc sequence is checked here to show what
-// CIR is being lowered to. There's no need to check it for every function since
-// the lowering is the same for all of them.
-
 // LLVM: define{{.*}} i1 @_Z2f1h
-// LLVM:   %[[CMP:.*]] = icmp ne i8 %4, 0
-// LLVM:   %[[ZEXT:.*]] = zext i1 %[[CMP]] to i8
-// LLVM:   store i8 %[[ZEXT]], ptr %{{.*}}
-// LLVM:   %[[LOAD:.*]] = load i8, ptr %{{.*}}
-// LLVM:   %[[TRUNC:.*]] = trunc i8 %[[LOAD]] to i1
-// LLVM:   ret i1 %[[TRUNC]]
+// LLVM:   %[[CMP:.*]] = icmp ne i8 %{{.*}}, 0
+// LLVM:   ret i1 %[[CMP]]
 
 // OGCG: define{{.*}} i1 @_Z2f1h
 // OGCG:   %[[CMP:.*]] = icmp ne i8 %{{.*}}, 0
@@ -36,8 +28,8 @@ bool f2(short s) {
 // CIR:   cir.cast int_to_bool %{{.*}} : !s16i -> !cir.bool
 
 // LLVM: define{{.*}} i1 @_Z2f2s
-// LLVM:   %[[CMP:.*]] = icmp ne i16 %4, 0
-// LLVM:   %[[ZEXT:.*]] = zext i1 %[[CMP]] to i8
+// LLVM:   %[[CMP:.*]] = icmp ne i16 %{{.*}}, 0
+// LLVM:   ret i1 %[[CMP]]
 
 // OGCG: define{{.*}} i1 @_Z2f2s
 // OGCG:   %[[CMP:.*]] = icmp ne i16 %{{.*}}, 0
@@ -51,8 +43,8 @@ bool f3(unsigned u) {
 // CIR:   cir.cast int_to_bool %{{.*}} : !u32i -> !cir.bool
 
 // LLVM: define{{.*}} i1 @_Z2f3j
-// LLVM:   %[[CMP:.*]] = icmp ne i32 %4, 0
-// LLVM:   %[[ZEXT:.*]] = zext i1 %[[CMP]] to i8
+// LLVM:   %[[CMP:.*]] = icmp ne i32 %{{.*}}, 0
+// LLVM:   ret i1 %[[CMP]]
 
 // OGCG: define{{.*}} i1 @_Z2f3j
 // OGCG:   %[[CMP:.*]] = icmp ne i32 %{{.*}}, 0
@@ -66,8 +58,8 @@ bool f4(long l) {
 // CIR:   cir.cast int_to_bool %{{.*}} : !s64i -> !cir.bool
 
 // LLVM: define{{.*}} i1 @_Z2f4l
-// LLVM:   %[[CMP:.*]] = icmp ne i64 %4, 0
-// LLVM:   %[[ZEXT:.*]] = zext i1 %[[CMP]] to i8
+// LLVM:   %[[CMP:.*]] = icmp ne i64 %{{.*}}, 0
+// LLVM:   ret i1 %[[CMP]]
 
 // OGCG: define{{.*}} i1 @_Z2f4l
 // OGCG:   %[[CMP:.*]] = icmp ne i64 %{{.*}}, 0
