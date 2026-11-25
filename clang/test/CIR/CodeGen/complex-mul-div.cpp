@@ -425,7 +425,7 @@ void foo3() {
 // CIR-AFTER-IMPROVED: %[[B_IMAG:.*]] = cir.complex.imag %[[TMP_B]] : !cir.complex<!cir.float> -> !cir.float
 // CIR-AFTER-IMPROVED: %[[ABS_B_REAL:.*]] = cir.fabs %[[B_REAL]] : !cir.float
 // CIR-AFTER-IMPROVED: %[[ABS_B_IMAG:.*]] = cir.fabs %[[B_IMAG]] : !cir.float
-// CIR-AFTER-IMPROVED: %[[ABS_B_CMP:.*]] = cir.cmp ge %[[ABS_B_REAL]], %[[ABS_B_IMAG]] : !cir.float
+// CIR-AFTER-IMPROVED: %[[ABS_B_CMP:.*]] = cir.fcmp oge %[[ABS_B_REAL]], %[[ABS_B_IMAG]] : !cir.float
 // CIR-AFTER-IMPROVED: %[[RESULT:.*]] = cir.ternary(%[[ABS_B_CMP]], true {
 // CIR-AFTER-IMPROVED:   %[[DIV_BI_BR:.*]] = cir.fdiv %[[B_IMAG]], %[[B_REAL]] : !cir.float
 // CIR-AFTER-IMPROVED:   %[[MUL_DIV_BIBR_BI:.*]] = cir.fmul %[[DIV_BI_BR]], %[[B_IMAG]] : !cir.float
@@ -926,7 +926,7 @@ void foo6() {
 // CIR-AFTER-IMPROVED: %[[B_IMAG:.*]] = cir.complex.imag %[[TMP_B]] : !cir.complex<!cir.float> -> !cir.float
 // CIR-AFTER-IMPROVED: %[[ABS_B_REAL:.*]] = cir.fabs %[[B_REAL]] : !cir.float
 // CIR-AFTER-IMPROVED: %[[ABS_B_IMAG:.*]] = cir.fabs %[[B_IMAG]] : !cir.float
-// CIR-AFTER-IMPROVED: %[[ABS_B_CMP:.*]] = cir.cmp ge %[[ABS_B_REAL]], %[[ABS_B_IMAG]] : !cir.float
+// CIR-AFTER-IMPROVED: %[[ABS_B_CMP:.*]] = cir.fcmp oge %[[ABS_B_REAL]], %[[ABS_B_IMAG]] : !cir.float
 // CIR-AFTER-IMPROVED: %[[RESULT:.*]] = cir.ternary(%[[ABS_B_CMP]], true {
 // CIR-AFTER-IMPROVED:   %[[DIV_BI_BR:.*]] = cir.fdiv %[[B_IMAG]], %[[B_REAL]] : !cir.float
 // CIR-AFTER-IMPROVED:   %[[MUL_DIV_BIBR_BI:.*]] = cir.fmul %[[DIV_BI_BR]], %[[B_IMAG]] : !cir.float

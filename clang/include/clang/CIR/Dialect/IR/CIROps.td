@@ -7976,19 +7976,24 @@ def CIR_ComplexRangeKind : CIR_I32Enum<
 def CIR_ComplexRangeKindAttr
     : CIR_EnumAttr<CIR_ComplexRangeKind, "complex_range">;
 
+// The optional `fenv` attribute describes constraints on the floating-point
+// handling of the operation. LoweringPrepare gives it to the scalar arithmetic,
+// comparisons and conversions the complex operation expands into.
 class CIR_ComplexRangeBinOp<string mnemonic>
-    : CIR_Op<mnemonic, [Pure, SameOperandsAndResultType]> {
+    : CIR_Op<mnemonic,
+             !listconcat([SameOperandsAndResultType], CIR_FenvOpTraits)> {
   let arguments = (ins
     CIR_ComplexOfFloatType:$lhs,
     CIR_ComplexOfFloatType:$rhs,
-    CIR_ComplexRangeKindAttr:$range
+    CIR_ComplexRangeKindAttr:$range,
+    OptionalAttr<CIR_FenvAttr>:$fenv
   );
 
   let results = (outs CIR_ComplexOfFloatType:$result);
 
   let assemblyFormat = [{
     $lhs `,` $rhs `range` `(` enum($range) `)` `:` qualified(type($result))
-    attr-dict
+    (`fenv` `` $fenv^)? attr-dict
   }];
 
   let hasLLVMLowering = false;
@@ -8007,11 +8012,15 @@ def CIR_ComplexFMulOp : CIR_ComplexRangeBinOp<"complex.fmul"> {
     function is called if one of the intermediate calculations produced
     a NaN value.
 
+    The optional `fenv` attribute describes constraints on the floating-point
+    handling of the operation.
+
     Example:
 
     ```
     %2 = cir.complex.fmul %0, %1 range(basic) : !cir.complex<!cir.float>
     %2 = cir.complex.fmul %0, %1 range(full) : !cir.complex<!cir.float>
+    %2 = cir.complex.fmul %0, %1 range(full) : !cir.complex<!cir.float> fenv<>
     ```
   }];
 }
@@ -8034,11 +8043,15 @@ def CIR_ComplexFDivOp : CIR_ComplexRangeBinOp<"complex.fdiv"> {
     no additional handling for the NaN value will be used. For integers types
     `range` attribute will be ignored.
 
+    The optional `fenv` attribute describes constraints on the floating-point
+    handling of the operation.
+
     Example:
 
     ```
     %2 = cir.complex.fdiv %0, %1 range(basic) : !cir.complex<!cir.float>
     %2 = cir.complex.fdiv %0, %1 range(full) : !cir.complex<!cir.float>
+    %2 = cir.complex.fdiv %0, %1 range(full) : !cir.complex<!cir.float> fenv<>
     ```
   }];
 }
