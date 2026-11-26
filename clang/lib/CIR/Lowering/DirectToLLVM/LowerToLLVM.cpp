@@ -5238,6 +5238,26 @@ void ConvertCIRToLLVMPass::processCIRAttrs(mlir::ModuleOp module) {
   lowerOpenCLModuleMetadataAttrs(module);
 }
 
+/// Marks every call in a `strictfp` function `strictfp`, which LangRef
+/// requires in a function that uses constrained FP intrinsics. Named intrinsic
+/// ops such as `llvm.intr.memcpy` have no call-site attributes in the LLVM
+/// dialect, so their calls stay unmarked.
+static void markCallsInStrictFPFunctions(mlir::ModuleOp module) {
+  auto strictFP = mlir::StringAttr::get(module.getContext(),
+                                        CIRDialect::getStrictFPAttrName());
+  module.walk([&](mlir::LLVM::LLVMFuncOp fn) {
+    mlir::ArrayAttr passthrough = fn.getPassthroughAttr();
+    if (!passthrough || !llvm::is_contained(passthrough, strictFP))
+      return;
+    fn.walk([](mlir::Operation *op) {
+      llvm::TypeSwitch<mlir::Operation *>(op)
+          .Case<mlir::LLVM::CallOp, mlir::LLVM::InvokeOp,
+                mlir::LLVM::InlineAsmOp, mlir::LLVM::CallIntrinsicOp>(
+              [](auto call) { call.setStrictfp(true); });
+    });
+  });
+}
+
 void ConvertCIRToLLVMPass::runOnOperation() {
   llvm::TimeTraceScope scope("Convert CIR to LLVM Pass");
 
@@ -5324,6 +5344,8 @@ void ConvertCIRToLLVMPass::runOnOperation() {
     signalPassFailure();
     return;
   }
+
+  markCallsInStrictFPFunctions(module);
 
   // Drop CIR-native data-layout entries.
   if (auto dlSpec = mlir::dyn_cast_or_null<mlir::DataLayoutSpecAttr>(
