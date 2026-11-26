@@ -784,6 +784,7 @@ def LLVM_InvokeOp
                    DefaultValuedAttr<CConv, "CConv::C">:$CConv,
                    OptionalAttr<DictionaryAttr>:$default_func_attrs,
                    UnitAttr:$uniform_work_group_size,
+                   UnitAttr:$strictfp,
                    VariadicOfVariadic<LLVM_Type,
                                       "op_bundle_sizes">:$op_bundle_operands,
                    DenseI32ArrayAttr:$op_bundle_sizes,
@@ -879,6 +880,11 @@ def LLVM_CallOp
     attribute. The `inline_hint` attribute indicates that it is desirable to inline
     this function call.
 
+    The `strictfp` attribute marks a call that must not assume the default
+    floating-point environment. In a function that uses constrained
+    floating-point intrinsics, LLVM requires every call to have it, either at
+    the call site or on the callee.
+
     Examples:
 
     ```mlir
@@ -928,7 +934,7 @@ def LLVM_CallOp
       OptionalAttr<ArrayAttr>:$op_bundle_tags,
       OptionalAttr<DictArrayAttr>:$arg_attrs,
       OptionalAttr<DictArrayAttr>:$res_attrs, UnitAttr:$no_inline,
-      UnitAttr:$always_inline, UnitAttr:$inline_hint);
+      UnitAttr:$always_inline, UnitAttr:$inline_hint, UnitAttr:$strictfp);
   // Append the aliasing related attributes defined in LLVM_MemAccessOpBase.
   let arguments = !con(args, aliasAttrs);
   let results = (outs Optional<LLVM_Type>:$result);
@@ -2643,6 +2649,8 @@ def LLVM_InlineAsmOp : LLVM_Op<"inline_asm", [DeclareOpInterfaceMethods<MemoryEf
     If `tail_call_kind` is used, the operation behaves like the specified
     tail call kind. The `musttail` kind it's not available for this operation,
     since it isn't supported by LLVM's inline asm.
+    The `convergent` and `strictfp` attributes become the call-site attributes
+    of the same name.
   }];
   let partition = LLVM_CallPartition;
   let arguments = (
@@ -2655,7 +2663,8 @@ def LLVM_InlineAsmOp : LLVM_Op<"inline_asm", [DeclareOpInterfaceMethods<MemoryEf
         UnitAttr:$convergent,
         OptionalAttr<
           DefaultValuedAttr<AsmATTOrIntel, "AsmDialect::AD_ATT">>:$asm_dialect,
-        OptionalAttr<ArrayAttr>:$operand_attrs);
+        OptionalAttr<ArrayAttr>:$operand_attrs,
+        UnitAttr:$strictfp);
 
   let results = (outs Optional<LLVM_Type>:$res);
 
@@ -2664,6 +2673,7 @@ def LLVM_InlineAsmOp : LLVM_Op<"inline_asm", [DeclareOpInterfaceMethods<MemoryEf
     (`is_align_stack` $is_align_stack^)?
     (`tail_call_kind` `=` $tail_call_kind^)?
     (`convergent` $convergent^)?
+    (`strictfp` $strictfp^)?
     (`asm_dialect` `=` $asm_dialect^)?
     (`operand_attrs` `=` $operand_attrs^)?
     attr-dict
@@ -2763,6 +2773,7 @@ def LLVM_CallIntrinsicOp
   let description = [{
     Call the specified llvm intrinsic. If the intrinsic is overloaded, use
     the MLIR function type of this op to determine which intrinsic to call.
+    The `strictfp` attribute becomes the call-site attribute of the same name.
   }];
   let partition = LLVM_CallPartition;
   let arguments = (ins StrAttr:$intrin, Variadic<LLVM_Type>:$args,
@@ -2773,7 +2784,8 @@ def LLVM_CallIntrinsicOp
                        DenseI32ArrayAttr:$op_bundle_sizes,
                        OptionalAttr<ArrayAttr>:$op_bundle_tags,
                        OptionalAttr<DictArrayAttr>:$arg_attrs,
-                       OptionalAttr<DictArrayAttr>:$res_attrs);
+                       OptionalAttr<DictArrayAttr>:$res_attrs,
+                       UnitAttr:$strictfp);
   let results = (outs Optional<LLVM_Type>:$results);
   let llvmBuilder = [{
     return convertCallLLVMIntrinsicOp(op, builder, moduleTranslation);

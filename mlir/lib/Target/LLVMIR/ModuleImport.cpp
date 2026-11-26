@@ -2712,7 +2712,9 @@ LogicalResult ModuleImport::convertInstruction(llvm::Instruction *inst) {
                    AsmDialectAttr::get(
                        mlirModule.getContext(),
                        convertAsmDialectFromLLVM(asmI->getDialect())),
-                   operandAttrs)
+                   operandAttrs,
+                   callInst->getAttributes().hasFnAttr(
+                       llvm::Attribute::StrictFP))
             .getOperation();
       }
       bool isIncompatibleCall;
@@ -3438,6 +3440,7 @@ LogicalResult ModuleImport::convertInvokeAttributes(llvm::InvokeInst *inst,
   llvm::AttributeList invokeAttrs = inst->getAttributes();
   op.setUniformWorkGroupSize(
       invokeAttrs.getFnAttr("uniform-work-group-size").isValid());
+  op.setStrictfp(invokeAttrs.getFnAttr(llvm::Attribute::StrictFP).isValid());
   return convertCallBaseAttributes(inst, op);
 }
 
@@ -3461,6 +3464,7 @@ LogicalResult ModuleImport::convertCallAttributes(llvm::CallInst *inst,
       callAttrs.getFnAttr("uniform-work-group-size").isValid());
   op.setBuiltin(callAttrs.getFnAttr(llvm::Attribute::Builtin).isValid());
   op.setNobuiltin(callAttrs.getFnAttr(llvm::Attribute::NoBuiltin).isValid());
+  op.setStrictfp(callAttrs.getFnAttr(llvm::Attribute::StrictFP).isValid());
   op.setMinsize(callAttrs.getFnAttr(llvm::Attribute::MinSize).isValid());
 
   op.setReturnsTwice(

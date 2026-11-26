@@ -3335,6 +3335,46 @@ llvm.func @willreturn_call() {
 // -----
 
 llvm.func @f()
+llvm.func @__gxx_personality_v0(...) -> i32
+
+// CHECK-LABEL: @strictfp_calls
+// CHECK: call void @f() #[[ATTRS:[0-9]+]]
+// CHECK: call void asm sideeffect "", ""() #[[ATTRS]]
+// CHECK: call void @llvm.donothing() #[[ATTRS]]
+// CHECK: invoke void @f() #[[ATTRS]]
+llvm.func @strictfp_calls() attributes {personality = @__gxx_personality_v0, passthrough = ["strictfp"]} {
+  llvm.call @f() {strictfp} : () -> ()
+  llvm.inline_asm has_side_effects strictfp "", "" : () -> ()
+  llvm.call_intrinsic "llvm.donothing"() {strictfp} : () -> ()
+  llvm.invoke @f() to ^bb2 unwind ^bb1 {strictfp} : () -> ()
+^bb1:
+  %0 = llvm.landingpad cleanup : !llvm.struct<(ptr, i32)>
+  llvm.return
+^bb2:
+  llvm.return
+}
+
+// CHECK: attributes #[[ATTRS]] = { strictfp }
+
+// -----
+
+llvm.func @f()
+
+// The call-site attribute does not depend on the enclosing function.
+// CHECK-LABEL: @strictfp_call_in_plain_function
+// CHECK: call void @f() #[[ATTRS:[0-9]+]]
+// CHECK: call void @f(){{$}}
+llvm.func @strictfp_call_in_plain_function() {
+  llvm.call @f() {strictfp} : () -> ()
+  llvm.call @f() : () -> ()
+  llvm.return
+}
+
+// CHECK: attributes #[[ATTRS]] = { strictfp }
+
+// -----
+
+llvm.func @f()
 
 // CHECK-LABEL: @noreturn_call
 // CHECK: call void @f() #[[ATTRS:[0-9]+]]
