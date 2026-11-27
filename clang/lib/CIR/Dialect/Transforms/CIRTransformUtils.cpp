@@ -137,3 +137,26 @@ mlir::Block *cir::replaceThrowWithTryThrow(cir::ThrowOp throwOp,
 
   return normalDest;
 }
+
+cir::AddressTakenLabels
+cir::collectAddressTakenLabelsInAttributes(mlir::ModuleOp module) {
+  AddressTakenLabels labels;
+  module.walk([&](mlir::Operation *op) {
+    if (!mlir::isa<cir::GlobalOp, cir::ConstantOp>(op))
+      return;
+    op->getName().walkInherentAttrs(
+        op, [&](llvm::StringRef, mlir::Attribute &attr) {
+          attr.walk(
+              [&](cir::BlockAddrInfoAttr info) {
+                labels[info.getFunc().getValue()].insert(info.getLabel());
+              },
+              [&](cir::BlockAddrDiffAttr diff) {
+                // A difference references two labels of the same function.
+                auto &funcLabels = labels[diff.getFunc().getValue()];
+                funcLabels.insert(diff.getLhsLabel().getValue());
+                funcLabels.insert(diff.getRhsLabel().getValue());
+              });
+        });
+  });
+  return labels;
+}

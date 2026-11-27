@@ -8,6 +8,7 @@
 #include "PassDetail.h"
 #include "clang/CIR/Dialect/IR/CIRDialect.h"
 #include "clang/CIR/Dialect/Passes.h"
+#include "clang/CIR/Dialect/Transforms/CIRTransformUtils.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/TimeProfiler.h"
@@ -125,31 +126,9 @@ void GotoSolverPass::runOnOperation() {
   // only attribute-carried addresses (globals, constants) that no
   // function-body walk sees. BlockAddressOp stays out so op labels keep
   // their IR-order phase instead of sorting with the attributes.
-  llvm::StringMap<llvm::SmallSetVector<StringRef, 4>> globalBlockAddrLabels;
   mlir::ModuleOp module = mlir::cast<mlir::ModuleOp>(getOperation());
-  module.walk([&](mlir::Operation *op) {
-    if (!mlir::isa<cir::GlobalOp, cir::ConstantOp>(op))
-      return;
-    auto collectBlockAddresses = [&](mlir::Attribute attr) {
-      attr.walk(
-          [&](cir::BlockAddrInfoAttr info) {
-            globalBlockAddrLabels[info.getFunc().getValue()].insert(
-                info.getLabel());
-          },
-          [&](cir::BlockAddrDiffAttr diff) {
-            // A block-address difference attribute references two labels in
-            // the same function; keep both alive.
-            llvm::SmallSetVector<StringRef, 4> &labels =
-                globalBlockAddrLabels[diff.getFunc().getValue()];
-            labels.insert(diff.getLhsLabel().getValue());
-            labels.insert(diff.getRhsLabel().getValue());
-          });
-    };
-    op->getName().walkInherentAttrs(
-        op, [&](llvm::StringRef, mlir::Attribute &attr) {
-          collectBlockAddresses(attr);
-        });
-  });
+  cir::AddressTakenLabels globalBlockAddrLabels =
+      cir::collectAddressTakenLabelsInAttributes(module);
 
   static const llvm::SmallVector<StringRef> empty;
   for (cir::FuncOp func : module.getOps<cir::FuncOp>()) {

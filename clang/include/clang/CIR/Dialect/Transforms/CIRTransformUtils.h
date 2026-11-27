@@ -13,7 +13,9 @@
 #include "mlir/IR/PatternMatch.h"
 #include "clang/CIR/Dialect/IR/CIRDialect.h"
 
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringMap.h"
 
 namespace cir {
 /// Helper type for lowering global ctor/dtors, that contain all the values
@@ -62,6 +64,16 @@ mlir::Block *replaceThrowWithTryThrow(cir::ThrowOp throwOp,
 /// driver's dominance-order traversal would otherwise skip.
 void collectUnreachable(mlir::Operation *parent,
                         llvm::SmallVectorImpl<mlir::Operation *> &ops);
+
+/// Labels whose address is taken through attributes of `cir.global` and
+/// `cir.const` ops (`#cir.block_addr_info` and `#cir.block_addr_diff`), keyed
+/// by the name of the function they belong to. Each set keeps the walk order of
+/// the first reference to each label. Address-taken labels found through
+/// `cir.block_address` ops are not included: they are visible to a walk of the
+/// function itself.
+using AddressTakenLabels =
+    llvm::StringMap<llvm::SmallSetVector<llvm::StringRef, 4>>;
+AddressTakenLabels collectAddressTakenLabelsInAttributes(mlir::ModuleOp module);
 
 } // namespace cir
 

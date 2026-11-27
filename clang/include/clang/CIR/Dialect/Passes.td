@@ -88,6 +88,40 @@ def CIRFlattenCFG : Pass<"cir-flatten-cfg"> {
   let dependentDialects = ["cir::CIRDialect"];
 }
 
+def GotoElimination : Pass<"cir-goto-elimination", "cir::FuncOp"> {
+  let summary = "Replace symbolic gotos with control-flow edges";
+  let description = [{
+    Rewrites `cir.goto` into control flow that the CFG and region-branch
+    interfaces describe. A goto whose `cir.label` is in the same region becomes
+    a `cir.br` to the label's block.
+
+    Gotos this cannot route yet are left for `cir-goto-solver`. Labels stay;
+    `cir-erase-unused-labels` erases those nothing names any more.
+  }];
+  let constructor = "mlir::createGotoEliminationPass()";
+  let dependentDialects = ["cir::CIRDialect"];
+  let statistics = [
+    Statistic<"numSameRegionGotos", "same-region-gotos",
+              "Gotos replaced with a branch in the same region">,
+  ];
+}
+
+def EraseUnusedLabels : Pass<"cir-erase-unused-labels", "mlir::ModuleOp"> {
+  let summary = "Erase labels that nothing names";
+  let description = [{
+    Erases each `cir.label` that no `cir.goto` names and whose address no
+    `cir.block_address` op and no attribute, such as a global's initializer,
+    takes. It is a module pass because those attributes can live outside the
+    label's function.
+  }];
+  let constructor = "mlir::createEraseUnusedLabelsPass()";
+  let dependentDialects = ["cir::CIRDialect"];
+  let statistics = [
+    Statistic<"numErasedLabels", "erased-labels",
+              "Labels erased because nothing refers to them">,
+  ];
+}
+
 def GotoSolver : Pass<"cir-goto-solver", "mlir::ModuleOp"> {
   let summary = "Replaces goto operations with branches";
   let description = [{
