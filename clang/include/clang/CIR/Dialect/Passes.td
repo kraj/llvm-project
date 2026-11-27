@@ -95,6 +95,14 @@ def GotoElimination : Pass<"cir-goto-elimination", "cir::FuncOp"> {
     interfaces describe. A goto whose `cir.label` is in the same region becomes
     a `cir.br` to the label's block.
 
+    Any other goto stores the label's id in a per-function slot. It leaves
+    each region between it and the closest region that also holds the label
+    through its normal exit: `cir.break` out of loops and switches, `cir.yield`
+    out of cleanup scopes, and a branch to the final `cir.yield` of if, scope,
+    try and catch regions. After each op the goto leaves, a `cir.switch.flat`
+    on the slot routes it onward. Cleanups and catch handlers run as they
+    would for the goto.
+
     Gotos this cannot route yet are left for `cir-goto-solver`. Labels stay;
     `cir-erase-unused-labels` erases those nothing names any more.
   }];
@@ -103,6 +111,8 @@ def GotoElimination : Pass<"cir-goto-elimination", "cir::FuncOp"> {
   let statistics = [
     Statistic<"numSameRegionGotos", "same-region-gotos",
               "Gotos replaced with a branch in the same region">,
+    Statistic<"numOutwardGotos", "outward-gotos",
+              "Gotos routed out of enclosing regions to their label">,
   ];
 }
 

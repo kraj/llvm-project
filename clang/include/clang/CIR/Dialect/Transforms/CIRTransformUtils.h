@@ -75,6 +75,11 @@ using AddressTakenLabels =
     llvm::StringMap<llvm::SmallSetVector<llvm::StringRef, 4>>;
 AddressTakenLabels collectAddressTakenLabelsInAttributes(mlir::ModuleOp module);
 
+/// Creates a signed 32-bit alloca named `name` at the start of `func`'s entry
+/// block, for the destination ids of branches that share a dispatch.
+cir::AllocaOp createDestSlot(cir::FuncOp func, mlir::OpBuilder &builder,
+                             mlir::Location loc, llvm::StringRef name);
+
 } // namespace cir
 
 #endif // LLVM_CLANG_CIR_DIALECT_TRANSFORMS_CIRTRANSFORMUTILS_H
